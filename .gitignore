@@ -1,2 +1,13 @@
 .DS_Store
-node_modules/
+.build/
+.swiftpm/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.journalbackup
+*.dayone-import-log
+
+# Never commit private Day One exports.
+*DayOne*.zip
+*day-one*.zip
+*일기*.zip
