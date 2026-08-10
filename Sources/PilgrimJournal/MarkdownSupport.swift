@@ -1,6 +1,12 @@
 import Foundation
 import SwiftUI
 
+extension Notification.Name {
+    static let applyMarkdownKeyboardCommand = Notification.Name(
+        "PilgrimJournal.applyMarkdownKeyboardCommand"
+    )
+}
+
 enum EditorTextScale {
     static let defaultValue = 1.15
     static let minimum = 0.7
@@ -263,6 +269,13 @@ enum MarkdownKeyboardCommand: String {
     case heading1
     case heading2
     case heading3
+    case indentList
+    case outdentList
+}
+
+enum MarkdownListIndentDirection {
+    case indent
+    case outdent
 }
 
 enum MarkdownCommandProcessor {
@@ -508,7 +521,81 @@ enum MarkdownCommandProcessor {
             return applyingHeading(level: 2, to: text, selection: selection)
         case .heading3:
             return applyingHeading(level: 3, to: text, selection: selection)
+        case .indentList:
+            return adjustingListIndentation(
+                in: text,
+                selection: selection,
+                direction: .indent
+            )
+        case .outdentList:
+            return adjustingListIndentation(
+                in: text,
+                selection: selection,
+                direction: .outdent
+            )
         }
+    }
+
+    static func adjustingListIndentation(
+        in text: String,
+        selection: NSRange,
+        direction: MarkdownListIndentDirection
+    ) -> ExpansionResult {
+        let source = text as NSString
+        let safeSelection = clamped(selection, to: source.length)
+        let lineRange = source.lineRange(for: safeSelection)
+        let lines = source.substring(with: lineRange)
+            .split(separator: "\n", omittingEmptySubsequences: false)
+        var changed = false
+        let replacement = lines.map { substring -> String in
+            let line = String(substring)
+            guard listItem(from: line) != nil else { return line }
+            switch direction {
+            case .indent:
+                changed = true
+                return "  " + line
+            case .outdent:
+                if line.hasPrefix("\t") {
+                    changed = true
+                    return String(line.dropFirst())
+                }
+                let removableSpaces = min(
+                    2,
+                    line.prefix(while: { $0 == " " }).count
+                )
+                guard removableSpaces > 0 else { return line }
+                changed = true
+                return String(line.dropFirst(removableSpaces))
+            }
+        }
+        .joined(separator: "\n")
+        guard changed else {
+            return ExpansionResult(
+                text: text,
+                cursorUTF16Offset: NSMaxRange(safeSelection),
+                selectionUTF16Range: safeSelection
+            )
+        }
+
+        let result = source.replacingCharacters(in: lineRange, with: replacement)
+        if safeSelection.length == 0 {
+            let delta = replacement.utf16.count - lineRange.length
+            let cursor = max(lineRange.location, safeSelection.location + delta)
+            return ExpansionResult(
+                text: result,
+                cursorUTF16Offset: cursor,
+                selectionUTF16Range: NSRange(location: cursor, length: 0)
+            )
+        }
+        let changedRange = NSRange(
+            location: lineRange.location,
+            length: replacement.utf16.count
+        )
+        return ExpansionResult(
+            text: result,
+            cursorUTF16Offset: NSMaxRange(changedRange),
+            selectionUTF16Range: changedRange
+        )
     }
 
     private static func applyingHeading(
@@ -916,7 +1003,6 @@ struct MarkdownBodyEditor: View {
                 )
                 .accessibilityLabel("Markdown 본문")
 
-            #if os(macOS)
             Color.clear
                 .frame(width: 0, height: 0)
                 .onReceive(
@@ -925,12 +1011,13 @@ struct MarkdownBodyEditor: View {
                     )
                 ) { notification in
                     guard let rawValue = notification.object as? String,
-                          let command = MarkdownKeyboardCommand(rawValue: rawValue),
-                          MacMarkdownEditorFocus.isFocused
+                          let command = MarkdownKeyboardCommand(rawValue: rawValue)
                     else { return }
+                    #if os(macOS)
+                    guard MacMarkdownEditorFocus.isFocused else { return }
+                    #endif
                     apply(command)
                 }
-            #endif
 
             if let query = MarkdownCommandProcessor.trailingSlashQuery(in: text) {
                 commandPalette(query: query)
@@ -1679,10 +1766,10 @@ private final class MarkdownNSTextView: NSTextView {
                 in: textContainer
             )
             NSBezierPath(ovalIn: NSRect(
-                x: origin.x + marker.midX - 3.5,
-                y: origin.y + fragment.midY - 3.5,
-                width: 7,
-                height: 7
+                x: origin.x + marker.midX - 3,
+                y: origin.y + fragment.midY - 3,
+                width: 6,
+                height: 6
             )).fill()
         }
     }
@@ -1885,6 +1972,31 @@ private enum MarkdownSeparatorDecoration {
 
 @MainActor
 private final class MarkdownUITextView: UITextView {
+    var adjustListIndentation: ((MarkdownListIndentDirection) -> Void)?
+
+    override var keyCommands: [UIKeyCommand]? {
+        (super.keyCommands ?? []) + [
+            UIKeyCommand(
+                input: "\t",
+                modifierFlags: [],
+                action: #selector(indentCurrentListItem)
+            ),
+            UIKeyCommand(
+                input: "\t",
+                modifierFlags: [.shift],
+                action: #selector(outdentCurrentListItem)
+            ),
+        ]
+    }
+
+    @objc private func indentCurrentListItem() {
+        adjustListIndentation?(.indent)
+    }
+
+    @objc private func outdentCurrentListItem() {
+        adjustListIndentation?(.outdent)
+    }
+
     override func draw(_ rect: CGRect) {
         super.draw(rect)
         let origin = CGPoint(
@@ -1931,10 +2043,10 @@ private final class MarkdownUITextView: UITextView {
                 in: textContainer
             )
             UIBezierPath(ovalIn: CGRect(
-                x: origin.x + marker.midX - 3.5,
-                y: origin.y + fragment.midY - 3.5,
-                width: 7,
-                height: 7
+                x: origin.x + marker.midX - 3,
+                y: origin.y + fragment.midY - 3,
+                width: 6,
+                height: 6
             )).fill()
         }
     }
@@ -1953,6 +2065,9 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
     func makeUIView(context: Context) -> UITextView {
         let textView = MarkdownUITextView()
         context.coordinator.textView = textView
+        textView.adjustListIndentation = { [weak coordinator = context.coordinator] direction in
+            coordinator?.adjustListIndentation(direction)
+        }
         textView.delegate = context.coordinator
         textView.backgroundColor = .clear
         textView.isScrollEnabled = true
@@ -2051,6 +2166,10 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
             if !MarkdownInputReconciliation.canMutateTextStorage(
                 isComposing: textView.markedTextRange != nil
             ) {
+                // Keep the SwiftUI source of truth current without touching
+                // UITextView's marked range. Otherwise any unrelated view
+                // update can restore the pre-composition text and drop Korean
+                // jamo or an English autocorrection candidate.
                 parent.text = textView.text
                 parent.selection = currentSelection
                 return
@@ -2078,9 +2197,22 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
             if continued.text != expanded.text
                 || expanded.text != textView.text {
                 applyStyling(to: textView)
-            } else {
+            } else if MarkdownInputReconciliation.shouldScheduleStyling(
+                after: textView.text,
+                cursorUTF16Offset: NSMaxRange(preservedSelection)
+            ) {
                 scheduleStyling(for: textView)
+            } else {
+                stylingTask?.cancel()
             }
+            isUpdating = false
+        }
+
+        func textViewDidEndEditing(_ textView: UITextView) {
+            guard textView.markedTextRange == nil, !isUpdating else { return }
+            stylingTask?.cancel()
+            isUpdating = true
+            applyStyling(to: textView)
             isUpdating = false
         }
 
@@ -2094,14 +2226,32 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
                 return
             }
             parent.selection = selection
-            scheduleStyling(for: textView)
+            textView.setNeedsDisplay()
+        }
+
+        func adjustListIndentation(_ direction: MarkdownListIndentDirection) {
+            guard let textView, textView.markedTextRange == nil else { return }
+            let result = MarkdownCommandProcessor.adjustingListIndentation(
+                in: textView.text,
+                selection: textView.selectedRange,
+                direction: direction
+            )
+            guard result.text != textView.text else { return }
+            replaceExternalText(
+                result.text,
+                selection: result.selectionUTF16Range ?? NSRange(
+                    location: result.cursorUTF16Offset,
+                    length: 0
+                ),
+                registersUndo: true
+            )
         }
 
         private func scheduleStyling(for textView: UITextView) {
             stylingTask?.cancel()
             stylingTask = Task { @MainActor [weak self, weak textView] in
                 do {
-                    try await Task.sleep(for: .milliseconds(120))
+                    try await Task.sleep(for: .milliseconds(700))
                 } catch {
                     return
                 }
@@ -2153,6 +2303,22 @@ enum MarkdownInputReconciliation {
     static func canMutateTextStorage(isComposing: Bool) -> Bool {
         !isComposing
     }
+
+    static func shouldScheduleStyling(
+        after text: String,
+        cursorUTF16Offset: Int
+    ) -> Bool {
+        let source = text as NSString
+        guard cursorUTF16Offset > 0,
+              cursorUTF16Offset <= source.length else { return false }
+        let lastCharacter = source.substring(with: NSRange(
+            location: cursorUTF16Offset - 1,
+            length: 1
+        ))
+        return lastCharacter.rangeOfCharacter(
+            from: .whitespacesAndNewlines
+        ) != nil
+    }
 }
 
 struct MarkdownPreviewView: View {
@@ -2183,7 +2349,7 @@ struct MarkdownPreviewView: View {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Circle()
                     .fill(JournalTheme.ink)
-                    .frame(width: 7, height: 7)
+                    .frame(width: 6, height: 6)
                     .alignmentGuide(.firstTextBaseline) { dimensions in
                         dimensions[VerticalAlignment.center]
                     }

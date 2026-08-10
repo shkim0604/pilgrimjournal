@@ -660,6 +660,12 @@ struct EntryEditorView: View {
                     Button { appendCommand(.bullet) } label: {
                         Label("불릿", systemImage: "list.bullet")
                     }
+                    Button { postMarkdownCommand(.outdentList) } label: {
+                        Label("내어쓰기", systemImage: "decrease.indent")
+                    }
+                    Button { postMarkdownCommand(.indentList) } label: {
+                        Label("하위 불릿", systemImage: "increase.indent")
+                    }
                     Button { appendCommand(.today) } label: {
                         Label("오늘", systemImage: "calendar")
                     }
@@ -1022,6 +1028,13 @@ struct EntryEditorView: View {
     }
 
     #if os(iOS)
+    private func postMarkdownCommand(_ command: MarkdownKeyboardCommand) {
+        NotificationCenter.default.post(
+            name: .applyMarkdownKeyboardCommand,
+            object: command.rawValue
+        )
+    }
+
     private func dismissKeyboard() {
         UIApplication.shared.sendAction(
             #selector(UIResponder.resignFirstResponder),

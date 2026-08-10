@@ -20,6 +20,33 @@ final class MarkdownSupportTests: XCTestCase {
         )
     }
 
+    func testLiveStylingWaitsForAWordBoundary() {
+        XCTAssertFalse(
+            MarkdownInputReconciliation.shouldScheduleStyling(
+                after: "한글",
+                cursorUTF16Offset: 2
+            )
+        )
+        XCTAssertFalse(
+            MarkdownInputReconciliation.shouldScheduleStyling(
+                after: "English",
+                cursorUTF16Offset: 7
+            )
+        )
+        XCTAssertTrue(
+            MarkdownInputReconciliation.shouldScheduleStyling(
+                after: "한글 ",
+                cursorUTF16Offset: 3
+            )
+        )
+        XCTAssertTrue(
+            MarkdownInputReconciliation.shouldScheduleStyling(
+                after: "English\n",
+                cursorUTF16Offset: 8
+            )
+        )
+    }
+
     func testDayOneEscapesArePresentationOnlyAndKeepStoredMarkdown() {
         let markdown = #"문장입니다\. 다음은 \*별표\*입니다."#
 
@@ -292,6 +319,39 @@ final class MarkdownSupportTests: XCTestCase {
             cursorUTF16Offset: ("- [ ] \n" as NSString).length
         )
         XCTAssertEqual(stopped.text, "\n")
+    }
+
+    func testTabIndentsAndShiftTabOutdentsListItems() {
+        let source = "* 상위\n* 하위"
+        let cursor = (source as NSString).length
+        let indented = MarkdownCommandProcessor.adjustingListIndentation(
+            in: source,
+            selection: NSRange(location: cursor, length: 0),
+            direction: .indent
+        )
+        XCTAssertEqual(indented.text, "* 상위\n  * 하위")
+        XCTAssertEqual(indented.cursorUTF16Offset, cursor + 2)
+
+        let outdented = MarkdownCommandProcessor.adjustingListIndentation(
+            in: indented.text,
+            selection: NSRange(
+                location: indented.cursorUTF16Offset,
+                length: 0
+            ),
+            direction: .outdent
+        )
+        XCTAssertEqual(outdented.text, source)
+        XCTAssertEqual(outdented.cursorUTF16Offset, cursor)
+    }
+
+    func testTabDoesNotIndentPlainParagraphs() {
+        let source = "일반 문장"
+        let result = MarkdownCommandProcessor.adjustingListIndentation(
+            in: source,
+            selection: NSRange(location: source.utf16.count, length: 0),
+            direction: .indent
+        )
+        XCTAssertEqual(result.text, source)
     }
 
     func testExpandedSlashCommandsUseStableMarkdown() {

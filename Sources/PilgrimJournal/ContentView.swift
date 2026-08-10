@@ -434,9 +434,6 @@ extension Notification.Name {
     static let saveJournalEntry = Notification.Name(
         "PilgrimJournal.saveEntry"
     )
-    static let applyMarkdownKeyboardCommand = Notification.Name(
-        "PilgrimJournal.applyMarkdownKeyboardCommand"
-    )
 }
 #endif
 
