@@ -59,3 +59,54 @@ CloudKit production schema는 additive-only 정책으로 관리한다. 개발 co
 
 하나라도 충족하지 못하면 도메인 protocol은 유지하고
 `NSPersistentCloudKitContainer` adapter로 교체한다.
+
+## 릴리스 아카이브
+
+### iCloud 동기화 폴더에서 archive 하지 않기
+
+저장소가 `~/Documents` 아래에 있고 이 경로는 iCloud Drive file provider가
+관리한다. 빌드 산출물에 `com.apple.FinderInfo`와
+`com.apple.fileprovider.fpfs#P` 확장 속성이 계속 다시 붙고, codesign은
+`resource fork, Finder information, or similar detritus not allowed`로
+실패한다. 소스에 `xattr -cr`를 돌려도 빌드 중 다시 붙으므로 근본 해결이 아니다.
+
+**archive와 derived data는 동기화되지 않는 경로에 만든다.** 서명이 끝난
+아카이브를 `.release/`로 복사하는 것은 안전하다.
+
+### 절차
+
+1. 빌드 번호를 올린다. `PilgrimJournal.xcodeproj`의 `CURRENT_PROJECT_VERSION`
+   두 곳(Debug·Release)을 함께 바꾸고 `build: bump TestFlight build to N`으로
+   커밋한다.
+2. `./scripts/check.sh`가 통과하는지 확인한다.
+3. 동기화 밖 경로에 두 플랫폼 아카이브를 만든다.
+
+   ```sh
+   BUILD_ROOT=$(mktemp -d)
+   for platform in iOS macOS; do
+     xcodebuild \
+       -project PilgrimJournal/PilgrimJournal.xcodeproj \
+       -scheme PilgrimJournalApp \
+       -configuration Release \
+       -destination "generic/platform=$platform" \
+       -archivePath "$BUILD_ROOT/PilgrimJournal-$platform.xcarchive" \
+       -derivedDataPath "$BUILD_ROOT/DerivedData-$platform" \
+       archive
+   done
+   ```
+
+4. 아카이브의 `CFBundleVersion`이 의도한 빌드 번호인지 확인한 뒤
+   `.release/build<N>/`으로 복사한다. `.release/`는 Git에서 무시된다.
+5. `PilgrimJournal/AppStoreExportOptions.plist`로 export·upload 한다.
+   **Mac 잠금을 해제한 상태에서 실행한다.** 잠겨 있으면 Xcode가 Keychain
+   계정을 읽지 못해 `Failed to Use Accounts`로 중단된다.
+
+   ```sh
+   xcodebuild -exportArchive \
+     -archivePath "$BUILD_ROOT/PilgrimJournal-iOS.xcarchive" \
+     -exportOptionsPlist PilgrimJournal/AppStoreExportOptions.plist \
+     -exportPath "$BUILD_ROOT/export-iOS"
+   ```
+
+6. TestFlight에서 처리 완료를 확인하고 실기기 설치·업데이트·데이터 보존을
+   smoke test 한다.
