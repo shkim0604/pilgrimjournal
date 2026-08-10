@@ -130,5 +130,36 @@ final class JournalDomainTests: XCTestCase {
         XCTAssertEqual(RevisionResolver().winner(lhs, rhs).deviceID, "B")
         XCTAssertEqual(RevisionResolver().winner(rhs, lhs).deviceID, "B")
     }
+
+    func testClassificationRuleResolverConvergesRegardlessOfDeliveryOrder() {
+        let identifier = UUID(uuidString: "11111111-1111-4111-8111-111111111111")!
+        let date = Date(timeIntervalSince1970: 100)
+        let macEdit = ClassificationRuleRecord(
+            id: identifier,
+            source: .tag,
+            value: "묵상",
+            targetKind: .bibleStudy,
+            priority: 10,
+            updatedAt: date
+        )
+        let phoneEdit = ClassificationRuleRecord(
+            id: identifier,
+            source: .tag,
+            value: "묵상",
+            targetKind: .diary,
+            priority: 10,
+            updatedAt: date
+        )
+        let resolver = ClassificationRuleResolver()
+
+        XCTAssertEqual(
+            resolver.winner(macEdit, phoneEdit),
+            resolver.winner(phoneEdit, macEdit)
+        )
+        XCTAssertEqual(
+            resolver.winner(macEdit, phoneEdit).targetKind,
+            .diary
+        )
+    }
 }
 #endif

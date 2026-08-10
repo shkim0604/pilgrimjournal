@@ -42,6 +42,7 @@ final class JournalSearchTests: XCTestCase {
             try index.search(JournalSearchQuery(tags: ["말씀"])).map(\.id),
             [first.id]
         )
+        XCTAssertEqual(try index.indexedEntryIDs(), [first.id, second.id])
         try index.integrityCheck()
     }
 
@@ -154,6 +155,41 @@ final class JournalSearchTests: XCTestCase {
             try index.search(JournalSearchQuery(text: "깊은 독서")).map(\.id),
             [detailsMatch.id]
         )
+    }
+
+    func testFiveThousandEntryRebuildAndKoreanSearchPerformance() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appending(path: "\(UUID().uuidString).sqlite")
+        defer {
+            try? FileManager.default.removeItem(at: url)
+            try? FileManager.default.removeItem(atPath: url.path + "-wal")
+            try? FileManager.default.removeItem(atPath: url.path + "-shm")
+        }
+        let index = try JournalSearchIndex(url: url)
+        let entries = (0..<5_000).map { value in
+            makeRecord(
+                kind: value.isMultiple(of: 2) ? .diary : .memo,
+                title: "합성 기록 \(value)",
+                body: value == 4_321
+                    ? "성능 검증을 위한 고유한 한국어 바늘"
+                    : "일상적인 한국어 본문 \(value)",
+                tags: ["합성", "묶음-\(value % 10)"],
+                date: Date(timeIntervalSince1970: TimeInterval(value))
+            )
+        }
+
+        let rebuildStarted = ContinuousClock.now
+        try index.rebuild(from: entries)
+        let rebuildDuration = rebuildStarted.duration(to: .now)
+
+        let searchStarted = ContinuousClock.now
+        let hits = try index.search(JournalSearchQuery(text: "고유한 한국어 바늘"))
+        let searchDuration = searchStarted.duration(to: .now)
+
+        XCTAssertEqual(try index.indexedEntryIDs().count, 5_000)
+        XCTAssertEqual(hits.map(\.title), ["합성 기록 4321"])
+        XCTAssertLessThan(rebuildDuration, .seconds(15))
+        XCTAssertLessThan(searchDuration, .seconds(2))
     }
 
     private func makeRecord(

@@ -52,6 +52,7 @@ public protocol AttachmentRepository: AnyObject {
 
 @MainActor
 public protocol BackupRestoreRepository: JournalRepository {
+    func performRestoreTransaction(_ operation: () throws -> Void) throws
     func importRevision(_ revision: EntryRevisionRecord) throws
     func saveRestoreEpoch(_ epoch: RestoreEpochRecord) throws
 }
@@ -137,5 +138,33 @@ public struct ClassificationEngine {
         _ rhs: ClassificationRuleRecord
     ) -> Bool {
         lhs.id.uuidString < rhs.id.uuidString
+    }
+}
+
+public struct ClassificationRuleResolver {
+    public init() {}
+
+    public func winner(
+        _ lhs: ClassificationRuleRecord,
+        _ rhs: ClassificationRuleRecord
+    ) -> ClassificationRuleRecord {
+        if lhs.updatedAt != rhs.updatedAt {
+            return lhs.updatedAt > rhs.updatedAt ? lhs : rhs
+        }
+        let lhsKey = stableContentKey(lhs)
+        let rhsKey = stableContentKey(rhs)
+        if lhsKey != rhsKey {
+            return lhsKey.lexicographicallyPrecedes(rhsKey) ? rhs : lhs
+        }
+        return lhs.id.uuidString.lexicographicallyPrecedes(rhs.id.uuidString) ? rhs : lhs
+    }
+
+    private func stableContentKey(_ rule: ClassificationRuleRecord) -> String {
+        [
+            rule.source.rawValue,
+            rule.value,
+            rule.targetKind.rawValue,
+            String(rule.priority),
+        ].joined(separator: "\u{1F}")
     }
 }

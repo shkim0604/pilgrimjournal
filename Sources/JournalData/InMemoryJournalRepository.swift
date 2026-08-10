@@ -141,7 +141,8 @@ public final class InMemoryJournalRepository:
             sourceMetadata: validated.sourceMetadata,
             currentRevisionID: revision.id,
             updatedAt: date,
-            modifiedByDeviceID: deviceID
+            modifiedByDeviceID: deviceID,
+            deletedAt: previous?.deletedAt
         )
         entries[entryID] = record
         revisionStorage[entryID, default: []].append(revision)
@@ -196,6 +197,10 @@ public final class InMemoryJournalRepository:
     ) throws {
         guard let entry = entries[entryID] else { throw JournalError.entryNotFound }
         _ = try save(entry.draft, deviceID: deviceID, at: date)
+        entries[entryID]?.deletedAt = nil
+        entries[entryID]?.updatedAt = date
+        entries[entryID]?.modifiedByDeviceID = deviceID
+        try persist()
     }
 
     public func classificationRules() throws -> [ClassificationRuleRecord] {
@@ -206,7 +211,11 @@ public final class InMemoryJournalRepository:
     }
 
     public func saveClassificationRule(_ rule: ClassificationRuleRecord) throws {
-        rules[rule.id] = rule
+        if let existing = rules[rule.id] {
+            rules[rule.id] = ClassificationRuleResolver().winner(existing, rule)
+        } else {
+            rules[rule.id] = rule
+        }
         try persist()
     }
 
@@ -241,6 +250,27 @@ public final class InMemoryJournalRepository:
 
     public func allAttachments() throws -> [(AttachmentRecord, Data?)] {
         attachmentStorage.values.map { $0 }
+    }
+
+    public func performRestoreTransaction(
+        _ operation: () throws -> Void
+    ) throws {
+        let originalEntries = entries
+        let originalRevisions = revisionStorage
+        let originalRules = rules
+        let originalAttachments = attachmentStorage
+        let originalRestoreEpochs = restoreEpochs
+        do {
+            try operation()
+        } catch {
+            entries = originalEntries
+            revisionStorage = originalRevisions
+            rules = originalRules
+            attachmentStorage = originalAttachments
+            restoreEpochs = originalRestoreEpochs
+            try? persist()
+            throw error
+        }
     }
 
     private func persist() throws {

@@ -13,6 +13,7 @@ public final class SwiftDataJournalRepository:
     private let context: ModelContext
     private let encoder: JSONEncoder
     private let decoder: JSONDecoder
+    private var isPerformingRestoreTransaction = false
 
     public init(container: ModelContainer) {
         self.container = container
@@ -127,7 +128,6 @@ public final class SwiftDataJournalRepository:
         entity.currentRevisionID = revisionID
         entity.updatedAt = date
         entity.modifiedByDeviceID = deviceID
-        entity.deletedAt = nil
         if entity.modelContext == nil { context.insert(entity) }
 
         let revision = EntryRevisionEntity()
@@ -138,7 +138,7 @@ public final class SwiftDataJournalRepository:
         revision.createdAt = date
         revision.deviceID = deviceID
         context.insert(revision)
-        try context.save()
+        try saveIfNeeded()
         return try map(entity)
     }
 
@@ -171,7 +171,7 @@ public final class SwiftDataJournalRepository:
             throw JournalError.revisionNotFound
         }
         created.isRestore = true
-        try context.save()
+        try saveIfNeeded()
         return record
     }
 
@@ -186,7 +186,7 @@ public final class SwiftDataJournalRepository:
         entity.deletedAt = date
         entity.updatedAt = date
         entity.modifiedByDeviceID = deviceID
-        try context.save()
+        try saveIfNeeded()
     }
 
     public func restoreFromTrash(
@@ -199,6 +199,10 @@ public final class SwiftDataJournalRepository:
         }
         let snapshot = try map(entity).draft
         _ = try save(snapshot, deviceID: deviceID, at: date)
+        entity.deletedAt = nil
+        entity.updatedAt = date
+        entity.modifiedByDeviceID = deviceID
+        try saveIfNeeded()
     }
 
     public func classificationRules() throws -> [ClassificationRuleRecord] {
@@ -208,49 +212,56 @@ public final class SwiftDataJournalRepository:
                 SortDescriptor(\ClassificationRuleEntity.stableID),
             ]
         )
-        return try context.fetch(descriptor).compactMap { entity in
-            guard let source = ClassificationSource(rawValue: entity.sourceRaw),
-                  let target = JournalKind(rawValue: entity.targetKindRaw) else {
-                return nil
+        let resolver = ClassificationRuleResolver()
+        let resolved = try context.fetch(descriptor).compactMap(mapRule).reduce(
+            into: [UUID: ClassificationRuleRecord]()
+        ) { winners, rule in
+            if let existing = winners[rule.id] {
+                winners[rule.id] = resolver.winner(existing, rule)
+            } else {
+                winners[rule.id] = rule
             }
-            return ClassificationRuleRecord(
-                id: entity.stableID,
-                source: source,
-                value: entity.value,
-                targetKind: target,
-                priority: entity.priority,
-                updatedAt: entity.updatedAt
-            )
+        }
+        return resolved.values.sorted {
+            if $0.priority != $1.priority { return $0.priority > $1.priority }
+            return $0.id.uuidString < $1.id.uuidString
         }
     }
 
     public func saveClassificationRule(_ rule: ClassificationRuleRecord) throws {
         let identifier = rule.id
-        var descriptor = FetchDescriptor<ClassificationRuleEntity>(
+        let descriptor = FetchDescriptor<ClassificationRuleEntity>(
             predicate: #Predicate { entity in entity.stableID == identifier }
         )
-        descriptor.fetchLimit = 1
-        let entity = try context.fetch(descriptor).first ?? ClassificationRuleEntity()
-        entity.stableID = rule.id
-        entity.sourceRaw = rule.source.rawValue
-        entity.value = rule.value
-        entity.targetKindRaw = rule.targetKind.rawValue
-        entity.priority = rule.priority
-        entity.updatedAt = rule.updatedAt
-        if entity.modelContext == nil { context.insert(entity) }
-        try context.save()
+        let existingEntities = try context.fetch(descriptor)
+        let resolver = ClassificationRuleResolver()
+        let winner = existingEntities.compactMap(mapRule).reduce(rule) {
+            resolver.winner($0, $1)
+        }
+        let targets = existingEntities.isEmpty
+            ? [ClassificationRuleEntity()]
+            : existingEntities
+        for entity in targets {
+            entity.stableID = winner.id
+            entity.sourceRaw = winner.source.rawValue
+            entity.value = winner.value
+            entity.targetKindRaw = winner.targetKind.rawValue
+            entity.priority = winner.priority
+            entity.updatedAt = winner.updatedAt
+            if entity.modelContext == nil { context.insert(entity) }
+        }
+        try saveIfNeeded()
     }
 
     public func deleteClassificationRule(id: UUID) throws {
         let identifier = id
-        var descriptor = FetchDescriptor<ClassificationRuleEntity>(
+        let descriptor = FetchDescriptor<ClassificationRuleEntity>(
             predicate: #Predicate { entity in entity.stableID == identifier }
         )
-        descriptor.fetchLimit = 1
-        if let entity = try context.fetch(descriptor).first {
+        for entity in try context.fetch(descriptor) {
             context.delete(entity)
-            try context.save()
         }
+        try saveIfNeeded()
     }
 
     public func importRevision(_ revision: EntryRevisionRecord) throws {
@@ -264,7 +275,7 @@ public final class SwiftDataJournalRepository:
         entity.deviceID = revision.deviceID
         entity.isRestore = revision.isRestore
         context.insert(entity)
-        try context.save()
+        try saveIfNeeded()
     }
 
     public func saveRestoreEpoch(_ epoch: RestoreEpochRecord) throws {
@@ -279,7 +290,7 @@ public final class SwiftDataJournalRepository:
         entity.createdAt = epoch.createdAt
         entity.modeRaw = epoch.mode.rawValue
         context.insert(entity)
-        try context.save()
+        try saveIfNeeded()
     }
 
     public func allAttachments() throws -> [(AttachmentRecord, Data?)] {
@@ -318,7 +329,31 @@ public final class SwiftDataJournalRepository:
         entity.deletedAt = record.deletedAt
         if let binary { entity.binary = binary }
         if entity.modelContext == nil { context.insert(entity) }
-        try context.save()
+        try saveIfNeeded()
+    }
+
+    public func performRestoreTransaction(
+        _ operation: () throws -> Void
+    ) throws {
+        guard !isPerformingRestoreTransaction else {
+            try operation()
+            return
+        }
+        isPerformingRestoreTransaction = true
+        defer { isPerformingRestoreTransaction = false }
+        do {
+            try operation()
+            try context.save()
+        } catch {
+            context.rollback()
+            throw error
+        }
+    }
+
+    private func saveIfNeeded() throws {
+        if !isPerformingRestoreTransaction {
+            try context.save()
+        }
     }
 
     private func findEntry(id: UUID) throws -> JournalEntryEntity? {
@@ -337,6 +372,23 @@ public final class SwiftDataJournalRepository:
         )
         descriptor.fetchLimit = 1
         return try context.fetch(descriptor).first
+    }
+
+    private func mapRule(
+        _ entity: ClassificationRuleEntity
+    ) -> ClassificationRuleRecord? {
+        guard let source = ClassificationSource(rawValue: entity.sourceRaw),
+              let target = JournalKind(rawValue: entity.targetKindRaw) else {
+            return nil
+        }
+        return ClassificationRuleRecord(
+            id: entity.stableID,
+            source: source,
+            value: entity.value,
+            targetKind: target,
+            priority: entity.priority,
+            updatedAt: entity.updatedAt
+        )
     }
 
     private func map(_ entity: JournalEntryEntity) throws -> JournalEntryRecord {

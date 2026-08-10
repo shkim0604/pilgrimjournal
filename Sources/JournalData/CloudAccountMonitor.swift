@@ -30,4 +30,23 @@ public struct CloudAccountMonitor: Sendable {
             return .failed(message: error.localizedDescription, retryable: true)
         }
     }
+
+    public func currentStorageLocation(
+        fileManager: FileManager = .default
+    ) async -> JournalStorageLocation {
+        let container = CKContainer(identifier: containerIdentifier)
+        guard (try? await container.accountStatus()) == .available,
+              let token = fileManager.ubiquityIdentityToken,
+              let tokenData = try? NSKeyedArchiver.archivedData(
+                  withRootObject: token,
+                  requiringSecureCoding: true
+              ) else {
+            return .localOnly
+        }
+        return .iCloud(
+            accountHash: JournalAccountScope.iCloudAccountHash(
+                identityTokenData: tokenData
+            )
+        )
+    }
 }

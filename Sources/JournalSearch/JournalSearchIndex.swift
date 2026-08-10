@@ -228,6 +228,34 @@ public final class JournalSearchIndex: @unchecked Sendable {
         }
     }
 
+    public func indexedEntryIDs() throws -> Set<UUID> {
+        try withLock {
+            guard let database else { throw JournalSearchError.sqlite("연결이 닫혔습니다.") }
+            var statement: OpaquePointer?
+            guard sqlite3_prepare_v2(
+                database,
+                "SELECT id FROM journal_search_meta",
+                -1,
+                &statement,
+                nil
+            ) == SQLITE_OK else {
+                throw sqliteError()
+            }
+            defer { sqlite3_finalize(statement) }
+            var identifiers = Set<UUID>()
+            while true {
+                let status = sqlite3_step(statement)
+                if status == SQLITE_DONE { break }
+                guard status == SQLITE_ROW else { throw sqliteError() }
+                if let value = sqlite3_column_text(statement, 0),
+                   let identifier = UUID(uuidString: String(cString: value)) {
+                    identifiers.insert(identifier)
+                }
+            }
+            return identifiers
+        }
+    }
+
     private func createSchema() throws {
         try execute(
             """

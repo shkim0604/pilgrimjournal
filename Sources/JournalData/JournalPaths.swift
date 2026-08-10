@@ -29,6 +29,27 @@ public struct JournalPaths: Sendable {
         )
     }
 
+    public static func applicationRoot(
+        fileManager: FileManager = .default
+    ) throws -> URL {
+        let base = try fileManager.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )
+        return base.appending(path: "PilgrimJournal", directoryHint: .isDirectory)
+    }
+
+    public static func applicationDefault(
+        scope: JournalAccountScope,
+        fileManager: FileManager = .default
+    ) throws -> JournalPaths {
+        try JournalAccountScopeRegistry(
+            root: applicationRoot(fileManager: fileManager)
+        ).prepareScope(scope)
+    }
+
     public func prepare(fileManager: FileManager = .default) throws {
         for directory in [root, attachments, importStaging, backupStaging, search] {
             try fileManager.createDirectory(
