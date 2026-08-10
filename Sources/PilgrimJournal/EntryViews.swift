@@ -9,6 +9,8 @@ struct InlineEntryEditorView: View {
     }
 
     @EnvironmentObject private var model: AppModel
+    @AppStorage("editor-text-scale") private var editorTextScale =
+        EditorTextScale.defaultValue
     @FocusState private var focusedField: FocusedField?
     @State private var draft: JournalEntryDraft
     @State private var tagsText: String
@@ -17,58 +19,81 @@ struct InlineEntryEditorView: View {
     @State private var pendingKind: JournalKind?
     @State private var isConfirmingTypeChange = false
     @State private var isPresentingHistory = false
+    @State private var saveState = EditorSaveState.saved
+    @State private var lastSavedAt: Date?
+    @State private var autosaveTask: Task<Void, Never>?
+    @State private var persistedEntryID: UUID?
     private let entry: JournalEntryRecord?
 
-    init(entry: JournalEntryRecord?, defaultKind: JournalKind = .diary) {
-        let initial = entry?.draft ?? JournalEntryDraft(kind: defaultKind)
-        let initialTags = initial.tags.joined(separator: ", ")
+    init(
+        entry: JournalEntryRecord?,
+        defaultKind: JournalKind = .diary,
+        defaultNotebookName: String? = nil
+    ) {
+        var initial = entry?.draft ?? JournalEntryDraft(kind: defaultKind)
+        if entry == nil { initial.notebookName = defaultNotebookName }
+        let initialTags = initial.visibleTags.joined(separator: ", ")
         self.entry = entry
         _draft = State(initialValue: initial)
         _tagsText = State(initialValue: initialTags)
         _lastSavedDraft = State(initialValue: initial)
         _lastSavedTagsText = State(initialValue: initialTags)
+        _lastSavedAt = State(initialValue: entry?.updatedAt)
+        _persistedEntryID = State(initialValue: entry?.id)
     }
 
     var body: some View {
         VStack(spacing: 0) {
             editorToolbar
-            Divider()
-            VStack(alignment: .leading, spacing: 16) {
-                TextField("제목", text: $draft.title)
-                    .textFieldStyle(.plain)
-                    .font(.largeTitle.bold())
-                    .focused($focusedField, equals: .title)
-                    .accessibilityLabel("제목")
+            Rectangle()
+                .fill(JournalTheme.separator)
+                .frame(height: 1)
+            HStack(spacing: 0) {
+                Spacer(minLength: 0)
+                PaperEditorSurface {
+                    VStack(alignment: .leading, spacing: JournalTheme.Spacing.regular) {
+                        TextField("제목", text: $draft.title)
+                            .textFieldStyle(.plain)
+                            .font(.system(
+                                size: 32 * editorTextScale,
+                                weight: .bold
+                            ))
+                            .foregroundStyle(JournalTheme.ink)
+                            .focused($focusedField, equals: .title)
+                            .accessibilityLabel("제목")
 
-                typeSpecificFields
+                        typeSpecificFields
 
-                MarkdownBodyEditor(
-                    text: $draft.body,
-                    minHeight: 280,
-                    autoFocus: entry == nil
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        MarkdownBodyEditor(
+                            text: $draft.body,
+                            minHeight: 320,
+                            autoFocus: entry == nil
+                        )
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                Divider()
+                        Rectangle()
+                            .fill(JournalTheme.separator)
+                            .frame(height: 1)
 
-                HStack(spacing: 8) {
-                    Image(systemName: "number")
-                        .foregroundStyle(.secondary)
-                    TextField("태그를 쉼표로 구분해 입력", text: $tagsText)
-                        .textFieldStyle(.plain)
-                        .focused($focusedField, equals: .tags)
+                        tagsEditor
+                        editorFooter
+                    }
                 }
+                Spacer(minLength: 0)
             }
-            .frame(maxWidth: 760, maxHeight: .infinity, alignment: .topLeading)
-            .padding(.horizontal, 28)
-            .padding(.vertical, 22)
         }
-        .background(Color(nsColor: .textBackgroundColor))
+        .background(JournalTheme.canvas)
+        .onChange(of: draft) { _, _ in scheduleAutosave() }
+        .onChange(of: tagsText) { _, _ in scheduleAutosave() }
+        .onReceive(
+            NotificationCenter.default.publisher(for: .saveJournalEntry)
+        ) { _ in
+            autosaveTask?.cancel()
+            performAutosave()
+        }
         .onDisappear {
-            guard isDirty else { return }
-            var outgoing = draft
-            outgoing.tags = parsedTags
-            model.autosaveOnEditorExit(outgoing)
+            autosaveTask?.cancel()
+            performAutosave()
         }
         .sheet(isPresented: $isPresentingHistory) {
             if let entry {
@@ -92,26 +117,79 @@ struct InlineEntryEditorView: View {
     }
 
     private var editorToolbar: some View {
-        HStack(spacing: 12) {
-            Picker("기록 유형", selection: kindBinding) {
-                ForEach(JournalKind.allCases.filter(\.canCreateManually)) { kind in
-                    Text(kind.localizedName).tag(kind)
-                }
+        ViewThatFits(in: .horizontal) {
+            fullMetadataToolbar
+            compactMetadataToolbar
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 9)
+        .background(JournalTheme.paper)
+    }
+
+    private var fullMetadataToolbar: some View {
+        HStack(spacing: JournalTheme.Spacing.small) {
+            MetadataChip { kindPicker }
+            MetadataChip { notebookPicker }
+            MetadataChip {
+                DatePicker(
+                    "기록 시각",
+                    selection: $draft.occurredAt,
+                    displayedComponents: [.date, .hourAndMinute]
+                )
+                .labelsHidden()
+                .fixedSize()
             }
-            .labelsHidden()
-            .pickerStyle(.menu)
-            .fixedSize()
+            Spacer(minLength: JournalTheme.Spacing.small)
+            editorActions
+            saveStatusButton
+        }
+    }
 
-            DatePicker(
-                "기록 시각",
-                selection: $draft.occurredAt,
-                displayedComponents: [.date, .hourAndMinute]
-            )
-            .labelsHidden()
-            .fixedSize()
+    private var compactMetadataToolbar: some View {
+        HStack(spacing: JournalTheme.Spacing.small) {
+            MetadataChip { kindPicker }
+            MetadataChip { notebookPicker }
+            Spacer(minLength: JournalTheme.Spacing.small)
+            Menu {
+                DatePicker("기록 시각", selection: $draft.occurredAt)
+                Toggle("즐겨찾기", isOn: $draft.isStarred)
+                Toggle("고정", isOn: $draft.isPinned)
+                if entry != nil {
+                    Button("수정 이력") { isPresentingHistory = true }
+                }
+            } label: {
+                Label("기록 정보", systemImage: "ellipsis.circle")
+            }
+            .menuStyle(.borderlessButton)
+            saveStatusButton
+        }
+    }
 
-            Spacer()
+    private var kindPicker: some View {
+        Picker("기록 유형", selection: kindBinding) {
+            ForEach(JournalKind.allCases.filter(\.canCreateManually)) { kind in
+                Text(kind.localizedName).tag(kind)
+            }
+        }
+        .labelsHidden()
+        .pickerStyle(.menu)
+        .fixedSize()
+    }
 
+    private var notebookPicker: some View {
+        Picker("노트북", selection: notebookBinding) {
+            Text("노트북 없음").tag(nil as String?)
+            ForEach(model.notebooks, id: \.self) { notebook in
+                Text(notebook).tag(notebook as String?)
+            }
+        }
+        .labelsHidden()
+        .pickerStyle(.menu)
+        .fixedSize()
+    }
+
+    private var editorActions: some View {
+        HStack(spacing: JournalTheme.Spacing.small) {
             Button {
                 draft.isStarred.toggle()
             } label: {
@@ -120,6 +198,9 @@ struct InlineEntryEditorView: View {
                     systemImage: draft.isStarred ? "star.fill" : "star"
                 )
             }
+            .foregroundStyle(
+                draft.isStarred ? JournalTheme.accentWarm : JournalTheme.inkSecondary
+            )
             .labelStyle(.iconOnly)
 
             Button {
@@ -130,6 +211,7 @@ struct InlineEntryEditorView: View {
                     systemImage: draft.isPinned ? "pin.fill" : "pin"
                 )
             }
+            .foregroundStyle(JournalTheme.inkSecondary)
             .labelStyle(.iconOnly)
 
             if entry != nil {
@@ -138,24 +220,21 @@ struct InlineEntryEditorView: View {
                 } label: {
                     Label("수정 이력", systemImage: "clock.arrow.circlepath")
                 }
+                .foregroundStyle(JournalTheme.inkSecondary)
                 .labelStyle(.iconOnly)
             }
-
-            if isDirty {
-                Text("저장 안 됨")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Button("저장") {
-                save()
-            }
-            .buttonStyle(.borderedProminent)
-            .keyboardShortcut(.return, modifiers: [.command])
-            .disabled(!isDirty && entry != nil)
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 10)
+    }
+
+    private var saveStatusButton: some View {
+        Button {
+            performAutosave()
+        } label: {
+            StatusPill(state: saveState)
+        }
+        .buttonStyle(.plain)
+        .keyboardShortcut(.return, modifiers: [.command])
+        .help(saveState == .saved ? "모든 변경이 저장되었습니다." : "지금 다시 저장")
     }
 
     @ViewBuilder
@@ -249,23 +328,134 @@ struct InlineEntryEditorView: View {
     }
 
     private var parsedTags: [String] {
-        tagsText
+        var result: [String] = []
+        let candidates = tagsText
             .split(separator: ",")
             .map { String($0).trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
+        for tag in candidates {
+            if !result.contains(where: {
+                $0.caseInsensitiveCompare(tag) == .orderedSame
+            }) {
+                result.append(tag)
+            }
+        }
+        return result
+    }
+
+    private var tagsEditor: some View {
+        VStack(alignment: .leading, spacing: JournalTheme.Spacing.small) {
+            Text("태그")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(JournalTheme.inkSecondary)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: JournalTheme.Spacing.small) {
+                    ForEach(parsedTags, id: \.self) { tag in
+                        TagChip(tag: tag) { removeTag(tag) }
+                    }
+                    TextField("태그 추가 (쉼표로 구분)", text: $tagsText)
+                        .textFieldStyle(.plain)
+                        .focused($focusedField, equals: .tags)
+                        .frame(minWidth: 190)
+                }
+            }
+        }
+    }
+
+    private var editorFooter: some View {
+        HStack(spacing: JournalTheme.Spacing.medium) {
+            Label("\(draft.body.count)자", systemImage: "character.cursor.ibeam")
+            if let lastSavedAt {
+                Label(
+                    lastSavedAt.formatted(date: .omitted, time: .shortened),
+                    systemImage: "clock"
+                )
+            }
+            Spacer()
+            if case let .failed(message) = saveState {
+                Button("다시 저장") { performAutosave() }
+                    .help(message)
+            }
+        }
+        .font(.caption)
+        .foregroundStyle(JournalTheme.inkSecondary)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func removeTag(_ tag: String) {
+        tagsText = parsedTags
+            .filter { $0.caseInsensitiveCompare(tag) != .orderedSame }
+            .joined(separator: ", ")
+    }
+
+    private var notebookBinding: Binding<String?> {
+        Binding(
+            get: { draft.notebookName },
+            set: { draft.notebookName = $0 }
+        )
     }
 
     private var isDirty: Bool {
         draft != lastSavedDraft || tagsText != lastSavedTagsText
     }
 
-    private func save() {
+    private func scheduleAutosave() {
+        guard isDirty else { return }
+        let hasContent = !draft.title.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        ).isEmpty || !draft.body.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        ).isEmpty
+        guard hasContent else { return }
+        autosaveTask?.cancel()
+        saveState = .saving
+        autosaveTask = Task { @MainActor in
+            do {
+                try await Task.sleep(for: .milliseconds(650))
+            } catch {
+                return
+            }
+            guard !Task.isCancelled else { return }
+            performAutosave()
+        }
+    }
+
+    private func performAutosave() {
+        guard !model.isEntryDeleted(persistedEntryID ?? draft.id) else {
+            saveState = .saved
+            return
+        }
+        guard isDirty else {
+            saveState = .saved
+            return
+        }
+        let hasContent = !draft.title.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        ).isEmpty || !draft.body.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        ).isEmpty
+        guard hasContent else { return }
+        autosaveTask?.cancel()
+        saveState = .saving
         var outgoing = draft
-        outgoing.tags = parsedTags
-        guard model.save(outgoing) else { return }
-        draft = outgoing
-        lastSavedDraft = outgoing
+        outgoing.id = persistedEntryID ?? outgoing.id
+        outgoing.tags = NotebookTagCodec.replacingVisibleTags(
+            in: draft.tags,
+            with: parsedTags
+        )
+        guard let record = model.saveAndReturnRecord(
+            outgoing,
+            closeEditor: false,
+            selectSavedEntry: false
+        ) else {
+            saveState = .failed(model.errorMessage ?? "기록을 저장할 수 없습니다.")
+            return
+        }
+        persistedEntryID = record.id
+        lastSavedDraft = draft
         lastSavedTagsText = tagsText
+        lastSavedAt = record.updatedAt
+        saveState = .saved
     }
 
     private func applyPendingKind() {
@@ -285,41 +475,70 @@ struct EntryDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                HStack {
-                    Text(entry.kind.localizedName)
-                        .font(.caption.weight(.semibold))
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 5)
-                        .background(.tint.opacity(0.12), in: Capsule())
-                    Spacer()
-                    Button("편집") {
-                        model.beginEditing(entry)
+                ViewThatFits(in: .horizontal) {
+                    HStack {
+                        kindBadge
+                        Spacer(minLength: JournalTheme.Spacing.regular)
+                        detailActions
                     }
-                    Button("이력") {
-                        isPresentingHistory = true
+                    VStack(alignment: .leading, spacing: JournalTheme.Spacing.small) {
+                        kindBadge
+                        detailActions
                     }
+                }
+                if let notebook = entry.notebookName {
+                    Label(notebook, systemImage: "book.closed")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
                 }
                 Text(entry.title.isEmpty ? entry.kind.localizedName : entry.title)
                     .font(.largeTitle.bold())
+                    .foregroundStyle(JournalTheme.ink)
                 Text(entry.occurredAt.formatted(date: .long, time: .shortened))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(JournalTheme.inkSecondary)
                 typeDetails
                 MarkdownPreviewView(markdown: entry.body)
-                if !entry.tags.isEmpty {
-                    HStack {
-                        ForEach(entry.tags, id: \.self) { tag in
-                            Text("#\(tag)")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                if !entry.visibleTags.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack {
+                            ForEach(entry.visibleTags, id: \.self) { tag in
+                                TagChip(tag: tag)
+                            }
                         }
                     }
                 }
             }
             .frame(maxWidth: 720, alignment: .leading)
             .padding(24)
+            .background(JournalTheme.paper)
         }
+        .background(JournalTheme.canvas)
         .sheet(isPresented: $isPresentingHistory) {
             RevisionHistoryView(entry: entry)
+        }
+    }
+
+    private var kindBadge: some View {
+        Text(entry.kind.localizedName)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(JournalTheme.categoryColor(for: entry.kind))
+            .padding(.horizontal, 9)
+            .padding(.vertical, 5)
+            .background(
+                JournalTheme.categoryColor(for: entry.kind).opacity(0.12),
+                in: Capsule()
+            )
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var detailActions: some View {
+        HStack(spacing: JournalTheme.Spacing.regular) {
+            Button("편집") {
+                model.beginEditing(entry)
+            }
+            Button("이력") {
+                isPresentingHistory = true
+            }
         }
     }
 
@@ -359,65 +578,101 @@ struct EntryEditorView: View {
     @EnvironmentObject private var model: AppModel
     @State private var draft: JournalEntryDraft
     @State private var tagsText: String
+    @State private var lastSavedDraft: JournalEntryDraft
+    @State private var lastSavedTagsText: String
+    @State private var saveState = EditorSaveState.saved
+    @State private var lastSavedAt: Date?
+    @State private var autosaveTask: Task<Void, Never>?
+    @State private var persistedEntryID: UUID?
     @State private var pendingKind: JournalKind?
     @State private var isConfirmingTypeChange = false
-    @State private var isConfirmingDiscard = false
-    private let initialDraft: JournalEntryDraft
-    private let initialTagsText: String
+    @State private var isShowingMetadata = false
 
-    init(entry: JournalEntryRecord?) {
-        let initial = entry?.draft ?? JournalEntryDraft(kind: .diary)
-        initialDraft = initial
-        initialTagsText = initial.tags.joined(separator: ", ")
+    init(
+        entry: JournalEntryRecord?,
+        defaultKind: JournalKind = .diary,
+        defaultNotebookName: String? = nil
+    ) {
+        var initial = entry?.draft ?? JournalEntryDraft(kind: defaultKind)
+        if entry == nil { initial.notebookName = defaultNotebookName }
+        let initialTags = initial.visibleTags.joined(separator: ", ")
         _draft = State(initialValue: initial)
-        _tagsText = State(initialValue: initialTagsText)
+        _tagsText = State(initialValue: initialTags)
+        _lastSavedDraft = State(initialValue: initial)
+        _lastSavedTagsText = State(initialValue: initialTags)
+        _lastSavedAt = State(initialValue: entry?.updatedAt)
+        _persistedEntryID = State(initialValue: entry?.id)
     }
 
     var body: some View {
         NavigationStack {
-            Form {
-                Picker("기록 유형", selection: kindBinding) {
-                    ForEach(JournalKind.allCases.filter(\.canCreateManually)) { kind in
-                        Text(kind.localizedName).tag(kind)
+            ZStack {
+                JournalTheme.canvas.ignoresSafeArea()
+                ScrollView {
+                    VStack(alignment: .leading, spacing: JournalTheme.Spacing.regular) {
+                        mobileMetadataBar
+
+                        TextField("제목", text: $draft.title, axis: .vertical)
+                            .textFieldStyle(.plain)
+                            .font(.largeTitle.bold())
+                            .foregroundStyle(JournalTheme.ink)
+                            .accessibilityLabel("제목")
+
+                        typeSpecificFields
+
+                        MarkdownBodyEditor(text: $draft.body, minHeight: 380)
+
+                        Rectangle()
+                            .fill(JournalTheme.separator)
+                            .frame(height: 1)
+
+                        mobileTagsEditor
+                        mobileFooter
                     }
+                    .padding(JournalTheme.Spacing.large)
+                    .background(JournalTheme.paper)
                 }
-                TextField("제목", text: $draft.title)
-                DatePicker("기록 시각", selection: $draft.occurredAt)
-                MarkdownBodyEditor(text: $draft.body)
-                TextField("태그 (쉼표로 구분)", text: $tagsText)
-                Toggle("즐겨찾기", isOn: $draft.isStarred)
-                Toggle("고정", isOn: $draft.isPinned)
-                typeSpecificFields
             }
-            .formStyle(.grouped)
             .navigationTitle(draft.id == nil ? "새 기록" : "기록 편집")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("취소") {
-                        if isDirty {
-                            isConfirmingDiscard = true
-                        } else {
-                            dismiss()
-                        }
+                    Button("완료") {
+                        autosaveTask?.cancel()
+                        if performAutosave() { dismiss() }
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("저장") {
-                        draft.tags = tagsText
-                            .split(separator: ",")
-                            .map { String($0).trimmingCharacters(in: .whitespaces) }
-                        if model.save(draft) {
-                            dismiss()
-                        }
-                    }
-                    .keyboardShortcut(.return, modifiers: [.command])
+                    StatusPill(state: saveState)
                 }
+                #if os(iOS)
+                ToolbarItemGroup(placement: .keyboard) {
+                    Button { appendCommand(.h2) } label: {
+                        Label("제목", systemImage: "textformat.size")
+                    }
+                    Button { appendCommand(.bullet) } label: {
+                        Label("불릿", systemImage: "list.bullet")
+                    }
+                    Button { appendCommand(.today) } label: {
+                        Label("오늘", systemImage: "calendar")
+                    }
+                    Spacer()
+                    Button("키보드 닫기") { dismissKeyboard() }
+                }
+                #endif
             }
         }
         #if os(macOS)
         .frame(minWidth: 420, minHeight: 520)
         #endif
-        .interactiveDismissDisabled(isDirty)
+        .interactiveDismissDisabled(saveState == .saving)
+        .sheet(isPresented: $isShowingMetadata) {
+            mobileMetadataSheet
+        }
+        .onChange(of: draft) { _, _ in scheduleAutosave() }
+        .onChange(of: tagsText) { _, _ in scheduleAutosave() }
         .confirmationDialog(
             "기록 유형을 바꾸면 일부 상세 정보가 제거됩니다.",
             isPresented: $isConfirmingTypeChange,
@@ -432,14 +687,141 @@ struct EntryEditorView: View {
         } message: {
             Text(discardedDetailLabels.joined(separator: ", "))
         }
-        .confirmationDialog(
-            "저장하지 않은 변경을 버릴까요?",
-            isPresented: $isConfirmingDiscard,
-            titleVisibility: .visible
-        ) {
-            Button("변경 버리기", role: .destructive) { dismiss() }
-            Button("계속 편집", role: .cancel) {}
+    }
+
+    private var mobileMetadataBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: JournalTheme.Spacing.small) {
+                Button {
+                    isShowingMetadata = true
+                } label: {
+                    MetadataChip {
+                        Label(
+                            draft.kind.localizedName,
+                            systemImage: "slider.horizontal.3"
+                        )
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("기록 유형, 노트북과 날짜를 편집합니다.")
+
+                if let notebookName = draft.notebookName {
+                    MetadataChip {
+                        Label(notebookName, systemImage: "book.closed")
+                    }
+                }
+
+                MetadataChip {
+                    Label(
+                        draft.occurredAt.formatted(date: .abbreviated, time: .omitted),
+                        systemImage: "calendar"
+                    )
+                }
+                Button {
+                    draft.isStarred.toggle()
+                } label: {
+                    Image(systemName: draft.isStarred ? "star.fill" : "star")
+                        .foregroundStyle(
+                            draft.isStarred
+                                ? JournalTheme.accentWarm
+                                : JournalTheme.inkSecondary
+                        )
+                        .frame(width: 34, height: 34)
+                        .background(JournalTheme.surfaceMuted, in: Circle())
+                }
+                .accessibilityLabel(draft.isStarred ? "즐겨찾기 해제" : "즐겨찾기")
+                Button {
+                    draft.isPinned.toggle()
+                } label: {
+                    Image(systemName: draft.isPinned ? "pin.fill" : "pin")
+                        .foregroundStyle(JournalTheme.inkSecondary)
+                        .frame(width: 34, height: 34)
+                        .background(JournalTheme.surfaceMuted, in: Circle())
+                }
+                .accessibilityLabel(draft.isPinned ? "고정 해제" : "고정")
+            }
         }
+    }
+
+    private var mobileMetadataSheet: some View {
+        NavigationStack {
+            Form {
+                Section("분류") {
+                    Picker("기록 유형", selection: kindBinding) {
+                        ForEach(JournalKind.allCases.filter(\.canCreateManually)) { kind in
+                            Text(kind.localizedName).tag(kind)
+                        }
+                    }
+                    Picker("노트북", selection: notebookBinding) {
+                        Text("노트북 없음").tag(nil as String?)
+                        ForEach(model.notebooks, id: \.self) { notebook in
+                            Text(notebook).tag(notebook as String?)
+                        }
+                    }
+                }
+                Section("기록 시각") {
+                    DatePicker(
+                        "날짜",
+                        selection: $draft.occurredAt,
+                        displayedComponents: [.date, .hourAndMinute]
+                    )
+                }
+                Section("표시") {
+                    Toggle("즐겨찾기", isOn: $draft.isStarred)
+                    Toggle("상단에 고정", isOn: $draft.isPinned)
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .background(JournalTheme.canvas)
+            .navigationTitle("기록 정보")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("완료") { isShowingMetadata = false }
+                }
+            }
+        }
+        #if os(iOS)
+        .presentationDetents([.medium, .large])
+        #endif
+    }
+
+    private var mobileTagsEditor: some View {
+        VStack(alignment: .leading, spacing: JournalTheme.Spacing.small) {
+            Text("태그")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(JournalTheme.inkSecondary)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: JournalTheme.Spacing.small) {
+                    ForEach(parsedTags, id: \.self) { tag in
+                        TagChip(tag: tag) { removeTag(tag) }
+                    }
+                    TextField("태그 추가", text: $tagsText)
+                        .textFieldStyle(.plain)
+                        .frame(minWidth: 140)
+                }
+            }
+        }
+    }
+
+    private var mobileFooter: some View {
+        HStack {
+            Label("\(draft.body.count)자", systemImage: "character.cursor.ibeam")
+            if let lastSavedAt {
+                Label(
+                    lastSavedAt.formatted(date: .omitted, time: .shortened),
+                    systemImage: "clock"
+                )
+            }
+            Spacer()
+            if case .failed = saveState {
+                Button("다시 저장") { _ = performAutosave() }
+            }
+        }
+        .font(.caption)
+        .foregroundStyle(JournalTheme.inkSecondary)
     }
 
     @ViewBuilder
@@ -505,6 +887,13 @@ struct EntryEditorView: View {
         )
     }
 
+    private var notebookBinding: Binding<String?> {
+        Binding(
+            get: { draft.notebookName },
+            set: { draft.notebookName = $0 }
+        )
+    }
+
     private var discardedDetailLabels: [String] {
         var labels: [String] = []
         guard let pendingKind else { return labels }
@@ -528,8 +917,109 @@ struct EntryEditorView: View {
     }
 
     private var isDirty: Bool {
-        draft != initialDraft || tagsText != initialTagsText
+        draft != lastSavedDraft || tagsText != lastSavedTagsText
     }
+
+    private var parsedTags: [String] {
+        var result: [String] = []
+        let candidates = tagsText
+            .split(separator: ",")
+            .map({ String($0).trimmingCharacters(in: .whitespaces) })
+            .filter({ !$0.isEmpty })
+        for tag in candidates {
+            if !result.contains(where: {
+                $0.caseInsensitiveCompare(tag) == .orderedSame
+            }) {
+                result.append(tag)
+            }
+        }
+        return result
+    }
+
+    private func removeTag(_ tag: String) {
+        tagsText = parsedTags
+            .filter { $0.caseInsensitiveCompare(tag) != .orderedSame }
+            .joined(separator: ", ")
+    }
+
+    private func scheduleAutosave() {
+        guard isDirty else { return }
+        let hasContent = !draft.title.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        ).isEmpty || !draft.body.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        ).isEmpty
+        guard hasContent else { return }
+        autosaveTask?.cancel()
+        saveState = .saving
+        autosaveTask = Task { @MainActor in
+            do {
+                try await Task.sleep(for: .milliseconds(650))
+            } catch {
+                return
+            }
+            guard !Task.isCancelled else { return }
+            _ = performAutosave()
+        }
+    }
+
+    @discardableResult
+    private func performAutosave() -> Bool {
+        guard !model.isEntryDeleted(persistedEntryID ?? draft.id) else {
+            saveState = .saved
+            return true
+        }
+        guard isDirty else {
+            saveState = .saved
+            return true
+        }
+        let hasContent = !draft.title.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        ).isEmpty || !draft.body.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        ).isEmpty
+        guard hasContent else {
+            saveState = .saved
+            return true
+        }
+        autosaveTask?.cancel()
+        saveState = .saving
+        var outgoing = draft
+        outgoing.id = persistedEntryID ?? outgoing.id
+        outgoing.tags = NotebookTagCodec.replacingVisibleTags(
+            in: draft.tags,
+            with: parsedTags
+        )
+        guard let record = model.saveAndReturnRecord(
+            outgoing,
+            closeEditor: false,
+            selectSavedEntry: false
+        ) else {
+            saveState = .failed(model.errorMessage ?? "기록을 저장할 수 없습니다.")
+            return false
+        }
+        persistedEntryID = record.id
+        lastSavedDraft = draft
+        lastSavedTagsText = tagsText
+        lastSavedAt = record.updatedAt
+        saveState = .saved
+        return true
+    }
+
+    private func appendCommand(_ command: MarkdownSlashCommand) {
+        draft.body = MarkdownCommandProcessor.applying(command, to: draft.body)
+    }
+
+    #if os(iOS)
+    private func dismissKeyboard() {
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil,
+            from: nil,
+            for: nil
+        )
+    }
+    #endif
 
     private func applyPendingKind() {
         guard let pendingKind else { return }
