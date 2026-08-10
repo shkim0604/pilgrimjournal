@@ -23,7 +23,7 @@ struct OnboardingView: View {
                     informationRow(
                         icon: "person.crop.circle.badge.checkmark",
                         title: "Apple 로그인으로 접근합니다",
-                        description: "이메일·비밀번호 회원가입 없이 Apple로 로그인합니다. 앱은 Apple의 고유 사용자 식별자만 기기 Keychain에 저장하며 이름·이메일은 요청하거나 저장하지 않습니다."
+                        description: "별도 비밀번호 없이 Apple로 로그인합니다. 앱은 고유 사용자 식별자와 Apple이 제공한 이메일을 계정 표시용으로 기기 Keychain에 저장합니다."
                     )
                     informationRow(
                         icon: "icloud",
@@ -91,9 +91,9 @@ struct PrivacyInformationView: View {
         List {
             Section("계정과 동기화") {
                 Label("Apple 로그인 접근 인증", systemImage: "person.crop.circle.badge.checkmark")
-                Text("앱은 Apple 로그인의 고유 사용자 식별자만 기기 Keychain에 저장합니다. Apple ID 비밀번호·이름·이메일은 요청하거나 저장하지 않습니다.")
+                Text("앱은 Apple 로그인의 고유 사용자 식별자와 Apple이 제공한 이메일을 기기 Keychain에 저장합니다. Apple ID 비밀번호는 요청하거나 저장하지 않습니다.")
                 Text("Apple 로그인은 일기 화면 접근용이며, 기록 동기화에는 별도로 기기의 시스템 iCloud 개인 데이터베이스를 사용합니다.")
-                Text("최초 연결한 Apple 사용자와 현재 iCloud 저장 공간의 연결이 다르면 기록 화면을 열지 않습니다. Apple ID 이메일·이름은 비교하거나 저장하지 않습니다.")
+                Text("최초 연결한 Apple 사용자와 현재 iCloud 저장 공간의 연결이 다르면 기록 화면을 열지 않습니다. 계정 비교에는 이메일이 아닌 Apple의 고유 사용자 식별자를 사용합니다.")
                 LabeledContent("현재 저장 상태", value: syncDescription)
                 Text("CloudKit 동기화 데이터는 사용자의 iCloud 용량을 사용합니다. 인증 후 local-only 상태의 기록은 다른 기기로 전송되지 않습니다.")
             }

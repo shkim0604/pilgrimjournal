@@ -12,11 +12,16 @@ final class AppleAuthenticationSessionTests: XCTestCase {
 
         let session = try await service.acceptAuthorizedUser(
             identifier: "apple-user-a",
+            email: "reader@privaterelay.appleid.com",
             at: date
         )
 
         XCTAssertEqual(session.currentUserIdentifier, "apple-user-a")
         XCTAssertEqual(session.boundUserIdentifier, "apple-user-a")
+        XCTAssertEqual(
+            session.accountEmail,
+            "reader@privaterelay.appleid.com"
+        )
         XCTAssertEqual(session.lastAuthorizedAt, date)
         XCTAssertTrue(session.hasOfflineSession)
     }
@@ -31,6 +36,7 @@ final class AppleAuthenticationSessionTests: XCTestCase {
         let signedOut = try await service.session()
         XCTAssertNil(signedOut.currentUserIdentifier)
         XCTAssertEqual(signedOut.boundUserIdentifier, "apple-user-a")
+        XCTAssertNil(signedOut.accountEmail)
 
         do {
             try await service.acceptAuthorizedUser(identifier: "apple-user-b")

@@ -20,6 +20,10 @@ struct SettingsView: View {
                         ? "로그인됨 · 오프라인 확인"
                         : "로그인됨"
                 )
+                if let account = authentication.accountDisplayName {
+                    LabeledContent("계정", value: account)
+                        .textSelection(.enabled)
+                }
                 Button("로그아웃", role: .destructive) {
                     showSignOutConfirmation = true
                 }
@@ -29,6 +33,19 @@ struct SettingsView: View {
             }
             Section("동기화") {
                 LabeledContent("상태", value: syncDescription)
+                Button {
+                    Task { await model.refreshSynchronization() }
+                } label: {
+                    HStack {
+                        Label("동기화 새로고침", systemImage: "arrow.clockwise")
+                        if model.isRefreshingSynchronization {
+                            Spacer()
+                            ProgressView()
+                                .controlSize(.small)
+                        }
+                    }
+                }
+                .disabled(model.isRefreshingSynchronization)
                 Text("기록과 첨부는 현재 시스템 iCloud의 개인 데이터베이스에 저장됩니다. 이 저장 공간은 최초 연결한 Apple 로그인 사용자에게 귀속되며 다른 사용자는 차단됩니다.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -104,7 +121,7 @@ struct SettingsView: View {
                 NavigationLink("데이터 및 개인정보") {
                     PrivacyInformationView(syncState: model.syncState)
                 }
-                Text("Apple 로그인은 앱 접근과 iCloud 저장 공간 귀속 확인에 사용하고, 기록 동기화는 시스템 iCloud를 사용합니다. 앱 잠금은 추가 화면 보호 기능입니다.")
+                Text("Apple 로그인은 앱 접근과 iCloud 저장 공간 귀속 확인에 사용합니다. Apple이 제공한 이메일은 계정 표시를 위해 기기 Keychain에 저장하며, 기록 동기화는 시스템 iCloud를 사용합니다. 앱 잠금은 추가 화면 보호 기능입니다.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

@@ -39,7 +39,7 @@ struct AppleSignInView: View {
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 420)
             } else {
-                Text("Apple 로그인은 일기 화면 접근에만 사용합니다. 이름과 이메일은 요청하거나 저장하지 않습니다.")
+                Text("Apple 로그인은 일기 화면 접근에만 사용합니다. Apple이 제공한 이메일은 현재 계정 표시를 위해 기기 Keychain에 저장합니다.")
                     .font(.callout)
                     .foregroundStyle(JournalTheme.inkSecondary)
                     .multilineTextAlignment(.center)
@@ -58,7 +58,7 @@ struct AppleSignInView: View {
                 .buttonStyle(.borderless)
             } else {
                 SignInWithAppleButton(.signIn) { request in
-                    request.requestedScopes = []
+                    request.requestedScopes = [.email]
                 } onCompletion: { result in
                     switch result {
                     case let .success(authorization):
@@ -69,7 +69,8 @@ struct AppleSignInView: View {
                         }
                         Task {
                             await authentication.acceptAuthorizedUser(
-                                identifier: credential.user
+                                identifier: credential.user,
+                                email: credential.email
                             )
                         }
                     case let .failure(error):

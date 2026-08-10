@@ -19,6 +19,40 @@ final class AppleAuthenticationCoordinatorTests: XCTestCase {
 
         XCTAssertEqual(coordinator.state, .authenticated(offline: false))
         XCTAssertTrue(coordinator.canAccessJournal)
+        XCTAssertEqual(
+            coordinator.accountDisplayName,
+            "apple-user"
+        )
+    }
+
+    @MainActor
+    func testProvidedAppleEmailIsDisplayedAndRestoredFromKeychain() async throws {
+        let service = AppleAuthenticationSessionService(
+            store: InMemorySecureValueStore()
+        )
+        let coordinator = AppleAuthenticationCoordinator(
+            service: service,
+            credentialChecker: StubCredentialChecker(result: .success(.authorized))
+        )
+
+        await coordinator.acceptAuthorizedUser(
+            identifier: "apple-user",
+            email: "reader@privaterelay.appleid.com"
+        )
+        XCTAssertEqual(
+            coordinator.accountDisplayName,
+            "reader@privaterelay.appleid.com"
+        )
+
+        let restored = AppleAuthenticationCoordinator(
+            service: service,
+            credentialChecker: StubCredentialChecker(result: .success(.authorized))
+        )
+        await restored.bootstrap()
+        XCTAssertEqual(
+            restored.accountDisplayName,
+            "reader@privaterelay.appleid.com"
+        )
     }
 
     @MainActor

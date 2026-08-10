@@ -43,6 +43,7 @@ final class AppleAuthenticationCoordinator: ObservableObject {
 
     @Published private(set) var state: State = .checking
     @Published var errorMessage: String?
+    @Published private(set) var accountDisplayName: String?
 
     private let service: AppleAuthenticationSessionService
     private let credentialChecker: any AppleCredentialStateChecking
@@ -88,9 +89,14 @@ final class AppleAuthenticationCoordinator: ObservableObject {
         do {
             let session = try await service.session()
             guard let identifier = session.currentUserIdentifier else {
+                accountDisplayName = nil
                 state = .signedOut
                 return
             }
+            accountDisplayName = Self.accountDisplayName(
+                email: session.accountEmail,
+                identifier: identifier
+            )
             if session.hasOfflineSession {
                 // The Keychain session is the last successful authorization.
                 // Let returning users in immediately while Apple and CloudKit
@@ -108,9 +114,16 @@ final class AppleAuthenticationCoordinator: ObservableObject {
         }
     }
 
-    func acceptAuthorizedUser(identifier: String) async {
+    func acceptAuthorizedUser(identifier: String, email: String? = nil) async {
         do {
-            _ = try await service.acceptAuthorizedUser(identifier: identifier)
+            let session = try await service.acceptAuthorizedUser(
+                identifier: identifier,
+                email: email
+            )
+            accountDisplayName = Self.accountDisplayName(
+                email: session.accountEmail,
+                identifier: identifier
+            )
             state = .checking
             await completeAuthentication(identifier: identifier, offline: false)
         } catch AppleAuthenticationSessionError.differentUser {
@@ -134,6 +147,7 @@ final class AppleAuthenticationCoordinator: ObservableObject {
     func signOut() async {
         do {
             try await service.clearCurrentSession()
+            accountDisplayName = nil
             state = .signedOut
             errorMessage = nil
         } catch {
@@ -147,6 +161,7 @@ final class AppleAuthenticationCoordinator: ObservableObject {
         #endif
         do {
             try await service.clearCurrentSession()
+            accountDisplayName = nil
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -202,6 +217,7 @@ final class AppleAuthenticationCoordinator: ObservableObject {
                 await completeAuthentication(identifier: identifier, offline: false)
             case .revoked, .notFound, .transferred:
                 try await service.clearCurrentSession()
+                accountDisplayName = nil
                 state = .signedOut
             }
         } catch {
@@ -238,5 +254,14 @@ final class AppleAuthenticationCoordinator: ObservableObject {
             state = .authenticated(offline: offline)
             errorMessage = "iCloud 연결을 확인하지 못해 이 기기에서만 사용합니다: \(reason)"
         }
+    }
+
+    private static func accountDisplayName(
+        email: String?,
+        identifier: String
+    ) -> String {
+        if let email, !email.isEmpty { return email }
+        guard identifier.count > 12 else { return identifier }
+        return "Apple 계정 · \(identifier.prefix(6))…\(identifier.suffix(4))"
     }
 }

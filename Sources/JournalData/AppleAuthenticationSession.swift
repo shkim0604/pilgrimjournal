@@ -3,15 +3,18 @@ import Foundation
 public struct AppleAuthenticationSession: Codable, Equatable, Sendable {
     public var currentUserIdentifier: String?
     public var boundUserIdentifier: String?
+    public var accountEmail: String?
     public var lastAuthorizedAt: Date?
 
     public init(
         currentUserIdentifier: String? = nil,
         boundUserIdentifier: String? = nil,
+        accountEmail: String? = nil,
         lastAuthorizedAt: Date? = nil
     ) {
         self.currentUserIdentifier = currentUserIdentifier
         self.boundUserIdentifier = boundUserIdentifier
+        self.accountEmail = accountEmail
         self.lastAuthorizedAt = lastAuthorizedAt
     }
 
@@ -42,6 +45,7 @@ public actor AppleAuthenticationSessionService {
         var version = 1
         var currentUserIdentifier: String?
         var boundUserIdentifier: String?
+        var accountEmail: String?
         var lastAuthorizedAt: Date?
     }
 
@@ -63,6 +67,7 @@ public actor AppleAuthenticationSessionService {
         return AppleAuthenticationSession(
             currentUserIdentifier: state.currentUserIdentifier,
             boundUserIdentifier: state.boundUserIdentifier,
+            accountEmail: state.accountEmail,
             lastAuthorizedAt: state.lastAuthorizedAt
         )
     }
@@ -70,6 +75,7 @@ public actor AppleAuthenticationSessionService {
     @discardableResult
     public func acceptAuthorizedUser(
         identifier: String,
+        email: String? = nil,
         at date: Date = .now
     ) throws -> AppleAuthenticationSession {
         let identifier = identifier.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -83,6 +89,10 @@ public actor AppleAuthenticationSessionService {
         }
         state.boundUserIdentifier = state.boundUserIdentifier ?? identifier
         state.currentUserIdentifier = identifier
+        if let email = email?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !email.isEmpty {
+            state.accountEmail = email
+        }
         state.lastAuthorizedAt = date
         try save(state)
         return try session()
