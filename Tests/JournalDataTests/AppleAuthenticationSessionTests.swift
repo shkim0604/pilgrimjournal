@@ -4,6 +4,16 @@ import Foundation
 import XCTest
 
 final class AppleAuthenticationSessionTests: XCTestCase {
+    func testUnreadableKeychainSessionIsDiscardedForFreshAuthentication() async throws {
+        let store = AuthenticationFailingSecureValueStore()
+        let service = AppleAuthenticationSessionService(store: store)
+
+        let session = try await service.session()
+
+        XCTAssertEqual(session, AppleAuthenticationSession())
+        XCTAssertTrue(store.wasDeleted)
+    }
+
     func testFirstAuthorizedUserClaimsExistingDataScope() async throws {
         let service = AppleAuthenticationSessionService(
             store: InMemorySecureValueStore()
@@ -52,6 +62,35 @@ final class AppleAuthenticationSessionTests: XCTestCase {
             identifier: "apple-user-a"
         )
         XCTAssertEqual(signedInAgain.currentUserIdentifier, "apple-user-a")
+    }
+}
+
+private final class AuthenticationFailingSecureValueStore: SecureValueStore,
+    @unchecked Sendable {
+    private let lock = NSLock()
+    private var shouldFailAuthentication = true
+    private var deleted = false
+
+    var wasDeleted: Bool {
+        lock.withLock { deleted }
+    }
+
+    func load() throws -> Data? {
+        try lock.withLock {
+            if shouldFailAuthentication {
+                throw AppLockError.keychain(-25293)
+            }
+            return nil
+        }
+    }
+
+    func save(_ data: Data) {}
+
+    func delete() {
+        lock.withLock {
+            shouldFailAuthentication = false
+            deleted = true
+        }
     }
 }
 #endif

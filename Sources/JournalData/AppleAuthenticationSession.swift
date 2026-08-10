@@ -1,4 +1,5 @@
 import Foundation
+import Security
 
 public struct AppleAuthenticationSession: Codable, Equatable, Sendable {
     public var currentUserIdentifier: String?
@@ -61,7 +62,7 @@ public actor AppleAuthenticationSessionService {
     }
 
     public func session() throws -> AppleAuthenticationSession {
-        guard let state = try loadState() else {
+        guard let state = try loadStateRecoveringFromAuthenticationFailure() else {
             return AppleAuthenticationSession()
         }
         return AppleAuthenticationSession(
@@ -83,7 +84,7 @@ public actor AppleAuthenticationSessionService {
             throw AppleAuthenticationSessionError.invalidUserIdentifier
         }
 
-        var state = try loadState() ?? StoredState()
+        var state = try loadStateRecoveringFromAuthenticationFailure() ?? StoredState()
         if let bound = state.boundUserIdentifier, bound != identifier {
             throw AppleAuthenticationSessionError.differentUser
         }
@@ -99,7 +100,9 @@ public actor AppleAuthenticationSessionService {
     }
 
     public func clearCurrentSession() throws {
-        guard var state = try loadState() else { return }
+        guard var state = try loadStateRecoveringFromAuthenticationFailure() else {
+            return
+        }
         state.currentUserIdentifier = nil
         state.lastAuthorizedAt = nil
         try save(state)
@@ -112,6 +115,19 @@ public actor AppleAuthenticationSessionService {
             throw AppleAuthenticationSessionError.malformedState
         }
         return state
+    }
+
+    private func loadStateRecoveringFromAuthenticationFailure() throws -> StoredState? {
+        do {
+            return try loadState()
+        } catch let AppLockError.keychain(status) where status == errSecAuthFailed {
+            // A Keychain item can survive an app reinstall or signing transition
+            // while its encrypted value is no longer readable. This record only
+            // contains the local Apple sign-in session, so discard that unusable
+            // session and require a fresh Sign in with Apple authorization.
+            try store.delete()
+            return nil
+        }
     }
 
     private func save(_ state: StoredState) throws {
