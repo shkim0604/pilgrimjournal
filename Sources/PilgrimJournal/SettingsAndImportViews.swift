@@ -44,6 +44,24 @@ struct SettingsView: View {
                     OrganizationSettingsView()
                 }
             }
+            Section("데이터 관리") {
+                Button {
+                    model.refreshTrash()
+                    model.isPresentingTrash = true
+                } label: {
+                    Label("휴지통 열기", systemImage: "trash")
+                }
+                #if os(macOS)
+                Button {
+                    model.isPresentingImporter = true
+                } label: {
+                    Label(
+                        "Day One 가져오기…",
+                        systemImage: "square.and.arrow.down"
+                    )
+                }
+                #endif
+            }
             Section("보안") {
                 NavigationLink("앱 잠금") {
                     AppLockSettingsView()

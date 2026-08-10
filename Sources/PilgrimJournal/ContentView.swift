@@ -6,7 +6,6 @@ import AppKit
 
 struct ContentView: View {
     @EnvironmentObject private var model: AppModel
-    @State private var isPresentingSearchFilters = false
     @State private var preferredCompactColumn: NavigationSplitViewColumn
     @State private var columnVisibility = NavigationSplitViewVisibility.all
     @State private var isFocusMode = false
@@ -136,26 +135,6 @@ struct ContentView: View {
                     }
                 }
                 Button {
-                    isPresentingSearchFilters.toggle()
-                } label: {
-                    Label(
-                        "검색 필터",
-                        systemImage: model.hasActiveSearchCriteria
-                            ? "line.3.horizontal.decrease.circle.fill"
-                            : "line.3.horizontal.decrease.circle"
-                    )
-                }
-                .popover(isPresented: $isPresentingSearchFilters) {
-                    SearchFilterView()
-                        .environmentObject(model)
-                }
-                Button {
-                    model.refreshTrash()
-                    model.isPresentingTrash = true
-                } label: {
-                    Label("휴지통", systemImage: "trash")
-                }
-                Button {
                     model.beginNewEntry()
                 } label: {
                     Label("새 노트", systemImage: "square.and.pencil")
@@ -170,11 +149,6 @@ struct ContentView: View {
                             ? "rectangle.split.3x1"
                             : "rectangle.inset.filled"
                     )
-                }
-                Button {
-                    model.isPresentingImporter = true
-                } label: {
-                    Label("Day One 가져오기", systemImage: "square.and.arrow.down")
                 }
                 #endif
             }
@@ -299,8 +273,6 @@ struct ContentView: View {
         .onExitCommand {
             if MacSearchFocus.isFocused {
                 MacSearchFocus.clearFocus()
-            } else if isPresentingSearchFilters {
-                isPresentingSearchFilters = false
             } else if isFocusMode {
                 setFocusMode(false)
             } else if model.selectedEntryID != nil || model.isPresentingEditor {
@@ -601,81 +573,6 @@ private struct NewEntryListButton: View {
         }
         .buttonStyle(.plain)
         .accessibilityHint("빈 노트를 오른쪽 편집기에 엽니다.")
-    }
-}
-
-private struct SearchFilterView: View {
-    @EnvironmentObject private var model: AppModel
-
-    var body: some View {
-        Form {
-            Picker("기록 유형", selection: $model.selectedKind) {
-                Text("모든 유형").tag(nil as JournalKind?)
-                ForEach(JournalKind.allCases) { kind in
-                    Text(kind.localizedName).tag(kind as JournalKind?)
-                }
-            }
-
-            TextField("태그", text: $model.searchTagsText, prompt: Text("쉼표로 여러 태그 입력"))
-                .textFieldStyle(.roundedBorder)
-
-            Toggle("시작일", isOn: optionalDateToggle($model.searchStartDate))
-            if model.searchStartDate != nil {
-                DatePicker(
-                    "시작일",
-                    selection: concreteDate($model.searchStartDate),
-                    displayedComponents: .date
-                )
-                .labelsHidden()
-            }
-
-            Toggle("종료일", isOn: optionalDateToggle($model.searchEndDate))
-            if model.searchEndDate != nil {
-                DatePicker(
-                    "종료일",
-                    selection: concreteDate($model.searchEndDate),
-                    displayedComponents: .date
-                )
-                .labelsHidden()
-            }
-
-            HStack {
-                Button("조건 초기화") {
-                    model.clearSearchCriteria()
-                }
-                .disabled(!model.hasActiveSearchCriteria)
-                Spacer()
-                Button("적용") {
-                    model.refresh()
-                }
-                .buttonStyle(.borderedProminent)
-            }
-        }
-        .formStyle(.grouped)
-        .frame(minWidth: 300)
-        .padding()
-        .onChange(of: model.selectedKind) { _, _ in model.refresh() }
-        .onSubmit { model.refresh() }
-    }
-
-    private func optionalDateToggle(_ date: Binding<Date?>) -> Binding<Bool> {
-        Binding(
-            get: { date.wrappedValue != nil },
-            set: { enabled in
-                date.wrappedValue = enabled ? (date.wrappedValue ?? .now) : nil
-                model.refresh()
-            }
-        )
-    }
-
-    private func concreteDate(_ date: Binding<Date?>) -> Binding<Date> {
-        Binding(
-            get: { date.wrappedValue ?? .now },
-            set: {
-                date.wrappedValue = $0
-                model.refresh()
-            }
-        )
     }
 }
 
