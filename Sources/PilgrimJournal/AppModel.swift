@@ -89,9 +89,11 @@ final class AppModel: ObservableObject {
     private let searchCoordinator: SearchIndexCoordinator
     private let notebookDefaults: UserDefaults
     private let notebookCloudStore: NSUbiquitousKeyValueStore?
+    private var deletedNotebookNames: [String]
     private var dayOneTask: Task<Void, Never>?
 
     private static let notebookDefaultsKey = "journal-notebooks"
+    private static let deletedNotebookDefaultsKey = "journal-deleted-notebooks"
 
     init(
         repository: any JournalRepository,
@@ -111,11 +113,22 @@ final class AppModel: ObservableObject {
         self.notebookCloudStore = notebookCloudStore
         searchCoordinator = SearchIndexCoordinator(index: searchIndex)
         notebookCloudStore?.synchronize()
+        let initialDeletedNotebookNames = Self.mergedNotebookNames(
+            notebookDefaults.stringArray(
+                forKey: Self.deletedNotebookDefaultsKey
+            ) ?? [],
+            notebookCloudStore?.array(
+                forKey: Self.deletedNotebookDefaultsKey
+            ) as? [String] ?? []
+        )
+        deletedNotebookNames = initialDeletedNotebookNames
         notebooks = Self.mergedNotebookNames(
             notebookDefaults.stringArray(forKey: Self.notebookDefaultsKey) ?? [],
             notebookCloudStore?.array(forKey: Self.notebookDefaultsKey)
                 as? [String] ?? []
-        )
+        ).filter {
+            !Self.containsNotebook($0, in: initialDeletedNotebookNames)
+        }
         syncState = cloudAccountMonitor == nil ? .localOnly : .pending
         if let existing = UserDefaults.standard.string(forKey: "device-id") {
             deviceID = existing
@@ -311,10 +324,67 @@ final class AppModel: ObservableObject {
         }) {
             return existing
         }
+        deletedNotebookNames.removeAll {
+            $0.caseInsensitiveCompare(normalized) == .orderedSame
+        }
         notebooks.append(normalized)
         notebooks.sort { $0.localizedStandardCompare($1) == .orderedAscending }
         persistNotebookCatalog()
         return normalized
+    }
+
+    @discardableResult
+    func deleteNotebook(named name: String) -> Bool {
+        guard let notebook = notebooks.first(where: {
+            $0.caseInsensitiveCompare(name) == .orderedSame
+        }) else { return false }
+
+        do {
+            var cursor: JournalTimelineCursor?
+            repeat {
+                let page = try repository.page(
+                    kind: nil,
+                    includeDeleted: false,
+                    after: cursor,
+                    limit: 500
+                )
+                for entry in page.entries where entry.notebookName?
+                    .caseInsensitiveCompare(notebook) == .orderedSame {
+                    var draft = entry.draft
+                    draft.notebookName = nil
+                    let updated = try repository.save(
+                        draft,
+                        deviceID: deviceID,
+                        at: .now
+                    )
+                    try searchIndex.upsert(updated)
+                }
+                cursor = page.nextCursor
+            } while cursor != nil
+
+            notebooks.removeAll {
+                $0.caseInsensitiveCompare(notebook) == .orderedSame
+            }
+            if !Self.containsNotebook(notebook, in: deletedNotebookNames) {
+                deletedNotebookNames.append(notebook)
+            }
+            if selectedNotebookName?.caseInsensitiveCompare(notebook)
+                == .orderedSame {
+                selectedNotebookName = nil
+            }
+            if newEntryNotebookName?.caseInsensitiveCompare(notebook)
+                == .orderedSame {
+                newEntryNotebookName = nil
+            }
+            persistNotebookCatalog()
+            markLocalMutation()
+            refresh()
+            selectedEntryID = entries.first?.id
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
     }
 
     func beginNewEntry() {
@@ -455,7 +525,18 @@ final class AppModel: ObservableObject {
         selectSavedEntry: Bool = true
     ) -> JournalEntryRecord? {
         do {
-            let record = try repository.save(draft, deviceID: deviceID, at: .now)
+            var outgoing = draft
+            if let notebook = outgoing.notebookName,
+               !notebooks.contains(where: {
+                   $0.caseInsensitiveCompare(notebook) == .orderedSame
+               }) {
+                outgoing.notebookName = nil
+            }
+            let record = try repository.save(
+                outgoing,
+                deviceID: deviceID,
+                at: .now
+            )
             try searchIndex.upsert(record)
             if selectSavedEntry {
                 selectedEntryID = record.id
@@ -887,7 +968,10 @@ final class AppModel: ObservableObject {
     private func refreshNotebookCatalog(from records: [JournalEntryRecord]) {
         let discovered = records.compactMap(\.notebookName)
         var merged = notebooks
-        for name in discovered where !merged.contains(where: {
+        for name in discovered where !Self.containsNotebook(
+            name,
+            in: deletedNotebookNames
+        ) && !merged.contains(where: {
             $0.caseInsensitiveCompare(name) == .orderedSame
         }) {
             merged.append(name)
@@ -900,19 +984,36 @@ final class AppModel: ObservableObject {
 
     private func persistNotebookCatalog() {
         notebookDefaults.set(notebooks, forKey: Self.notebookDefaultsKey)
+        notebookDefaults.set(
+            deletedNotebookNames,
+            forKey: Self.deletedNotebookDefaultsKey
+        )
         notebookCloudStore?.set(notebooks, forKey: Self.notebookDefaultsKey)
+        notebookCloudStore?.set(
+            deletedNotebookNames,
+            forKey: Self.deletedNotebookDefaultsKey
+        )
         notebookCloudStore?.synchronize()
     }
 
     private func mergeNotebookCatalogFromCloud() {
         guard let notebookCloudStore else { return }
         notebookCloudStore.synchronize()
+        let previousDeletedNotebookNames = deletedNotebookNames
+        deletedNotebookNames = Self.mergedNotebookNames(
+            deletedNotebookNames,
+            notebookCloudStore.array(forKey: Self.deletedNotebookDefaultsKey)
+                as? [String] ?? []
+        )
         let merged = Self.mergedNotebookNames(
             notebooks,
             notebookCloudStore.array(forKey: Self.notebookDefaultsKey)
                 as? [String] ?? []
-        )
-        guard merged != notebooks else { return }
+        ).filter { !Self.containsNotebook($0, in: deletedNotebookNames) }
+        guard merged != notebooks
+                || previousDeletedNotebookNames != deletedNotebookNames else {
+            return
+        }
         notebooks = merged
         persistNotebookCatalog()
     }
@@ -930,6 +1031,15 @@ final class AppModel: ObservableObject {
         }
         return result.sorted {
             $0.localizedStandardCompare($1) == .orderedAscending
+        }
+    }
+
+    private static func containsNotebook(
+        _ name: String,
+        in names: [String]
+    ) -> Bool {
+        names.contains {
+            $0.caseInsensitiveCompare(name) == .orderedSame
         }
     }
 

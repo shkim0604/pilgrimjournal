@@ -445,6 +445,7 @@ private struct JournalSidebar: View {
     @Binding var preferredCompactColumn: NavigationSplitViewColumn
     @State private var isCreatingNotebook = false
     @State private var newNotebookName = ""
+    @State private var notebookPendingDeletion: String?
 
     var body: some View {
         List {
@@ -482,6 +483,16 @@ private struct JournalSidebar: View {
                     ) {
                         selectNotebook(notebook)
                     }
+                    .contextMenu {
+                        Button("노트북 삭제", role: .destructive) {
+                            notebookPendingDeletion = notebook
+                        }
+                    }
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        Button("삭제", role: .destructive) {
+                            notebookPendingDeletion = notebook
+                        }
+                    }
                 }
                 Button {
                     newNotebookName = ""
@@ -512,6 +523,26 @@ private struct JournalSidebar: View {
             Button("추가") { addNotebook() }
         } message: {
             Text("기록을 모아 볼 노트북 이름을 입력하세요.")
+        }
+        .confirmationDialog(
+            "노트북을 삭제할까요?",
+            isPresented: Binding(
+                get: { notebookPendingDeletion != nil },
+                set: { if !$0 { notebookPendingDeletion = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("노트북 삭제", role: .destructive) {
+                if let notebookPendingDeletion {
+                    _ = model.deleteNotebook(named: notebookPendingDeletion)
+                }
+                notebookPendingDeletion = nil
+            }
+            Button("취소", role: .cancel) {
+                notebookPendingDeletion = nil
+            }
+        } message: {
+            Text("문서는 삭제하지 않고 ‘노트북 없음’으로 이동합니다.")
         }
         .navigationTitle("Pilgrim Journal")
         .navigationSplitViewColumnWidth(

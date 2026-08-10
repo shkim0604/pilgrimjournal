@@ -425,6 +425,58 @@ final class AppModelNavigationTests: XCTestCase {
     }
 
     @MainActor
+    func testDeletingNotebookKeepsEntriesAndClearsAssignments() throws {
+        let identifier = "pilgrim-notebook-delete-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: identifier))
+        defer { defaults.removePersistentDomain(forName: identifier) }
+        let root = FileManager.default.temporaryDirectory.appending(
+            path: "pilgrim-notebook-delete-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+        let paths = JournalPaths(root: root)
+        try paths.prepare()
+        let repository = InMemoryJournalRepository()
+        var draft = JournalEntryDraft(kind: .memo, title: "보존할 문서")
+        draft.notebookName = "임시"
+        let entry = try repository.save(
+            draft,
+            deviceID: "test-device",
+            at: .now
+        )
+        let model = try AppModel(
+            repository: repository,
+            importStore: InMemoryImportStore(),
+            searchIndex: JournalSearchIndex(
+                url: paths.search.appending(path: "notebook-delete.sqlite")
+            ),
+            paths: paths,
+            cloudAccountMonitor: nil,
+            notebookDefaults: defaults
+        )
+        _ = model.createNotebook(named: "임시")
+        model.selectNotebook("임시")
+
+        XCTAssertTrue(model.deleteNotebook(named: "임시"))
+
+        XCTAssertTrue(model.notebooks.isEmpty)
+        XCTAssertNil(model.selectedNotebookName)
+        XCTAssertNil(try repository.entry(id: entry.id)?.notebookName)
+        XCTAssertEqual(model.entries.map(\.id), [entry.id])
+        XCTAssertEqual(
+            defaults.stringArray(forKey: "journal-deleted-notebooks"),
+            ["임시"]
+        )
+
+        XCTAssertNotNil(model.saveAndReturnRecord(
+            draft,
+            closeEditor: false,
+            selectSavedEntry: false
+        ))
+        XCTAssertNil(try repository.entry(id: entry.id)?.notebookName)
+    }
+
+    @MainActor
     func testSelectingKindShowsNewestMatchingEntry() throws {
         let root = FileManager.default.temporaryDirectory.appending(
             path: "pilgrim-navigation-\(UUID().uuidString)",
