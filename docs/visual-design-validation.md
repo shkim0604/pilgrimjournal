@@ -57,6 +57,22 @@ Cloud identity 검사도 실제 사용자 데이터와 분리된다. SwiftPM의 
 `DEBUG`를 명시해 이 격리를 동일하게 적용한다. Release/TestFlight 빌드에서는
 해당 우회가 컴파일되지 않는다.
 
+## Scripted simulator matrix (2026-08-11)
+
+`scripts/capture_ios_screens.sh`가 `PILGRIM_VISUAL_TESTING=1`로 앱을 띄우고
+`xcrun simctl ui`로 appearance, `content_size`와 `increase_contrast`를 바꿔
+가며 같은 화면을 연속 촬영한다. 조합은 Light·Dark, 기본·accessibility
+extra-extra-extra-large, Increase Contrast 여섯 가지다.
+
+- `launch` 모드는 실행 직후 화면을 촬영한다. `hold <이름>` 모드는 앱을 한 번만
+  띄운 뒤 원하는 화면으로 직접 이동할 시간을 주고 Enter 이후 매트릭스를 찍는다.
+  화면 전환에는 UI 자동화가 없으므로 sidebar 밖의 화면은 `hold`를 쓴다.
+- 최대 Dynamic Type에서 sidebar navigation 제목이 `Pilgrim Jour…`로 잘리는
+  것을 이 매트릭스로 발견했다. 접근성 글자 크기에서는 large title을 inline으로
+  낮춰 제목 전체가 보이도록 고쳤다.
+- 다섯 기록 유형, 미분류, 노트북과 설정 항목은 최대 글자 크기에서도 잘리지
+  않고 스크롤된다. 재현 screenshot은 `home-*.png`로 저장했다.
+
 ## macOS direct interaction evidence (2026-08-10)
 
 잠금 해제된 실제 Mac에서 설치 앱의 Day One 가져오기 기록은 읽기만 하고,
@@ -82,7 +98,7 @@ Dark appearance에서 제목, 설명, 지우기 action이 서로 겹치지 않�
   회귀 테스트를 추가했다.
 - AppKit/UIKit text view의 외부 서식 변경을 native undo manager에 등록해
   undo·redo 시 본문과 selection을 함께 복원한다.
-- 전체 Swift test: 81 tests passed. macOS app target과 iOS Simulator app
+- 전체 Swift test: 129 tests passed. macOS app target과 iOS Simulator app
   target build가 모두 통과했다.
 
 ## Remaining manual release checks
@@ -98,7 +114,7 @@ Dark appearance에서 제목, 설명, 지우기 action이 서로 겹치지 않�
 
 ## Build and launch verification
 
-- `swift test`: 81 tests passed
+- `swift test`: 129 tests passed
 - `PilgrimJournalApp` iOS Simulator app target: build passed, Asset Catalog linked
 - `PilgrimJournalApp` macOS app target: Apple Development signed build passed
 - Signed macOS build: CloudKit, Sign in with Apple, app sandbox entitlements verified and launch passed

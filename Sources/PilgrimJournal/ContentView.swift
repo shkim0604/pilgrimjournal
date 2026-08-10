@@ -439,6 +439,7 @@ extension Notification.Name {
 
 private struct JournalSidebar: View {
     @EnvironmentObject private var model: AppModel
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Binding var preferredCompactColumn: NavigationSplitViewColumn
     @State private var isCreatingNotebook = false
     @State private var newNotebookName = ""
@@ -542,6 +543,12 @@ private struct JournalSidebar: View {
             Text("문서는 삭제하지 않고 ‘노트북 없음’으로 이동합니다.")
         }
         .navigationTitle("Pilgrim Journal")
+        #if os(iOS)
+        // 접근성 글자 크기에서 large title은 줄바꿈 없이 잘리므로 inline으로 낮춘다.
+        .navigationBarTitleDisplayMode(
+            dynamicTypeSize.isAccessibilitySize ? .inline : .large
+        )
+        #endif
         .navigationSplitViewColumnWidth(
             min: JournalTheme.sidebarWidth.lowerBound,
             ideal: 240,
