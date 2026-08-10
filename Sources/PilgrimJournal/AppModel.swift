@@ -16,10 +16,26 @@ enum DayOneImportActivity: Equatable {
     case failed
 }
 
+enum CloudSyncStoreOperation: Equatable, Sendable {
+    case setup
+    case importing
+    case exporting
+}
+
+struct CloudSyncStoreEvent: Equatable, Sendable {
+    var operation: CloudSyncStoreOperation
+    var completedAt: Date?
+    var succeeded: Bool
+    var errorDescription: String?
+    var errorRetryable: Bool? = nil
+}
+
 @MainActor
 final class AppModel: ObservableObject {
     @Published var entries: [JournalEntryRecord] = []
     @Published var selectedKind: JournalKind?
+    @Published var notebooks: [String] = []
+    @Published var selectedNotebookName: String?
     @Published var searchText = ""
     @Published var searchTagsText = ""
     @Published var searchStartDate: Date?
@@ -28,6 +44,7 @@ final class AppModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var selectedEntryID: UUID?
     @Published var editorSessionID = UUID()
+    @Published private(set) var newEntryNotebookName: String?
     @Published var selectedEntryIDs = Set<UUID>()
     @Published var isBatchSelecting = false
     @Published var isPresentingBatchOrganizer = false
@@ -59,6 +76,7 @@ final class AppModel: ObservableObject {
             || searchStartDate != nil
             || searchEndDate != nil
             || selectedKind != nil
+            || selectedNotebookName != nil
     }
 
     let repository: any JournalRepository
@@ -68,21 +86,27 @@ final class AppModel: ObservableObject {
     let deviceID: String
     private let cloudAccountMonitor: CloudAccountMonitor?
     private let searchCoordinator: SearchIndexCoordinator
+    private let notebookDefaults: UserDefaults
     private var dayOneTask: Task<Void, Never>?
+
+    private static let notebookDefaultsKey = "journal-notebooks"
 
     init(
         repository: any JournalRepository,
         importStore: any ImportAuditStore,
         searchIndex: JournalSearchIndex,
         paths: JournalPaths,
-        cloudAccountMonitor: CloudAccountMonitor?
+        cloudAccountMonitor: CloudAccountMonitor?,
+        notebookDefaults: UserDefaults = .standard
     ) {
         self.repository = repository
         self.importStore = importStore
         self.searchIndex = searchIndex
         self.paths = paths
         self.cloudAccountMonitor = cloudAccountMonitor
+        self.notebookDefaults = notebookDefaults
         searchCoordinator = SearchIndexCoordinator(index: searchIndex)
+        notebooks = notebookDefaults.stringArray(forKey: Self.notebookDefaultsKey) ?? []
         syncState = cloudAccountMonitor == nil ? .localOnly : .pending
         if let existing = UserDefaults.standard.string(forKey: "device-id") {
             deviceID = existing
@@ -99,6 +123,32 @@ final class AppModel: ObservableObject {
             return
         }
         syncState = await cloudAccountMonitor.currentState()
+    }
+
+    func handleCloudSyncStoreEvent(_ event: CloudSyncStoreEvent) {
+        guard cloudAccountMonitor != nil else { return }
+        guard let completedAt = event.completedAt else {
+            syncState = .pending
+            return
+        }
+        guard event.succeeded else {
+            syncState = .failed(
+                message: event.errorDescription ?? "CloudKit 동기화에 실패했습니다.",
+                retryable: event.errorRetryable ?? true
+            )
+            return
+        }
+
+        switch event.operation {
+        case .setup:
+            syncState = .pending
+        case .exporting:
+            syncState = .synced(completedAt)
+        case .importing:
+            syncState = .synced(completedAt)
+            rebuildSearchIndex()
+            refresh()
+        }
     }
 
     #if PILGRIM_SWIFTDATA
@@ -166,6 +216,12 @@ final class AppModel: ObservableObject {
                 ))
                 entries = try hits.compactMap { try repository.entry(id: $0.id) }
             }
+            refreshNotebookCatalog(from: entries)
+            if let selectedNotebookName {
+                entries = entries.filter {
+                    $0.notebookName?.caseInsensitiveCompare(selectedNotebookName) == .orderedSame
+                }
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -177,11 +233,14 @@ final class AppModel: ObservableObject {
         searchStartDate = nil
         searchEndDate = nil
         selectedKind = nil
+        selectedNotebookName = nil
         refresh()
     }
 
     func selectKind(_ kind: JournalKind?) {
         selectedKind = kind
+        selectedNotebookName = nil
+        newEntryNotebookName = nil
         editingEntry = nil
         isPresentingEditor = false
         endBatchSelection()
@@ -189,9 +248,38 @@ final class AppModel: ObservableObject {
         selectedEntryID = entries.first?.id
     }
 
+    func selectNotebook(_ name: String) {
+        selectedKind = nil
+        selectedNotebookName = name
+        newEntryNotebookName = nil
+        editingEntry = nil
+        isPresentingEditor = false
+        endBatchSelection()
+        refresh()
+        selectedEntryID = entries.first?.id
+    }
+
+    @discardableResult
+    func createNotebook(named name: String) -> String? {
+        guard let normalized = NotebookTagCodec.normalizedName(name) else {
+            errorMessage = "노트북 이름을 입력해 주세요."
+            return nil
+        }
+        if let existing = notebooks.first(where: {
+            $0.caseInsensitiveCompare(normalized) == .orderedSame
+        }) {
+            return existing
+        }
+        notebooks.append(normalized)
+        notebooks.sort { $0.localizedStandardCompare($1) == .orderedAscending }
+        persistNotebookCatalog()
+        return normalized
+    }
+
     func beginNewEntry() {
         editingEntry = nil
         selectedEntryID = nil
+        newEntryNotebookName = selectedNotebookName
         editorSessionID = UUID()
         isPresentingEditor = true
     }
@@ -201,6 +289,13 @@ final class AppModel: ObservableObject {
         guard entryID != nil else { return }
         editingEntry = nil
         isPresentingEditor = false
+    }
+
+    func showSettings() {
+        selectedEntryID = nil
+        editingEntry = nil
+        isPresentingEditor = false
+        endBatchSelection()
     }
 
     func beginBatchSelection() {
@@ -247,7 +342,7 @@ final class AppModel: ObservableObject {
                     kind: nil,
                     includeDeleted: false,
                     limit: 100_000
-                ).flatMap(\.tags)
+                ).flatMap(\.visibleTags)
             )).sorted()
         } catch {
             errorMessage = error.localizedDescription
@@ -293,6 +388,7 @@ final class AppModel: ObservableObject {
     }
 
     func beginEditing(_ entry: JournalEntryRecord) {
+        newEntryNotebookName = nil
         editingEntry = entry
         selectedEntryID = entry.id
         isPresentingEditor = true
@@ -304,6 +400,19 @@ final class AppModel: ObservableObject {
         closeEditor: Bool = true,
         selectSavedEntry: Bool = true
     ) -> Bool {
+        saveAndReturnRecord(
+            draft,
+            closeEditor: closeEditor,
+            selectSavedEntry: selectSavedEntry
+        ) != nil
+    }
+
+    @discardableResult
+    func saveAndReturnRecord(
+        _ draft: JournalEntryDraft,
+        closeEditor: Bool = true,
+        selectSavedEntry: Bool = true
+    ) -> JournalEntryRecord? {
         do {
             let record = try repository.save(draft, deviceID: deviceID, at: .now)
             try searchIndex.upsert(record)
@@ -316,10 +425,10 @@ final class AppModel: ObservableObject {
             }
             markLocalMutation()
             refresh()
-            return true
+            return record
         } catch {
             errorMessage = error.localizedDescription
-            return false
+            return nil
         }
     }
 
@@ -335,11 +444,22 @@ final class AppModel: ObservableObject {
         _ = save(draft, closeEditor: false, selectSavedEntry: false)
     }
 
+    func isEntryDeleted(_ entryID: UUID?) -> Bool {
+        guard let entryID else { return false }
+        return (try? repository.entry(id: entryID))?.isDeleted == true
+    }
+
     func moveToTrash(_ entry: JournalEntryRecord) {
         do {
             try repository.moveToTrash(entryID: entry.id, deviceID: deviceID, at: .now)
+            if selectedEntryID == entry.id {
+                selectedEntryID = nil
+                editingEntry = nil
+                isPresentingEditor = false
+            }
             try searchIndex.remove(id: entry.id)
             markLocalMutation()
+            refreshTrash()
             refresh()
         } catch {
             errorMessage = error.localizedDescription
@@ -459,6 +579,20 @@ final class AppModel: ObservableObject {
     func setDayOneImportKind(_ kind: JournalKind, for sourceUUID: String) {
         guard let preview = importPreview else { return }
         importPreview = preview.applying(itemOverrides: [sourceUUID: kind])
+    }
+
+    func assignDayOneImportNotebook(
+        named name: String,
+        to sourceUUIDs: Set<String>
+    ) -> Bool {
+        guard !sourceUUIDs.isEmpty else {
+            errorMessage = "노트북에 넣을 기록을 선택해 주세요."
+            return false
+        }
+        guard let notebook = createNotebook(named: name),
+              let preview = importPreview else { return false }
+        importPreview = preview.assigningNotebook(notebook, to: sourceUUIDs)
+        return true
     }
 
     func executeDayOneImport() {
@@ -668,6 +802,24 @@ final class AppModel: ObservableObject {
         case .savedLocally, .pending, .synced, .failed:
             syncState = .pending
         }
+    }
+
+    private func refreshNotebookCatalog(from records: [JournalEntryRecord]) {
+        let discovered = records.compactMap(\.notebookName)
+        var merged = notebooks
+        for name in discovered where !merged.contains(where: {
+            $0.caseInsensitiveCompare(name) == .orderedSame
+        }) {
+            merged.append(name)
+        }
+        merged.sort { $0.localizedStandardCompare($1) == .orderedAscending }
+        guard merged != notebooks else { return }
+        notebooks = merged
+        persistNotebookCatalog()
+    }
+
+    private func persistNotebookCatalog() {
+        notebookDefaults.set(notebooks, forKey: Self.notebookDefaultsKey)
     }
 
     private func updateTag(

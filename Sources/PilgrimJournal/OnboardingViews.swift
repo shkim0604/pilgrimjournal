@@ -11,23 +11,24 @@ struct OnboardingView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Image(systemName: "book.pages.fill")
                             .font(.system(size: 44))
-                            .foregroundStyle(.tint)
+                            .foregroundStyle(JournalTheme.brandPrimary)
                         Text("나만의 기록을 한곳에")
                             .font(.largeTitle.bold())
+                            .foregroundStyle(JournalTheme.ink)
                         Text("기도노트, 성경공부, 독서노트와 일기를 Mac과 iPhone에서 이어서 작성하세요.")
                             .font(.title3)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(JournalTheme.inkSecondary)
                     }
 
                     informationRow(
                         icon: "person.crop.circle.badge.checkmark",
-                        title: "별도 앱 계정이 없습니다",
-                        description: "Apple로 로그인하거나 새 회원가입을 하지 않습니다. 동기화할 때는 기기에 로그인된 시스템 iCloud 계정을 사용하며, 앱이 Apple ID 비밀번호·이름·이메일을 요청하거나 저장하지 않습니다."
+                        title: "Apple 로그인으로 접근합니다",
+                        description: "이메일·비밀번호 회원가입 없이 Apple로 로그인합니다. 앱은 Apple의 고유 사용자 식별자만 기기 Keychain에 저장하며 이름·이메일은 요청하거나 저장하지 않습니다."
                     )
                     informationRow(
                         icon: "icloud",
                         title: "내 iCloud 개인 저장 공간",
-                        description: "동기화를 켜면 기록과 첨부가 CloudKit 개인 데이터베이스에 저장되고 사용자의 iCloud 용량을 사용합니다. iCloud를 사용할 수 없으면 이 기기에만 저장되는 local-only 상태로 계속 쓸 수 있습니다."
+                        description: "현재 시스템 iCloud의 개인 데이터베이스를 로그인한 Apple 사용자에게 안전하게 연결합니다. 다른 Apple 사용자가 같은 저장 공간을 열면 차단하며, iCloud를 사용할 수 없을 때는 이 기기에서만 계속 쓸 수 있습니다."
                     )
                     informationRow(
                         icon: "server.rack",
@@ -52,6 +53,7 @@ struct OnboardingView: View {
                     .background(.bar)
             }
             .navigationTitle("Pilgrim Journal")
+            .background(JournalTheme.canvas)
         }
         #if os(macOS)
         .frame(minWidth: 620, minHeight: 640)
@@ -67,14 +69,15 @@ struct OnboardingView: View {
         HStack(alignment: .top, spacing: 16) {
             Image(systemName: icon)
                 .font(.title2)
-                .foregroundStyle(.tint)
+                .foregroundStyle(JournalTheme.brandPrimary)
                 .frame(width: 32)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 5) {
                 Text(title)
                     .font(.headline)
+                    .foregroundStyle(JournalTheme.ink)
                 Text(description)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(JournalTheme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -87,10 +90,12 @@ struct PrivacyInformationView: View {
     var body: some View {
         List {
             Section("계정과 동기화") {
-                Label("별도 회원가입·Apple 로그인이 없습니다", systemImage: "person.crop.circle")
-                Text("기기에 로그인된 시스템 iCloud 계정만 사용합니다. 앱은 Apple ID 자격 증명, 이름 또는 이메일을 요청하거나 저장하지 않습니다.")
+                Label("Apple 로그인 접근 인증", systemImage: "person.crop.circle.badge.checkmark")
+                Text("앱은 Apple 로그인의 고유 사용자 식별자만 기기 Keychain에 저장합니다. Apple ID 비밀번호·이름·이메일은 요청하거나 저장하지 않습니다.")
+                Text("Apple 로그인은 일기 화면 접근용이며, 기록 동기화에는 별도로 기기의 시스템 iCloud 개인 데이터베이스를 사용합니다.")
+                Text("최초 연결한 Apple 사용자와 현재 iCloud 저장 공간의 연결이 다르면 기록 화면을 열지 않습니다. Apple ID 이메일·이름은 비교하거나 저장하지 않습니다.")
                 LabeledContent("현재 저장 상태", value: syncDescription)
-                Text("CloudKit 동기화 데이터는 사용자의 iCloud 용량을 사용합니다. local-only 상태의 기록은 다른 기기로 전송되지 않습니다.")
+                Text("CloudKit 동기화 데이터는 사용자의 iCloud 용량을 사용합니다. 인증 후 local-only 상태의 기록은 다른 기기로 전송되지 않습니다.")
             }
 
             Section("데이터 전송") {

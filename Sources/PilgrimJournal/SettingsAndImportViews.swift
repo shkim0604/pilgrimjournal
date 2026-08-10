@@ -6,14 +6,30 @@ import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @EnvironmentObject private var model: AppModel
+    @EnvironmentObject private var authentication: AppleAuthenticationCoordinator
     @State private var restoreMode = RestoreMode.merge
     @State private var showRestoreConfirmation = false
+    @State private var showSignOutConfirmation = false
 
     var body: some View {
         Form {
+            Section("Apple 로그인") {
+                LabeledContent(
+                    "상태",
+                    value: authentication.isUsingOfflineAuthorization
+                        ? "로그인됨 · 오프라인 확인"
+                        : "로그인됨"
+                )
+                Button("로그아웃", role: .destructive) {
+                    showSignOutConfirmation = true
+                }
+                Text("로그아웃해도 이 기기의 일기 데이터는 삭제되지 않으며, 다시 인증하기 전까지 화면만 잠깁니다.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
             Section("동기화") {
                 LabeledContent("상태", value: syncDescription)
-                Text("동기화를 활성화하면 기록과 첨부는 같은 Apple ID의 CloudKit 개인 데이터베이스에 저장되며 iCloud 용량을 사용합니다.")
+                Text("기록과 첨부는 현재 시스템 iCloud의 개인 데이터베이스에 저장됩니다. 이 저장 공간은 최초 연결한 Apple 로그인 사용자에게 귀속되며 다른 사용자는 차단됩니다.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -70,13 +86,27 @@ struct SettingsView: View {
                 NavigationLink("데이터 및 개인정보") {
                     PrivacyInformationView(syncState: model.syncState)
                 }
-                Text("별도 앱 계정 없이 시스템 iCloud를 사용합니다. 앱 잠금은 화면 보호 기능이며 데이터 자체의 별도 암호화 키는 아닙니다.")
+                Text("Apple 로그인은 앱 접근과 iCloud 저장 공간 귀속 확인에 사용하고, 기록 동기화는 시스템 iCloud를 사용합니다. 앱 잠금은 추가 화면 보호 기능입니다.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+        .background(JournalTheme.canvas)
         .navigationTitle("설정")
+        .confirmationDialog(
+            "Apple 계정에서 로그아웃할까요?",
+            isPresented: $showSignOutConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("로그아웃", role: .destructive) {
+                Task { await authentication.signOut() }
+            }
+            Button("취소", role: .cancel) {}
+        } message: {
+            Text("일기 데이터는 삭제되지 않지만 다시 로그인하기 전까지 볼 수 없습니다.")
+        }
         #if os(macOS)
         .fileExporter(
             isPresented: $model.isExportingBackup,
@@ -147,6 +177,8 @@ struct DayOneImportView: View {
     @EnvironmentObject private var model: AppModel
     @State private var isSelectingFile = false
     @State private var resultFilter = ResultFilter.all
+    @State private var selectedImportItemIDs = Set<UUID>()
+    @State private var importNotebookName = ""
 
     var body: some View {
         NavigationStack {
@@ -204,6 +236,10 @@ struct DayOneImportView: View {
                 model.errorMessage = error.localizedDescription
             }
         }
+        .onChange(of: model.importPreview?.archiveFingerprint) { _, _ in
+            selectedImportItemIDs.removeAll()
+            importNotebookName = ""
+        }
     }
 
     @ViewBuilder
@@ -234,7 +270,71 @@ struct DayOneImportView: View {
 
             Divider()
 
-            Table(preview.items) {
+            HStack(spacing: 10) {
+                Button(
+                    selectedImportItemIDs.count == preview.items.count
+                        ? "전체 선택 해제"
+                        : "전체 선택"
+                ) {
+                    if selectedImportItemIDs.count == preview.items.count {
+                        selectedImportItemIDs.removeAll()
+                    } else {
+                        selectedImportItemIDs = Set(preview.items.map(\.id))
+                    }
+                }
+                Text("\(selectedImportItemIDs.count)개 선택")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Divider().frame(height: 20)
+
+                TextField("노트북 이름", text: $importNotebookName)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(maxWidth: 220)
+
+                if !model.notebooks.isEmpty {
+                    Menu("기존 노트북") {
+                        ForEach(model.notebooks, id: \.self) { notebook in
+                            Button(notebook) { importNotebookName = notebook }
+                        }
+                    }
+                }
+
+                Button("선택 항목에 지정") {
+                    let sourceUUIDs = Set(preview.items.compactMap { item in
+                        selectedImportItemIDs.contains(item.id) ? item.sourceUUID : nil
+                    })
+                    _ = model.assignDayOneImportNotebook(
+                        named: importNotebookName,
+                        to: sourceUUIDs
+                    )
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(selectedImportItemIDs.isEmpty)
+                Spacer()
+            }
+            .padding(.horizontal, 24)
+            .padding(.vertical, 12)
+
+            Table(preview.items, selection: $selectedImportItemIDs) {
+                TableColumn("선택") { item in
+                    Toggle(
+                        "선택",
+                        isOn: Binding(
+                            get: { selectedImportItemIDs.contains(item.id) },
+                            set: { selected in
+                                if selected {
+                                    selectedImportItemIDs.insert(item.id)
+                                } else {
+                                    selectedImportItemIDs.remove(item.id)
+                                }
+                            }
+                        )
+                    )
+                    .labelsHidden()
+                }
+                .width(42)
+
                 TableColumn("날짜") { item in
                     Text(item.draft.occurredAt.formatted(
                         date: .numeric,
@@ -269,6 +369,15 @@ struct DayOneImportView: View {
                     .labelsHidden()
                 }
                 .width(min: 105, ideal: 130)
+
+                TableColumn("노트북") { item in
+                    Text(item.draft.notebookName ?? "—")
+                        .foregroundStyle(
+                            item.draft.notebookName == nil ? .secondary : .primary
+                        )
+                        .lineLimit(1)
+                }
+                .width(min: 100, ideal: 140)
 
                 TableColumn("확인") { item in
                     if preview.duplicateSourceUUIDs.contains(item.sourceUUID) {

@@ -13,9 +13,10 @@ struct AppLockView: View {
             VStack(spacing: 20) {
                 Image(systemName: "lock.shield.fill")
                     .font(.system(size: 46))
-                    .foregroundStyle(.tint)
+                    .foregroundStyle(JournalTheme.brandPrimary)
                 Text("Pilgrim Journal 잠금")
                     .font(.title2.bold())
+                    .foregroundStyle(JournalTheme.ink)
                 SecureField("비밀번호", text: $password)
                     .textContentType(.password)
                     .submitLabel(.go)
@@ -63,11 +64,7 @@ struct AppLockView: View {
     }
 
     private var appBackground: Color {
-        #if os(macOS)
-        Color(nsColor: .windowBackgroundColor)
-        #else
-        Color(uiColor: .systemBackground)
-        #endif
+        JournalTheme.canvas
     }
 
     private func submit() {
@@ -141,17 +138,13 @@ struct PrivacyShieldView: View {
                 .ignoresSafeArea()
             Image(systemName: "lock.shield.fill")
                 .font(.system(size: 40))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(JournalTheme.brandPrimary)
                 .accessibilityLabel("Pilgrim Journal 잠김")
         }
     }
 
     private var appBackground: Color {
-        #if os(macOS)
-        Color(nsColor: .windowBackgroundColor)
-        #else
-        Color(uiColor: .systemBackground)
-        #endif
+        JournalTheme.canvas
     }
 }
 
