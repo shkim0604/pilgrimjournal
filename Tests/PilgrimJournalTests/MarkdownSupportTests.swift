@@ -77,7 +77,22 @@ final class MarkdownSupportTests: XCTestCase {
             at: source.range(of: "항목").location,
             effectiveRange: nil
         ) as? NSParagraphStyle
-        XCTAssertFalse(try! XCTUnwrap(bulletStyle).textLists.isEmpty)
+        XCTAssertLessThan(
+            try! XCTUnwrap(bulletStyle).firstLineHeadIndent,
+            try! XCTUnwrap(bulletStyle).headIndent
+        )
+        XCTAssertEqual(
+            storage.attribute(
+                .foregroundColor,
+                at: source.range(of: "*").location,
+                effectiveRange: nil
+            ) as? NSColor,
+            .clear
+        )
+        XCTAssertEqual(
+            MarkdownBulletDecoration.ranges(in: markdown),
+            [source.range(of: "*")]
+        )
         let quoteStyle = storage.attribute(
             .paragraphStyle,
             at: source.range(of: "인용").location,

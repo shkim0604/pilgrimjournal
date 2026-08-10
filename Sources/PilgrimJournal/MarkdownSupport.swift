@@ -1200,11 +1200,11 @@ enum LiveMarkdownStyler {
                 .foregroundColor: PlatformColor.clear,
             ], range: hiddenPrefixRange)
         }
-        applyRegex(#"(?m)^([\-*]) (.*)$"#, to: storage) { match in
+        applyRegex(#"(?m)^([ \t]*)([\-*]) (.*)$"#, to: storage) { match in
             storage.addAttributes([
                 .foregroundColor: PlatformColor.clear,
-                .font: hiddenMarkerFont,
-            ], range: match.range(at: 1))
+                .font: bodyFont,
+            ], range: match.range(at: 2))
             storage.addAttribute(
                 .paragraphStyle,
                 value: bulletParagraphStyle,
@@ -1500,9 +1500,8 @@ enum LiveMarkdownStyler {
 
     private static var bulletParagraphStyle: NSParagraphStyle {
         let style = bodyParagraphStyle.mutableCopy() as! NSMutableParagraphStyle
-        style.firstLineHeadIndent = 18
-        style.headIndent = 18
-        style.textLists = [NSTextList(markerFormat: .disc, options: 0)]
+        style.firstLineHeadIndent = 2
+        style.headIndent = 20
         return style
     }
 
@@ -1596,6 +1595,18 @@ enum LiveMarkdownStyler {
 #endif
         return attachment
     }
+
+}
+
+enum MarkdownBulletDecoration {
+    private static let regex = try! NSRegularExpression(
+        pattern: #"(?m)^[ \t]*([\-*]) (?!\[[ xX]\] )"#
+    )
+
+    static func ranges(in text: String) -> [NSRange] {
+        let range = NSRange(location: 0, length: text.utf16.count)
+        return regex.matches(in: text, range: range).map { $0.range(at: 1) }
+    }
 }
 
 #if os(macOS)
@@ -1649,6 +1660,30 @@ private final class MarkdownNSTextView: NSTextView {
                 y: origin.y + fragment.midY
             ))
             line.stroke()
+        }
+        EditorPalette.label.setFill()
+        for characterRange in MarkdownBulletDecoration.ranges(in: string) {
+            let glyphRange = layoutManager.glyphRange(
+                forCharacterRange: characterRange,
+                actualCharacterRange: nil
+            )
+            guard glyphRange.location < layoutManager.numberOfGlyphs else {
+                continue
+            }
+            let fragment = layoutManager.lineFragmentRect(
+                forGlyphAt: glyphRange.location,
+                effectiveRange: nil
+            )
+            let marker = layoutManager.boundingRect(
+                forGlyphRange: glyphRange,
+                in: textContainer
+            )
+            NSBezierPath(ovalIn: NSRect(
+                x: origin.x + marker.midX - 3.5,
+                y: origin.y + fragment.midY - 3.5,
+                width: 7,
+                height: 7
+            )).fill()
         }
     }
 }
@@ -1877,6 +1912,30 @@ private final class MarkdownUITextView: UITextView {
                 y: origin.y + fragment.midY
             ))
             path.stroke()
+        }
+        EditorPalette.label.setFill()
+        for characterRange in MarkdownBulletDecoration.ranges(in: text) {
+            let glyphRange = layoutManager.glyphRange(
+                forCharacterRange: characterRange,
+                actualCharacterRange: nil
+            )
+            guard glyphRange.location < layoutManager.numberOfGlyphs else {
+                continue
+            }
+            let fragment = layoutManager.lineFragmentRect(
+                forGlyphAt: glyphRange.location,
+                effectiveRange: nil
+            )
+            let marker = layoutManager.boundingRect(
+                forGlyphRange: glyphRange,
+                in: textContainer
+            )
+            UIBezierPath(ovalIn: CGRect(
+                x: origin.x + marker.midX - 3.5,
+                y: origin.y + fragment.midY - 3.5,
+                width: 7,
+                height: 7
+            )).fill()
         }
     }
 }
@@ -2123,8 +2182,8 @@ struct MarkdownPreviewView: View {
         case let .bullet(indentation):
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Circle()
-                    .fill(JournalTheme.brandPrimary)
-                    .frame(width: 5, height: 5)
+                    .fill(JournalTheme.ink)
+                    .frame(width: 7, height: 7)
                     .alignmentGuide(.firstTextBaseline) { dimensions in
                         dimensions[VerticalAlignment.center]
                     }
