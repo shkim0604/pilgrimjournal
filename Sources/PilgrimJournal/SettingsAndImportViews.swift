@@ -1,5 +1,6 @@
 import DayOneImport
 import JournalBackup
+import JournalData
 import JournalDomain
 import SwiftUI
 import UniformTypeIdentifiers
@@ -7,6 +8,7 @@ import UniformTypeIdentifiers
 struct SettingsView: View {
     @EnvironmentObject private var model: AppModel
     @EnvironmentObject private var authentication: AppleAuthenticationCoordinator
+    @EnvironmentObject private var journalSession: JournalSessionController
     @State private var restoreMode = RestoreMode.merge
     @State private var showRestoreConfirmation = false
     @State private var showSignOutConfirmation = false
@@ -33,6 +35,7 @@ struct SettingsView: View {
             }
             Section("동기화") {
                 LabeledContent("상태", value: syncDescription)
+                LabeledContent("저장 위치", value: storageLocationDescription)
                 Button {
                     Task { await model.refreshSynchronization() }
                 } label: {
@@ -49,6 +52,27 @@ struct SettingsView: View {
                 Text("기록과 첨부는 현재 시스템 iCloud의 개인 데이터베이스에 저장됩니다. 이 저장 공간은 최초 연결한 Apple 로그인 사용자에게 귀속되며 다른 사용자는 차단됩니다.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+            }
+            if let migration = journalSession.pendingMigration {
+                Section("iCloud로 데이터 이전") {
+                    Text("이 기기에만 저장된 기록 \(migration.entryCount)개가 있습니다. 현재 iCloud 계정의 별도 저장소로 복사한 뒤, 완료된 저장소로 전환할 수 있습니다.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Button {
+                        journalSession.confirmPendingMigration()
+                    } label: {
+                        Label("로컬 기록을 iCloud로 이전", systemImage: "icloud.and.arrow.up")
+                    }
+                    Button("이 기기에만 계속 저장") {
+                        journalSession.keepLocalOnly()
+                    }
+                    if let error = journalSession.errorMessage {
+                        Text(error)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                            .textSelection(.enabled)
+                    }
+                }
             }
             Section("검색") {
                 Button("검색 인덱스 다시 만들기") { model.rebuildSearchIndex() }
@@ -87,6 +111,13 @@ struct SettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            Section("도움말") {
+                NavigationLink {
+                    AppUsageGuideView()
+                } label: {
+                    Label("앱 사용법", systemImage: "questionmark.circle")
+                }
+            }
             #if os(macOS)
             Section("백업 및 복원") {
                 Toggle(
@@ -96,12 +127,24 @@ struct SettingsView: View {
                 Text("원본 snapshot에는 Day One의 전체 메타데이터가 들어갈 수 있습니다. 필요할 때만 포함하고 백업 파일을 민감한 데이터로 다루세요.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Button("전체 백업 내보내기…") { model.prepareBackup() }
+                Button("전체 백업 내보내기…") {
+                    Task { await model.prepareBackup() }
+                }
                 Picker("복원 방식", selection: $restoreMode) {
                     Text("병합").tag(RestoreMode.merge)
                     Text("현재 데이터 교체").tag(RestoreMode.replace)
                 }
                 Button("백업에서 복원…") { model.isImportingBackup = true }
+                    .disabled(model.isWorking)
+                if let description = model.dataOperationDescription {
+                    HStack {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text(description)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
                 if let result = model.lastRestoreResult {
                     Text(
                         "최근 복원: \(result.restored)개 반영, "
@@ -110,11 +153,61 @@ struct SettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 }
+                if !model.lastRestoreConflicts.isEmpty {
+                    DisclosureGroup("충돌 기록 \(model.lastRestoreConflicts.count)개") {
+                        ForEach(model.lastRestoreConflicts) { conflict in
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(conflict.currentTitle.isEmpty ? "제목 없음" : conflict.currentTitle)
+                                    .font(.caption.weight(.semibold))
+                                if conflict.currentTitle != conflict.backupTitle {
+                                    Text("백업: \(conflict.backupTitle.isEmpty ? "제목 없음" : conflict.backupTitle)")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                    }
+                }
                 if let safetyURL = model.lastSafetyBackupURL {
                     Text("교체 전 안전 백업: \(safetyURL.lastPathComponent)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                    Button("안전 백업으로 복귀") {
+                        Task { await model.restoreSafetyBackup() }
+                    }
                 }
+                if let failure = model.lastRestoreFailureMessage {
+                    Text("최근 복원 실패: \(failure)")
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .textSelection(.enabled)
+                    if model.pendingRestoreData != nil {
+                        Button("실패한 복원 다시 시도") {
+                            Task { await model.retryPendingRestore(mode: restoreMode) }
+                        }
+                    }
+                }
+                Button("데이터 무결성 검사") { model.runIntegrityCheck() }
+                if let report = model.lastIntegrityReport {
+                    if report.isHealthy {
+                        Label(
+                            "문제가 없습니다 · 기록 \(report.entryCount)개, revision \(report.revisionCount)개, 첨부 \(report.attachmentCount)개",
+                            systemImage: "checkmark.circle"
+                        )
+                        .foregroundStyle(.secondary)
+                    } else {
+                        DisclosureGroup("확인할 문제 \(report.issues.count)개") {
+                            ForEach(report.issues) { issue in
+                                Text(issue.message)
+                                    .font(.caption)
+                                    .textSelection(.enabled)
+                            }
+                        }
+                    }
+                }
+                Text("검사는 데이터를 자동으로 삭제하거나 수정하지 않습니다.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
             #endif
             Section("개인정보") {
@@ -179,9 +272,8 @@ struct SettingsView: View {
                 role: restoreMode == .replace ? .destructive : nil
             ) {
                 if let data = model.pendingRestoreData {
-                    model.restoreBackup(data: data, mode: restoreMode)
+                    Task { await model.restoreBackup(data: data, mode: restoreMode) }
                 }
-                model.pendingRestoreData = nil
             }
             Button("취소", role: .cancel) { model.pendingRestoreData = nil }
         } message: {
@@ -192,6 +284,17 @@ struct SettingsView: View {
             )
         }
         #endif
+    }
+
+    private var storageLocationDescription: String {
+        switch journalSession.activeScope?.storageLocation {
+        case .localOnly:
+            "이 기기만"
+        case .iCloud(accountHash: _):
+            "현재 iCloud 계정"
+        case nil:
+            "확인 중"
+        }
     }
 
     private var syncDescription: String {

@@ -6,6 +6,7 @@ import JournalData
 import JournalDomain
 import JournalSearch
 import SwiftUI
+import UniformTypeIdentifiers
 
 enum DayOneImportActivity: Equatable {
     case idle
@@ -20,6 +21,12 @@ enum CloudSyncStoreOperation: Equatable, Sendable {
     case setup
     case importing
     case exporting
+}
+
+struct RestoreConflictSummary: Identifiable, Equatable {
+    var id: UUID
+    var currentTitle: String
+    var backupTitle: String
 }
 
 struct CloudSyncStoreEvent: Equatable, Sendable {
@@ -65,6 +72,11 @@ final class AppModel: ObservableObject {
     @Published var trashEntries: [JournalEntryRecord] = []
     @Published var isPresentingTrash = false
     @Published var lastSafetyBackupURL: URL?
+    @Published var lastIntegrityReport: JournalIntegrityReport?
+    @Published var lastRestoreFailureMessage: String?
+    @Published var dataOperationDescription: String?
+    @Published var lastRestoreConflicts: [RestoreConflictSummary] = []
+    @Published private(set) var attachmentRevision = 0
 
     var selectedEntry: JournalEntryRecord? {
         guard let selectedEntryID else { return nil }
@@ -166,6 +178,10 @@ final class AppModel: ObservableObject {
             return
         }
         guard event.succeeded else {
+            updateAttachmentTransferStates(
+                matching: [.pending, .downloading],
+                to: .failed
+            )
             syncState = .failed(
                 message: event.errorDescription ?? "CloudKit 동기화에 실패했습니다.",
                 retryable: event.errorRetryable ?? true
@@ -177,8 +193,10 @@ final class AppModel: ObservableObject {
         case .setup:
             syncState = .pending
         case .exporting:
+            updateAttachmentTransferStates(matching: [.pending], to: .uploaded)
             syncState = .synced(completedAt)
         case .importing:
+            reconcileDownloadedAttachments()
             syncState = .synced(completedAt)
             rebuildSearchIndex()
             refresh()
@@ -679,6 +697,107 @@ final class AppModel: ObservableObject {
         }
     }
 
+    func attachments(for entryID: UUID?) -> [AttachmentRecord] {
+        guard let entryID,
+              let attachmentRepository = repository as? any AttachmentRepository else {
+            return []
+        }
+        do {
+            return try attachmentRepository.allAttachments()
+                .map(\.0)
+                .filter { $0.entryID == entryID && $0.deletedAt == nil }
+                .sorted {
+                    if $0.updatedAt != $1.updatedAt { return $0.updatedAt > $1.updatedAt }
+                    return $0.id.uuidString < $1.id.uuidString
+                }
+        } catch {
+            errorMessage = error.localizedDescription
+            return []
+        }
+    }
+
+    func hasLocalBinary(for attachmentID: UUID) -> Bool {
+        guard let attachmentRepository = repository as? any AttachmentRepository else {
+            return false
+        }
+        return (try? attachmentRepository.allAttachments().first {
+            $0.0.id == attachmentID
+        }?.1) != nil
+    }
+
+    @discardableResult
+    func addAttachment(from url: URL, to entryID: UUID) -> Bool {
+        guard let attachmentRepository = repository as? any AttachmentRepository else {
+            errorMessage = "이 저장소에서는 첨부 파일을 사용할 수 없습니다."
+            return false
+        }
+        let isSecurityScoped = url.startAccessingSecurityScopedResource()
+        defer {
+            if isSecurityScoped { url.stopAccessingSecurityScopedResource() }
+        }
+        do {
+            let data = try Data(contentsOf: url, options: [.mappedIfSafe])
+            let contentType = UTType(filenameExtension: url.pathExtension)
+            let stored = try AttachmentFileStore(root: paths.attachments).store(
+                data: data,
+                entryID: entryID,
+                originalName: url.lastPathComponent,
+                mimeType: contentType?.preferredMIMEType ?? "application/octet-stream"
+            )
+            var record = stored.record
+            record.state = cloudAccountMonitor == nil ? .local : .pending
+            record.updatedAt = .now
+            try attachmentRepository.saveAttachment(record, binary: data)
+            attachmentRevision += 1
+            markLocalMutation()
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    func requestAttachmentDownload(_ attachmentID: UUID) {
+        guard let attachmentRepository = repository as? any AttachmentRepository else { return }
+        do {
+            guard let stored = try attachmentRepository.allAttachments().first(where: {
+                $0.0.id == attachmentID
+            }) else { return }
+            if stored.1 != nil {
+                var available = stored.0
+                available.state = cloudAccountMonitor == nil ? .local : .uploaded
+                available.updatedAt = .now
+                try attachmentRepository.saveAttachment(available, binary: stored.1)
+                attachmentRevision += 1
+                return
+            }
+            var downloading = stored.0
+            downloading.state = .downloading
+            downloading.updatedAt = .now
+            try attachmentRepository.saveAttachment(downloading, binary: nil)
+            attachmentRevision += 1
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func retryAttachmentTransfer(_ attachmentID: UUID) {
+        guard let attachmentRepository = repository as? any AttachmentRepository else { return }
+        do {
+            guard let stored = try attachmentRepository.allAttachments().first(where: {
+                $0.0.id == attachmentID
+            }) else { return }
+            var retrying = stored.0
+            retrying.state = stored.1 == nil ? .downloading : .pending
+            retrying.updatedAt = .now
+            try attachmentRepository.saveAttachment(retrying, binary: stored.1)
+            attachmentRevision += 1
+            markLocalMutation()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func rebuildSearchIndex() {
         do {
             let all = try repository.list(kind: nil, includeDeleted: false, limit: 100_000)
@@ -763,6 +882,7 @@ final class AppModel: ObservableObject {
         importActivity = .importing(completed: 0, total: preview.items.count)
         dayOneTask = Task { @MainActor [weak self] in
             guard let self else { return }
+            defer { cleanupStagedArchive(preview.archiveURL) }
             do {
                 let jobID = try importStore.begin(
                     fingerprint: preview.archiveFingerprint,
@@ -843,9 +963,8 @@ final class AppModel: ObservableObject {
 
     func resetDayOneImport() {
         dayOneTask?.cancel()
-        if let archiveURL = importPreview?.archiveURL,
-           archiveURL.deletingLastPathComponent() == paths.importStaging {
-            try? FileManager.default.removeItem(at: archiveURL)
+        if let archiveURL = importPreview?.archiveURL {
+            cleanupStagedArchive(archiveURL)
         }
         importPreview = nil
         importResult = nil
@@ -853,9 +972,20 @@ final class AppModel: ObservableObject {
         isWorking = false
     }
 
-    func prepareBackup() {
+    private func cleanupStagedArchive(_ archiveURL: URL) {
+        guard archiveURL.deletingLastPathComponent().standardizedFileURL
+            == paths.importStaging.standardizedFileURL else { return }
+        try? FileManager.default.removeItem(at: archiveURL)
+    }
+
+    func prepareBackup() async {
         isWorking = true
-        defer { isWorking = false }
+        dataOperationDescription = "백업 데이터 준비 중"
+        await Task.yield()
+        defer {
+            isWorking = false
+            dataOperationDescription = nil
+        }
         do {
             let temporary = paths.backupStaging
                 .appending(path: "\(UUID().uuidString).journalbackup")
@@ -871,9 +1001,46 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func restoreBackup(data: Data, mode: RestoreMode) {
+    func runIntegrityCheck() {
         isWorking = true
         defer { isWorking = false }
+        do {
+            try searchIndex.integrityCheck()
+            let allEntries = try repository.list(
+                kind: nil,
+                includeDeleted: true,
+                limit: 100_000
+            )
+            let revisions = try allEntries.flatMap {
+                try repository.revisions(entryID: $0.id)
+            }
+            let attachments: [BackupAttachment]
+            if let attachmentRepository = repository as? any AttachmentRepository {
+                attachments = try attachmentRepository.allAttachments().map {
+                    BackupAttachment(record: $0.0, binary: $0.1)
+                }
+            } else {
+                attachments = []
+            }
+            lastIntegrityReport = JournalIntegrityChecker().inspect(
+                entries: allEntries,
+                revisions: revisions,
+                attachments: attachments,
+                indexedEntryIDs: try searchIndex.indexedEntryIDs()
+            )
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func restoreBackup(data: Data, mode: RestoreMode) async {
+        isWorking = true
+        dataOperationDescription = "백업 검증 중"
+        await Task.yield()
+        defer {
+            isWorking = false
+            dataOperationDescription = nil
+        }
         do {
             guard let restorable = repository as? any BackupRestoreRepository else {
                 throw JournalError.persistence("현재 저장 adapter는 복원을 지원하지 않습니다.")
@@ -890,6 +1057,8 @@ final class AppModel: ObservableObject {
                 limit: 100_000
             )
             if mode == .replace {
+                dataOperationDescription = "현재 상태 안전 백업 중"
+                await Task.yield()
                 let safetyURL = paths.backupStaging.appending(
                     path: "SafetyBackup-\(Int(Date.now.timeIntervalSince1970)).journalbackup"
                 )
@@ -904,6 +1073,17 @@ final class AppModel: ObservableObject {
                 currentEntries: current,
                 mode: mode
             )
+            lastRestoreConflicts = plan.conflicts.map { conflict in
+                RestoreConflictSummary(
+                    id: conflict.current.id,
+                    currentTitle: conflict.current.title,
+                    backupTitle: conflict.backup.title
+                )
+            }
+            dataOperationDescription = mode == .replace
+                ? "교체 복원 적용 중"
+                : "병합 복원 적용 중"
+            await Task.yield()
             lastRestoreResult = try JournalRestoreExecutor().execute(
                 contents: contents,
                 plan: plan,
@@ -911,9 +1091,29 @@ final class AppModel: ObservableObject {
                 deviceID: deviceID,
                 at: .now
             )
+            lastRestoreFailureMessage = nil
+            pendingRestoreData = nil
             markLocalMutation()
             rebuildSearchIndex()
         } catch {
+            lastRestoreFailureMessage = error.localizedDescription
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func retryPendingRestore(mode: RestoreMode) async {
+        guard let pendingRestoreData else { return }
+        await restoreBackup(data: pendingRestoreData, mode: mode)
+    }
+
+    func restoreSafetyBackup() async {
+        guard let lastSafetyBackupURL else { return }
+        do {
+            let data = try Data(contentsOf: lastSafetyBackupURL)
+            pendingRestoreData = data
+            await restoreBackup(data: data, mode: .replace)
+        } catch {
+            lastRestoreFailureMessage = error.localizedDescription
             errorMessage = error.localizedDescription
         }
     }
@@ -962,6 +1162,45 @@ final class AppModel: ObservableObject {
             break
         case .savedLocally, .pending, .synced, .failed:
             syncState = .pending
+        }
+    }
+
+    private func updateAttachmentTransferStates(
+        matching states: Set<AttachmentTransferState>,
+        to newState: AttachmentTransferState
+    ) {
+        guard let attachmentRepository = repository as? any AttachmentRepository else { return }
+        do {
+            var didUpdate = false
+            for stored in try attachmentRepository.allAttachments()
+            where states.contains(stored.0.state) && stored.0.deletedAt == nil {
+                var record = stored.0
+                record.state = newState
+                record.updatedAt = .now
+                try attachmentRepository.saveAttachment(record, binary: stored.1)
+                didUpdate = true
+            }
+            if didUpdate { attachmentRevision += 1 }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func reconcileDownloadedAttachments() {
+        guard let attachmentRepository = repository as? any AttachmentRepository else { return }
+        do {
+            var didUpdate = false
+            for stored in try attachmentRepository.allAttachments()
+            where stored.0.state == .downloading && stored.1 != nil {
+                var record = stored.0
+                record.state = .uploaded
+                record.updatedAt = .now
+                try attachmentRepository.saveAttachment(record, binary: stored.1)
+                didUpdate = true
+            }
+            if didUpdate { attachmentRevision += 1 }
+        } catch {
+            errorMessage = error.localizedDescription
         }
     }
 

@@ -44,6 +44,7 @@ final class AppleAuthenticationCoordinator: ObservableObject {
     @Published private(set) var state: State = .checking
     @Published var errorMessage: String?
     @Published private(set) var accountDisplayName: String?
+    @Published private(set) var currentUserIdentifier: String?
 
     private let service: AppleAuthenticationSessionService
     private let credentialChecker: any AppleCredentialStateChecking
@@ -90,9 +91,11 @@ final class AppleAuthenticationCoordinator: ObservableObject {
             let session = try await service.session()
             guard let identifier = session.currentUserIdentifier else {
                 accountDisplayName = nil
+                currentUserIdentifier = nil
                 state = .signedOut
                 return
             }
+            currentUserIdentifier = identifier
             accountDisplayName = Self.accountDisplayName(
                 email: session.accountEmail,
                 identifier: identifier
@@ -124,9 +127,11 @@ final class AppleAuthenticationCoordinator: ObservableObject {
                 email: session.accountEmail,
                 identifier: identifier
             )
+            currentUserIdentifier = identifier
             state = .checking
             await completeAuthentication(identifier: identifier, offline: false)
         } catch AppleAuthenticationSessionError.differentUser {
+            currentUserIdentifier = nil
             state = .blockedDifferentUser
             errorMessage = AppleAuthenticationSessionError.differentUser.localizedDescription
         } catch {
@@ -148,6 +153,7 @@ final class AppleAuthenticationCoordinator: ObservableObject {
         do {
             try await service.clearCurrentSession()
             accountDisplayName = nil
+            currentUserIdentifier = nil
             state = .signedOut
             errorMessage = nil
         } catch {
@@ -162,6 +168,7 @@ final class AppleAuthenticationCoordinator: ObservableObject {
         do {
             try await service.clearCurrentSession()
             accountDisplayName = nil
+            currentUserIdentifier = nil
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -176,6 +183,7 @@ final class AppleAuthenticationCoordinator: ObservableObject {
         do {
             let session = try await service.session()
             guard let identifier = session.currentUserIdentifier else {
+                currentUserIdentifier = nil
                 state = .signedOut
                 return
             }
@@ -195,6 +203,7 @@ final class AppleAuthenticationCoordinator: ObservableObject {
         do {
             let session = try await service.session()
             guard let identifier = session.currentUserIdentifier else {
+                currentUserIdentifier = nil
                 state = .signedOut
                 return
             }
@@ -218,6 +227,7 @@ final class AppleAuthenticationCoordinator: ObservableObject {
             case .revoked, .notFound, .transferred:
                 try await service.clearCurrentSession()
                 accountDisplayName = nil
+                currentUserIdentifier = nil
                 state = .signedOut
             }
         } catch {

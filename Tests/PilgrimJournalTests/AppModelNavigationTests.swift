@@ -1,6 +1,7 @@
 #if canImport(XCTest)
 import Foundation
 import CloudKit
+import DayOneImport
 import JournalData
 import JournalDomain
 import JournalSearch
@@ -139,6 +140,45 @@ final class AppModelNavigationTests: XCTestCase {
         XCTAssertEqual(model.trashEntries.map(\.id), [deleted.id])
         XCTAssertEqual(model.syncState, .localOnly)
         XCTAssertFalse(model.isRefreshingSynchronization)
+    }
+
+    @MainActor
+    func testResetDayOneImportRemovesOnlyOwnedStagingArchive() throws {
+        let root = FileManager.default.temporaryDirectory.appending(
+            path: "pilgrim-import-cleanup-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+        let paths = JournalPaths(root: root)
+        try paths.prepare()
+        let staged = paths.importStaging.appending(path: "staged.zip")
+        try Data("temporary".utf8).write(to: staged)
+        let model = try AppModel(
+            repository: InMemoryJournalRepository(),
+            importStore: InMemoryImportStore(),
+            searchIndex: JournalSearchIndex(
+                url: paths.search.appending(path: "cleanup.sqlite")
+            ),
+            paths: paths,
+            cloudAccountMonitor: nil
+        )
+        model.importPreview = DayOneImportPreview(
+            archiveURL: staged,
+            archiveFingerprint: "fixture",
+            exportVersion: "1.0",
+            JSONDisplayName: "journal.json",
+            items: [],
+            duplicateSourceUUIDs: [],
+            optionalFieldCounts: [:],
+            missingAttachmentCount: 0,
+            warnings: []
+        )
+
+        model.resetDayOneImport()
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: staged.path))
+        XCTAssertNil(model.importPreview)
+        XCTAssertEqual(model.importActivity, .idle)
     }
 
     @MainActor
@@ -321,6 +361,168 @@ final class AppModelNavigationTests: XCTestCase {
             1
         )
         XCTAssertEqual(updated.body, "이어 쓴 입력")
+    }
+
+    @MainActor
+    func testSharedEditorAttachmentFlowStoresMetadataBinaryAndLocalFile() throws {
+        let root = FileManager.default.temporaryDirectory.appending(
+            path: "pilgrim-editor-attachment-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+        let paths = JournalPaths(root: root)
+        try paths.prepare()
+        let repository = InMemoryJournalRepository()
+        let model = try AppModel(
+            repository: repository,
+            importStore: InMemoryImportStore(),
+            searchIndex: JournalSearchIndex(
+                url: paths.search.appending(path: "attachments.sqlite")
+            ),
+            paths: paths,
+            cloudAccountMonitor: nil
+        )
+        let entry = try XCTUnwrap(model.saveAndReturnRecord(
+            JournalEntryDraft(kind: .memo, title: "첨부 기록"),
+            closeEditor: false,
+            selectSavedEntry: false
+        ))
+        let sourceURL = root.appending(path: "sample.txt")
+        let sourceData = Data("첨부 본문".utf8)
+        try sourceData.write(to: sourceURL)
+
+        XCTAssertTrue(model.addAttachment(from: sourceURL, to: entry.id))
+
+        let attachment = try XCTUnwrap(model.attachments(for: entry.id).first)
+        XCTAssertEqual(attachment.originalName, "sample.txt")
+        XCTAssertEqual(attachment.mimeType, "text/plain")
+        XCTAssertEqual(attachment.byteCount, Int64(sourceData.count))
+        XCTAssertEqual(attachment.state, .local)
+        XCTAssertEqual(
+            try AttachmentFileStore(root: paths.attachments).data(
+                checksum: attachment.checksum
+            ),
+            sourceData
+        )
+        XCTAssertEqual(try repository.allAttachments().first?.1, sourceData)
+    }
+
+    @MainActor
+    func testAttachmentUploadFailureRetryAndSuccessDoNotBlockEntryBody() throws {
+        let root = FileManager.default.temporaryDirectory.appending(
+            path: "pilgrim-attachment-transfer-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+        let paths = JournalPaths(root: root)
+        try paths.prepare()
+        let repository = InMemoryJournalRepository()
+        let entry = try repository.save(
+            JournalEntryDraft(kind: .diary, body: "첨부와 무관하게 보이는 본문"),
+            deviceID: "Mac",
+            at: .now
+        )
+        let attachment = AttachmentRecord(
+            entryID: entry.id,
+            originalName: "photo.jpg",
+            mimeType: "image/jpeg",
+            checksum: "same-checksum",
+            byteCount: 3,
+            state: .pending
+        )
+        try repository.saveAttachment(attachment, binary: Data([1, 2, 3]))
+        let model = try AppModel(
+            repository: repository,
+            importStore: InMemoryImportStore(),
+            searchIndex: JournalSearchIndex(
+                url: paths.search.appending(path: "transfer.sqlite")
+            ),
+            paths: paths,
+            cloudAccountMonitor: CloudAccountMonitor(
+                containerIdentifier: "iCloud.test.PilgrimJournal"
+            )
+        )
+
+        model.handleCloudSyncStoreEvent(CloudSyncStoreEvent(
+            operation: .exporting,
+            completedAt: .now,
+            succeeded: false,
+            errorDescription: "iCloud 저장 공간이 부족합니다.",
+            errorRetryable: true
+        ))
+        XCTAssertEqual(model.attachments(for: entry.id).first?.state, .failed)
+        XCTAssertEqual(try repository.entry(id: entry.id)?.body, "첨부와 무관하게 보이는 본문")
+
+        model.retryAttachmentTransfer(attachment.id)
+        XCTAssertEqual(model.attachments(for: entry.id).first?.state, .pending)
+        model.handleCloudSyncStoreEvent(CloudSyncStoreEvent(
+            operation: .exporting,
+            completedAt: .now,
+            succeeded: true,
+            errorDescription: nil
+        ))
+        XCTAssertEqual(model.attachments(for: entry.id).first?.state, .uploaded)
+    }
+
+    @MainActor
+    func testMetadataOnlyAttachmentRequestsLazyDownloadAndKeepsTombstoneHidden() throws {
+        let root = FileManager.default.temporaryDirectory.appending(
+            path: "pilgrim-attachment-download-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+        let paths = JournalPaths(root: root)
+        try paths.prepare()
+        let repository = InMemoryJournalRepository()
+        let entry = try repository.save(
+            JournalEntryDraft(kind: .memo, title: "원격 첨부"),
+            deviceID: "iPhone",
+            at: .now
+        )
+        let remote = AttachmentRecord(
+            entryID: entry.id,
+            originalName: "remote.pdf",
+            mimeType: "application/pdf",
+            checksum: "remote-checksum",
+            byteCount: 42,
+            state: .uploaded
+        )
+        var deleted = AttachmentRecord(
+            entryID: entry.id,
+            originalName: "deleted.jpg",
+            mimeType: "image/jpeg",
+            checksum: "deleted-checksum",
+            byteCount: 1,
+            state: .uploaded
+        )
+        deleted.deletedAt = .now
+        try repository.saveAttachment(remote, binary: nil)
+        try repository.saveAttachment(deleted, binary: Data([0]))
+        let model = try AppModel(
+            repository: repository,
+            importStore: InMemoryImportStore(),
+            searchIndex: JournalSearchIndex(
+                url: paths.search.appending(path: "download.sqlite")
+            ),
+            paths: paths,
+            cloudAccountMonitor: CloudAccountMonitor(
+                containerIdentifier: "iCloud.test.PilgrimJournal"
+            )
+        )
+
+        XCTAssertEqual(model.attachments(for: entry.id).map(\.id), [remote.id])
+        XCTAssertFalse(model.hasLocalBinary(for: remote.id))
+        model.requestAttachmentDownload(remote.id)
+        XCTAssertEqual(model.attachments(for: entry.id).first?.state, .downloading)
+
+        model.handleCloudSyncStoreEvent(CloudSyncStoreEvent(
+            operation: .importing,
+            completedAt: .now,
+            succeeded: false,
+            errorDescription: "네트워크 오류",
+            errorRetryable: true
+        ))
+        XCTAssertEqual(model.attachments(for: entry.id).first?.state, .failed)
     }
 
     @MainActor

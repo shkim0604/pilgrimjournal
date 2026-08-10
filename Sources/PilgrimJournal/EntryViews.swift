@@ -1,5 +1,6 @@
 import JournalDomain
 import SwiftUI
+import UniformTypeIdentifiers
 
 #if os(macOS)
 struct InlineEntryEditorView: View {
@@ -76,6 +77,10 @@ struct InlineEntryEditorView: View {
                             .frame(height: 1)
 
                         tagsEditor
+                        AttachmentEditorSection(
+                            entryID: persistedEntryID,
+                            ensureEntryID: ensurePersistedEntryID
+                        )
                         editorFooter
                     }
                 }
@@ -461,6 +466,11 @@ struct InlineEntryEditorView: View {
         saveState = .saved
     }
 
+    private func ensurePersistedEntryID() -> UUID? {
+        performAutosave()
+        return persistedEntryID
+    }
+
     private func applyPendingKind() {
         guard let pendingKind else { return }
         draft.kind = pendingKind
@@ -501,6 +511,11 @@ struct EntryDetailView: View {
                     .foregroundStyle(JournalTheme.inkSecondary)
                 typeDetails
                 MarkdownPreviewView(markdown: entry.body)
+                AttachmentEditorSection(
+                    entryID: entry.id,
+                    ensureEntryID: { entry.id },
+                    allowsImport: false
+                )
                 if !entry.visibleTags.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack {
@@ -632,6 +647,10 @@ struct EntryEditorView: View {
                             .frame(height: 1)
 
                         mobileTagsEditor
+                        AttachmentEditorSection(
+                            entryID: persistedEntryID,
+                            ensureEntryID: ensurePersistedEntryID
+                        )
                         mobileFooter
                     }
                     .padding(JournalTheme.Spacing.large)
@@ -1023,6 +1042,11 @@ struct EntryEditorView: View {
         return true
     }
 
+    private func ensurePersistedEntryID() -> UUID? {
+        guard performAutosave() else { return nil }
+        return persistedEntryID
+    }
+
     private func appendCommand(_ command: MarkdownSlashCommand) {
         draft.body = MarkdownCommandProcessor.applying(command, to: draft.body)
     }
@@ -1050,6 +1074,133 @@ struct EntryEditorView: View {
         draft.kind = pendingKind
         draft.details = (try? draft.details.validated(for: pendingKind)) ?? EntryDetails()
         self.pendingKind = nil
+    }
+}
+
+private struct AttachmentEditorSection: View {
+    @EnvironmentObject private var model: AppModel
+    let entryID: UUID?
+    let ensureEntryID: () -> UUID?
+    var allowsImport = true
+    @State private var attachments: [AttachmentRecord] = []
+    @State private var isImporting = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: JournalTheme.Spacing.small) {
+            HStack {
+                Text("첨부")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(JournalTheme.inkSecondary)
+                Spacer()
+                if allowsImport {
+                    Button {
+                        guard entryID != nil || ensureEntryID() != nil else {
+                            model.errorMessage = "첨부 전에 제목이나 본문을 입력해 기록을 저장해 주세요."
+                            return
+                        }
+                        isImporting = true
+                    } label: {
+                        Label("첨부 추가", systemImage: "paperclip")
+                    }
+                    .buttonStyle(.borderless)
+                }
+            }
+
+            if attachments.isEmpty {
+                Text("첨부 파일 없음")
+                    .font(.caption)
+                    .foregroundStyle(JournalTheme.inkSecondary)
+            } else {
+                ForEach(attachments) { attachment in
+                    HStack(spacing: JournalTheme.Spacing.small) {
+                        Image(systemName: attachmentIcon(for: attachment.mimeType))
+                            .foregroundStyle(JournalTheme.brandPrimary)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(attachment.originalName)
+                                .lineLimit(1)
+                            Text(attachmentStatus(attachment))
+                                .font(.caption2)
+                                .foregroundStyle(
+                                    attachment.state == .failed
+                                        ? Color.red
+                                        : JournalTheme.inkSecondary
+                                )
+                        }
+                        Spacer()
+                        attachmentAction(attachment)
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+            }
+        }
+        .fileImporter(
+            isPresented: $isImporting,
+            allowedContentTypes: [.image, .movie, .audio, .pdf, .data],
+            allowsMultipleSelection: false
+        ) { result in
+            do {
+                let url = try result.get().first
+                guard let url else { return }
+                guard let targetID = entryID ?? ensureEntryID() else {
+                    model.errorMessage = "첨부할 기록을 먼저 저장해 주세요."
+                    return
+                }
+                if model.addAttachment(from: url, to: targetID) {
+                    attachments = model.attachments(for: targetID)
+                }
+            } catch {
+                model.errorMessage = error.localizedDescription
+            }
+        }
+        .onAppear { attachments = model.attachments(for: entryID) }
+        .onChange(of: entryID) { _, newValue in
+            attachments = model.attachments(for: newValue)
+        }
+        .onChange(of: model.attachmentRevision) { _, _ in
+            attachments = model.attachments(for: entryID)
+        }
+    }
+
+    private func attachmentIcon(for mimeType: String) -> String {
+        if mimeType.hasPrefix("image/") { return "photo" }
+        if mimeType.hasPrefix("video/") { return "film" }
+        if mimeType.hasPrefix("audio/") { return "waveform" }
+        if mimeType == "application/pdf" { return "doc.richtext" }
+        return "doc"
+    }
+
+    private func attachmentStatus(_ attachment: AttachmentRecord) -> String {
+        let size = ByteCountFormatter.string(
+            fromByteCount: attachment.byteCount,
+            countStyle: .file
+        )
+        let state = switch attachment.state {
+        case .local: "이 기기에 저장됨"
+        case .pending: "iCloud 업로드 대기"
+        case .uploaded: "iCloud에 저장됨"
+        case .downloading: "다운로드 중"
+        case .failed: "전송 실패 · 다시 시도 필요"
+        }
+        return "\(size) · \(state)"
+    }
+
+    @ViewBuilder
+    private func attachmentAction(_ attachment: AttachmentRecord) -> some View {
+        if attachment.state == .failed {
+            Button("재시도") {
+                model.retryAttachmentTransfer(attachment.id)
+            }
+            .buttonStyle(.bordered)
+        } else if attachment.state == .pending || attachment.state == .downloading {
+            ProgressView()
+                .controlSize(.small)
+                .accessibilityLabel(attachmentStatus(attachment))
+        } else if !model.hasLocalBinary(for: attachment.id) {
+            Button("다운로드") {
+                model.requestAttachmentDownload(attachment.id)
+            }
+            .buttonStyle(.bordered)
+        }
     }
 }
 

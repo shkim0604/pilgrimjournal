@@ -21,10 +21,9 @@ struct PilgrimJournalApp: App {
     @AppStorage("has-completed-onboarding") private var hasCompletedOnboarding = false
     @AppStorage("editor-text-scale") private var editorTextScale =
         EditorTextScale.defaultValue
-    @StateObject private var appModel: AppModel
+    @StateObject private var journalSession: JournalSessionController
     @StateObject private var appLock: AppLockCoordinator
     @StateObject private var authentication: AppleAuthenticationCoordinator
-    @State private var hasPreparedJournalSession = false
 
     private static var isVisualTesting: Bool {
         #if DEBUG
@@ -67,58 +66,19 @@ struct PilgrimJournalApp: App {
             )
         )
         do {
-            #if PILGRIM_SWIFTDATA
-            let container = try JournalContainerFactory.make(
-                inMemory: Self.isVisualTesting,
+            let root = Self.isVisualTesting
+                ? FileManager.default.temporaryDirectory.appending(
+                    path: "PilgrimJournal-VisualTesting-\(UUID().uuidString)",
+                    directoryHint: .isDirectory
+                )
+                : try JournalPaths.applicationRoot()
+            _journalSession = StateObject(wrappedValue: JournalSessionController(
+                rootURL: root,
                 cloudKitContainerIdentifier: cloudKitEnabled
                     ? requestedCloudIdentifier
-                    : nil
-            )
-            let paths = try Self.isVisualTesting
-                ? JournalPaths(
-                    root: FileManager.default.temporaryDirectory.appending(
-                        path: "PilgrimJournal-VisualTesting-\(UUID().uuidString)",
-                        directoryHint: .isDirectory
-                    )
-                )
-                : JournalPaths.applicationDefault()
-            try paths.prepare()
-            let repository = SwiftDataJournalRepository(container: container)
-            let searchIndex = try JournalSearchIndex(
-                url: paths.search.appending(path: "journal-search.sqlite")
-            )
-            _appModel = StateObject(wrappedValue: AppModel(
-                repository: repository,
-                importStore: LocalImportStore(container: container),
-                searchIndex: searchIndex,
-                paths: paths,
-                cloudAccountMonitor: !cloudKitEnabled
-                    ? nil
-                    : CloudAccountMonitor(
-                        containerIdentifier: requestedCloudIdentifier
-                    ),
-                notebookDefaults: Self.isVisualTesting
-                    ? (UserDefaults(suiteName: "PilgrimJournalVisualTesting") ?? .standard)
-                    : .standard,
-                notebookCloudStore: cloudKitEnabled ? .default : nil
+                    : nil,
+                isVisualTesting: Self.isVisualTesting
             ))
-            #else
-            let paths = try JournalPaths.applicationDefault()
-            try paths.prepare()
-            let searchIndex = try JournalSearchIndex(
-                url: paths.search.appending(path: "journal-search.sqlite")
-            )
-            let repository = try InMemoryJournalRepository(
-                storageURL: paths.root.appending(path: "journal-local.json")
-            )
-            _appModel = StateObject(wrappedValue: AppModel(
-                repository: repository,
-                importStore: InMemoryImportStore(),
-                searchIndex: searchIndex,
-                paths: paths,
-                cloudAccountMonitor: nil
-            ))
-            #endif
         } catch {
             fatalError("Pilgrim Journal 초기화 실패: \(error.localizedDescription)")
         }
@@ -131,11 +91,19 @@ struct PilgrimJournalApp: App {
                 case .checking:
                     AppleAuthenticationCheckingView()
                 case .authenticated:
-                    ContentView()
-                        .environmentObject(appModel)
-                        .allowsHitTesting(!appLock.isLocked)
-                    if appLock.isLocked {
-                        AppLockView()
+                    if let appModel = journalSession.appModel {
+                        ContentView()
+                            .environmentObject(appModel)
+                            .allowsHitTesting(!appLock.isLocked)
+                        if appLock.isLocked {
+                            AppLockView()
+                        }
+                    } else if let message = journalSession.errorMessage {
+                        JournalSessionErrorView(message: message) {
+                            Task { await prepareJournalSession() }
+                        }
+                    } else {
+                        AppleAuthenticationCheckingView()
                     }
                 case .signedOut, .blockedDifferentUser,
                      .blockedCloudAccountMismatch, .failed:
@@ -148,6 +116,7 @@ struct PilgrimJournalApp: App {
             }
             .environmentObject(appLock)
             .environmentObject(authentication)
+            .environmentObject(journalSession)
             .sheet(
                 isPresented: Binding(
                     get: {
@@ -164,13 +133,13 @@ struct PilgrimJournalApp: App {
             }
             .task {
                 await authentication.bootstrap()
-                await prepareJournalSessionIfNeeded()
+                await prepareJournalSession()
             }
             .onChange(of: authentication.canAccessJournal) { _, canAccess in
                 if canAccess {
-                    Task { await prepareJournalSessionIfNeeded() }
+                    Task { await prepareJournalSession() }
                 } else {
-                    hasPreparedJournalSession = false
+                    journalSession.deactivate()
                 }
             }
             .onReceive(
@@ -178,7 +147,16 @@ struct PilgrimJournalApp: App {
             ) { _ in
                 Task {
                     await authentication.refreshCloudIdentityBinding()
-                    await appModel.refreshCloudAccountState()
+                    guard authentication.canAccessJournal,
+                          let identifier = authentication.currentUserIdentifier else {
+                        journalSession.deactivate()
+                        return
+                    }
+                    await journalSession.activate(
+                        appleUserIdentifier: identifier,
+                        forceRefresh: true
+                    )
+                    await journalSession.appModel?.refreshCloudAccountState()
                 }
             }
             .onReceive(
@@ -186,8 +164,8 @@ struct PilgrimJournalApp: App {
                     for: NSUbiquitousKeyValueStore.didChangeExternallyNotification
                 )
             ) { _ in
-                appModel.refreshNotebookCatalog()
-                appModel.refresh()
+                journalSession.appModel?.refreshNotebookCatalog()
+                journalSession.appModel?.refresh()
             }
             .onReceive(
                 NotificationCenter.default.publisher(
@@ -203,7 +181,7 @@ struct PilgrimJournalApp: App {
                     .receive(on: RunLoop.main)
             ) { notification in
                 if let change = JournalStoreChangeExtractor.extract(from: notification) {
-                    appModel.handleJournalStoreChange(change)
+                    journalSession.appModel?.handleJournalStoreChange(change)
                 }
             }
             .onReceive(
@@ -213,7 +191,7 @@ struct PilgrimJournalApp: App {
                 .receive(on: RunLoop.main)
             ) { notification in
                 if let event = cloudSyncStoreEvent(from: notification) {
-                    appModel.handleCloudSyncStoreEvent(event)
+                    journalSession.appModel?.handleCloudSyncStoreEvent(event)
                 }
             }
             #endif
@@ -224,7 +202,7 @@ struct PilgrimJournalApp: App {
                         appLock.sceneDidBecomeActive()
                         Task {
                             await authentication.refreshCredentialState()
-                            await appModel.refreshCloudAccountState()
+                            await journalSession.appModel?.refreshCloudAccountState()
                         }
                     }
                 case .inactive:
@@ -245,17 +223,19 @@ struct PilgrimJournalApp: App {
         #if os(macOS)
         .commands {
             CommandGroup(replacing: .newItem) {
-                Button("새 기록") { appModel.beginNewEntry() }
+                Button("새 기록") { journalSession.appModel?.beginNewEntry() }
                     .keyboardShortcut("n", modifiers: [.command])
                     .disabled(!authentication.canAccessJournal)
             }
             CommandGroup(after: .newItem) {
-                Button("Day One 가져오기…") { appModel.isPresentingImporter = true }
+                Button("Day One 가져오기…") {
+                    journalSession.appModel?.isPresentingImporter = true
+                }
                     .keyboardShortcut("i", modifiers: [.command, .shift])
                     .disabled(!authentication.canAccessJournal)
             }
             CommandGroup(replacing: .appSettings) {
-                Button("설정…") { appModel.showSettings() }
+                Button("설정…") { journalSession.appModel?.showSettings() }
                     .keyboardShortcut(",", modifiers: [.command])
                     .disabled(!authentication.canAccessJournal)
             }
@@ -382,10 +362,18 @@ struct PilgrimJournalApp: App {
     }
     #endif
 
-    private func prepareJournalSessionIfNeeded() async {
-        guard authentication.canAccessJournal,
-              !hasPreparedJournalSession else { return }
-        hasPreparedJournalSession = true
+    private func prepareJournalSession() async {
+        guard authentication.canAccessJournal else { return }
+        let identifier: String
+        if Self.isVisualTesting {
+            identifier = "visual-testing-user"
+        } else if let current = authentication.currentUserIdentifier {
+            identifier = current
+        } else {
+            return
+        }
+        await journalSession.activate(appleUserIdentifier: identifier)
+        guard let appModel = journalSession.appModel else { return }
         await appLock.bootstrap()
         await appModel.refreshCloudAccountState()
         #if DEBUG
@@ -399,6 +387,7 @@ struct PilgrimJournalApp: App {
 
     #if DEBUG
     private func seedVisualTestingContentIfNeeded() {
+        guard let appModel = journalSession.appModel else { return }
         guard (try? appModel.repository.list(
             kind: nil,
             includeDeleted: false,
@@ -492,6 +481,29 @@ struct PilgrimJournalApp: App {
         }
     }
     #endif
+}
+
+private struct JournalSessionErrorView: View {
+    let message: String
+    let retry: () -> Void
+
+    var body: some View {
+        VStack(spacing: 14) {
+            Image(systemName: "externaldrive.badge.exclamationmark")
+                .font(.largeTitle)
+                .foregroundStyle(.orange)
+            Text("저장소를 열 수 없습니다")
+                .font(.headline)
+            Text(message)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.secondary)
+            Button("다시 시도", action: retry)
+                .buttonStyle(.borderedProminent)
+        }
+        .padding(32)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(JournalTheme.canvas)
+    }
 }
 
 private struct VisualTestingCloudIdentityChecker: CloudIdentityBindingChecking {
