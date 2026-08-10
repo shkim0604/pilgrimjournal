@@ -266,16 +266,17 @@ struct InlineEntryEditorView: View {
             }
         case .bibleStudy:
             TextField("성경 구절", text: optionalBinding(\.scriptureReference))
-                .textFieldStyle(.roundedBorder)
+                .journalMetadataField()
         case .reading:
             HStack {
                 TextField("책 제목", text: optionalBinding(\.bookTitle))
+                    .journalMetadataField()
                 TextField("저자", text: optionalBinding(\.bookAuthor))
+                    .journalMetadataField()
             }
-            .textFieldStyle(.roundedBorder)
         case .diary:
             TextField("오늘의 기분", text: optionalBinding(\.mood))
-                .textFieldStyle(.roundedBorder)
+                .journalMetadataField()
         case .memo:
             EmptyView()
         case .unclassified:
@@ -857,11 +858,15 @@ struct EntryEditorView: View {
                 "성경 구절",
                 text: optionalBinding(\.scriptureReference)
             )
+            .journalMetadataField()
         case .reading:
             TextField("책 제목", text: optionalBinding(\.bookTitle))
+                .journalMetadataField()
             TextField("저자", text: optionalBinding(\.bookAuthor))
+                .journalMetadataField()
         case .diary:
             TextField("기분", text: optionalBinding(\.mood))
+                .journalMetadataField()
         case .memo:
             EmptyView()
         case .unclassified:
@@ -1084,21 +1089,27 @@ struct TrashView: View {
     var body: some View {
         NavigationStack {
             List(model.trashEntries) { entry in
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(entry.title.isEmpty ? entry.kind.localizedName : entry.title)
-                            .font(.headline)
-                        if let deletedAt = entry.deletedAt {
-                            Text("삭제 \(deletedAt.formatted())")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
+                #if os(iOS)
+                VStack(alignment: .leading, spacing: 10) {
+                    trashEntryDescription(entry)
+                    Button {
+                        model.restoreFromTrash(entry)
+                    } label: {
+                        Label("복원", systemImage: "arrow.uturn.backward")
+                            .frame(maxWidth: .infinity)
                     }
+                    .buttonStyle(.bordered)
+                }
+                .padding(.vertical, 4)
+                #else
+                HStack {
+                    trashEntryDescription(entry)
                     Spacer()
                     Button("복원") {
                         model.restoreFromTrash(entry)
                     }
                 }
+                #endif
             }
             .overlay {
                 if model.trashEntries.isEmpty {
@@ -1107,10 +1118,29 @@ struct TrashView: View {
             }
             .navigationTitle("휴지통")
             .toolbar {
-                Button("닫기") { dismiss() }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("닫기") { dismiss() }
+                }
             }
         }
+        .onAppear { model.refreshTrash() }
+        #if os(macOS)
         .frame(minWidth: 460, minHeight: 420)
+        #endif
+    }
+
+    @ViewBuilder
+    private func trashEntryDescription(_ entry: JournalEntryRecord) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(entry.title.isEmpty ? entry.kind.localizedName : entry.title)
+                .font(.headline)
+                .lineLimit(2)
+            if let deletedAt = entry.deletedAt {
+                Text("삭제 \(deletedAt.formatted())")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
     }
 }
 

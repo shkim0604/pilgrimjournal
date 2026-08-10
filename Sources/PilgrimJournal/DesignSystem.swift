@@ -153,6 +153,27 @@ extension View {
     ) -> some View {
         modifier(JournalFocusStyle(cornerRadius: cornerRadius))
     }
+
+    func journalMetadataField() -> some View {
+        textFieldStyle(.plain)
+            .foregroundStyle(JournalTheme.ink)
+            .padding(.horizontal, JournalTheme.Spacing.medium)
+            .padding(.vertical, 9)
+            .background(
+                JournalTheme.surfaceMuted,
+                in: RoundedRectangle(
+                    cornerRadius: JournalTheme.Radius.small,
+                    style: .continuous
+                )
+            )
+            .overlay {
+                RoundedRectangle(
+                    cornerRadius: JournalTheme.Radius.small,
+                    style: .continuous
+                )
+                .stroke(JournalTheme.separator.opacity(0.7), lineWidth: 1)
+            }
+    }
 }
 
 struct MetadataChip<Label: View>: View {
