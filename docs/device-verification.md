@@ -155,6 +155,10 @@ in-memory 기준이고, 실기기 CloudKit queue와 iPhone 응답성은 별개�
 
 ### D-2. 입력 반응성 — task 6.4
 
+**미해결 재발 버그가 걸려 있는 항목이다.** 편집기 입력이 씹히는 문제가 build 12
+에서 다시 나타났다. 증상·유력 원인·확인 절차는 `docs/known-issues.md`에 있다.
+여기서 그 확인 절차를 수행한다.
+
 긴 기록(수천 자)에서 typing, scroll, live Markdown, autosave에 hitch가 없는지
 Instruments로 확인한다.
 

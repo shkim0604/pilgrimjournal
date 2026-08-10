@@ -75,6 +75,9 @@ CloudKit production schema는 additive-only 정책으로 관리한다. 개발 co
 
 ### 절차
 
+0. **`docs/known-issues.md`의 릴리스 게이트를 먼저 통과한다.** 편집기 입력이
+   씹히는 문제가 반복해서 되살아나고 있고, 자동화 테스트가 잡지 못한다.
+   긴 기록에서 Release 빌드로 타이핑을 확인하지 않은 채 올리지 않는다.
 1. 빌드 번호를 올린다. `PilgrimJournal.xcodeproj`의 `CURRENT_PROJECT_VERSION`
    두 곳(Debug·Release)을 함께 바꾸고 `build: bump TestFlight build to N`으로
    커밋한다.
