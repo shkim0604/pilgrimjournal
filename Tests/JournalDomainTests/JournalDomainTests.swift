@@ -32,6 +32,29 @@ final class JournalDomainTests: XCTestCase {
         XCTAssertEqual(first, second)
     }
 
+    func testNotebookAssignmentIsSeparateFromVisibleTags() {
+        var draft = JournalEntryDraft(
+            kind: .diary,
+            body: "본문",
+            tags: ["개인", "기도"]
+        )
+
+        draft.notebookName = "  여름 묵상  "
+
+        XCTAssertEqual(draft.notebookName, "여름 묵상")
+        XCTAssertEqual(draft.visibleTags, ["개인", "기도"])
+
+        draft.notebookName = "독서 모임"
+        XCTAssertEqual(draft.notebookName, "독서 모임")
+        XCTAssertEqual(draft.visibleTags, ["개인", "기도"])
+        XCTAssertEqual(
+            draft.tags.compactMap { tag in
+                NotebookTagCodec.notebookName(in: [tag])
+            },
+            ["독서 모임"]
+        )
+    }
+
     func testClassificationUsesHighestPriorityAndDetectsConflict() {
         let engine = ClassificationEngine()
         let tagRule = ClassificationRuleRecord(

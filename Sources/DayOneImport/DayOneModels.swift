@@ -104,6 +104,21 @@ public struct DayOneImportPreview: Sendable {
         }
         return copy
     }
+
+    public func assigningNotebook(
+        _ name: String,
+        to sourceUUIDs: Set<String>
+    ) -> DayOneImportPreview {
+        guard let normalized = NotebookTagCodec.normalizedName(name) else { return self }
+        var copy = self
+        copy.items = items.map { item in
+            guard sourceUUIDs.contains(item.sourceUUID) else { return item }
+            var updated = item
+            updated.draft.notebookName = normalized
+            return updated
+        }
+        return copy
+    }
 }
 
 public enum DayOneImportOutcomeStatus: String, Sendable {

@@ -27,6 +27,8 @@ let package = Package(
                 .define("PILGRIM_SWIFTDATA", .when(platforms: [.iOS, .macOS])),
             ],
             linkerSettings: [
+                .linkedFramework("CloudKit"),
+                .linkedFramework("CryptoKit"),
                 .linkedFramework("Security"),
                 .linkedFramework("LocalAuthentication"),
             ]
@@ -54,7 +56,11 @@ let package = Package(
                 "JournalBackup",
             ],
             swiftSettings: [
+                .define("DEBUG", .when(configuration: .debug)),
                 .define("PILGRIM_SWIFTDATA", .when(platforms: [.iOS, .macOS])),
+            ],
+            linkerSettings: [
+                .linkedFramework("AuthenticationServices"),
             ]
         ),
         .executableTarget(

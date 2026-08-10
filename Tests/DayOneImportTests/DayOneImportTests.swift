@@ -6,6 +6,69 @@ import JournalDomain
 import XCTest
 
 final class DayOneImportTests: XCTestCase {
+    func testBatchNotebookAssignmentChangesOnlySelectedPreviewItems() {
+        let first = DayOnePreviewItem(
+            stableEntryID: UUID(),
+            sourceUUID: "selected-1",
+            draft: JournalEntryDraft(kind: .diary, body: "첫 기록", tags: ["기존"]),
+            rawJSON: Data(),
+            classification: ClassificationDecision(
+                kind: .diary,
+                ruleID: nil,
+                isConflict: false
+            ),
+            attachments: [],
+            warnings: []
+        )
+        let second = DayOnePreviewItem(
+            stableEntryID: UUID(),
+            sourceUUID: "selected-2",
+            draft: JournalEntryDraft(kind: .prayer, body: "둘째 기록"),
+            rawJSON: Data(),
+            classification: ClassificationDecision(
+                kind: .prayer,
+                ruleID: nil,
+                isConflict: false
+            ),
+            attachments: [],
+            warnings: []
+        )
+        let unselected = DayOnePreviewItem(
+            stableEntryID: UUID(),
+            sourceUUID: "unselected",
+            draft: JournalEntryDraft(kind: .reading, body: "남은 기록"),
+            rawJSON: Data(),
+            classification: ClassificationDecision(
+                kind: .reading,
+                ruleID: nil,
+                isConflict: false
+            ),
+            attachments: [],
+            warnings: []
+        )
+        let preview = DayOneImportPreview(
+            archiveURL: URL(fileURLWithPath: "/tmp/fixture.zip"),
+            archiveFingerprint: "fixture",
+            exportVersion: "1.0",
+            JSONDisplayName: "fixture.json",
+            items: [first, second, unselected],
+            duplicateSourceUUIDs: [],
+            optionalFieldCounts: [:],
+            missingAttachmentCount: 0,
+            warnings: []
+        )
+
+        let updated = preview.assigningNotebook(
+            "가져온 일기",
+            to: ["selected-1", "selected-2"]
+        )
+
+        XCTAssertEqual(updated.items[0].draft.notebookName, "가져온 일기")
+        XCTAssertEqual(updated.items[0].draft.visibleTags, ["기존"])
+        XCTAssertEqual(updated.items[1].draft.notebookName, "가져온 일기")
+        XCTAssertNil(updated.items[2].draft.notebookName)
+    }
+
     func testAnalyzesAnonymousVersionOneSampleAndUsesText() throws {
         let url = FileManager.default.temporaryDirectory
             .appending(path: "\(UUID().uuidString).zip")
