@@ -189,29 +189,31 @@ public struct JournalRestoreExecutor {
         deviceID: String,
         at date: Date = .now
     ) throws -> RestoreResult {
-        try repository.saveRestoreEpoch(
-            RestoreEpochRecord(createdAt: date, mode: plan.mode)
-        )
-        for id in plan.tombstoneIDs {
-            try repository.moveToTrash(entryID: id, deviceID: deviceID, at: date)
-        }
-        for entry in plan.upserts {
-            var draft = entry.draft
-            draft.id = entry.id
-            _ = try repository.save(draft, deviceID: deviceID, at: date)
-        }
-        for revision in contents.revisions {
-            try repository.importRevision(revision)
-        }
-        for rule in contents.rules {
-            try repository.saveClassificationRule(rule)
-        }
-        if let attachmentRepository = repository as? any AttachmentRepository {
-            for attachment in contents.attachments {
-                try attachmentRepository.saveAttachment(
-                    attachment.record,
-                    binary: attachment.binary
-                )
+        try repository.performRestoreTransaction {
+            try repository.saveRestoreEpoch(
+                RestoreEpochRecord(createdAt: date, mode: plan.mode)
+            )
+            for id in plan.tombstoneIDs {
+                try repository.moveToTrash(entryID: id, deviceID: deviceID, at: date)
+            }
+            for entry in plan.upserts {
+                var draft = entry.draft
+                draft.id = entry.id
+                _ = try repository.save(draft, deviceID: deviceID, at: date)
+            }
+            for revision in contents.revisions {
+                try repository.importRevision(revision)
+            }
+            for rule in contents.rules {
+                try repository.saveClassificationRule(rule)
+            }
+            if let attachmentRepository = repository as? any AttachmentRepository {
+                for attachment in contents.attachments {
+                    try attachmentRepository.saveAttachment(
+                        attachment.record,
+                        binary: attachment.binary
+                    )
+                }
             }
         }
         return RestoreResult(

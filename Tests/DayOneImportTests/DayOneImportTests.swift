@@ -596,5 +596,68 @@ final class DayOneImportTests: XCTestCase {
             1
         )
     }
+
+    @MainActor
+    func testLargeArchivePerformanceProgressAndCancellation() async throws {
+        let url = FileManager.default.temporaryDirectory
+            .appending(path: "\(UUID().uuidString)-large.zip")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let entries: [[String: Any]] = (0..<5_000).map { value in
+            [
+                "uuid": "large-fixture-\(value)",
+                "text": "대량 가져오기 성능 검증 본문 \(value)",
+                "creationDate": "2026-01-01T01:00:00Z",
+                "tags": ["합성", "묶음-\(value % 10)"],
+            ]
+        }
+        let rawJSON = try JSONSerialization.data(withJSONObject: [
+            "metadata": ["version": "1.0"],
+            "entries": entries,
+        ])
+        try TestZipFactory.make(
+            items: [TestZipFactory.Item(
+                name: "large.json",
+                data: rawJSON,
+                deflated: true
+            )],
+            at: url
+        )
+
+        let analyzeStarted = ContinuousClock.now
+        let preview = try DayOneArchiveAnalyzer().analyze(archiveURL: url)
+        let analyzeDuration = analyzeStarted.duration(to: .now)
+        let archiveSize = try XCTUnwrap(
+            url.resourceValues(forKeys: [.fileSizeKey]).fileSize
+        )
+
+        XCTAssertEqual(preview.items.count, 5_000)
+        XCTAssertLessThan(analyzeDuration, .seconds(15))
+        XCTAssertLessThan(archiveSize, rawJSON.count)
+
+        let repository = InMemoryJournalRepository()
+        var keepGoing = true
+        var progress: [Int] = []
+        let result = await DayOneImportExecutor().execute(
+            preview: preview,
+            repository: repository,
+            deviceID: "performance-test",
+            batchSize: 50
+        ) { _ in
+        } onProgress: { completed, total in
+            XCTAssertEqual(total, 5_000)
+            progress.append(completed)
+            if completed == 250 { keepGoing = false }
+        } shouldContinue: {
+            keepGoing
+        }
+
+        XCTAssertEqual(result.succeeded, 250)
+        XCTAssertEqual(progress, Array(1...250))
+        XCTAssertTrue(result.warnings.contains { $0.contains("취소") })
+        XCTAssertEqual(
+            try repository.list(kind: nil, includeDeleted: false, limit: 10_000).count,
+            250
+        )
+    }
 }
 #endif
