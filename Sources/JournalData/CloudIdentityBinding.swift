@@ -1,6 +1,33 @@
 import CloudKit
 import CryptoKit
 import Foundation
+#if os(macOS)
+import Security
+#endif
+
+public enum CloudKitEntitlement {
+    /// `CKContainer(identifier:)` terminates the process when the requested
+    /// container is absent from the current code signature. Check the signed
+    /// entitlement first so local and ad-hoc builds can safely run offline.
+    public static func includes(containerIdentifier: String) -> Bool {
+        #if os(macOS)
+        guard let task = SecTaskCreateFromSelf(nil),
+              let value = SecTaskCopyValueForEntitlement(
+                  task,
+                  "com.apple.developer.icloud-container-identifiers" as CFString,
+                  nil
+              ),
+              let identifiers = value as? [String] else {
+            return false
+        }
+        return identifiers.contains(containerIdentifier)
+        #else
+        // iOS does not expose SecTask entitlement inspection to applications.
+        // Distribution and development builds use the checked-in entitlement.
+        return true
+        #endif
+    }
+}
 
 public enum CloudIdentityBindingResult: Equatable, Sendable {
     case matched

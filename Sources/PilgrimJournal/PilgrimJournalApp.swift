@@ -35,6 +35,13 @@ struct PilgrimJournalApp: App {
     }
 
     init() {
+        let requestedCloudIdentifier = ProcessInfo.processInfo.environment[
+            "PILGRIM_CLOUDKIT_CONTAINER"
+        ] ?? Self.cloudKitContainerIdentifier
+        let cloudKitEnabled = !Self.isVisualTesting
+            && CloudKitEntitlement.includes(
+                containerIdentifier: requestedCloudIdentifier
+            )
         let appLock = Self.isVisualTesting
             ? AppLockCoordinator(
                 service: AppLockService(store: InMemorySecureValueStore())
@@ -44,10 +51,12 @@ struct PilgrimJournalApp: App {
         let cloudIdentityChecker: any CloudIdentityBindingChecking
         if Self.isVisualTesting {
             cloudIdentityChecker = VisualTestingCloudIdentityChecker()
+        } else if !cloudKitEnabled {
+            cloudIdentityChecker = OfflineCloudIdentityChecker()
         } else {
             cloudIdentityChecker = CloudIdentityBindingService(
                 store: CloudKitIdentityBindingStore(
-                    containerIdentifier: Self.cloudKitContainerIdentifier
+                    containerIdentifier: requestedCloudIdentifier
                 )
             )
         }
@@ -59,12 +68,11 @@ struct PilgrimJournalApp: App {
         )
         do {
             #if PILGRIM_SWIFTDATA
-            let cloudIdentifier = ProcessInfo.processInfo.environment[
-                "PILGRIM_CLOUDKIT_CONTAINER"
-            ] ?? Self.cloudKitContainerIdentifier
             let container = try JournalContainerFactory.make(
                 inMemory: Self.isVisualTesting,
-                cloudKitContainerIdentifier: Self.isVisualTesting ? nil : cloudIdentifier
+                cloudKitContainerIdentifier: cloudKitEnabled
+                    ? requestedCloudIdentifier
+                    : nil
             )
             let paths = try Self.isVisualTesting
                 ? JournalPaths(
@@ -84,12 +92,15 @@ struct PilgrimJournalApp: App {
                 importStore: LocalImportStore(container: container),
                 searchIndex: searchIndex,
                 paths: paths,
-                cloudAccountMonitor: Self.isVisualTesting
+                cloudAccountMonitor: !cloudKitEnabled
                     ? nil
-                    : CloudAccountMonitor(containerIdentifier: cloudIdentifier),
+                    : CloudAccountMonitor(
+                        containerIdentifier: requestedCloudIdentifier
+                    ),
                 notebookDefaults: Self.isVisualTesting
                     ? (UserDefaults(suiteName: "PilgrimJournalVisualTesting") ?? .standard)
-                    : .standard
+                    : .standard,
+                notebookCloudStore: cloudKitEnabled ? .default : nil
             ))
             #else
             let paths = try JournalPaths.applicationDefault()
@@ -169,6 +180,14 @@ struct PilgrimJournalApp: App {
                     await authentication.refreshCloudIdentityBinding()
                     await appModel.refreshCloudAccountState()
                 }
+            }
+            .onReceive(
+                NotificationCenter.default.publisher(
+                    for: NSUbiquitousKeyValueStore.didChangeExternallyNotification
+                )
+            ) { _ in
+                appModel.refreshNotebookCatalog()
+                appModel.refresh()
             }
             .onReceive(
                 NotificationCenter.default.publisher(
@@ -374,6 +393,7 @@ struct PilgrimJournalApp: App {
             seedVisualTestingContentIfNeeded()
         }
         #endif
+        appModel.refreshNotebookCatalog()
         appModel.refresh()
     }
 
@@ -479,6 +499,14 @@ private struct VisualTestingCloudIdentityChecker: CloudIdentityBindingChecking {
         userIdentifier: String
     ) async -> CloudIdentityBindingResult {
         .matched
+    }
+}
+
+private struct OfflineCloudIdentityChecker: CloudIdentityBindingChecking {
+    func verifyOrBind(
+        userIdentifier: String
+    ) async -> CloudIdentityBindingResult {
+        .unavailable(reason: "이 빌드에는 iCloud 권한이 없어 로컬 모드로 실행합니다.")
     }
 }
 

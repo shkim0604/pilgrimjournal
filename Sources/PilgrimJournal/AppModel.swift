@@ -41,6 +41,7 @@ final class AppModel: ObservableObject {
     @Published var searchStartDate: Date?
     @Published var searchEndDate: Date?
     @Published var syncState: SyncState
+    @Published private(set) var isRefreshingSynchronization = false
     @Published var errorMessage: String?
     @Published var selectedEntryID: UUID?
     @Published var editorSessionID = UUID()
@@ -87,6 +88,7 @@ final class AppModel: ObservableObject {
     private let cloudAccountMonitor: CloudAccountMonitor?
     private let searchCoordinator: SearchIndexCoordinator
     private let notebookDefaults: UserDefaults
+    private let notebookCloudStore: NSUbiquitousKeyValueStore?
     private var dayOneTask: Task<Void, Never>?
 
     private static let notebookDefaultsKey = "journal-notebooks"
@@ -97,7 +99,8 @@ final class AppModel: ObservableObject {
         searchIndex: JournalSearchIndex,
         paths: JournalPaths,
         cloudAccountMonitor: CloudAccountMonitor?,
-        notebookDefaults: UserDefaults = .standard
+        notebookDefaults: UserDefaults = .standard,
+        notebookCloudStore: NSUbiquitousKeyValueStore? = nil
     ) {
         self.repository = repository
         self.importStore = importStore
@@ -105,8 +108,14 @@ final class AppModel: ObservableObject {
         self.paths = paths
         self.cloudAccountMonitor = cloudAccountMonitor
         self.notebookDefaults = notebookDefaults
+        self.notebookCloudStore = notebookCloudStore
         searchCoordinator = SearchIndexCoordinator(index: searchIndex)
-        notebooks = notebookDefaults.stringArray(forKey: Self.notebookDefaultsKey) ?? []
+        notebookCloudStore?.synchronize()
+        notebooks = Self.mergedNotebookNames(
+            notebookDefaults.stringArray(forKey: Self.notebookDefaultsKey) ?? [],
+            notebookCloudStore?.array(forKey: Self.notebookDefaultsKey)
+                as? [String] ?? []
+        )
         syncState = cloudAccountMonitor == nil ? .localOnly : .pending
         if let existing = UserDefaults.standard.string(forKey: "device-id") {
             deviceID = existing
@@ -123,6 +132,18 @@ final class AppModel: ObservableObject {
             return
         }
         syncState = await cloudAccountMonitor.currentState()
+    }
+
+    func refreshSynchronization() async {
+        guard !isRefreshingSynchronization else { return }
+        isRefreshingSynchronization = true
+        defer { isRefreshingSynchronization = false }
+
+        await refreshCloudAccountState()
+        refreshNotebookCatalog()
+        rebuildSearchIndex()
+        refreshTrash()
+        refresh()
     }
 
     func handleCloudSyncStoreEvent(_ event: CloudSyncStoreEvent) {
@@ -187,6 +208,7 @@ final class AppModel: ObservableObject {
     #endif
 
     func refresh() {
+        mergeNotebookCatalogFromCloud()
         do {
             let needsSearchIndex = !searchText
                 .trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -222,6 +244,25 @@ final class AppModel: ObservableObject {
                     $0.notebookName?.caseInsensitiveCompare(selectedNotebookName) == .orderedSame
                 }
             }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func refreshNotebookCatalog() {
+        mergeNotebookCatalogFromCloud()
+        do {
+            var cursor: JournalTimelineCursor?
+            repeat {
+                let page = try repository.page(
+                    kind: nil,
+                    includeDeleted: false,
+                    after: cursor,
+                    limit: 500
+                )
+                refreshNotebookCatalog(from: page.entries)
+                cursor = page.nextCursor
+            } while cursor != nil
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -859,6 +900,37 @@ final class AppModel: ObservableObject {
 
     private func persistNotebookCatalog() {
         notebookDefaults.set(notebooks, forKey: Self.notebookDefaultsKey)
+        notebookCloudStore?.set(notebooks, forKey: Self.notebookDefaultsKey)
+        notebookCloudStore?.synchronize()
+    }
+
+    private func mergeNotebookCatalogFromCloud() {
+        guard let notebookCloudStore else { return }
+        notebookCloudStore.synchronize()
+        let merged = Self.mergedNotebookNames(
+            notebooks,
+            notebookCloudStore.array(forKey: Self.notebookDefaultsKey)
+                as? [String] ?? []
+        )
+        guard merged != notebooks else { return }
+        notebooks = merged
+        persistNotebookCatalog()
+    }
+
+    private static func mergedNotebookNames(
+        _ collections: [String]...
+    ) -> [String] {
+        var result: [String] = []
+        for name in collections.joined() {
+            guard let normalized = NotebookTagCodec.normalizedName(name),
+                  !result.contains(where: {
+                      $0.caseInsensitiveCompare(normalized) == .orderedSame
+                  }) else { continue }
+            result.append(normalized)
+        }
+        return result.sorted {
+            $0.localizedStandardCompare($1) == .orderedAscending
+        }
     }
 
     private func updateTag(

@@ -99,6 +99,49 @@ final class AppModelNavigationTests: XCTestCase {
     }
 
     @MainActor
+    func testManualSynchronizationRefreshReloadsEntriesAndTrash() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(
+            path: "pilgrim-manual-sync-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+        let paths = JournalPaths(root: root)
+        try paths.prepare()
+        let repository = InMemoryJournalRepository()
+        let model = try AppModel(
+            repository: repository,
+            importStore: InMemoryImportStore(),
+            searchIndex: JournalSearchIndex(
+                url: paths.search.appending(path: "manual-sync.sqlite")
+            ),
+            paths: paths,
+            cloudAccountMonitor: nil
+        )
+        let visible = try repository.save(
+            JournalEntryDraft(kind: .memo, title: "새로 받은 메모"),
+            deviceID: "remote-device",
+            at: .now
+        )
+        let deleted = try repository.save(
+            JournalEntryDraft(kind: .diary, title: "삭제된 기록"),
+            deviceID: "remote-device",
+            at: .now
+        )
+        try repository.moveToTrash(
+            entryID: deleted.id,
+            deviceID: "remote-device",
+            at: .now
+        )
+
+        await model.refreshSynchronization()
+
+        XCTAssertEqual(model.entries.map(\.id), [visible.id])
+        XCTAssertEqual(model.trashEntries.map(\.id), [deleted.id])
+        XCTAssertEqual(model.syncState, .localOnly)
+        XCTAssertFalse(model.isRefreshingSynchronization)
+    }
+
+    @MainActor
     func testNewEntryCapturesCurrentlySelectedNotebook() throws {
         let root = FileManager.default.temporaryDirectory.appending(
             path: "pilgrim-new-entry-notebook-\(UUID().uuidString)",
@@ -322,6 +365,63 @@ final class AppModelNavigationTests: XCTestCase {
         XCTAssertEqual(model.entries.map(\.id), [notebookEntry.id])
         XCTAssertEqual(model.selectedNotebookName, "여행")
         XCTAssertEqual(defaults.stringArray(forKey: "journal-notebooks"), ["여행"])
+    }
+
+    @MainActor
+    func testNotebookCatalogRecoversNamesBeyondInitialTimelineLimit() throws {
+        let identifier = "pilgrim-notebook-recovery-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: identifier))
+        defer { defaults.removePersistentDomain(forName: identifier) }
+        let root = FileManager.default.temporaryDirectory.appending(
+            path: "pilgrim-notebook-recovery-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+        let paths = JournalPaths(root: root)
+        try paths.prepare()
+        let repository = InMemoryJournalRepository()
+
+        var archivedDraft = JournalEntryDraft(
+            kind: .diary,
+            title: "오래된 노트북 기록",
+            occurredAt: Date(timeIntervalSince1970: 0)
+        )
+        archivedDraft.notebookName = "보관함"
+        _ = try repository.save(
+            archivedDraft,
+            deviceID: "test-device",
+            at: Date(timeIntervalSince1970: 0)
+        )
+        for index in 1...500 {
+            _ = try repository.save(
+                JournalEntryDraft(
+                    kind: .memo,
+                    title: "최근 기록 \(index)",
+                    occurredAt: Date(timeIntervalSince1970: TimeInterval(index))
+                ),
+                deviceID: "test-device",
+                at: Date(timeIntervalSince1970: TimeInterval(index))
+            )
+        }
+
+        let model = try AppModel(
+            repository: repository,
+            importStore: InMemoryImportStore(),
+            searchIndex: JournalSearchIndex(
+                url: paths.search.appending(path: "notebook-recovery.sqlite")
+            ),
+            paths: paths,
+            cloudAccountMonitor: nil,
+            notebookDefaults: defaults
+        )
+
+        model.refresh()
+        XCTAssertFalse(model.notebooks.contains("보관함"))
+
+        model.refreshNotebookCatalog()
+
+        XCTAssertEqual(model.notebooks, ["보관함"])
+        XCTAssertEqual(defaults.stringArray(forKey: "journal-notebooks"), ["보관함"])
     }
 
     @MainActor
