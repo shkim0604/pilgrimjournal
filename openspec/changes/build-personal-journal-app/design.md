@@ -11,11 +11,11 @@ Day One 가져오기는 파일 선택과 대용량 ZIP 처리가 편한 Mac에�
 **Goals:**
 
 - 하나의 SwiftUI 멀티플랫폼 프로젝트로 macOS와 iPhone 앱을 제공한다.
-- 이름·이메일을 수집하지 않는 Sign in with Apple로 앱 접근을 인증하고 권한 철회와 로그아웃을 안전하게 처리한다.
+- 이름을 수집하지 않는 Sign in with Apple로 앱 접근을 인증하고 권한 철회와 로그아웃을 안전하게 처리한다. 계정 표시용 이메일은 Apple이 제공한 경우에만 기기 Keychain에 보관한다.
 - 각 기기에서 로컬 우선으로 생성·편집·검색하고 같은 iCloud 계정에서 자동 동기화한다.
 - 동시 편집과 삭제 충돌을 결정적으로 수렴시키고 이전 내용을 복구 가능한 버전으로 남긴다.
 - Day One export v1.0 ZIP을 Mac에서 안전하고 반복 가능한 방식으로 가져온다.
-- 기도노트·성경공부·독서노트·일기를 두 기기에서 일관되게 제공한다.
+- 기도노트·성경공부·독서노트·일기·메모를 두 기기에서 일관되게 제공한다.
 - 한국어 검색을 포함한 검색 인덱스는 기기마다 로컬에서 재구축 가능하게 유지한다.
 - 저장 엔진과 무관한 버전 백업으로 전체 데이터를 이동하고 복원할 수 있게 한다.
 
@@ -39,7 +39,7 @@ Flutter도 두 플랫폼을 지원하지만 CloudKit, background notification, i
 
 ### 2. Sign in with Apple 접근 인증과 CloudKit 계정의 분리
 
-두 플랫폼은 AuthenticationServices의 네이티브 Apple 로그인 화면을 앱 shell보다 먼저 표시한다. authorization request에는 이름·이메일 scope를 넣지 않고 성공 credential의 opaque `user` 식별자만 기기 Keychain에 저장한다. 앱 시작 시 `ASAuthorizationAppleIDProvider`로 credential state를 확인해 `authorized`이면 진입하고 `revoked` 또는 `notFound`이면 session을 지운 뒤 로그인 화면으로 돌아간다. credential revoked notification도 같은 전환을 수행한다.
+두 플랫폼은 AuthenticationServices의 네이티브 Apple 로그인 화면을 앱 shell보다 먼저 표시한다. authorization request에는 이름 scope를 넣지 않고 계정 표시를 위한 이메일 scope만 요청한다. 성공 credential의 opaque `user` 식별자는 필수로 기기 Keychain에 저장하고, Apple이 이메일을 제공한 경우에는 해당 이메일도 표시 목적으로 같은 기기 Keychain session에 저장한다. Apple이 재로그인에서 이메일을 다시 제공하지 않으면 기존에 저장한 이메일을 유지하고, 저장된 이메일이 없으면 opaque 식별자를 계정 표시에 사용한다. 이메일과 원본 사용자 식별자는 CloudKit에 저장하지 않는다. 앱 시작 시 `ASAuthorizationAppleIDProvider`로 credential state를 확인해 `authorized`이면 진입하고 `revoked` 또는 `notFound`이면 session을 지운 뒤 로그인 화면으로 돌아간다. credential revoked notification도 같은 전환을 수행한다.
 
 이 앱은 자체 계정 서버가 없으므로 Apple identity token을 서버 session으로 교환하지 않는다. 일시적인 네트워크 오류로 credential state를 확인할 수 없을 때는 마지막으로 승인된 Keychain session으로 오프라인 로컬 접근을 유지하고 연결 후 다시 확인한다. 로그아웃은 인증 session만 제거하며 journal 데이터는 삭제하지 않는다.
 
@@ -140,7 +140,7 @@ Mac 앱은 canonical record와 revision을 JSON Lines, 첨부를 별도 파일, 
 
 ### 10. 개인 정보와 운영 경계
 
-CloudKit private database는 같은 시스템 iCloud 계정의 사용자 데이터에 사용하고 public/shared database는 사용하지 않는다. Sign in with Apple은 접근 인증에만 사용하며 이메일·이름을 수집하지 않고 identity token이나 기록을 자체 서버로 전송하지 않는다. 분석과 광고도 포함하지 않는다. 동기화를 활성화하면 데이터가 iCloud에 저장되고 사용자의 iCloud 용량을 사용한다는 사실과, 인증 후에는 iCloud 없이도 local-only로 사용할 수 있다는 사실을 onboarding에 명확히 알린다.
+CloudKit private database는 같은 시스템 iCloud 계정의 사용자 데이터에 사용하고 public/shared database는 사용하지 않는다. Sign in with Apple은 접근 인증에만 사용하며 이름은 수집하지 않는다. 계정 표시용 이메일은 Apple이 제공한 경우 기기 Keychain에만 보관하고 CloudKit·백업·로그에는 포함하지 않으며, identity token이나 기록을 자체 서버로 전송하지 않는다. 분석과 광고도 포함하지 않는다. 동기화를 활성화하면 데이터가 iCloud에 저장되고 사용자의 iCloud 용량을 사용한다는 사실과, 인증 후에는 iCloud 없이도 local-only로 사용할 수 있다는 사실을 onboarding에 명확히 알린다.
 
 기기 로컬 파일은 OS data protection과 sandbox에 맡긴다. 별도 데이터 암호화 키와 암호화 백업은 후속 보안 변경으로 다룬다.
 

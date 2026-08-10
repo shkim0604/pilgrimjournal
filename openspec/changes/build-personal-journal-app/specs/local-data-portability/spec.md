@@ -12,15 +12,19 @@ macOS와 iPhone 앱은 기록 생성·편집·검색에 네트워크 연결을 �
 - **THEN** 이미 Apple 로그인을 완료한 사용자는 로컬 핵심 기능을 유지하고 동기화가 비활성임을 명확히 확인한다
 
 ### Requirement: Sign in with Apple 접근 인증
-앱은 별도 이메일·비밀번호 계정 없이 `Sign in with Apple`을 사용해 기록 화면 접근을 인증해야 한다(MUST). 앱은 Apple ID 비밀번호·이름·이메일 scope를 요청하거나 저장해서는 안 되며(MUST NOT), Apple이 발급한 opaque 사용자 식별자만 기기 Keychain에 저장해야 한다(MUST).
+앱은 별도 이메일·비밀번호 계정 없이 `Sign in with Apple`을 사용해 기록 화면 접근을 인증해야 한다(MUST). 앱은 Apple ID 비밀번호와 이름 scope를 요청하거나 저장해서는 안 되며(MUST NOT), 계정 표시를 위해 이메일 scope를 요청해야 한다(MUST). Apple이 발급한 opaque 사용자 식별자는 기기 Keychain에 저장해야 하며(MUST), Apple이 이메일을 제공한 경우 해당 이메일을 계정 표시 목적으로만 기기 Keychain에 저장할 수 있고(MAY) CloudKit·백업·로그에는 포함해서는 안 된다(MUST NOT).
 
 #### Scenario: 첫 실행 Apple 로그인
 - **WHEN** 사용자가 앱을 처음 실행한다
 - **THEN** 시스템은 기록 제목·본문·검색 결과를 표시하기 전에 네이티브 Apple 로그인 버튼을 제공하고 인증 성공 후에만 앱 shell을 연다
 
-#### Scenario: 인증 정보 최소 수집
+#### Scenario: 인증 정보 최소 수집과 계정 표시
 - **WHEN** 앱이 Apple 로그인 authorization request를 만든다
-- **THEN** 시스템은 이름과 이메일 scope를 요청하지 않고 credential의 opaque 사용자 식별자만 저장한다
+- **THEN** 시스템은 이름 scope 없이 이메일 scope만 요청하고 credential의 opaque 사용자 식별자를 저장하며, Apple이 이메일을 제공한 경우에만 해당 이메일을 기기 Keychain session에 저장한다
+
+#### Scenario: 재로그인에서 이메일을 다시 제공하지 않음
+- **WHEN** Apple이 재로그인 credential에 이메일을 포함하지 않는다
+- **THEN** 시스템은 기존 Keychain 이메일이 있으면 유지하고 없으면 opaque 사용자 식별자를 계정 표시에 사용하며 로그인을 실패시키지 않는다
 
 #### Scenario: 승인된 사용자의 재실행
 - **WHEN** Keychain에 저장된 사용자 식별자의 credential state가 authorized이다

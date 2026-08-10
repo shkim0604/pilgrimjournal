@@ -6,7 +6,7 @@
 - [x] 1.4 개발용 Apple team, bundle identifier, iCloud container identifier와 Debug·Release signing 구성을 문서화한다
 - [x] 1.5 iOS·macOS target에 iCloud CloudKit과 Background Modes remote notification capability를 설정한다
 - [x] 1.6 공통 오류, 기록 유형, 동기화 상태와 플랫폼별 file·menu service protocol을 정의한다
-- [x] 1.7 로컬 실행 가능한 기본 앱 shell과 네 유형·미분류·검색·설정 navigation을 두 플랫폼에 구현한다
+- [x] 1.7 로컬 실행 가능한 기본 앱 shell과 다섯 유형·미분류·검색·설정 navigation을 두 플랫폼에 구현한다
 
 ## 2. SwiftData·CloudKit 기술 검증
 
@@ -36,21 +36,21 @@
 - [x] 4.4 삭제 tombstone, 오래된 편집의 비부활과 명시적 복원 revision을 구현한다
 - [x] 4.5 iCloud account 상태, local saved, pending, synced, retryable error를 구분하는 상태 model을 구현한다
 - [x] 4.6 CloudKit remote change를 canonical UI와 search indexing queue에 전달하는 observer를 구현한다
-- [ ] 4.7 서로 다른 기록 편집, 같은 기록 동시 편집, 삭제·오래된 기기 연결과 복원 통합 테스트를 추가한다
+- [x] 4.7 서로 다른 기록 편집, 같은 기록 동시 편집, 삭제·오래된 기기 연결과 복원 통합 테스트를 추가한다
 - [ ] 4.8 Mac과 iPhone 실제 기기에서 비행기 모드 전환을 포함한 오프라인 수렴 시나리오를 검증한다
 - [x] 4.9 `CKContainer.accountStatus`와 계정 변경 알림을 관찰해 Apple 접근 인증과 별개로 시스템 iCloud 사용 가능 상태와 local-only fallback을 전환한다
-- [ ] 4.10 iCloud 계정별 persistent store·검색 인덱스·pending queue를 격리하고 local-only 기록의 명시적 이전 use case를 구현한다
+- [x] 4.10 iCloud 계정별 persistent store·검색 인덱스·pending queue를 격리하고 local-only 기록의 명시적 이전 use case를 구현한다
 
 ## 5. 기록 작성과 플랫폼 UI
 
-- [x] 5.1 네 유형의 기록 생성·조회·수정과 공통 필드 검증 use case를 구현한다
+- [x] 5.1 다섯 유형의 기록 생성·조회·수정과 공통 필드 검증 use case를 구현한다
 - [x] 5.2 기도 상태·응답일, 성경 구절, 책 제목·저자, 일기 기분의 유형별 payload와 검증을 구현한다
 - [x] 5.3 유형 변경 시 제거될 상세 정보를 미리 보여 주고 확인 후 새 revision으로 변환하는 명령을 구현한다
-- [ ] 5.4 Markdown 또는 plain text 본문, 날짜, 태그, 첨부와 유형별 입력을 제공하는 공유 편집 화면을 구현한다
+- [x] 5.4 Markdown 또는 plain text 본문, 날짜, 태그, 첨부와 유형별 입력을 제공하는 공유 편집 화면을 구현한다
 - [x] 5.5 iPhone touch·navigation과 macOS window·menu·keyboard shortcut에 맞는 플랫폼별 편집 interaction을 구현한다
 - [x] 5.6 저장하지 않은 이탈, 저장 오류, 유형 변경과 revision 이력·복원 UI를 구현한다
 - [x] 5.7 휴지통 목록, 삭제와 복원 UI를 두 플랫폼에 구현한다
-- [ ] 5.8 네 유형 생성·편집·유형 변경·revision·휴지통의 단위 및 UI 테스트를 추가한다
+- [ ] 5.8 다섯 유형 생성·편집·유형 변경·revision·휴지통의 단위 및 UI 테스트를 추가한다
 
 ## 6. 분류와 정리
 
@@ -60,8 +60,8 @@
 - [x] 6.4 선택 기록의 유형 변경과 태그 추가를 revision 단위로 처리하는 batch use case를 구현한다
 - [x] 6.5 유형별 timeline, 미분류 보관함, 다중 선택과 일괄 정리 화면을 두 플랫폼에 구현한다
 - [x] 6.6 태그 이름 변경·제거와 분류 규칙 관리 화면을 구현한다
-- [ ] 6.7 분류 규칙을 CloudKit으로 동기화하고 동시 규칙 편집을 결정적으로 수렴시킨다
-- [ ] 6.8 태그·템플릿 규칙, 충돌, 개별 예외, batch와 규칙 동기화 회귀 테스트를 추가한다
+- [x] 6.7 분류 규칙을 CloudKit으로 동기화하고 동시 규칙 편집을 결정적으로 수렴시킨다
+- [x] 6.8 태그·템플릿 규칙, 충돌, 개별 예외, batch와 규칙 동기화 회귀 테스트를 추가한다
 - [x] 6.9 사용자 노트북 추가·사이드바 탐색·기록 연결과 일반 태그 분리를 구현하고 테스트한다
 
 ## 7. Day One v1.0 분석과 미리보기
@@ -94,11 +94,11 @@
 ## 9. 첨부 파일 lifecycle
 
 - [x] 9.1 체크섬, MIME, 원본 이름과 entry ID를 가진 attachment 저장·연결 use case를 구현한다
-- [ ] 9.2 외부 저장 binary를 CloudKit asset으로 올리고 local pending·uploaded·failed 상태를 관리한다
-- [ ] 9.3 iPhone에서 attachment metadata를 먼저 표시하고 요청 시 binary를 내려받는 lazy loader를 구현한다
-- [ ] 9.4 attachment placeholder, 진행률, 재시도와 본문 독립 오류 UI를 구현한다
+- [x] 9.2 외부 저장 binary를 CloudKit asset으로 올리고 local pending·uploaded·failed 상태를 관리한다
+- [x] 9.3 iPhone에서 attachment metadata를 먼저 표시하고 요청 시 binary를 내려받는 lazy loader를 구현한다
+- [x] 9.4 attachment placeholder, 진행률, 재시도와 본문 독립 오류 UI를 구현한다
 - [x] 9.5 local 체크섬 deduplication과 reference가 남은 binary의 비삭제를 구현한다
-- [ ] 9.6 업로드·다운로드 실패, iCloud quota, 동일 checksum과 삭제 tombstone 통합 테스트를 추가한다
+- [x] 9.6 업로드·다운로드 실패, iCloud quota, 동일 checksum과 삭제 tombstone 통합 테스트를 추가한다
 
 ## 10. 검색과 타임라인
 
@@ -118,10 +118,10 @@
 - [x] 11.3 ZIP 안전성, format version, record schema와 모든 file checksum을 staging에서 검증하는 restore reader를 구현한다
 - [x] 11.4 안정 ID 신규 항목 추가와 revision conflict preview를 제공하는 merge restore를 구현한다
 - [x] 11.5 현재 안전 backup, RestoreEpoch, 누락 항목 tombstone과 restore revision을 사용하는 replace restore를 구현한다
-- [ ] 11.6 restore batch 실패 시 기존 상태 유지, 재시도와 안전 backup 복귀 경로를 구현한다
-- [ ] 11.7 backup·merge·replace 확인, 진행률, conflict와 오류를 제공하는 macOS 설정 UI를 구현한다
-- [ ] 11.8 canonical 참조, revision, attachment와 search token을 자동 삭제 없이 검사하는 integrity report를 구현한다
-- [ ] 11.9 backup 왕복, 손상 checksum, 비호환 version, merge conflict, replace 수렴과 rollback 통합 테스트를 추가한다
+- [x] 11.6 restore batch 실패 시 기존 상태 유지, 재시도와 안전 backup 복귀 경로를 구현한다
+- [x] 11.7 backup·merge·replace 확인, 진행률, conflict와 오류를 제공하는 macOS 설정 UI를 구현한다
+- [x] 11.8 canonical 참조, revision, attachment와 search token을 자동 삭제 없이 검사하는 integrity report를 구현한다
+- [x] 11.9 backup 왕복, 손상 checksum, 비호환 version, merge conflict, replace 수렴과 rollback 통합 테스트를 추가한다
 - [ ] 11.10 Mac replace 복원 결과가 오래 오프라인이던 iPhone 연결 후에도 유지되는 실제 기기 E2E 테스트를 수행한다
 
 ## 12. 개인정보, 접근성 및 출시 검증
@@ -130,7 +130,7 @@
 - [ ] 12.2 시스템 iCloud account 변경·로그아웃·재로그인에서 이전 계정·새 계정·local-only 데이터와 검색 인덱스가 섞이지 않는지 검증한다
 - [ ] 12.3 VoiceOver, Dynamic Type, keyboard navigation, contrast, 긴 한국어 본문과 작은 Mac window를 점검한다
 - [ ] 12.4 Mac·iPhone 오프라인 기록, 동기화, 가져오기, 첨부, 검색, backup·restore 전체 E2E를 실행한다
-- [ ] 12.5 대량 Day One ZIP의 memory·disk 한도, 진행률, 취소와 temporary file 정리를 성능 테스트한다
+- [x] 12.5 대량 Day One ZIP의 memory·disk 한도, 진행률, 취소와 temporary file 정리를 성능 테스트한다
 - [x] 12.6 Day One JSON ZIP 만드는 법, 첫 Mac 가져오기, iPhone 동기화, 오류와 backup·restore 사용자 문서를 작성한다
 - [ ] 12.7 production CloudKit schema 승격 전 additive migration rehearsal과 schema snapshot review를 완료한다
 - [ ] 12.8 macOS·iOS archive를 만들고 TestFlight 또는 등록 기기에서 설치·업데이트·데이터 보존을 smoke test한다
@@ -149,7 +149,7 @@
 - [x] 14.1 iOS·macOS target에 Sign in with Apple entitlement와 capability 설정을 추가하고 Developer Team 설정 절차를 문서화한다
 - [x] 14.2 opaque Apple 사용자 식별자와 마지막 승인 상태를 기기 Keychain에 저장하는 인증 session service를 구현한다
 - [x] 14.3 credential state 시작 검사, 일시 오류의 오프라인 fallback과 credential revoked notification을 처리하는 인증 coordinator를 구현한다
-- [x] 14.4 이름·이메일 scope 없이 네이티브 Apple 로그인 버튼을 제공하고 인증 전 journal UI를 가리는 공통 로그인 화면을 구현한다
+- [x] 14.4 이름 scope 없이 계정 표시용 이메일 scope를 요청하는 네이티브 Apple 로그인 버튼을 제공하고 인증 전 journal UI를 가리는 공통 로그인 화면을 구현한다
 - [x] 14.5 설정의 로그아웃 확인과 session 제거 후 로그인 화면 복귀를 구현한다
 - [x] 14.6 기존 로컬 데이터를 최초 Apple 사용자에게 귀속하고 다른 식별자의 데이터 접근·자동 병합을 차단한다
 - [ ] 14.7 로그인 성공·재실행·취소·실패·철회·오프라인·로그아웃·다른 사용자 차단 단위 및 UI 테스트를 추가한다
