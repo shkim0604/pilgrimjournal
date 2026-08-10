@@ -1,4 +1,5 @@
 #if canImport(XCTest)
+import AuthenticationServices
 import Foundation
 import JournalData
 @testable import PilgrimJournal
@@ -113,6 +114,42 @@ final class AppleAuthenticationCoordinatorTests: XCTestCase {
         XCTAssertEqual(coordinator.state, .signedOut)
         let session = try await service.session()
         XCTAssertNil(session.currentUserIdentifier)
+    }
+
+    @MainActor
+    func testCanceledSignInLeavesUserSignedOutWithoutAnError() async {
+        let coordinator = AppleAuthenticationCoordinator(
+            service: AppleAuthenticationSessionService(
+                store: InMemorySecureValueStore()
+            ),
+            credentialChecker: StubCredentialChecker(result: .success(.authorized))
+        )
+        await coordinator.bootstrap()
+        XCTAssertEqual(coordinator.state, .signedOut)
+
+        coordinator.handleSignInFailure(ASAuthorizationError(.canceled))
+
+        // Cancelling is a deliberate user action, not an error to report.
+        XCTAssertNil(coordinator.errorMessage)
+        XCTAssertEqual(coordinator.state, .signedOut)
+        XCTAssertFalse(coordinator.canAccessJournal)
+    }
+
+    @MainActor
+    func testFailedSignInSurfacesErrorAndKeepsJournalCovered() async {
+        let coordinator = AppleAuthenticationCoordinator(
+            service: AppleAuthenticationSessionService(
+                store: InMemorySecureValueStore()
+            ),
+            credentialChecker: StubCredentialChecker(result: .success(.authorized))
+        )
+        await coordinator.bootstrap()
+
+        coordinator.handleSignInFailure(ASAuthorizationError(.failed))
+
+        XCTAssertNotNil(coordinator.errorMessage)
+        XCTAssertEqual(coordinator.state, .signedOut)
+        XCTAssertFalse(coordinator.canAccessJournal)
     }
 
     @MainActor
