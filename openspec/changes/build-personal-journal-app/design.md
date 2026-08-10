@@ -4,13 +4,14 @@
 
 Day One 가져오기는 파일 선택과 대용량 ZIP 처리가 편한 Mac에서 수행하고 정규화된 기록을 iPhone으로 동기화한다. 제공된 실제 샘플은 정상적인 비암호화 ZIP 하나에 URL 인코딩된 JSON 파일 하나가 있으며, export version `1.0`, 최상위 `metadata`와 `entries`, 항목별 `text`와 JSON 문자열 `richText`, 시각·시간대·위치·날씨·즐겨찾기·고정·템플릿·기기 메타데이터를 포함한다. 이 샘플에는 태그와 미디어가 없으므로 해당 변형은 합성 fixture와 후속 샘플로 검증해야 한다.
 
-일기는 민감한 데이터다. 핵심 기능은 계정 서버 없이 로컬에서 동작해야 하며, 동기화할 때는 사용자의 CloudKit 개인 데이터베이스만 사용한다. CloudKit은 즉시 일관성이 아니라 최종 일관성을 제공하므로 충돌, 삭제 전파, 첨부 지연, 계정 부재와 할당량 오류를 앱의 정상 상태로 다뤄야 한다.
+일기는 민감한 데이터다. 기록 화면은 Sign in with Apple로 승인된 사용자에게만 열고, 핵심 기능은 자체 계정 서버 없이 로컬에서 동작해야 하며, 동기화할 때는 사용자의 CloudKit 개인 데이터베이스만 사용한다. CloudKit은 즉시 일관성이 아니라 최종 일관성을 제공하므로 충돌, 삭제 전파, 첨부 지연, 계정 부재와 할당량 오류를 앱의 정상 상태로 다뤄야 한다.
 
 ## Goals / Non-Goals
 
 **Goals:**
 
 - 하나의 SwiftUI 멀티플랫폼 프로젝트로 macOS와 iPhone 앱을 제공한다.
+- 이름·이메일을 수집하지 않는 Sign in with Apple로 앱 접근을 인증하고 권한 철회와 로그아웃을 안전하게 처리한다.
 - 각 기기에서 로컬 우선으로 생성·편집·검색하고 같은 iCloud 계정에서 자동 동기화한다.
 - 동시 편집과 삭제 충돌을 결정적으로 수렴시키고 이전 내용을 복구 가능한 버전으로 남긴다.
 - Day One export v1.0 ZIP을 Mac에서 안전하고 반복 가능한 방식으로 가져온다.
@@ -21,7 +22,7 @@ Day One 가져오기는 파일 선택과 대용량 ZIP 처리가 편한 Mac에�
 **Non-Goals:**
 
 - Windows, Android, 웹 클라이언트
-- 별도 회원가입, `Sign in with Apple`, 자체 동기화 서버, 여러 사용자 협업과 공유
+- 이메일·비밀번호 회원가입, 자체 인증·동기화 서버, 여러 사용자 협업과 공유
 - Day One 앱이나 비공개 API와의 실시간 양방향 동기화
 - iPhone에서 Day One 대용량 ZIP을 가져오는 기능
 - AI 요약·자동 감정 분석·자동 신앙 조언
@@ -36,11 +37,23 @@ Xcode의 SwiftUI 멀티플랫폼 앱 타깃으로 iOS와 macOS를 함께 구성�
 
 Flutter도 두 플랫폼을 지원하지만 CloudKit, background notification, iCloud entitlement, macOS 메뉴·창과 iOS 시스템 기능을 사용하려면 Dart와 Swift 사이의 plugin 또는 platform channel 계층이 추가된다. Android와 웹을 지원하지 않는 이 앱에서는 그 복잡성을 상쇄할 이점이 작으므로 Apple 네이티브 stack을 선택한다.
 
-### 2. SwiftData 로컬 저장과 CloudKit 자동 동기화
+### 2. Sign in with Apple 접근 인증과 CloudKit 계정의 분리
+
+두 플랫폼은 AuthenticationServices의 네이티브 Apple 로그인 화면을 앱 shell보다 먼저 표시한다. authorization request에는 이름·이메일 scope를 넣지 않고 성공 credential의 opaque `user` 식별자만 기기 Keychain에 저장한다. 앱 시작 시 `ASAuthorizationAppleIDProvider`로 credential state를 확인해 `authorized`이면 진입하고 `revoked` 또는 `notFound`이면 session을 지운 뒤 로그인 화면으로 돌아간다. credential revoked notification도 같은 전환을 수행한다.
+
+이 앱은 자체 계정 서버가 없으므로 Apple identity token을 서버 session으로 교환하지 않는다. 일시적인 네트워크 오류로 credential state를 확인할 수 없을 때는 마지막으로 승인된 Keychain session으로 오프라인 로컬 접근을 유지하고 연결 후 다시 확인한다. 로그아웃은 인증 session만 제거하며 journal 데이터는 삭제하지 않는다.
+
+업데이트 전에 생성된 기존 로컬 데이터는 해당 설치에서 처음 로그인한 Apple 사용자 식별자에 귀속한다. 다른 식별자가 로그인하면 기존 범위를 노출하거나 병합하지 않고, 사용자별 저장소 격리가 완료되기 전에는 안전하게 접근을 차단한다. Sign in with Apple은 앱 접근 identity이고 CloudKit private database 선택은 시스템 iCloud 계정이 담당하므로 두 상태를 별도로 표시하고 검증한다.
+
+Apple은 Sign in with Apple 계정과 시스템 iCloud 계정의 이메일 또는 Apple ID를 앱이 직접 비교하는 API를 제공하지 않는다. 따라서 현재 CloudKit private database의 고정 binding record에 로그인 credential의 opaque `user` 값을 앱 범위에서 SHA-256한 값만 저장한다. 빈 database는 최초 로그인 사용자에게 원자적으로 귀속하고, 기존 binding과 다른 사용자는 journal UI 진입을 차단한다. 원본 `user`, 이름과 이메일은 CloudKit에 저장하지 않는다. iCloud를 확인할 수 없는 동안은 기기 Keychain의 기존 사용자 귀속을 보안 경계로 사용해 local-only 접근만 허용한다.
+
+기기별 앱 잠금은 Apple 로그인 이후의 추가 privacy gate다. 인증 session이 없거나 철회되면 앱 잠금 성공 여부와 무관하게 기록을 표시하지 않는다.
+
+### 2-1. SwiftData 로컬 저장과 CloudKit 자동 동기화
 
 SwiftData `ModelContainer`의 CloudKit private database 구성을 사용해 각 기기에 로컬 replica를 두고 동일 iCloud 계정에서 자동 동기화한다. iCloud와 remote notification background mode capability를 두 타깃에 설정한다. iCloud 계정이 없거나 일시적으로 사용할 수 없을 때도 로컬 저장은 계속되고 앱은 동기화 불가 상태를 명확히 표시한다.
 
-앱 자체 로그인 화면과 사용자 계정은 만들지 않는다. 앱은 Apple ID 자격 증명, 이름 또는 이메일을 요청하거나 저장하지 않고 `CKContainer.accountStatus`와 계정 변경 알림으로 기기의 시스템 iCloud 사용 가능 여부만 관찰한다. 계정이 사용 가능하면 해당 사용자의 private database를 연결하고, 사용할 수 없으면 별도의 local-only 저장 범위에서 핵심 기능을 계속 제공한다.
+앱은 Apple 로그인 식별자와 별개로 `CKContainer.accountStatus`와 계정 변경 알림을 통해 시스템 iCloud 사용 가능 여부를 관찰한다. 계정이 사용 가능하면 해당 사용자의 private database를 연결하고, 사용할 수 없으면 이미 인증된 사용자의 별도 local-only 저장 범위에서 핵심 기능을 계속 제공한다.
 
 iCloud 로그아웃 또는 계정 교체는 보안 경계로 취급한다. 앱은 이전 계정에 연결된 persistent store를 먼저 닫고 검색 인덱스와 pending queue를 계정 범위별로 분리한 뒤 새 계정 저장소를 연다. 이전 계정 데이터나 local-only 기록을 새 계정으로 자동 병합하지 않는다. local-only 기록을 처음 연결한 iCloud 계정으로 옮길 때는 대상과 결과를 설명하고 사용자의 명시적 확인을 받은 뒤 revision 단위로 복사한다.
 
@@ -70,6 +83,8 @@ CloudKit에 동기화할 canonical 모델은 다음과 같다.
 - 일시적 다운로드, 가져오기, 백업 staging 파일
 
 원본 JSON 전체를 iPhone까지 동기화하면 저장량과 개인정보 노출 면적이 불필요하게 커진다. 정규화된 필드와 source UUID만 동기화하고 전체 snapshot은 Mac 로컬 백업에 포함한다.
+
+사용자 노트북은 기록 유형을 대체하지 않는 별도 탐색 단위다. 초기 배포의 CloudKit schema를 파괴적으로 바꾸지 않도록 노트북 연결은 예약된 canonical 태그 표현으로 기록과 revision에 포함하고, 일반 태그 UI에서는 숨긴다. 사용자가 만든 노트북 이름 목록은 기기에 보관하되 다른 기기에서 해당 기록을 수신하면 예약 메타데이터에서 자동으로 복원한다. 한 기록은 한 사용자 노트북에 속할 수 있고 유형·일반 태그는 그대로 유지한다.
 
 ### 4. 버전 이력을 이용한 충돌 수렴
 
@@ -125,7 +140,7 @@ Mac 앱은 canonical record와 revision을 JSON Lines, 첨부를 별도 파일, 
 
 ### 10. 개인 정보와 운영 경계
 
-CloudKit private database는 같은 시스템 iCloud 계정의 사용자 데이터에 사용하고 public/shared database는 사용하지 않는다. 앱 자체 계정이나 `Sign in with Apple`을 추가하지 않으며 분석, 광고, 자체 서버 전송도 포함하지 않는다. 동기화를 활성화하면 데이터가 iCloud에 저장되고 사용자의 iCloud 용량을 사용한다는 사실과, iCloud 없이도 local-only로 사용할 수 있다는 사실을 onboarding에 명확히 알린다.
+CloudKit private database는 같은 시스템 iCloud 계정의 사용자 데이터에 사용하고 public/shared database는 사용하지 않는다. Sign in with Apple은 접근 인증에만 사용하며 이메일·이름을 수집하지 않고 identity token이나 기록을 자체 서버로 전송하지 않는다. 분석과 광고도 포함하지 않는다. 동기화를 활성화하면 데이터가 iCloud에 저장되고 사용자의 iCloud 용량을 사용한다는 사실과, 인증 후에는 iCloud 없이도 local-only로 사용할 수 있다는 사실을 onboarding에 명확히 알린다.
 
 기기 로컬 파일은 OS data protection과 sandbox에 맡긴다. 별도 데이터 암호화 키와 암호화 백업은 후속 보안 변경으로 다룬다.
 
@@ -149,6 +164,7 @@ CloudKit private database는 같은 시스템 iCloud 계정의 사용자 데이�
 - [대량 Day One 가져오기가 CloudKit queue와 iPhone 저장 공간을 압박할 수 있음] → batch, backpressure, 첨부 지연 다운로드와 건수 기반 진행 상태를 적용한다.
 - [사용자의 iCloud 계정 부재·용량 부족·일시 오류] → 로컬 기록을 유지하고 재시도 가능한 동기화 오류를 표시하며 백업 내보내기 경로를 제공한다.
 - [iCloud 로그아웃·계정 교체 시 다른 사용자의 로컬 replica가 노출되거나 섞일 수 있음] → 계정 변경을 저장소 경계로 처리하고 persistent store·검색 인덱스·queue를 계정별로 격리하며 자동 병합을 금지한다.
+- [Apple 로그인 사용자와 시스템 iCloud 계정이 다르거나 같은 설치에서 사용자가 바뀔 수 있음] → 인증과 동기화 상태를 분리하고 기존 데이터는 최초 사용자에게 귀속하며 다른 식별자에는 저장소 격리 전까지 접근을 차단한다.
 - [약한 앱 비밀번호가 추측되거나 반복 시도로 노출될 수 있음] → 최소 길이, 무작위 salt, 느린 derivation, Keychain 기기 전용 저장과 증가형 재시도 지연을 적용한다.
 - [앱 잠금이 데이터 자체 암호화로 오해될 수 있음] → 설정·onboarding·privacy 문서에 UI 접근 보호 범위와 OS data protection·CloudKit 저장 경계를 명확히 설명한다.
 - [실제 Day One export 변형을 놓칠 수 있음] → 제공 샘플 schema를 익명 fixture로 재현하고 버전·선택 필드·태그·미디어 fixture를 추가하며 미지원 필드는 원본 snapshot에 보존한다.
@@ -159,7 +175,7 @@ CloudKit private database는 같은 시스템 iCloud 계정의 사용자 데이�
 ## Migration Plan
 
 1. Xcode SwiftUI 멀티플랫폼 project와 공유 domain package를 만든다.
-2. 최소 지원 버전을 iOS 17·macOS 14로 시작하고 실제 대상 기기에서 실행 가능 여부를 확인한다.
+2. 최소 지원 버전을 iOS 17·macOS 14로 시작하고 두 타깃에 Sign in with Apple capability를 설정해 실제 대상 기기에서 로그인·철회·오프라인 재실행을 확인한다.
 3. 작은 CloudKit 호환 schema로 Mac·iPhone 간 생성, 수정, 충돌, 삭제, 첨부의 기술 spike를 통과한다.
 4. production schema 승격 전 전체 canonical 모델과 migration test를 확정한다.
 5. 제공 Day One v1.0 구조를 재현한 익명 fixture로 Mac 가져오기와 중복 방지를 검증한다.

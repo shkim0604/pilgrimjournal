@@ -4,9 +4,9 @@
 - [x] 1.2 공유 domain·data·import·search 모듈과 플랫폼별 app scene 경계를 Swift package로 구성한다
 - [x] 1.3 Swift Testing 또는 XCTest 단위·통합·UI test target과 lint·build 검증 명령을 구성한다
 - [x] 1.4 개발용 Apple team, bundle identifier, iCloud container identifier와 Debug·Release signing 구성을 문서화한다
-- [ ] 1.5 iOS·macOS target에 iCloud CloudKit과 Background Modes remote notification capability를 설정한다
+- [x] 1.5 iOS·macOS target에 iCloud CloudKit과 Background Modes remote notification capability를 설정한다
 - [x] 1.6 공통 오류, 기록 유형, 동기화 상태와 플랫폼별 file·menu service protocol을 정의한다
-- [x] 1.7 별도 회원가입·`Sign in with Apple` 없이 로컬 실행 가능한 기본 앱 shell과 네 유형·미분류·검색·설정 navigation을 두 플랫폼에 구현한다
+- [x] 1.7 로컬 실행 가능한 기본 앱 shell과 네 유형·미분류·검색·설정 navigation을 두 플랫폼에 구현한다
 
 ## 2. SwiftData·CloudKit 기술 검증
 
@@ -38,7 +38,7 @@
 - [x] 4.6 CloudKit remote change를 canonical UI와 search indexing queue에 전달하는 observer를 구현한다
 - [ ] 4.7 서로 다른 기록 편집, 같은 기록 동시 편집, 삭제·오래된 기기 연결과 복원 통합 테스트를 추가한다
 - [ ] 4.8 Mac과 iPhone 실제 기기에서 비행기 모드 전환을 포함한 오프라인 수렴 시나리오를 검증한다
-- [x] 4.9 `CKContainer.accountStatus`와 계정 변경 알림을 관찰해 로그인 UI 없이 시스템 iCloud 사용 가능 상태와 local-only fallback을 전환한다
+- [x] 4.9 `CKContainer.accountStatus`와 계정 변경 알림을 관찰해 Apple 접근 인증과 별개로 시스템 iCloud 사용 가능 상태와 local-only fallback을 전환한다
 - [ ] 4.10 iCloud 계정별 persistent store·검색 인덱스·pending queue를 격리하고 local-only 기록의 명시적 이전 use case를 구현한다
 
 ## 5. 기록 작성과 플랫폼 UI
@@ -62,6 +62,7 @@
 - [x] 6.6 태그 이름 변경·제거와 분류 규칙 관리 화면을 구현한다
 - [ ] 6.7 분류 규칙을 CloudKit으로 동기화하고 동시 규칙 편집을 결정적으로 수렴시킨다
 - [ ] 6.8 태그·템플릿 규칙, 충돌, 개별 예외, batch와 규칙 동기화 회귀 테스트를 추가한다
+- [x] 6.9 사용자 노트북 추가·사이드바 탐색·기록 연결과 일반 태그 분리를 구현하고 테스트한다
 
 ## 7. Day One v1.0 분석과 미리보기
 
@@ -76,6 +77,7 @@
 - [x] 7.9 macOS fileImporter, 분석 진행률, 요약, 경고와 분류 수정을 제공하는 가져오기 preview UI를 구현한다
 - [x] 7.10 제공 개인 샘플이 repository·test log·snapshot에 복사되거나 본문 출력되지 않는 privacy regression check를 추가한다
 - [x] 7.11 잘못된 ZIP, 암호화 ZIP, path traversal, 크기 제한, 이중 JSON과 분석 중 canonical 무변경 test를 추가한다
+- [x] 7.12 Day One 미리보기의 다중 선택·전체 선택과 선택 항목 노트북 일괄 지정을 구현하고 테스트한다
 
 ## 8. Day One 가져오기 실행과 동기화
 
@@ -124,7 +126,7 @@
 
 ## 12. 개인정보, 접근성 및 출시 검증
 
-- [x] 12.1 별도 앱 로그인 없음, 시스템 iCloud 저장·용량 사용, local-only 상태, 자체 server 미사용과 앱 잠금의 UI 보호 범위를 설명하는 onboarding·privacy 안내를 작성한다
+- [x] 12.1 Apple 로그인 접근 인증, 시스템 iCloud 저장·용량 사용, 인증 후 local-only 상태, 자체 server 미사용과 앱 잠금의 UI 보호 범위를 설명하는 onboarding·privacy 안내를 작성한다
 - [ ] 12.2 시스템 iCloud account 변경·로그아웃·재로그인에서 이전 계정·새 계정·local-only 데이터와 검색 인덱스가 섞이지 않는지 검증한다
 - [ ] 12.3 VoiceOver, Dynamic Type, keyboard navigation, contrast, 긴 한국어 본문과 작은 Mac window를 점검한다
 - [ ] 12.4 Mac·iPhone 오프라인 기록, 동기화, 가져오기, 첨부, 검색, backup·restore 전체 E2E를 실행한다
@@ -141,3 +143,15 @@
 - [x] 13.4 background·잠금 중 scene과 app switcher snapshot의 기록 제목·본문·검색 결과를 가리는 privacy shield를 구현한다
 - [x] 13.5 반복 실패의 증가형 재시도 제한과 OS 기기 소유자 인증을 사용하는 비밀번호 재설정 흐름을 구현한다
 - [x] 13.6 Keychain 비동기화, 비밀번호 원문 비저장, 재실행 우회 방지, 생체 인증 fallback, 유예 시간과 Mac·iPhone 기기별 설정을 테스트한다
+
+## 14. Sign in with Apple 접근 인증
+
+- [x] 14.1 iOS·macOS target에 Sign in with Apple entitlement와 capability 설정을 추가하고 Developer Team 설정 절차를 문서화한다
+- [x] 14.2 opaque Apple 사용자 식별자와 마지막 승인 상태를 기기 Keychain에 저장하는 인증 session service를 구현한다
+- [x] 14.3 credential state 시작 검사, 일시 오류의 오프라인 fallback과 credential revoked notification을 처리하는 인증 coordinator를 구현한다
+- [x] 14.4 이름·이메일 scope 없이 네이티브 Apple 로그인 버튼을 제공하고 인증 전 journal UI를 가리는 공통 로그인 화면을 구현한다
+- [x] 14.5 설정의 로그아웃 확인과 session 제거 후 로그인 화면 복귀를 구현한다
+- [x] 14.6 기존 로컬 데이터를 최초 Apple 사용자에게 귀속하고 다른 식별자의 데이터 접근·자동 병합을 차단한다
+- [ ] 14.7 로그인 성공·재실행·취소·실패·철회·오프라인·로그아웃·다른 사용자 차단 단위 및 UI 테스트를 추가한다
+- [ ] 14.8 Apple Developer Team으로 서명한 Mac과 iPhone 실제 기기에서 첫 로그인·재로그인·권한 철회·업데이트 데이터 보존을 검증한다
+- [x] 14.9 CloudKit private database를 Apple 로그인 사용자 해시에 귀속하고 불일치 접근 차단·local-only fallback을 테스트한다

@@ -9,18 +9,53 @@ macOS와 iPhone 앱은 기록 생성·편집·검색에 네트워크 연결을 �
 
 #### Scenario: iCloud 계정 없음
 - **WHEN** 기기에 사용할 수 있는 iCloud 계정이 없다
-- **THEN** 시스템은 로컬 핵심 기능을 유지하고 동기화가 비활성임을 명확히 표시한다
+- **THEN** 이미 Apple 로그인을 완료한 사용자는 로컬 핵심 기능을 유지하고 동기화가 비활성임을 명확히 확인한다
+
+### Requirement: Sign in with Apple 접근 인증
+앱은 별도 이메일·비밀번호 계정 없이 `Sign in with Apple`을 사용해 기록 화면 접근을 인증해야 한다(MUST). 앱은 Apple ID 비밀번호·이름·이메일 scope를 요청하거나 저장해서는 안 되며(MUST NOT), Apple이 발급한 opaque 사용자 식별자만 기기 Keychain에 저장해야 한다(MUST).
+
+#### Scenario: 첫 실행 Apple 로그인
+- **WHEN** 사용자가 앱을 처음 실행한다
+- **THEN** 시스템은 기록 제목·본문·검색 결과를 표시하기 전에 네이티브 Apple 로그인 버튼을 제공하고 인증 성공 후에만 앱 shell을 연다
+
+#### Scenario: 인증 정보 최소 수집
+- **WHEN** 앱이 Apple 로그인 authorization request를 만든다
+- **THEN** 시스템은 이름과 이메일 scope를 요청하지 않고 credential의 opaque 사용자 식별자만 저장한다
+
+#### Scenario: 승인된 사용자의 재실행
+- **WHEN** Keychain에 저장된 사용자 식별자의 credential state가 authorized이다
+- **THEN** 시스템은 마지막 승인 session으로 앱 접근을 즉시 허용하고 로그인 확인 화면을 반복 표시하지 않으며 credential state와 CloudKit 귀속은 백그라운드에서 갱신한다
+
+#### Scenario: 오프라인 재실행
+- **WHEN** 이전에 승인된 사용자가 네트워크 오류로 credential state를 확인할 수 없는 상태에서 앱을 연다
+- **THEN** 시스템은 마지막 승인 상태를 사용해 로컬 기록 접근을 유지하고 다음 연결 시 credential state를 다시 확인한다
+
+#### Scenario: 권한 철회 또는 credential 없음
+- **WHEN** 저장된 사용자 식별자의 credential state가 revoked 또는 notFound이거나 credential revoked notification을 받는다
+- **THEN** 시스템은 기록 화면을 즉시 가리고 저장된 인증 session을 제거한 뒤 Apple 로그인 화면을 표시한다
+
+#### Scenario: 사용자 로그아웃
+- **WHEN** 사용자가 설정에서 로그아웃을 확인한다
+- **THEN** 시스템은 journal 데이터를 삭제하지 않고 인증 session만 제거하며 로그인 화면으로 돌아간다
+
+#### Scenario: 기존 로컬 데이터 귀속
+- **WHEN** 앱 업데이트 전에 생성된 로컬 기록이 있는 기기에서 처음 Apple 로그인을 완료한다
+- **THEN** 시스템은 해당 데이터 범위를 처음 로그인한 Apple 사용자 식별자에 귀속하고 이후 다른 식별자에는 노출하지 않는다
 
 ### Requirement: 시스템 iCloud 계정 사용과 계정 격리
-앱은 별도 회원가입이나 `Sign in with Apple` 없이 기기의 시스템 iCloud 계정 상태를 사용해야 하며(MUST), Apple ID 자격 증명·이름·이메일을 직접 요청하거나 저장해서는 안 된다(MUST NOT). 서로 다른 iCloud 계정과 local-only 범위의 persistent store, 검색 인덱스와 pending queue는 격리되어야 한다(MUST).
+Apple 로그인은 앱 접근 인증에만 사용하고 앱은 기기의 시스템 iCloud 계정 상태를 별도로 관찰해야 한다(MUST). 서로 다른 Apple 로그인 사용자, iCloud 계정과 local-only 범위의 persistent store, 검색 인덱스와 pending queue는 격리되어야 한다(MUST).
 
-#### Scenario: iCloud 계정이 있는 첫 실행
-- **WHEN** 사용자가 iCloud 계정에 로그인된 기기에서 앱을 처음 실행한다
-- **THEN** 시스템은 별도 로그인 화면을 표시하지 않고 계정 사용 가능 여부를 확인해 해당 private database 동기화를 활성화한다
+#### Scenario: Apple 로그인 후 iCloud 사용 가능
+- **WHEN** 인증된 사용자의 기기에서 시스템 iCloud private database를 사용할 수 있다
+- **THEN** 시스템은 해당 private database를 Apple 로그인 사용자의 단방향 해시에 귀속하거나 기존 귀속이 같은지 확인한 뒤 동기화를 활성화한다
 
-#### Scenario: iCloud 계정이 없는 첫 실행
-- **WHEN** 사용자가 iCloud 계정이 없거나 CloudKit을 사용할 수 없는 기기에서 앱을 처음 실행한다
-- **THEN** 시스템은 회원가입을 요구하지 않고 local-only 저장소로 앱을 시작하며 iCloud를 활성화하면 동기화할 수 있음을 안내한다
+#### Scenario: iCloud 저장 공간의 Apple 사용자 불일치
+- **WHEN** 현재 시스템 iCloud private database가 로그인한 사용자와 다른 Apple 사용자 해시에 이미 귀속되어 있다
+- **THEN** 시스템은 기존 기록을 표시하거나 병합하지 않고 journal UI 접근을 차단하며 iCloud 계정을 확인하도록 안내한다
+
+#### Scenario: iCloud 연결 정보 최소 수집
+- **WHEN** 시스템이 private database에 Apple 사용자 귀속을 기록한다
+- **THEN** 시스템은 앱 범위 단방향 해시만 저장하고 Apple 로그인의 원본 사용자 식별자·이름·이메일을 CloudKit에 저장하지 않는다
 
 #### Scenario: iCloud 계정 로그아웃 또는 교체
 - **WHEN** 앱 사용 중 시스템 iCloud 계정이 로그아웃되거나 다른 계정으로 변경된다
@@ -29,6 +64,10 @@ macOS와 iPhone 앱은 기록 생성·편집·검색에 네트워크 연결을 �
 #### Scenario: local-only 기록을 iCloud로 이전
 - **WHEN** local-only 기록이 있는 사용자가 이후 시스템 iCloud 계정을 활성화한다
 - **THEN** 시스템은 이전 대상과 영향을 설명하고 사용자가 명시적으로 확인한 경우에만 해당 기록을 새 iCloud 계정 저장소에 revision으로 복사한다
+
+#### Scenario: 다른 Apple 사용자 로그인
+- **WHEN** 기존 데이터 범위에 귀속된 식별자와 다른 Apple 사용자가 같은 앱 설치본에 로그인한다
+- **THEN** 시스템은 기존 기록을 표시하거나 자동 병합하지 않고 별도 데이터 범위를 준비하거나 지원되지 않는 경우 안전하게 접근을 차단한다
 
 ### Requirement: 선택적 기기별 앱 잠금
 앱은 사용자가 설정에서 기기별 앱 잠금 비밀번호를 선택적으로 활성화할 수 있게 해야 한다(MUST). 비밀번호 원문과 verifier는 CloudKit·백업·로그에 포함해서는 안 되며(MUST NOT), verifier는 salt와 느린 password derivation을 적용해 기기 전용 Keychain에만 저장해야 한다(MUST).
