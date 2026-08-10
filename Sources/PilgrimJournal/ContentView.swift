@@ -555,6 +555,7 @@ private struct JournalSidebar: View {
         case .bibleStudy: "book.closed"
         case .reading: "books.vertical"
         case .diary: "pencil.and.scribble"
+        case .memo: "note.text"
         case .unclassified: "tray"
         }
     }

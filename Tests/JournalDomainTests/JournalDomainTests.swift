@@ -11,6 +11,22 @@ final class JournalDomainTests: XCTestCase {
         }
     }
 
+    func testMemoCanBeCreatedManuallyAndHasNoTypeSpecificDetails() throws {
+        XCTAssertTrue(JournalKind.memo.canCreateManually)
+        XCTAssertEqual(JournalKind.memo.localizedName, "메모")
+
+        let details = EntryDetails(
+            prayerStatus: .answered,
+            answeredAt: .now,
+            scriptureReference: "요한복음 1:1",
+            bookTitle: "책",
+            bookAuthor: "저자",
+            mood: "평온"
+        )
+
+        XCTAssertEqual(try details.validated(for: .memo), EntryDetails())
+    }
+
     func testDetailsAreSanitizedForKind() throws {
         let details = EntryDetails(
             prayerStatus: .answered,

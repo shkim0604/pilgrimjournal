@@ -6,6 +6,7 @@ public enum JournalKind: String, Codable, CaseIterable, Identifiable, Sendable {
     case bibleStudy
     case reading
     case diary
+    case memo
     case unclassified
 
     public var id: String { rawValue }
@@ -16,6 +17,7 @@ public enum JournalKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .bibleStudy: "성경공부"
         case .reading: "독서노트"
         case .diary: "일기"
+        case .memo: "메모"
         case .unclassified: "미분류"
         }
     }
@@ -79,6 +81,8 @@ public struct EntryDetails: Codable, Equatable, Sendable {
             copy.scriptureReference = nil
             copy.bookTitle = nil
             copy.bookAuthor = nil
+        case .memo:
+            copy = EntryDetails()
         case .unclassified:
             copy = EntryDetails()
         }

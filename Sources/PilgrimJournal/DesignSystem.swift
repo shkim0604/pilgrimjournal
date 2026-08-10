@@ -49,6 +49,7 @@ enum JournalTheme {
         case .bibleStudy: Color(lightHex: 0x56745B, darkHex: 0x90B895)
         case .reading: Color(lightHex: 0x55758C, darkHex: 0x8DB4CE)
         case .diary: Color(lightHex: 0x9B5E54, darkHex: 0xD89A90)
+        case .memo: Color(lightHex: 0x6B668C, darkHex: 0xAAA4CE)
         case .unclassified: Color(lightHex: 0x68716C, darkHex: 0xAAB3AE)
         }
     }

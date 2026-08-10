@@ -276,6 +276,8 @@ struct InlineEntryEditorView: View {
         case .diary:
             TextField("오늘의 기분", text: optionalBinding(\.mood))
                 .textFieldStyle(.roundedBorder)
+        case .memo:
+            EmptyView()
         case .unclassified:
             EmptyView()
         }
@@ -567,6 +569,8 @@ struct EntryDetailView: View {
             if let mood = entry.details.mood, !mood.isEmpty {
                 Label(mood, systemImage: "face.smiling")
             }
+        case .memo:
+            EmptyView()
         case .unclassified:
             EmptyView()
         }
@@ -858,6 +862,8 @@ struct EntryEditorView: View {
             TextField("저자", text: optionalBinding(\.bookAuthor))
         case .diary:
             TextField("기분", text: optionalBinding(\.mood))
+        case .memo:
+            EmptyView()
         case .unclassified:
             EmptyView()
         }
