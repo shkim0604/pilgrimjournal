@@ -10,6 +10,7 @@ struct ContentView: View {
     @State private var preferredCompactColumn: NavigationSplitViewColumn
     @State private var columnVisibility = NavigationSplitViewVisibility.all
     @State private var isFocusMode = false
+    @State private var isConfirmingBatchTrash = false
     #if os(iOS)
     @State private var editMode = EditMode.inactive
     #endif
@@ -43,6 +44,11 @@ struct ContentView: View {
                         EntryRow(entry: entry)
                             .tag(entry.id)
                     }
+                    #if os(macOS)
+                    .onDeleteCommand {
+                        requestBatchTrash()
+                    }
+                    #endif
                 } else {
                     List(selection: entrySelection) {
                         NewEntryListButton {
@@ -104,6 +110,15 @@ struct ContentView: View {
                 if model.isBatchSelecting {
                     Button("정리 \(model.selectedEntryIDs.count)") {
                         model.isPresentingBatchOrganizer = true
+                    }
+                    .disabled(model.selectedEntryIDs.isEmpty)
+                    Button(role: .destructive) {
+                        requestBatchTrash()
+                    } label: {
+                        Label(
+                            "삭제 \(model.selectedEntryIDs.count)",
+                            systemImage: "trash"
+                        )
                     }
                     .disabled(model.selectedEntryIDs.isEmpty)
                     Button("완료") {
@@ -246,6 +261,24 @@ struct ContentView: View {
         .sheet(isPresented: $model.isPresentingBatchOrganizer) {
             BatchOrganizerView()
         }
+        .alert(
+            "선택한 노트를 삭제할까요?",
+            isPresented: $isConfirmingBatchTrash
+        ) {
+            Button("취소", role: .cancel) {}
+            Button("휴지통으로 이동", role: .destructive) {
+                if model.moveSelectedEntriesToTrash() {
+                    #if os(iOS)
+                    editMode = .inactive
+                    #endif
+                }
+            }
+        } message: {
+            Text(
+                "선택한 \(model.selectedEntryIDs.count)개의 노트를 "
+                    + "휴지통으로 이동합니다."
+            )
+        }
         #if os(macOS)
         .sheet(isPresented: $model.isPresentingImporter) {
             DayOneImportView()
@@ -282,6 +315,11 @@ struct ContentView: View {
             get: { model.selectedEntryID },
             set: { model.selectEntry($0) }
         )
+    }
+
+    private func requestBatchTrash() {
+        guard !model.selectedEntryIDs.isEmpty else { return }
+        isConfirmingBatchTrash = true
     }
 
     private func setFocusMode(_ enabled: Bool) {

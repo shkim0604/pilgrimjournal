@@ -190,6 +190,56 @@ final class AppModelNavigationTests: XCTestCase {
     }
 
     @MainActor
+    func testMovingMultipleSelectedEntriesToTrashClearsBatchSelection() throws {
+        let root = FileManager.default.temporaryDirectory.appending(
+            path: "pilgrim-batch-delete-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+        let paths = JournalPaths(root: root)
+        try paths.prepare()
+        let repository = InMemoryJournalRepository()
+        let first = try repository.save(
+            JournalEntryDraft(kind: .diary, title: "첫 기록"),
+            deviceID: "test-device",
+            at: .now
+        )
+        let second = try repository.save(
+            JournalEntryDraft(kind: .diary, title: "둘째 기록"),
+            deviceID: "test-device",
+            at: .now
+        )
+        let remaining = try repository.save(
+            JournalEntryDraft(kind: .diary, title: "남길 기록"),
+            deviceID: "test-device",
+            at: .now
+        )
+        let model = try AppModel(
+            repository: repository,
+            importStore: InMemoryImportStore(),
+            searchIndex: JournalSearchIndex(
+                url: paths.search.appending(path: "batch-delete.sqlite")
+            ),
+            paths: paths,
+            cloudAccountMonitor: nil
+        )
+        model.selectEntry(first.id)
+        model.beginBatchSelection()
+        model.selectedEntryIDs.insert(second.id)
+
+        XCTAssertTrue(model.moveSelectedEntriesToTrash())
+
+        XCTAssertEqual(model.entries.map(\.id), [remaining.id])
+        XCTAssertEqual(Set(model.trashEntries.map(\.id)), [first.id, second.id])
+        XCTAssertTrue(try XCTUnwrap(repository.entry(id: first.id)).isDeleted)
+        XCTAssertTrue(try XCTUnwrap(repository.entry(id: second.id)).isDeleted)
+        XCTAssertFalse(try XCTUnwrap(repository.entry(id: remaining.id)).isDeleted)
+        XCTAssertTrue(model.selectedEntryIDs.isEmpty)
+        XCTAssertFalse(model.isBatchSelecting)
+        XCTAssertNil(model.selectedEntryID)
+    }
+
+    @MainActor
     func testAutosaveRecordReturnReusesCreatedIdentifier() throws {
         let root = FileManager.default.temporaryDirectory.appending(
             path: "pilgrim-autosave-\(UUID().uuidString)",

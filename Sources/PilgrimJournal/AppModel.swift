@@ -466,6 +466,45 @@ final class AppModel: ObservableObject {
         }
     }
 
+    @discardableResult
+    func moveSelectedEntriesToTrash() -> Bool {
+        let entryIDs = selectedEntryIDs
+        guard !entryIDs.isEmpty else { return false }
+
+        var movedEntryIDs = Set<UUID>()
+        do {
+            for entryID in entryIDs {
+                try repository.moveToTrash(
+                    entryID: entryID,
+                    deviceID: deviceID,
+                    at: .now
+                )
+                movedEntryIDs.insert(entryID)
+                try searchIndex.remove(id: entryID)
+            }
+            if let selectedEntryID,
+               movedEntryIDs.contains(selectedEntryID) {
+                self.selectedEntryID = nil
+                editingEntry = nil
+                isPresentingEditor = false
+            }
+            markLocalMutation()
+            endBatchSelection()
+            refreshTrash()
+            refresh()
+            return true
+        } catch {
+            if !movedEntryIDs.isEmpty {
+                selectedEntryIDs.subtract(movedEntryIDs)
+                markLocalMutation()
+                refreshTrash()
+                refresh()
+            }
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
     func restoreFromTrash(_ entry: JournalEntryRecord) {
         do {
             try repository.restoreFromTrash(entryID: entry.id, deviceID: deviceID, at: .now)
