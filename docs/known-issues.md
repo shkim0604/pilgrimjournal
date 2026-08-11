@@ -4,6 +4,56 @@
 
 ---
 
+## Production CloudKit 스키마에 레코드 타입이 빠져 있다 (미해결)
+
+### 증상
+
+Mac과 iPhone의 기록이 서로 다르고 동기화되지 않는다. CloudKit 요청 자체는
+오가지만 오류율이 20% 안팎으로 유지된다.
+
+### 원인
+
+`PilgrimJournalSchemaV1.canonicalModels`는 CloudKit으로 미러링되는 모델 **5개**를
+선언한다. 그런데 Production 스키마에는 **2개만** 배포되어 있다.
+
+| 모델 | Production |
+| --- | --- |
+| `JournalEntryEntity` → `CD_JournalEntryEntity` | ✅ |
+| `EntryRevisionEntity` → `CD_EntryRevisionEntity` | ✅ |
+| `AttachmentEntity` → `CD_AttachmentEntity` | ❌ |
+| `ClassificationRuleEntity` → `CD_ClassificationRuleEntity` | ❌ |
+| `RestoreEpochEntity` → `CD_RestoreEpochEntity` | ❌ |
+
+**Development 스키마에도 세 개가 없다.** Deploy Schema Changes 창이 변경 0건으로
+뜨는 것이 그 증거다. CloudKit은 Development에서만 스키마를 자동 생성하는데,
+그 생성은 해당 타입의 레코드를 **실제로 export 할 때** 일어난다. 첨부·분류
+규칙·복원 epoch을 Development 환경 빌드에서 한 번도 만들지 않았기 때문에 타입이
+생기지 않았고, 따라서 Production에도 올라가지 않았다.
+
+TestFlight 빌드는 Production 환경을 쓴다. Production은 스키마를 자동 생성하지
+않으므로 저 세 타입의 레코드는 export가 거부된다.
+
+### 조치
+
+1. **Xcode에서 Debug 빌드로 앱을 실행한다.** Debug 빌드는 Development 환경을
+   쓴다. `PILGRIM_VISUAL_TESTING`은 켜지 않는다 — 켜면 CloudKit을 쓰지 않는다.
+2. 세 타입을 각각 한 번씩 만든다.
+   - 첨부: 기록에 파일 하나 첨부
+   - 분류 규칙: 설정 → 정리에서 규칙 저장
+   - 복원 epoch: 설정 → 백업 및 복원에서 백업을 만들고 복원 실행
+3. 동기화가 올라갈 때까지 기다린 뒤 CloudKit Console → **Development** →
+   `Deploy Schema Changes...`를 연다. 세 타입이 **추가(Add)** 로 보여야 한다.
+4. Deploy 한다.
+
+### 재발 방지
+
+`canonicalModels`에 모델을 추가하면 **Production 스키마에도 반드시 반영해야
+한다.** 모델만 추가하고 배포를 잊으면 TestFlight에서만 조용히 실패한다.
+릴리스 전에 Production Record Types 목록과 `canonicalModels`의 개수가 맞는지
+대조할 것. openspec의 task 12.7이 이 검토를 요구하는데 아직 미완료다.
+
+---
+
 ## 편집기 입력이 씹힌다 (수정 적용, 실기기 확인 대기)
 
 > **상태 (2026-08-11):** 수정과 회귀 테스트를 넣었고 **macOS 앱에서 씹힘이
