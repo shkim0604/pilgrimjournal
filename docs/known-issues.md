@@ -4,53 +4,74 @@
 
 ---
 
-## Production CloudKit 스키마에 레코드 타입이 빠져 있다 (미해결)
+## CloudKit 스키마가 모델보다 부족하다
 
 ### 증상
 
 Mac과 iPhone의 기록이 서로 다르고 동기화되지 않는다. CloudKit 요청 자체는
-오가지만 오류율이 20% 안팎으로 유지된다.
+오가지만 오류율이 20% 안팎으로 유지된다. 앱에는 아무 오류도 뜨지 않는다.
 
 ### 원인
 
-`PilgrimJournalSchemaV1.canonicalModels`는 CloudKit으로 미러링되는 모델 **5개**를
-선언한다. 그런데 Production 스키마에는 **2개만** 배포되어 있다.
+**CloudKit의 자동 스키마 생성은 모델을 보지 않는다. 실제로 export 되는 레코드의
+필드만 보고 만든다.** 그래서 구멍이 두 겹으로 생긴다.
 
-| 모델 | Production |
-| --- | --- |
-| `JournalEntryEntity` → `CD_JournalEntryEntity` | ✅ |
-| `EntryRevisionEntity` → `CD_EntryRevisionEntity` | ✅ |
-| `AttachmentEntity` → `CD_AttachmentEntity` | ❌ |
-| `ClassificationRuleEntity` → `CD_ClassificationRuleEntity` | ❌ |
-| `RestoreEpochEntity` → `CD_RestoreEpochEntity` | ❌ |
+1. **타입 자체가 없다.** `canonicalModels`가 선언한 다섯 모델 중 첨부·분류
+   규칙·복원 epoch은 Development 환경 빌드에서 한 번도 만들어진 적이 없어
+   레코드 타입이 생기지 않았다.
+2. **있는 타입도 필드가 빠져 있다.** `CD_JournalEntryEntity`는 존재했지만
+   **12개 필드가 없었다.** 한 번도 값이 채워진 적 없는 optional 속성은 export에
+   실려 나가지 않으므로 스키마에도 나타나지 않는다. 나중에 그 필드를 쓰는 기록이
+   처음 생기는 순간 Production에서 조용히 거부된다.
 
-**Development 스키마에도 세 개가 없다.** Deploy Schema Changes 창이 변경 0건으로
-뜨는 것이 그 증거다. CloudKit은 Development에서만 스키마를 자동 생성하는데,
-그 생성은 해당 타입의 레코드를 **실제로 export 할 때** 일어난다. 첨부·분류
-규칙·복원 epoch을 Development 환경 빌드에서 한 번도 만들지 않았기 때문에 타입이
-생기지 않았고, 따라서 Production에도 올라가지 않았다.
+자동 생성은 Development에서만 일어난다. TestFlight 빌드는 Production을 쓰므로
+빠진 타입·필드의 export는 그대로 거부되고, 실패는 앱 UI에 나타나지 않는다.
 
-TestFlight 빌드는 Production 환경을 쓴다. Production은 스키마를 자동 생성하지
-않으므로 저 세 타입의 레코드는 export가 거부된다.
+**손으로 레코드를 만들어 유도하지 말 것.** 그게 애초에 이 구멍을 만든 방식이다.
+모든 optional 필드를 빠짐없이 채우는 기록을 사람이 만들어 낼 수는 없다.
 
-### 조치
+### 조치 — `initializeCloudKitSchema`
 
-1. **Xcode에서 Debug 빌드로 앱을 실행한다.** Debug 빌드는 Development 환경을
-   쓴다. `PILGRIM_VISUAL_TESTING`은 켜지 않는다 — 켜면 CloudKit을 쓰지 않는다.
-2. 세 타입을 각각 한 번씩 만든다.
-   - 첨부: 기록에 파일 하나 첨부
-   - 분류 규칙: 설정 → 정리에서 규칙 저장
-   - 복원 epoch: 설정 → 백업 및 복원에서 백업을 만들고 복원 실행
-3. 동기화가 올라갈 때까지 기다린 뒤 CloudKit Console → **Development** →
-   `Deploy Schema Changes...`를 연다. 세 타입이 **추가(Add)** 로 보여야 한다.
-4. Deploy 한다.
+SwiftData에는 스키마 배포 API가 없지만 그 밑의
+`NSPersistentCloudKitContainer`에는 있다. `initializeCloudKitSchema()`는 **모델에서
+직접** 레코드 타입·필드·인덱스를 만들므로 두 구멍을 한 번에 메운다.
+`Sources/JournalData/CloudKitSchemaInitializer.swift`가
+`NSManagedObjectModel.makeManagedObjectModel(for:)`으로 SwiftData 모델을 다리
+놓아 이 API를 부른다. 임시 저장소를 쓰므로 사용자 기록은 건드리지 않는다.
+
+```bash
+DD=/tmp/pilgrim-dd   # iCloud 동기화 밖 경로여야 한다. docs/development.md 참고
+xcodebuild -project PilgrimJournal/PilgrimJournal.xcodeproj \
+  -scheme PilgrimJournalApp -configuration Debug \
+  -destination 'platform=macOS,arch=arm64' -derivedDataPath "$DD" build
+PILGRIM_DEPLOY_CLOUDKIT_SCHEMA=1 \
+  "$DD/Build/Products/Debug/PilgrimJournal.app/Contents/MacOS/PilgrimJournal"
+```
+
+그 뒤 CloudKit Console → **Development** → `Deploy Schema Changes...` → Deploy.
+
+**Apple 로그인이 필요 없다.** 스키마는 CloudKit 컨테이너에 속하지 사용자 계정에
+속하지 않으므로 이 경로는 로그인 게이트 앞에서 돈다. 화면공유로 Touch ID를 쓸 수
+없는 원격 작업에서 특히 중요하다.
+
+주의할 점:
+
+- **Debug 빌드여야 한다.** Production 환경은 이 API를 거부한다.
+- 로그에 `SQLite disk I/O error`가 몇 줄 찍히는 것은 **정상이다.**
+  `initializeCloudKitSchema`가 끝나면서 임시 저장소를 스스로 지우고, 그 뒤 Core
+  Data가 남은 컨텍스트를 정리하며 사라진 파일에 접근해 내는 소리다. 호출이
+  throw 하지 않았다면 성공한 것이고, 판단 기준은 Deploy 창에 뜨는 변경 목록이다.
+- 모든 필드가 queryable·sortable로 표시되므로 인덱스가 많이 생긴다(첨부 31개).
+  **Production 스키마 변경은 되돌릴 수 없다**(additive-only). 개인 저널 규모에서는
+  부담이 없지만, 되돌릴 수 없다는 것은 알고 누를 것.
 
 ### 재발 방지
 
-`canonicalModels`에 모델을 추가하면 **Production 스키마에도 반드시 반영해야
-한다.** 모델만 추가하고 배포를 잊으면 TestFlight에서만 조용히 실패한다.
-릴리스 전에 Production Record Types 목록과 `canonicalModels`의 개수가 맞는지
-대조할 것. openspec의 task 12.7이 이 검토를 요구하는데 아직 미완료다.
+`canonicalModels`에 모델을 추가하거나 기존 모델에 속성을 추가하면 **위 명령을 한
+번 돌리고 Deploy 한다.** 새 속성이 optional이면 특히 그렇다 — 값이 채워지기 전에는
+자동 생성이 잡아 주지 않으므로, 기능이 나간 한참 뒤에 처음 쓰는 사용자에게서만
+터진다. 릴리스 전에 Deploy 창이 **변경 0건**으로 뜨는지 확인할 것.
+openspec task 12.7이 이 검토를 요구한다.
 
 ---
 

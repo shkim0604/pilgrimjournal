@@ -60,6 +60,35 @@ CloudKit production schema는 additive-only 정책으로 관리한다. 개발 co
 하나라도 충족하지 못하면 도메인 protocol은 유지하고
 `NSPersistentCloudKitContainer` adapter로 교체한다.
 
+## CloudKit 운영 도구
+
+Debug 빌드는 환경 변수 두 개로 앱 대신 관리 작업을 수행하고 종료한다. 둘 다
+**Apple 로그인 앞에서** 돌기 때문에 Touch ID를 쓸 수 없는 원격 세션에서도 쓸 수
+있다. 실행 파일을 직접 부른다 — `open`은 환경 변수를 전달하지 않는다.
+
+```bash
+DD=/tmp/pilgrim-dd   # iCloud 동기화 밖 경로여야 한다. 아래 "릴리스 아카이브" 참고
+BIN="$DD/Build/Products/Debug/PilgrimJournal.app/Contents/MacOS/PilgrimJournal"
+xcodebuild -project PilgrimJournal/PilgrimJournal.xcodeproj \
+  -scheme PilgrimJournalApp -configuration Debug \
+  -destination 'platform=macOS,arch=arm64' -derivedDataPath "$DD" build
+```
+
+| 변수 | 하는 일 |
+| --- | --- |
+| `PILGRIM_DEPLOY_CLOUDKIT_SCHEMA=1` | 모델에서 레코드 타입·필드·인덱스를 만든다. 자세한 배경은 `docs/known-issues.md` |
+| `PILGRIM_WIPE_JOURNAL_DATA=1` | 미러링 존을 지워 기록을 전부 없앤다. **스키마는 남는다** |
+| `PILGRIM_WIPE_LOCAL_DATA=1` | 위와 함께 쓰면 이 기기의 저장소·검색 인덱스도 지운다 |
+| `PILGRIM_DEV_APPLE_USER=<id>` | 로그인 게이트를 건너뛰고 실제 저장소·CloudKit으로 앱을 연다 |
+
+**CloudKit 환경은 서명이 정한다.** Debug 빌드는 Development만 건드린다.
+Production 데이터를 지우려면 CloudKit Console → Data → Zones에서
+`com.apple.coredata.cloudkit.zone`을 직접 삭제하거나, TestFlight 앱에서 빈 백업을
+replace 모드로 복원한다.
+
+존을 지워도 **로컬 사본을 가진 기기는 다음 실행에서 존을 다시 만들고 전부
+재업로드한다.** 정말로 비우려면 모든 기기의 로컬 데이터도 같이 지워야 한다.
+
 ## 릴리스 아카이브
 
 ### iCloud 동기화 폴더에서 archive 하지 않기

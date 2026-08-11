@@ -48,10 +48,94 @@ struct PilgrimJournalApp: App {
         #endif
     }
 
+    /// Creates every canonical CloudKit record type, then exits.
+    ///
+    /// Runs before the sign-in gate on purpose: the schema lives in the
+    /// CloudKit container, not in a user's journal, and Sign in with Apple
+    /// needs Touch ID, which a screen-shared Mac cannot provide.
+    ///
+    /// Invoke with `PILGRIM_DEPLOY_CLOUDKIT_SCHEMA=1`. Only the Development
+    /// environment accepts this, so it must run from a Debug build; promote to
+    /// Production from the CloudKit Console afterwards.
+    private static func deployDevelopmentSchemaIfRequested(
+        containerIdentifier: String
+    ) {
+        #if DEBUG && PILGRIM_SWIFTDATA
+        guard ProcessInfo.processInfo.environment[
+            "PILGRIM_DEPLOY_CLOUDKIT_SCHEMA"
+        ] == "1" else { return }
+        do {
+            let types = try CloudKitSchemaInitializer
+                .initializeDevelopmentSchema(
+                    cloudKitContainerIdentifier: containerIdentifier
+                )
+            print("CloudKit Development 스키마 배포 완료: \(types.joined(separator: ", "))")
+            exit(0)
+        } catch {
+            print("CloudKit 스키마 배포 실패: \(error.localizedDescription)")
+            exit(1)
+        }
+        #endif
+    }
+
+    /// Deletes every journal record, on this device and in CloudKit, then exits.
+    ///
+    /// Keeps the deployed schema: the record types live in the container, the
+    /// rows live in zones, and only the zones are dropped.
+    ///
+    /// Invoke with `PILGRIM_WIPE_JOURNAL_DATA=1`. The CloudKit environment
+    /// follows the build's entitlement, so a Debug build empties Development
+    /// and a production-signed build empties Production.
+    ///
+    /// Add `PILGRIM_WIPE_LOCAL_DATA=1` to drop this device's stores too. Any
+    /// device that keeps its copy re-creates the zone and re-uploads on next
+    /// launch, which undoes the wipe.
+    private static func wipeJournalDataIfRequested(
+        containerIdentifier: String
+    ) {
+        #if DEBUG
+        guard ProcessInfo.processInfo.environment[
+            "PILGRIM_WIPE_JOURNAL_DATA"
+        ] == "1" else { return }
+        let identifier = containerIdentifier
+        let alsoWipesLocal = ProcessInfo.processInfo.environment[
+            "PILGRIM_WIPE_LOCAL_DATA"
+        ] == "1"
+        Task.detached {
+            do {
+                let zones = try await CloudKitDataWiper.wipePrivateData(
+                    containerIdentifier: identifier
+                )
+                print("CloudKit 존 삭제: \(zones.isEmpty ? "없음" : zones.joined(separator: ", "))")
+                if alsoWipesLocal {
+                    let local = try CloudKitDataWiper.wipeLocalData(
+                        rootURL: JournalPaths.applicationRoot()
+                    )
+                    print("로컬 삭제: \(local.isEmpty ? "없음" : local.joined(separator: ", "))")
+                } else {
+                    print("로컬 저장소는 그대로 둡니다.")
+                }
+                exit(0)
+            } catch {
+                print("데이터 삭제 실패: \(error.localizedDescription)")
+                exit(1)
+            }
+        }
+        // The task owns the exit, so the app must not reach its scene.
+        dispatchMain()
+        #endif
+    }
+
     init() {
         let requestedCloudIdentifier = ProcessInfo.processInfo.environment[
             "PILGRIM_CLOUDKIT_CONTAINER"
         ] ?? Self.cloudKitContainerIdentifier
+        Self.deployDevelopmentSchemaIfRequested(
+            containerIdentifier: requestedCloudIdentifier
+        )
+        Self.wipeJournalDataIfRequested(
+            containerIdentifier: requestedCloudIdentifier
+        )
         let cloudKitEnabled = !Self.isVisualTesting
             && CloudKitEntitlement.includes(
                 containerIdentifier: requestedCloudIdentifier
