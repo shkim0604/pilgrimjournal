@@ -5,11 +5,18 @@
 
 ## 준비물
 
-- Apple Developer Team `7JZU3246YR`으로 서명한 build 12 (`.release/build12/`)
+- TestFlight의 **build 15** (Mac·iPhone 양쪽). 아카이브는 `.release/build15/`
 - 같은 iCloud 계정에 로그인한 Mac 1대와 iPhone 1대
-- 두 번째 iCloud 계정 (세션 D 전용)
-- CloudKit container: `iCloud.com.dhouse.PilgrimJournal` — **개발 schema 상태**
+- 두 번째 iCloud 계정 (세션 B-2 전용)
+- CloudKit container: `iCloud.com.dhouse.PilgrimJournal` —
+  **Production 스키마 배포 완료** (5개 레코드 타입). 절차는
+  `docs/development.md`의 "CloudKit 운영 도구"
 - 익명 합성 Day One export ZIP (개인 기록 금지, `scripts/check.sh`가 커밋을 차단한다)
+
+> **build 15부터는 데이터가 비어 있다.** Development·Production 양쪽의 미러링
+> 존을 지웠다. 기기에 남은 로컬 사본이 있으면 앱을 여는 순간 존을 다시 만들고
+> 전부 재업로드하므로, 깨끗한 조건에서 보려면 **양쪽 기기에서 앱을 삭제한 뒤
+> 설치**한다.
 
 ## 세션 순서
 
@@ -18,12 +25,61 @@
 
 | 세션 | 내용 | 태스크 | 소요 |
 | --- | --- | --- | --- |
+| S | build 15 smoke test (**먼저, 15분**) | — | 15분 |
 | A | CloudKit 동기화 spike (**최우선 관문**) | 2.2~2.6, 4.8 | 반나절 |
 | B | 인증과 계정 격리 | 14.8, 12.2 | 1~2시간 |
 | C | 데이터 E2E | 8.8, 11.10, 12.4 | 2~3시간 |
 | D | 성능 | 2.5, 10.8, 6.4 | 1~2시간 |
 | E | 접근성과 시각 | 12.3, 6.2, 1.1, 2.4, 6.3 | 2~3시간 |
-| F | schema 승격과 TestFlight | 2.7, 12.7, 12.8, 6.6 | 1~2시간 |
+| F | TestFlight 설치·업데이트 | 12.8, 6.6 | 1시간 |
+
+`2.7`과 `12.7`(schema 승격)은 완료됐다.
+
+---
+
+## 세션 S — build 15 smoke test
+
+이번 빌드에서 고친 것들이다. **A로 넘어가기 전에 여기서 걸러야 한다** — 여기가
+깨져 있으면 A의 결과를 신뢰할 수 없다.
+
+### S-1. 다중 선택 (macOS)
+
+1. 목록에서 노트 하나를 클릭한다.
+2. shift-클릭으로 범위를 잡고, command-클릭으로 하나씩 더한다.
+3. 도구 막대 휴지통을 누른다.
+4. 검색어를 넣어 선택한 노트가 목록에서 사라지게 한다.
+
+- ✅ 한 개 클릭 시 **강조되는 카드가 정확히 하나**다 (이게 원래 증상)
+- ✅ '선택'을 누르지 않아도 shift-클릭으로 여러 개가 잡히고 휴지통이 동작한다
+- ✅ 여러 개 선택 시 오른쪽에 "N개의 노트를 선택했습니다"가 뜬다
+- ✅ 검색으로 가려진 노트는 선택에서 빠지고 휴지통이 비활성화된다
+
+### S-2. 앱 이름
+
+- ✅ iPhone 홈 화면·Spotlight·설정 앱: `Pilgrim Journal`
+- ✅ macOS **메뉴 막대 좌상단**과 Dock·Finder: `Pilgrim Journal`
+  (메뉴 막대는 `CFBundleName`이라 build 14까지 붙여 쓰기였다)
+- 응용 프로그램 폴더에 옛 `PilgrimJournal.app`이 남아 있으면 지운다.
+  번들 파일명이 `Pilgrim Journal.app`으로 바뀌어 둘이 공존할 수 있다.
+
+### S-3. iOS 목록 조작
+
+1. 노트를 탭한다.
+2. 마지막 노트를 스와이프로 삭제한다.
+
+- ✅ 탭하면 상세로 가고 **설정으로 튀지 않는다**
+- ✅ 마지막 노트를 스와이프 삭제해도 **크래시하지 않는다**
+
+### S-4. 백업 피드백
+
+설정 → 백업 및 복원에서 내보내기와 복원을 각각 한 번씩 한다.
+
+- ✅ 성공·취소·실패가 화면에 구분돼 나타난다 (예전에는 아무 표시도 없었다)
+
+### S-5. 편집기 입력 — `docs/known-issues.md` 릴리스 게이트
+
+**이 항목만 실패해도 다음 빌드를 올려야 한다.** 자동화 테스트가 잡지 못한다.
+본문에 한글·영어를 섞어 30초 이상 빠르게 친다. 제목이 아니라 **본문**이다.
 
 ---
 
@@ -191,9 +247,7 @@ Instruments로 확인한다.
 - macOS Dock, Finder 16px·32px·128px
 - iPhone 홈 화면, 설정 앱 목록, Spotlight
 
-**같이 확인할 것:** 이번에 `CFBundleDisplayName`을 `Pilgrim Journal`(공백 포함)로
-바꿨다. 시뮬레이터에서는 SpringBoard 레이블 캐시 때문에 확인하지 못했으니
-**실기기 홈 화면과 Dock에서 공백이 들어간 이름이 보이는지 확인한다.**
+앱 이름 확인은 세션 S-2로 옮겼다.
 
 ### E-4. 기준선 screenshot — tasks 1.1, 6.3
 
@@ -203,26 +257,19 @@ Mac은 시뮬레이터가 없으므로 실기기에서 Light·Dark × 넓은 창
 
 ---
 
-## 세션 F — schema 승격과 배포
+## 세션 F — TestFlight 설치·업데이트
 
-### F-1. CloudKit production schema — tasks 2.7, 12.7
+### F-1. CloudKit production schema — tasks 2.7, 12.7 ✅ 완료
 
-CloudKit Dashboard 웹 콘솔 작업이라 기기가 필요 없다. **세션 A가 go로 끝난
-뒤에만** 진행한다.
-
-1. 개발 container의 schema snapshot을 남긴다.
-2. additive-only 정책 위반(필드 삭제·타입 변경)이 없는지 검토한다.
-3. migration rehearsal을 수행한다.
-4. production으로 승격한다.
-
-> 승격 전에는 production 빌드가 `CloudKit 프로덕션 스키마가 아직 배포되지
-> 않았습니다.` 오류를 낸다 (`cloudSyncErrorPresentation`이 이 케이스를 감지한다).
+build 15에서 5개 레코드 타입을 전부 Production에 배포했다. 배포 창의 변경
+목록이 곧 snapshot review였고 전부 additive였다(타입 3개 추가, 기존 타입에 필드
+추가, 인덱스 추가, 필드 삭제·타입 변경 없음). 절차와 재발 방지는
+`docs/known-issues.md`.
 
 ### F-2. TestFlight — tasks 12.8, 6.6
 
-1. `.release/build12/`의 아카이브를 export·upload 한다.
-   절차는 `docs/development.md`의 "릴리스 아카이브" 참고.
-   **Mac 잠금을 해제한 상태에서 실행한다** — 잠겨 있으면 `Failed to Use Accounts`.
+1. build 15는 이미 두 플랫폼 업로드가 끝났다. 다음 빌드 절차는
+   `docs/development.md`의 "릴리스 아카이브" 참고.
 2. TestFlight에서 두 플랫폼 설치
 3. 이전 빌드에서 **업데이트** 설치 (신규 설치가 아니라)
 4. 기존 기록 보존 확인

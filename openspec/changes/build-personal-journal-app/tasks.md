@@ -16,7 +16,7 @@
 - [ ] 2.4 외부 저장 binary 첨부의 CloudKit asset 업로드·지연 다운로드·용량 오류를 spike에서 검증한다
 - [ ] 2.5 대량 합성 기록 batch를 넣어 CloudKit queue, 메모리와 수렴 시간을 측정한다
 - [ ] 2.6 spike 결과로 SwiftData go/no-go를 기록하고 실패 시 동일 저장소 protocol의 NSPersistentCloudKitContainer adapter로 전환한다
-- [ ] 2.7 선택한 저장 adapter의 개발 schema를 초기화하고 production 승격 전 schema snapshot 검토 절차를 만든다
+- [x] 2.7 선택한 저장 adapter의 개발 schema를 초기화하고 production 승격 전 schema snapshot 검토 절차를 만든다
 
 ## 3. Canonical 데이터와 로컬 보조 저장소
 
@@ -132,7 +132,7 @@
 - [ ] 12.4 Mac·iPhone 오프라인 기록, 동기화, 가져오기, 첨부, 검색, backup·restore 전체 E2E를 실행한다
 - [x] 12.5 대량 Day One ZIP의 memory·disk 한도, 진행률, 취소와 temporary file 정리를 성능 테스트한다
 - [x] 12.6 Day One JSON ZIP 만드는 법, 첫 Mac 가져오기, iPhone 동기화, 오류와 backup·restore 사용자 문서를 작성한다
-- [ ] 12.7 production CloudKit schema 승격 전 additive migration rehearsal과 schema snapshot review를 완료한다
+- [x] 12.7 production CloudKit schema 승격 전 additive migration rehearsal과 schema snapshot review를 완료한다
 - [ ] 12.8 macOS·iOS archive를 만들고 TestFlight 또는 등록 기기에서 설치·업데이트·데이터 보존을 smoke test한다
 
 ## 13. 기기별 앱 잠금
