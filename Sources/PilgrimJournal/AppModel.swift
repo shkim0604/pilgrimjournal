@@ -273,8 +273,21 @@ final class AppModel: ObservableObject {
                     $0.notebookName?.caseInsensitiveCompare(selectedNotebookName) == .orderedSame
                 }
             }
+            pruneSelectionToVisibleEntries()
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Drops selected ids that the current filter no longer shows.
+    ///
+    /// The list highlight only covers visible rows, so a stale id would arm the
+    /// trash button for a note the user cannot see.
+    private func pruneSelectionToVisibleEntries() {
+        let visible = Set(entries.map(\.id))
+        selectedEntryIDs.formIntersection(visible)
+        if let selectedEntryID, !visible.contains(selectedEntryID) {
+            self.selectedEntryID = nil
         }
     }
 
@@ -406,6 +419,7 @@ final class AppModel: ObservableObject {
     func beginNewEntry() {
         editingEntry = nil
         selectedEntryID = nil
+        selectedEntryIDs.removeAll()
         newEntryNotebookName = selectedNotebookName
         editorSessionID = UUID()
         isPresentingEditor = true
@@ -413,7 +427,31 @@ final class AppModel: ObservableObject {
 
     func selectEntry(_ entryID: UUID?) {
         selectedEntryID = entryID
+        if !isBatchSelecting {
+            selectedEntryIDs = entryID.map { Set([$0]) } ?? []
+        }
         guard entryID != nil else { return }
+        editingEntry = nil
+        isPresentingEditor = false
+        isPresentingSettings = false
+    }
+
+    /// Applies a list selection that may hold more than one row.
+    ///
+    /// macOS `List` lets shift- and command-click extend the selection even
+    /// when the binding carries a single optional id. The extra rows stay
+    /// highlighted while the model only knows about one, so the window shows
+    /// two green cards for one selected note. Holding the whole set keeps the
+    /// highlight and the model in agreement, and gives the trash button
+    /// something to act on without entering batch mode first.
+    func selectEntries(_ entryIDs: Set<UUID>) {
+        guard entryIDs.count != 1 else {
+            selectEntry(entryIDs.first)
+            return
+        }
+        selectedEntryIDs = entryIDs
+        selectedEntryID = nil
+        guard !entryIDs.isEmpty else { return }
         editingEntry = nil
         isPresentingEditor = false
         isPresentingSettings = false

@@ -340,6 +340,135 @@ final class AppModelNavigationTests: XCTestCase {
     }
 
     @MainActor
+    func testSelectingMultipleEntriesOutsideBatchModeArmsTrash() throws {
+        let root = FileManager.default.temporaryDirectory.appending(
+            path: "pilgrim-multi-select-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+        let paths = JournalPaths(root: root)
+        try paths.prepare()
+        let repository = InMemoryJournalRepository()
+        let first = try repository.save(
+            JournalEntryDraft(kind: .diary, title: "첫 기록"),
+            deviceID: "test-device",
+            at: .now
+        )
+        let second = try repository.save(
+            JournalEntryDraft(kind: .diary, title: "둘째 기록"),
+            deviceID: "test-device",
+            at: .now
+        )
+        let remaining = try repository.save(
+            JournalEntryDraft(kind: .diary, title: "남길 기록"),
+            deviceID: "test-device",
+            at: .now
+        )
+        let model = try AppModel(
+            repository: repository,
+            importStore: InMemoryImportStore(),
+            searchIndex: JournalSearchIndex(
+                url: paths.search.appending(path: "multi-select.sqlite")
+            ),
+            paths: paths,
+            cloudAccountMonitor: nil
+        )
+
+        model.selectEntries([first.id, second.id])
+
+        XCTAssertFalse(model.isBatchSelecting)
+        XCTAssertEqual(model.selectedEntryIDs, [first.id, second.id])
+        // The detail column cannot show two notes at once.
+        XCTAssertNil(model.selectedEntryID)
+
+        XCTAssertTrue(model.moveSelectedEntriesToTrash())
+
+        XCTAssertEqual(model.entries.map(\.id), [remaining.id])
+        XCTAssertEqual(Set(model.trashEntries.map(\.id)), [first.id, second.id])
+        XCTAssertTrue(model.selectedEntryIDs.isEmpty)
+    }
+
+    @MainActor
+    func testSelectingOneEntryLeavesExactlyOneRowSelected() throws {
+        let root = FileManager.default.temporaryDirectory.appending(
+            path: "pilgrim-single-select-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+        let paths = JournalPaths(root: root)
+        try paths.prepare()
+        let repository = InMemoryJournalRepository()
+        let first = try repository.save(
+            JournalEntryDraft(kind: .diary, title: "첫 기록"),
+            deviceID: "test-device",
+            at: .now
+        )
+        let second = try repository.save(
+            JournalEntryDraft(kind: .diary, title: "둘째 기록"),
+            deviceID: "test-device",
+            at: .now
+        )
+        let model = try AppModel(
+            repository: repository,
+            importStore: InMemoryImportStore(),
+            searchIndex: JournalSearchIndex(
+                url: paths.search.appending(path: "single-select.sqlite")
+            ),
+            paths: paths,
+            cloudAccountMonitor: nil
+        )
+
+        model.selectEntries([first.id, second.id])
+        model.selectEntries([second.id])
+
+        // The highlight is driven by selectedEntryIDs, so a stale id here is
+        // exactly the "two green cards for one note" report.
+        XCTAssertEqual(model.selectedEntryIDs, [second.id])
+        XCTAssertEqual(model.selectedEntryID, second.id)
+
+        model.selectEntry(first.id)
+
+        XCTAssertEqual(model.selectedEntryIDs, [first.id])
+    }
+
+    @MainActor
+    func testRefreshDropsSelectedEntriesHiddenByTheCurrentFilter() throws {
+        let root = FileManager.default.temporaryDirectory.appending(
+            path: "pilgrim-prune-select-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+        let paths = JournalPaths(root: root)
+        try paths.prepare()
+        let repository = InMemoryJournalRepository()
+        let diary = try repository.save(
+            JournalEntryDraft(kind: .diary, title: "일기"),
+            deviceID: "test-device",
+            at: .now
+        )
+        let memo = try repository.save(
+            JournalEntryDraft(kind: .memo, title: "메모"),
+            deviceID: "test-device",
+            at: .now
+        )
+        let model = try AppModel(
+            repository: repository,
+            importStore: InMemoryImportStore(),
+            searchIndex: JournalSearchIndex(
+                url: paths.search.appending(path: "prune-select.sqlite")
+            ),
+            paths: paths,
+            cloudAccountMonitor: nil
+        )
+
+        model.selectEntries([diary.id, memo.id])
+        model.selectedKind = .memo
+        model.refresh()
+
+        XCTAssertEqual(model.selectedEntryIDs, [memo.id])
+    }
+
+    @MainActor
     func testAutosaveRecordReturnReusesCreatedIdentifier() throws {
         let root = FileManager.default.temporaryDirectory.appending(
             path: "pilgrim-autosave-\(UUID().uuidString)",

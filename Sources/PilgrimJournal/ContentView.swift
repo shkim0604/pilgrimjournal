@@ -49,26 +49,20 @@ struct ContentView: View {
                     }
                     #endif
                 } else {
-                    List(selection: entrySelection) {
-                        NewEntryListButton {
-                            model.beginNewEntry()
-                        }
-
-                        // The section always renders the same ForEach. Swapping
-                        // it for a placeholder view when the last entry goes
-                        // away changes the list structure mid swipe-to-delete,
-                        // which trips UIKit's row-count check and crashes.
-                        Section("노트") {
-                            ForEach(model.entries) { entry in
-                                EntryRowWithActions(entry: entry)
-                                    .tag(entry.id)
-                            }
-                        }
-                    }
+                    // macOS binds the whole selection set even outside batch
+                    // mode so shift- and command-click stay in sync with the
+                    // model. iOS keeps the single-id binding: a set binding
+                    // there swallows taps unless edit mode is active.
                     #if os(macOS)
+                    List(selection: multipleEntrySelection) {
+                        entryListContent
+                    }
                     .onDeleteCommand {
-                        guard let entry = model.selectedEntry else { return }
-                        model.moveToTrash(entry)
+                        requestBatchTrash()
+                    }
+                    #else
+                    List(selection: entrySelection) {
+                        entryListContent
                     }
                     #endif
                 }
@@ -133,6 +127,21 @@ struct ContentView: View {
                         editMode = .active
                         #endif
                     }
+                    #if os(macOS)
+                    // Shift-click already selects a range here, so the trash
+                    // has to work without entering batch mode.
+                    Button(role: .destructive) {
+                        requestBatchTrash()
+                    } label: {
+                        Label(
+                            model.selectedEntryIDs.count > 1
+                                ? "삭제 \(model.selectedEntryIDs.count)"
+                                : "삭제",
+                            systemImage: "trash"
+                        )
+                    }
+                    .disabled(model.selectedEntryIDs.isEmpty)
+                    #endif
                 }
                 Button {
                     model.beginNewEntry()
@@ -164,6 +173,13 @@ struct ContentView: View {
             } else if let entry = model.selectedEntry {
                 InlineEntryEditorView(entry: entry)
                     .id(entry.id)
+            } else if model.selectedEntryIDs.count > 1 {
+                JournalEmptyState(
+                    title: "\(model.selectedEntryIDs.count)개의 노트를 선택했습니다",
+                    description: "도구 막대의 휴지통으로 한 번에 삭제하거나, "
+                        + "‘선택’ → ‘정리’로 유형과 태그를 바꿀 수 있습니다.",
+                    systemImage: "checklist"
+                ) {}
             } else if model.isPresentingEditor {
                 InlineEntryEditorView(
                     entry: nil,
@@ -297,10 +313,35 @@ struct ContentView: View {
         #endif
     }
 
+    @ViewBuilder
+    private var entryListContent: some View {
+        NewEntryListButton {
+            model.beginNewEntry()
+        }
+
+        // The section always renders the same ForEach. Swapping it for a
+        // placeholder view when the last entry goes away changes the list
+        // structure mid swipe-to-delete, which trips UIKit's row-count check
+        // and crashes.
+        Section("노트") {
+            ForEach(model.entries) { entry in
+                EntryRowWithActions(entry: entry)
+                    .tag(entry.id)
+            }
+        }
+    }
+
     private var entrySelection: Binding<UUID?> {
         Binding(
             get: { model.selectedEntryID },
             set: { model.selectEntry($0) }
+        )
+    }
+
+    private var multipleEntrySelection: Binding<Set<UUID>> {
+        Binding(
+            get: { model.selectedEntryIDs },
+            set: { model.selectEntries($0) }
         )
     }
 
