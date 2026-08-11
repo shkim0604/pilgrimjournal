@@ -20,6 +20,58 @@ final class MarkdownSupportTests: XCTestCase {
         )
     }
 
+    func testStaleBindingEchoDoesNotOverwriteNewerTyping() {
+        // The user typed "가" and then "가나". SwiftUI renders the first value
+        // and delivers it after the second keystroke already reached the text
+        // view. Applying it would drop "나".
+        XCTAssertFalse(
+            MarkdownInputReconciliation.shouldApplyExternalText(
+                incoming: "가",
+                current: "가나",
+                publishedHistory: ["가", "가나"]
+            )
+        )
+    }
+
+    func testExternalTextChangeIsStillApplied() {
+        // A toolbar command or a revision restore produces a value the editor
+        // never published, so it must reach the text view.
+        XCTAssertTrue(
+            MarkdownInputReconciliation.shouldApplyExternalText(
+                incoming: "# 제목",
+                current: "가나",
+                publishedHistory: ["가", "가나"]
+            )
+        )
+    }
+
+    func testTextViewAlreadyMatchingTheBindingNeedsNoUpdate() {
+        XCTAssertFalse(
+            MarkdownInputReconciliation.shouldApplyExternalText(
+                incoming: "가나",
+                current: "가나",
+                publishedHistory: ["가", "가나"]
+            )
+        )
+    }
+
+    func testPublishedHistoryIsBoundedAndKeepsTheNewestValues() {
+        var history: [String] = []
+        for index in 0..<200 {
+            MarkdownInputReconciliation.recordPublishedText(
+                "value-\(index)",
+                in: &history
+            )
+        }
+
+        XCTAssertLessThanOrEqual(
+            history.count,
+            MarkdownInputReconciliation.publishedHistoryLimit
+        )
+        XCTAssertEqual(history.last, "value-199")
+        XCTAssertTrue(history.contains("value-198"))
+    }
+
     func testLiveStylingWaitsForAWordBoundary() {
         XCTAssertFalse(
             MarkdownInputReconciliation.shouldScheduleStyling(

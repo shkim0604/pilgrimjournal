@@ -1834,7 +1834,11 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
         guard MarkdownInputReconciliation.canMutateTextStorage(
             isComposing: textView.hasMarkedText()
         ) else { return }
-        if textView.string != text {
+        if MarkdownInputReconciliation.shouldApplyExternalText(
+            incoming: text,
+            current: textView.string,
+            publishedHistory: context.coordinator.publishedHistory
+        ) {
             context.coordinator.replaceExternalText(
                 text,
                 selection: selection,
@@ -1842,6 +1846,7 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
             )
             return
         }
+        guard textView.string == text else { return }
         let safeSelection = clamped(selection, to: textView.string.utf16.count)
         if textView.selectedRange() != safeSelection {
             textView.setSelectedRange(safeSelection)
@@ -1853,6 +1858,17 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
         var parent: LiveMarkdownTextEditor
         var isUpdating = false
         weak var textView: NSTextView?
+        private(set) var publishedHistory: [String] = []
+
+        /// Every write to the binding must go through here so the editor can
+        /// recognise its own value when SwiftUI echoes it back a render later.
+        func publish(_ newText: String) {
+            MarkdownInputReconciliation.recordPublishedText(
+                newText,
+                in: &publishedHistory
+            )
+            parent.text = newText
+        }
 
         init(parent: LiveMarkdownTextEditor) {
             self.parent = parent
@@ -1888,7 +1904,7 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
             )
             textView.typingAttributes = LiveMarkdownStyler.baseAttributes
             textView.setSelectedRange(safeSelection)
-            parent.text = replacement
+            publish(replacement)
             parent.selection = safeSelection
             isUpdating = false
         }
@@ -1902,7 +1918,7 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
             if !MarkdownInputReconciliation.canMutateTextStorage(
                 isComposing: textView.hasMarkedText()
             ) {
-                parent.text = textView.string
+                publish(textView.string)
                 parent.selection = currentSelection
                 return
             }
@@ -1922,7 +1938,7 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
                     length: 0
                 ))
             }
-            parent.text = continued.text
+            publish(continued.text)
             let preservedSelection = textView.selectedRange()
             parent.selection = preservedSelection
             LiveMarkdownStyler.apply(
@@ -2099,7 +2115,11 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
         guard MarkdownInputReconciliation.canMutateTextStorage(
             isComposing: textView.markedTextRange != nil
         ) else { return }
-        if textView.text != text {
+        if MarkdownInputReconciliation.shouldApplyExternalText(
+            incoming: text,
+            current: textView.text,
+            publishedHistory: context.coordinator.publishedHistory
+        ) {
             context.coordinator.replaceExternalText(
                 text,
                 selection: selection,
@@ -2107,6 +2127,7 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
             )
             return
         }
+        guard textView.text == text else { return }
         let safeSelection = clamped(selection, to: textView.text.utf16.count)
         if textView.selectedRange != safeSelection {
             textView.selectedRange = safeSelection
@@ -2118,6 +2139,17 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
         var parent: LiveMarkdownTextEditor
         var isUpdating = false
         weak var textView: UITextView?
+        private(set) var publishedHistory: [String] = []
+
+        /// Every write to the binding must go through here so the editor can
+        /// recognise its own value when SwiftUI echoes it back a render later.
+        func publish(_ newText: String) {
+            MarkdownInputReconciliation.recordPublishedText(
+                newText,
+                in: &publishedHistory
+            )
+            parent.text = newText
+        }
         private var stylingTask: Task<Void, Never>?
 
         init(parent: LiveMarkdownTextEditor) {
@@ -2155,7 +2187,7 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
             )
             textView.typingAttributes = LiveMarkdownStyler.baseAttributes
             textView.selectedRange = safeSelection
-            parent.text = replacement
+            publish(replacement)
             parent.selection = safeSelection
             isUpdating = false
         }
@@ -2170,7 +2202,7 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
                 // UITextView's marked range. Otherwise any unrelated view
                 // update can restore the pre-composition text and drop Korean
                 // jamo or an English autocorrection candidate.
-                parent.text = textView.text
+                publish(textView.text)
                 parent.selection = currentSelection
                 return
             }
@@ -2191,7 +2223,7 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
                     length: 0
                 )
             }
-            parent.text = continued.text
+            publish(continued.text)
             let preservedSelection = textView.selectedRange
             parent.selection = preservedSelection
             if continued.text != expanded.text
@@ -2302,6 +2334,37 @@ private func clamped(_ range: NSRange, to length: Int) -> NSRange {
 enum MarkdownInputReconciliation {
     static func canMutateTextStorage(isComposing: Bool) -> Bool {
         !isComposing
+    }
+
+    static let publishedHistoryLimit = 32
+
+    /// Records a value the editor pushed into its SwiftUI binding.
+    static func recordPublishedText(
+        _ text: String,
+        in history: inout [String]
+    ) {
+        if history.last == text { return }
+        history.append(text)
+        if history.count > publishedHistoryLimit {
+            history.removeFirst(history.count - publishedHistoryLimit)
+        }
+    }
+
+    /// Decides whether a binding value should overwrite the text view.
+    ///
+    /// SwiftUI hands back the value captured when the view was rendered. While
+    /// that render is in flight the user keeps typing, so the value can arrive
+    /// one or more keystrokes behind what the text view already holds. Writing
+    /// it back would silently drop those keystrokes, which reads as characters
+    /// being swallowed. Any value the editor itself published is therefore
+    /// treated as an echo; only text the editor has never seen is external.
+    static func shouldApplyExternalText(
+        incoming: String,
+        current: String,
+        publishedHistory: [String]
+    ) -> Bool {
+        guard incoming != current else { return false }
+        return !publishedHistory.contains(incoming)
     }
 
     static func shouldScheduleStyling(

@@ -4,7 +4,11 @@
 
 ---
 
-## 편집기 입력이 씹힌다 (미해결, 재발 중)
+## 편집기 입력이 씹힌다 (수정 적용, 실기기 확인 대기)
+
+> **상태 (2026-08-11):** 원인으로 지목한 지점에 수정을 넣고 회귀 테스트를
+> 추가했다. 다만 **실기기에서 증상이 사라졌는지는 아직 확인하지 못했다.**
+> build 13을 올린 뒤 아래 릴리스 게이트로 확인할 것.
 
 ### 증상
 
@@ -94,29 +98,30 @@ func updateUIView(_ textView: UITextView, context: Context) {
   `draft`의 복사본 `outgoing`을 저장할 뿐 `draft.body`에 되쓰지 않는다
   (`EntryViews.swift:431`). 제목도 같은 autosave를 타는데 멀쩡한 것이 방증이다.
 
-### 확인 절차
+### 적용한 수정
 
-1. `updateUIView`의 `replaceExternalText` 분기에 로그를 넣고 **타이핑 중에
-   불리는지** 본다. 외부 변경(도구모음 서식, revision 복원)이 없는데 불린다면
-   원인 확정이다.
-2. 임시로 그 분기를 `textView.isFirstResponder`일 때 건너뛰게 하고 증상이
-   사라지는지 확인한다. 진단용이며 그대로 두면 외부 변경이 반영되지 않는다.
-3. 짧은 기록에서도 빠르게 치면 재현되는지 본다. 재현되면 길이와 무관한
-   경합이라는 뜻이라 이 가설이 더 확실해진다.
+`textView.text != text` 하나로 "binding이 뒤처진 것"과 "진짜 외부 변경"을
+뭉뚱그려 판단하던 것을 분리했다.
 
-### 고칠 때의 방향
+- coordinator가 **자기가 binding에 쓴 값의 최근 이력**을 들고 있는다
+  (`publishedHistory`, 최대 32개). 모든 binding 쓰기는 `publish(_:)`를 지난다.
+- `MarkdownInputReconciliation.shouldApplyExternalText(incoming:current:publishedHistory:)`
+  가 판단한다. 들어온 값이 이력에 있으면 **자기 메아리**이므로 무시하고,
+  한 번도 발행한 적 없는 값만 외부 변경으로 보고 적용한다.
+- iOS `updateUIView`와 macOS `updateNSView` 양쪽에 같은 규칙을 적용했다.
+  **두 플랫폼 모두 같은 결함이 있었다.**
 
-핵심은 **"binding이 뒤처진 것"과 "진짜 외부 변경"을 구분**하는 것이다. 지금은
-둘 다 `textView.text != text`로 뭉뚱그려 판단해서 문제가 생긴다.
+회귀 테스트는 `MarkdownSupportTests`에 4건 추가했다. 순수 함수라 기기 없이
+`swift test`로 검증된다 — 이 문제로 TestFlight를 왕복하지 않기 위한 장치다.
 
-- 본문을 프로그램적으로 바꾸는 곳에서 올리는 **명시적 revision 토큰**을 두고,
-  `updateUIView`는 그 토큰이 바뀔 때만 `replaceExternalText`를 부른다.
-  외부 변경 지점: 도구모음 slash command(`EntryViews.swift:1051`),
-  revision 복원, 서식 적용.
-- 토큰 도입이 부담이면 차선책으로 coordinator가 **자기가 발행한 값의 최근
-  이력**을 들고 있다가, 들어온 `text`가 그 이력에 있으면 메아리로 보고 무시한다.
-- 어느 쪽이든 `parent.text` 쓰기가 매 키 입력마다 두 번의 렌더를 유발하는
-  구조(`.onChange(of: draft)` → `saveState`)도 함께 줄이면 경합 구간이 좁아진다.
+### 남은 위험
+
+- 외부 변경 값이 **우연히 과거에 발행한 값과 같으면** 메아리로 오인해 무시한다.
+  실제로는 binding을 통한 undo 정도가 해당하는데, undo·redo는 text view 자체의
+  `undoManager`가 처리하므로(`replaceExternalText`가 등록) 경로가 다르다.
+- `parent.text` 쓰기가 매 키 입력마다 두 번의 렌더를 유발하는 구조
+  (`.onChange(of: draft)` → `saveState = .saving`)는 그대로다. 경합 자체를
+  줄이려면 이쪽도 손봐야 한다. 증상이 남으면 다음으로 볼 곳이다.
 
 ### 릴리스 게이트 (이게 재발을 막는 핵심)
 
