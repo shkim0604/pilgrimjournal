@@ -340,6 +340,71 @@ final class AppModelNavigationTests: XCTestCase {
     }
 
     @MainActor
+    func testStartingANewEntryFromSettingsLeavesSettings() throws {
+        let root = FileManager.default.temporaryDirectory.appending(
+            path: "pilgrim-new-from-settings-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+        let paths = JournalPaths(root: root)
+        try paths.prepare()
+        let model = try AppModel(
+            repository: InMemoryJournalRepository(),
+            importStore: InMemoryImportStore(),
+            searchIndex: JournalSearchIndex(
+                url: paths.search.appending(path: "new-from-settings.sqlite")
+            ),
+            paths: paths,
+            cloudAccountMonitor: nil
+        )
+
+        model.showSettings()
+        model.beginNewEntry()
+
+        // The macOS detail column checks settings before the editor, so
+        // settings staying up is the toolbar button doing nothing.
+        XCTAssertFalse(model.isPresentingSettings)
+        XCTAssertTrue(model.isPresentingEditor)
+    }
+
+    @MainActor
+    func testRestoringABackupReportsAnOutcome() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(
+            path: "pilgrim-restore-outcome-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+        let paths = JournalPaths(root: root)
+        try paths.prepare()
+        let repository = InMemoryJournalRepository()
+        _ = try repository.save(
+            JournalEntryDraft(kind: .diary, title: "백업 대상"),
+            deviceID: "test-device",
+            at: .now
+        )
+        let model = try AppModel(
+            repository: repository,
+            importStore: InMemoryImportStore(),
+            searchIndex: JournalSearchIndex(
+                url: paths.search.appending(path: "restore-outcome.sqlite")
+            ),
+            paths: paths,
+            cloudAccountMonitor: nil
+        )
+
+        await model.prepareBackup()
+        let backup = try XCTUnwrap(model.backupDocument?.data)
+        await model.restoreBackup(data: backup, mode: .merge)
+
+        XCTAssertNil(model.lastRestoreFailureMessage)
+        // Without this the operation finishes with nothing on screen, which
+        // reads as "nothing happened".
+        let outcome = try XCTUnwrap(model.lastOperationOutcome)
+        XCTAssertEqual(outcome.title, "병합 복원 완료")
+        XCTAssertFalse(outcome.message.isEmpty)
+    }
+
+    @MainActor
     func testSelectingMultipleEntriesOutsideBatchModeArmsTrash() throws {
         let root = FileManager.default.temporaryDirectory.appending(
             path: "pilgrim-multi-select-\(UUID().uuidString)",

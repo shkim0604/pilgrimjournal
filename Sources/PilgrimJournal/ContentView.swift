@@ -300,6 +300,18 @@ struct ContentView: View {
         } message: {
             Text(model.errorMessage ?? "")
         }
+        // Anchored here rather than in settings: the settings form scrolls and
+        // can be dismissed, and a backup that finishes with no visible result
+        // reads as a backup that did not happen.
+        .alert(
+            item: $model.lastOperationOutcome
+        ) { outcome in
+            Alert(
+                title: Text(outcome.title),
+                message: Text(outcome.message),
+                dismissButton: .default(Text("확인"))
+            )
+        }
         #if os(macOS)
         .onExitCommand {
             if MacSearchFocus.isFocused {

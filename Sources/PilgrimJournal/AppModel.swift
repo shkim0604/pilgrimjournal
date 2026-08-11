@@ -29,6 +29,13 @@ struct RestoreConflictSummary: Identifiable, Equatable {
     var backupTitle: String
 }
 
+/// A finished backup or restore, surfaced as a confirmation the user must see.
+struct JournalOperationOutcome: Identifiable, Equatable {
+    let id = UUID()
+    var title: String
+    var message: String
+}
+
 struct CloudSyncStoreEvent: Equatable, Sendable {
     var operation: CloudSyncStoreOperation
     var completedAt: Date?
@@ -70,6 +77,7 @@ final class AppModel: ObservableObject {
     @Published var pendingRestoreData: Data?
     @Published var lastRestoreResult: RestoreResult?
     @Published var lastBackupExportMessage: String?
+    @Published var lastOperationOutcome: JournalOperationOutcome?
     @Published var trashEntries: [JournalEntryRecord] = []
     @Published var isPresentingTrash = false
     @Published var lastSafetyBackupURL: URL?
@@ -423,6 +431,9 @@ final class AppModel: ObservableObject {
         newEntryNotebookName = selectedNotebookName
         editorSessionID = UUID()
         isPresentingEditor = true
+        // The macOS detail column checks settings first, so leaving this set
+        // keeps settings on screen and the new note never appears.
+        isPresentingSettings = false
     }
 
     func selectEntry(_ entryID: UUID?) {
@@ -1132,6 +1143,10 @@ final class AppModel: ObservableObject {
             )
             lastRestoreFailureMessage = nil
             pendingRestoreData = nil
+            reportOutcome(
+                title: mode == .replace ? "교체 복원 완료" : "병합 복원 완료",
+                message: restoreSummary(lastRestoreResult)
+            )
             markLocalMutation()
             rebuildSearchIndex()
             // Without this the list keeps showing the pre-restore state, which
@@ -1143,6 +1158,25 @@ final class AppModel: ObservableObject {
             lastRestoreFailureMessage = error.localizedDescription
             errorMessage = error.localizedDescription
         }
+    }
+
+    /// Records the result of a backup or restore for the confirmation alert.
+    ///
+    /// The settings form already carries the detail, but a caption inside a
+    /// long scrolling form is easy to miss and disappears entirely when the
+    /// form is not on screen. Both operations end with the user unsure whether
+    /// anything happened, so the outcome is raised where it cannot be missed.
+    func reportOutcome(title: String, message: String) {
+        lastOperationOutcome = JournalOperationOutcome(
+            title: title,
+            message: message
+        )
+    }
+
+    private func restoreSummary(_ result: RestoreResult?) -> String {
+        guard let result else { return "복원이 끝났습니다." }
+        return "\(result.restored)개 반영 · \(result.tombstoned)개 휴지통 · "
+            + "충돌 \(result.conflicts)개"
     }
 
     func retryPendingRestore(mode: RestoreMode) async {

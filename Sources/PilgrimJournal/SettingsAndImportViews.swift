@@ -239,6 +239,10 @@ struct SettingsView: View {
             switch result {
             case let .success(url):
                 model.lastBackupExportMessage = "백업을 저장했습니다 · \(url.lastPathComponent)"
+                model.reportOutcome(
+                    title: "백업을 저장했습니다",
+                    message: url.path(percentEncoded: false)
+                )
             case let .failure(error):
                 // Dismissing the save panel is a choice, not a failure.
                 if (error as NSError).code != NSUserCancelledError {
