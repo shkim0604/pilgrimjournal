@@ -9,12 +9,18 @@ public struct CloudAccountMonitor: Sendable {
         self.containerIdentifier = containerIdentifier
     }
 
-    public func currentState() async -> SyncState {
+    /// Reports an iCloud account problem, or `nil` when the account is usable.
+    ///
+    /// A usable account says nothing about whether a sync is in flight, so it
+    /// deliberately reports nothing. Treating it as a pending sync would
+    /// overwrite the state the CloudKit events established and leave the UI
+    /// waiting for an event that never arrives.
+    public func currentProblem() async -> SyncState? {
         let container = CKContainer(identifier: containerIdentifier)
         do {
             switch try await container.accountStatus() {
             case .available:
-                return .pending
+                return nil
             case .noAccount:
                 return .unavailable(reason: "iCloud 계정이 없습니다.")
             case .restricted:

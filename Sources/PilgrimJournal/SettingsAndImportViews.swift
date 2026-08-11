@@ -36,19 +36,6 @@ struct SettingsView: View {
             Section("동기화") {
                 LabeledContent("상태", value: syncDescription)
                 LabeledContent("저장 위치", value: storageLocationDescription)
-                Button {
-                    Task { await model.refreshSynchronization() }
-                } label: {
-                    HStack {
-                        Label("동기화 새로고침", systemImage: "arrow.clockwise")
-                        if model.isRefreshingSynchronization {
-                            Spacer()
-                            ProgressView()
-                                .controlSize(.small)
-                        }
-                    }
-                }
-                .disabled(model.isRefreshingSynchronization)
                 Text("기록과 첨부는 현재 시스템 iCloud의 개인 데이터베이스에 저장됩니다. 이 저장 공간은 최초 연결한 Apple 로그인 사용자에게 귀속되며 다른 사용자는 차단됩니다.")
                     .font(.caption)
                     .foregroundStyle(.secondary)

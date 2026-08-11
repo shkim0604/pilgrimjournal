@@ -100,7 +100,7 @@ final class AppModelNavigationTests: XCTestCase {
     }
 
     @MainActor
-    func testManualSynchronizationRefreshReloadsEntriesAndTrash() async throws {
+    func testAccountCheckWithoutCloudReportsLocalOnly() async throws {
         let root = FileManager.default.temporaryDirectory.appending(
             path: "pilgrim-manual-sync-\(UUID().uuidString)",
             directoryHint: .isDirectory
@@ -118,28 +118,45 @@ final class AppModelNavigationTests: XCTestCase {
             paths: paths,
             cloudAccountMonitor: nil
         )
-        let visible = try repository.save(
-            JournalEntryDraft(kind: .memo, title: "새로 받은 메모"),
-            deviceID: "remote-device",
-            at: .now
-        )
-        let deleted = try repository.save(
-            JournalEntryDraft(kind: .diary, title: "삭제된 기록"),
-            deviceID: "remote-device",
-            at: .now
-        )
-        try repository.moveToTrash(
-            entryID: deleted.id,
-            deviceID: "remote-device",
-            at: .now
-        )
+        await model.refreshCloudAccountState()
 
-        await model.refreshSynchronization()
-
-        XCTAssertEqual(model.entries.map(\.id), [visible.id])
-        XCTAssertEqual(model.trashEntries.map(\.id), [deleted.id])
         XCTAssertEqual(model.syncState, .localOnly)
-        XCTAssertFalse(model.isRefreshingSynchronization)
+    }
+
+    @MainActor
+    func testAccountCheckDoesNotDemoteACompletedSync() throws {
+        let root = FileManager.default.temporaryDirectory.appending(
+            path: "pilgrim-sync-state-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+        let paths = JournalPaths(root: root)
+        try paths.prepare()
+        let model = try AppModel(
+            repository: InMemoryJournalRepository(),
+            importStore: InMemoryImportStore(),
+            searchIndex: JournalSearchIndex(
+                url: paths.search.appending(path: "sync-state.sqlite")
+            ),
+            paths: paths,
+            cloudAccountMonitor: CloudAccountMonitor(
+                containerIdentifier: "iCloud.test.PilgrimJournal"
+            )
+        )
+        let completedAt = Date(timeIntervalSince1970: 500)
+        model.handleCloudSyncStoreEvent(CloudSyncStoreEvent(
+            operation: .exporting,
+            completedAt: completedAt,
+            succeeded: true,
+            errorDescription: nil
+        ))
+        XCTAssertEqual(model.syncState, .synced(completedAt))
+
+        // A healthy account reports no problem, so the completed sync stands.
+        // Reporting "pending" here used to strand the UI on 동기화 대기.
+        model.applyCloudAccountProblem(nil)
+
+        XCTAssertEqual(model.syncState, .synced(completedAt))
     }
 
     @MainActor

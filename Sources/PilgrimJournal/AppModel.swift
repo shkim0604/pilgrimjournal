@@ -48,7 +48,6 @@ final class AppModel: ObservableObject {
     @Published var searchStartDate: Date?
     @Published var searchEndDate: Date?
     @Published var syncState: SyncState
-    @Published private(set) var isRefreshingSynchronization = false
     @Published var errorMessage: String?
     @Published var selectedEntryID: UUID?
     @Published var editorSessionID = UUID()
@@ -156,19 +155,16 @@ final class AppModel: ObservableObject {
             syncState = .localOnly
             return
         }
-        syncState = await cloudAccountMonitor.currentState()
+        applyCloudAccountProblem(await cloudAccountMonitor.currentProblem())
     }
 
-    func refreshSynchronization() async {
-        guard !isRefreshingSynchronization else { return }
-        isRefreshingSynchronization = true
-        defer { isRefreshingSynchronization = false }
-
-        await refreshCloudAccountState()
-        refreshNotebookCatalog()
-        rebuildSearchIndex()
-        refreshTrash()
-        refresh()
+    /// Only an account problem overrides the sync state. A usable account says
+    /// nothing about whether a sync is in flight, so it leaves whatever the
+    /// CloudKit events established. Reporting "pending" for a healthy account
+    /// stranded the UI on 동기화 대기 until an event that never arrived.
+    func applyCloudAccountProblem(_ problem: SyncState?) {
+        guard let problem else { return }
+        syncState = problem
     }
 
     func handleCloudSyncStoreEvent(_ event: CloudSyncStoreEvent) {
