@@ -12,6 +12,17 @@
 나타나며, 자모가 깨지는 IME 조합 문제와는 다르다. 사용자 표현으로는
 "뭔가 씹히는 느낌".
 
+**범위를 좁히는 결정적 단서:**
+
+- **제목 입력은 멀쩡하고 본문만 문제다.**
+- **공백과 무관하다.** 아무 글자에서나 발생한다.
+
+제목은 SwiftUI 기본 `TextField`(`EntryViews.swift:56`), 본문은
+`UIViewRepresentable`인 `LiveMarkdownTextEditor`다. **둘은 같은 `draft`에 쓰고
+같은 `.onChange(of: draft)` autosave를 트리거한다.** 조건이 같은데 본문만
+깨지므로, 원인은 autosave나 SwiftUI 상태 압력이 아니라 **UIKit 왕복 자체**에
+있다.
+
 ### 이력
 
 | 시점 | 내용 |
@@ -23,58 +34,89 @@
 이 문제로 여러 번 씨름했다. **그런데 어디에도 기록이 없어서 매번 처음부터
 원인을 다시 찾고 있다.** 이 문서가 그 재작업을 끊기 위한 것이다.
 
-### 유력한 원인 — 700ms 전체 문서 재스타일링
+### 유력한 원인 — 오래된 binding 값이 최신 입력을 덮어쓴다
 
-`Sources/PilgrimJournal/MarkdownSupport.swift`
+`Sources/PilgrimJournal/MarkdownSupport.swift`의 `updateUIView`:
 
-1. 공백 문자를 입력하면 `scheduleStyling`이 **700ms 뒤** 스타일링을 예약한다
-   (`MarkdownSupport.swift:2250`, `shouldScheduleStyling`이 마지막 글자가
-   공백일 때만 true).
-2. 그 시점에 `applyStyling` → `LiveMarkdownStyler.apply`가 실행된다
-   (`MarkdownSupport.swift:2269`).
-3. `apply`는 **문서 전체**를 대상으로 동작한다 (`MarkdownSupport.swift:1219`):
-   - `setAttributes(baseAttributes, range: fullRange)`로 전체 속성 초기화
-   - 이어서 **정규식 패스 18회**를 문서 전체에 돌린다 (bold, italic ×2,
-     strikethrough, highlight, code, link, heading, bullet, numbered, quote,
-     divider, fenced code, Day One escape …)
-4. 끝나면 `typingAttributes`와 `selectedRange`를 다시 설정한다.
+```swift
+func updateUIView(_ textView: UITextView, context: Context) {
+    context.coordinator.parent = self
+    guard !context.coordinator.isUpdating else { return }
+    guard MarkdownInputReconciliation.canMutateTextStorage(
+        isComposing: textView.markedTextRange != nil
+    ) else { return }
+    if textView.text != text {                       // ← 여기
+        context.coordinator.replaceExternalText(text, ...)
+        return
+    }
+```
 
-이게 **메인 스레드에서** 돌고, 기록이 길수록 비용이 선형으로 커진다. 타이핑
-도중 이 패스가 끼어들면 입력 이벤트가 밀리거나 유실될 수 있다. 증상이
-한글·영어를 가리지 않는 것, 짧은 메모보다 긴 기록에서 두드러지는 것,
-디버거로는 잘 안 잡히는 것이 모두 이 가설과 맞는다.
+`text`는 **렌더 시점에 확정된** SwiftUI binding 값이다. 타이핑이 그보다 앞서
+나가면 `textView.text`가 최신이고 `text`가 한 글자 뒤처지는데, 위 비교는 그
+차이를 **외부 변경으로 오인해** `replaceExternalText(text)`로 **문서 전체를
+낡은 값으로 되돌린다.** 그 사이 입력된 글자가 사라진다.
 
-**아직 재현·프로파일링으로 확정하지 않았다.** 아래 확인 절차를 먼저 밟을 것.
+경합이 벌어지는 경로:
+
+1. 키 입력 → `textViewDidChange` → `parent.text = continued.text`
+   (`MarkdownSupport.swift:2194`) — 매 타에 SwiftUI 상태 쓰기
+2. 그 쓰기가 `.onChange(of: draft)` → `scheduleAutosave()` →
+   `saveState = .saving` (`EntryViews.swift:419`)를 또 유발 —
+   **한 번의 키 입력이 최소 두 번의 렌더를 만든다**
+3. 렌더마다 `updateUIView`가 불린다. 그 사이 사용자가 한 글자 더 치면 위
+   비교가 걸린다
+
+증거와 전부 들어맞는다.
+
+| 관찰 | 설명 |
+| --- | --- |
+| 본문만 문제 | `UIViewRepresentable` 왕복이 있는 쪽만 해당 |
+| 제목은 정상 | 기본 `TextField`는 SwiftUI가 내부에서 상태를 합쳐 처리 |
+| 공백 무관 | 매 키 입력마다 상태 쓰기가 일어난다 |
+| 한글·영어 공통 | 조합이 끝난 글자는 `markedTextRange`가 없어 IME 가드가 안 걸린다 |
+| 빨리 칠수록 심함 | 경합 구간이 넓어진다 |
+| Release·실기기에서 두드러짐 | 렌더·입력 타이밍 차이 |
+
+**아직 재현으로 확정하지 않았다.** 아래 확인 절차를 먼저 밟을 것.
 
 ### 배제된 가설 (다시 파지 말 것)
 
+- ~~700ms 전체 문서 재스타일링(`LiveMarkdownStyler.apply`)이 입력을 밀어낸다~~
+  → `scheduleStyling`은 `shouldScheduleStyling`이 true일 때, 즉 **마지막 글자가
+  공백일 때만** 예약된다(`MarkdownSupport.swift:2307`). 증상은 공백과 무관하므로
+  이 경로가 아니다. 다만 문서 전체에 정규식 18패스를 메인 스레드에서 도는 것은
+  **별개의 성능 문제**로 남아 있다(task 6.4).
 - ~~`applyStyling`이 `textViewDidChange`를 재진입시켜 `guard !isUpdating`에서
   입력이 버려진다~~ → `LiveMarkdownStyler.apply`는 `setAttributes`/`addAttribute`
   만 쓰고 **문자는 바꾸지 않는다.** 속성 변경은 `textViewDidChange`를
   발생시키지 않으므로 재진입은 일어나지 않는다.
 - ~~autosave가 편집 중인 본문을 되돌려 쓴다~~ → `performAutosave`는
   `draft`의 복사본 `outgoing`을 저장할 뿐 `draft.body`에 되쓰지 않는다
-  (`EntryViews.swift:431`).
+  (`EntryViews.swift:431`). 제목도 같은 autosave를 타는데 멀쩡한 것이 방증이다.
 
 ### 확인 절차
 
-1. **긴 기록으로 재현한다.** 수천 자짜리 기록을 열고 빠르게 타이핑한다.
-   짧은 기록에서 재현되지 않으면 이 가설이 맞을 가능성이 높다.
-2. 공백·엔터 직후 700ms 지점에서 집중적으로 씹히는지 본다.
-   `shouldScheduleStyling`이 공백에서만 예약하므로 타이밍이 특징적이다.
-3. Instruments Time Profiler로 `LiveMarkdownStyler.apply`의 메인 스레드 점유를
-   측정한다. **화면을 켜 둔 채 실행할 것** — 잠금 상태에서 trace를 시작하면
-   종료되지 않는다.
-4. 임시로 `scheduleStyling`의 700ms를 크게 늘리거나 스타일링을 꺼 보고
-   증상이 사라지는지 확인한다. 사라지면 원인 확정이다.
+1. `updateUIView`의 `replaceExternalText` 분기에 로그를 넣고 **타이핑 중에
+   불리는지** 본다. 외부 변경(도구모음 서식, revision 복원)이 없는데 불린다면
+   원인 확정이다.
+2. 임시로 그 분기를 `textView.isFirstResponder`일 때 건너뛰게 하고 증상이
+   사라지는지 확인한다. 진단용이며 그대로 두면 외부 변경이 반영되지 않는다.
+3. 짧은 기록에서도 빠르게 치면 재현되는지 본다. 재현되면 길이와 무관한
+   경합이라는 뜻이라 이 가설이 더 확실해진다.
 
 ### 고칠 때의 방향
 
-- 전체 문서가 아니라 **변경된 문단 범위만** 재스타일링한다.
-- 정규식 18개를 매번 새로 도는 대신 컴파일된 정규식을 재사용하고,
-  가능하면 한 번의 순회로 합친다.
-- 스타일링 중 `selectedRange`를 다시 쓰지 않는다 (값이 같아도 입력 세션을
-  건드릴 수 있다).
+핵심은 **"binding이 뒤처진 것"과 "진짜 외부 변경"을 구분**하는 것이다. 지금은
+둘 다 `textView.text != text`로 뭉뚱그려 판단해서 문제가 생긴다.
+
+- 본문을 프로그램적으로 바꾸는 곳에서 올리는 **명시적 revision 토큰**을 두고,
+  `updateUIView`는 그 토큰이 바뀔 때만 `replaceExternalText`를 부른다.
+  외부 변경 지점: 도구모음 slash command(`EntryViews.swift:1051`),
+  revision 복원, 서식 적용.
+- 토큰 도입이 부담이면 차선책으로 coordinator가 **자기가 발행한 값의 최근
+  이력**을 들고 있다가, 들어온 `text`가 그 이력에 있으면 메아리로 보고 무시한다.
+- 어느 쪽이든 `parent.text` 쓰기가 매 키 입력마다 두 번의 렌더를 유발하는
+  구조(`.onChange(of: draft)` → `saveState`)도 함께 줄이면 경합 구간이 좁아진다.
 
 ### 릴리스 게이트 (이게 재발을 막는 핵심)
 
@@ -82,11 +124,12 @@
 못한다 — `MarkdownSupportTests`는 순수 함수만 검증하고, 실제 입력 타이밍은
 검증 범위 밖이다.
 
-- [ ] **긴 기록 타이핑** — 수천 자 기록에서 한글·영어를 30초 이상 빠르게
-      입력한다. 한 글자도 씹히지 않아야 한다.
-- [ ] 공백·엔터를 자주 섞어 입력한다 (스타일링 예약이 공백에서 걸린다).
+- [ ] **본문을 빠르게 30초 이상 입력한다.** 한글과 영어를 섞고, 한 글자도
+      씹히지 않아야 한다. 제목이 아니라 **본문**이어야 한다.
 - [ ] **Release 구성으로** 확인한다. DEBUG 최적화 차이로 증상이 가려질 수 있다.
 - [ ] iPhone 실기기 소프트 키보드로 확인한다. Mac 하드웨어 키보드와
       시뮬레이터만으로는 부족하다.
+- [ ] 도구모음 서식·slash command를 쓴 뒤에도 이어서 타이핑해 본다
+      (외부 변경 경로와 입력 경로가 함께 걸리는 구간).
 
 관련: `docs/device-verification.md`의 세션 D-2.
