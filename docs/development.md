@@ -109,6 +109,27 @@ CloudKit production schema는 additive-only 정책으로 관리한다. 개발 co
      -exportPath "$BUILD_ROOT/export-iOS"
    ```
 
+   **이 저장소에서는 API 키 인증이 실제로 통하는 경로다.** build 13을 이 방식으로
+   두 플랫폼 모두 업로드했다. Xcode에 Apple 계정이 없어도 되고,
+   `-allowProvisioningUpdates`가 Apple Distribution 인증서까지 처리한다.
+
+   ```sh
+   for platform in iOS macOS; do
+     xcodebuild -exportArchive \
+       -archivePath "$BUILD_ROOT/PilgrimJournal-$platform.xcarchive" \
+       -exportOptionsPlist PilgrimJournal/AppStoreExportOptions.plist \
+       -exportPath "$BUILD_ROOT/export-$platform" \
+       -allowProvisioningUpdates \
+       -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_3238RJ28P3.p8 \
+       -authenticationKeyID 3238RJ28P3 \
+       -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+   done
+   ```
+
+   Issuer ID는 App Store Connect → 사용자 및 액세스 → 통합 →
+   App Store Connect API 상단의 UUID다. **저장소에 커밋하지 않는다.**
+   `.p8` 키도 마찬가지로 `~/.appstoreconnect/private_keys/`에만 둔다.
+
    #### `Failed to Use Accounts`가 나오면
 
    이 오류는 원인이 두 가지이고 **로그를 봐야 구분된다.** 오류 메시지 자체는
