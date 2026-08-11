@@ -101,8 +101,6 @@ CloudKit production schema는 additive-only 정책으로 관리한다. 개발 co
 4. 아카이브의 `CFBundleVersion`이 의도한 빌드 번호인지 확인한 뒤
    `.release/build<N>/`으로 복사한다. `.release/`는 Git에서 무시된다.
 5. `PilgrimJournal/AppStoreExportOptions.plist`로 export·upload 한다.
-   **Mac 잠금을 해제한 상태에서 실행한다.** 잠겨 있으면 Xcode가 Keychain
-   계정을 읽지 못해 `Failed to Use Accounts`로 중단된다.
 
    ```sh
    xcodebuild -exportArchive \
@@ -110,6 +108,38 @@ CloudKit production schema는 additive-only 정책으로 관리한다. 개발 co
      -exportOptionsPlist PilgrimJournal/AppStoreExportOptions.plist \
      -exportPath "$BUILD_ROOT/export-iOS"
    ```
+
+   #### `Failed to Use Accounts`가 나오면
+
+   이 오류는 원인이 두 가지이고 **로그를 봐야 구분된다.** 오류 메시지 자체는
+   같지만 `.xcdistributionlogs/IDEDistribution.standard.log`에 실제 이유가 남는다.
+
+   - `Failed to find an account with App Store Connect access for team ...`
+     → **Xcode에 App Store Connect 권한이 있는 Apple 계정이 없다.** Mac 잠금과
+     무관하다. `xcodebuild`는 계정을 추가할 수 없으므로 아래 둘 중 하나가 필요하다.
+     - Xcode → Settings → Accounts에 Apple 계정을 추가한다, 또는
+     - App Store Connect API 키로 인증한다. 키는
+       `~/.appstoreconnect/private_keys/AuthKey_<KEYID>.p8`에 둔다.
+
+       ```sh
+       xcodebuild -exportArchive \
+         -archivePath "$BUILD_ROOT/PilgrimJournal-iOS.xcarchive" \
+         -exportOptionsPlist PilgrimJournal/AppStoreExportOptions.plist \
+         -exportPath "$BUILD_ROOT/export-iOS" \
+         -allowProvisioningUpdates \
+         -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_<KEYID>.p8 \
+         -authenticationKeyID <KEYID> \
+         -authenticationKeyIssuerID <ISSUER_UUID>
+       ```
+
+       Issuer ID는 App Store Connect → 사용자 및 액세스 → 통합 →
+       App Store Connect API 상단에 있는 UUID다. **저장소에 커밋하지 않는다.**
+   - Keychain 접근 거부가 로그에 보이면 → 그때가 Mac 잠금 문제다. 잠금을 풀고
+     다시 실행한다.
+
+   서명에는 **Apple Distribution** 인증서가 필요하다. `security find-identity -v
+   -p codesigning`에 Development만 있으면 `-allowProvisioningUpdates`와 계정
+   접근으로 자동 생성하게 하거나 Xcode에서 만들어야 한다.
 
 6. TestFlight에서 처리 완료를 확인하고 실기기 설치·업데이트·데이터 보존을
    smoke test 한다.
