@@ -54,22 +54,14 @@ struct ContentView: View {
                             model.beginNewEntry()
                         }
 
+                        // The section always renders the same ForEach. Swapping
+                        // it for a placeholder view when the last entry goes
+                        // away changes the list structure mid swipe-to-delete,
+                        // which trips UIKit's row-count check and crashes.
                         Section("노트") {
-                            if model.entries.isEmpty,
-                               !model.hasActiveSearchCriteria {
-                                VStack(alignment: .leading, spacing: 5) {
-                                    Text("아직 노트가 없습니다.")
-                                        .font(.headline)
-                                    Text("위의 ‘새 노트’를 눌러 바로 작성하세요.")
-                                        .font(.caption)
-                                        .foregroundStyle(JournalTheme.inkSecondary)
-                                }
-                                .padding(.vertical, 8)
-                            } else {
-                                ForEach(model.entries) { entry in
-                                    EntryRowWithActions(entry: entry)
-                                        .tag(entry.id)
-                                }
+                            ForEach(model.entries) { entry in
+                                EntryRowWithActions(entry: entry)
+                                    .tag(entry.id)
                             }
                         }
                     }
@@ -93,6 +85,14 @@ struct ContentView: View {
                         }
                         .buttonStyle(.borderedProminent)
                     }
+                } else if model.entries.isEmpty && !model.isBatchSelecting {
+                    JournalEmptyState(
+                        title: "아직 노트가 없습니다",
+                        description: "위의 ‘새 노트’를 눌러 바로 작성하세요.",
+                        systemImage: "square.and.pencil"
+                    ) {}
+                    // The list still owns the 새 노트 button underneath.
+                    .allowsHitTesting(false)
                 }
             }
             .scrollContentBackground(.hidden)
@@ -159,7 +159,9 @@ struct ContentView: View {
             )
         } detail: {
             #if os(macOS)
-            if let entry = model.selectedEntry {
+            if model.isPresentingSettings {
+                SettingsView()
+            } else if let entry = model.selectedEntry {
                 InlineEntryEditorView(entry: entry)
                     .id(entry.id)
             } else if model.isPresentingEditor {
@@ -172,13 +174,26 @@ struct ContentView: View {
                 )
                 .id(model.editorSessionID)
             } else {
-                SettingsView()
+                JournalEmptyState(
+                    title: "기록을 선택하세요",
+                    description: "왼쪽 목록에서 기록을 고르거나 새 기록을 시작하세요.",
+                    systemImage: "doc.text"
+                ) {}
             }
             #else
-            if let entry = model.selectedEntry {
+            // Settings is only shown when it was actually asked for. Using it
+            // as the "nothing selected" fallback meant any moment where the
+            // selection could not be resolved bounced the user into settings.
+            if model.isPresentingSettings {
+                SettingsView()
+            } else if let entry = model.selectedEntry {
                 EntryDetailView(entry: entry)
             } else {
-                SettingsView()
+                JournalEmptyState(
+                    title: "기록을 선택하세요",
+                    description: "왼쪽 목록에서 기록을 고르면 여기에 내용이 보입니다.",
+                    systemImage: "doc.text"
+                ) {}
             }
             #endif
         }

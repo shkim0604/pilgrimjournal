@@ -56,6 +56,7 @@ final class AppModel: ObservableObject {
     @Published var isBatchSelecting = false
     @Published var isPresentingBatchOrganizer = false
     @Published var isPresentingEditor = false
+    @Published var isPresentingSettings = false
     @Published var editingEntry: JournalEntryRecord?
     @Published var isPresentingImporter = false
     @Published var importPreview: DayOneImportPreview?
@@ -414,12 +415,14 @@ final class AppModel: ObservableObject {
         guard entryID != nil else { return }
         editingEntry = nil
         isPresentingEditor = false
+        isPresentingSettings = false
     }
 
     func showSettings() {
         selectedEntryID = nil
         editingEntry = nil
         isPresentingEditor = false
+        isPresentingSettings = true
         endBatchSelection()
     }
 
