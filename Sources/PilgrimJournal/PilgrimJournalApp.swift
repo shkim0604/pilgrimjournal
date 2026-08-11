@@ -33,6 +33,21 @@ struct PilgrimJournalApp: App {
         #endif
     }
 
+    /// Skips the Apple sign-in gate while keeping the real store and CloudKit.
+    ///
+    /// Sign in with Apple needs Touch ID, which cannot be satisfied over screen
+    /// sharing. This lets a DEBUG build reach the journal on a remote Mac so the
+    /// Development CloudKit schema can be exercised. The value is used as the
+    /// Apple user identifier that scopes the store.
+    private static var developerSignInBypassUser: String? {
+        #if DEBUG
+        let value = ProcessInfo.processInfo.environment["PILGRIM_DEV_APPLE_USER"]
+        return (value?.isEmpty == false) ? value : nil
+        #else
+        return nil
+        #endif
+    }
+
     init() {
         let requestedCloudIdentifier = ProcessInfo.processInfo.environment[
             "PILGRIM_CLOUDKIT_CONTAINER"
@@ -50,6 +65,10 @@ struct PilgrimJournalApp: App {
         let cloudIdentityChecker: any CloudIdentityBindingChecking
         if Self.isVisualTesting {
             cloudIdentityChecker = VisualTestingCloudIdentityChecker()
+        } else if Self.developerSignInBypassUser != nil {
+            // The bypass user is not a real Apple identifier, so binding it to
+            // the CloudKit account would block access. Mirroring is unaffected.
+            cloudIdentityChecker = OfflineCloudIdentityChecker()
         } else if !cloudKitEnabled {
             cloudIdentityChecker = OfflineCloudIdentityChecker()
         } else {
@@ -63,6 +82,7 @@ struct PilgrimJournalApp: App {
             wrappedValue: AppleAuthenticationCoordinator(
                 cloudIdentityChecker: cloudIdentityChecker,
                 bypassForVisualTesting: Self.isVisualTesting
+                    || Self.developerSignInBypassUser != nil
             )
         )
         do {
@@ -367,6 +387,8 @@ struct PilgrimJournalApp: App {
         let identifier: String
         if Self.isVisualTesting {
             identifier = "visual-testing-user"
+        } else if let bypassUser = Self.developerSignInBypassUser {
+            identifier = bypassUser
         } else if let current = authentication.currentUserIdentifier {
             identifier = current
         } else {

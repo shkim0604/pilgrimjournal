@@ -69,6 +69,7 @@ final class AppModel: ObservableObject {
     @Published var isImportingBackup = false
     @Published var pendingRestoreData: Data?
     @Published var lastRestoreResult: RestoreResult?
+    @Published var lastBackupExportMessage: String?
     @Published var trashEntries: [JournalEntryRecord] = []
     @Published var isPresentingTrash = false
     @Published var lastSafetyBackupURL: URL?
@@ -979,6 +980,7 @@ final class AppModel: ObservableObject {
 
     func prepareBackup() async {
         isWorking = true
+        lastBackupExportMessage = nil
         dataOperationDescription = "백업 데이터 준비 중"
         await Task.yield()
         defer {
@@ -1094,6 +1096,11 @@ final class AppModel: ObservableObject {
             pendingRestoreData = nil
             markLocalMutation()
             rebuildSearchIndex()
+            // Without this the list keeps showing the pre-restore state, which
+            // reads as "nothing happened".
+            refreshNotebookCatalog()
+            refreshTrash()
+            refresh()
         } catch {
             lastRestoreFailureMessage = error.localizedDescription
             errorMessage = error.localizedDescription

@@ -117,6 +117,13 @@ struct SettingsView: View {
                 Button("전체 백업 내보내기…") {
                     Task { await model.prepareBackup() }
                 }
+                .disabled(model.isWorking)
+                if let message = model.lastBackupExportMessage {
+                    Label(message, systemImage: "checkmark.circle")
+                        .font(.caption)
+                        .foregroundStyle(JournalTheme.brandPrimary)
+                        .textSelection(.enabled)
+                }
                 Picker("복원 방식", selection: $restoreMode) {
                     Text("병합").tag(RestoreMode.merge)
                     Text("현재 데이터 교체").tag(RestoreMode.replace)
@@ -229,8 +236,14 @@ struct SettingsView: View {
             contentType: .pilgrimJournalBackup,
             defaultFilename: "PilgrimJournal-\(Date.now.formatted(.iso8601.year().month().day())).journalbackup"
         ) { result in
-            if case let .failure(error) = result {
-                model.errorMessage = error.localizedDescription
+            switch result {
+            case let .success(url):
+                model.lastBackupExportMessage = "백업을 저장했습니다 · \(url.lastPathComponent)"
+            case let .failure(error):
+                // Dismissing the save panel is a choice, not a failure.
+                if (error as NSError).code != NSUserCancelledError {
+                    model.errorMessage = error.localizedDescription
+                }
             }
             model.backupDocument = nil
         }
