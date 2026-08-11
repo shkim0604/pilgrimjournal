@@ -1858,7 +1858,7 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
         var parent: LiveMarkdownTextEditor
         var isUpdating = false
         weak var textView: NSTextView?
-        private(set) var publishedHistory: [String] = []
+        private(set) var publishedHistory: [Int] = []
 
         /// Every write to the binding must go through here so the editor can
         /// recognise its own value when SwiftUI echoes it back a render later.
@@ -2139,7 +2139,7 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
         var parent: LiveMarkdownTextEditor
         var isUpdating = false
         weak var textView: UITextView?
-        private(set) var publishedHistory: [String] = []
+        private(set) var publishedHistory: [Int] = []
 
         /// Every write to the binding must go through here so the editor can
         /// recognise its own value when SwiftUI echoes it back a render later.
@@ -2338,13 +2338,25 @@ enum MarkdownInputReconciliation {
 
     static let publishedHistoryLimit = 32
 
+    /// Identifies a published value without keeping a copy of the document.
+    ///
+    /// The history is consulted on every render, so it stores fingerprints
+    /// rather than strings. Keeping 32 document copies and comparing them one
+    /// by one would cost the whole document length per entry on each render.
+    static func publishedFingerprint(_ text: String) -> Int {
+        var hasher = Hasher()
+        hasher.combine(text)
+        return hasher.finalize()
+    }
+
     /// Records a value the editor pushed into its SwiftUI binding.
     static func recordPublishedText(
         _ text: String,
-        in history: inout [String]
+        in history: inout [Int]
     ) {
-        if history.last == text { return }
-        history.append(text)
+        let fingerprint = publishedFingerprint(text)
+        if history.last == fingerprint { return }
+        history.append(fingerprint)
         if history.count > publishedHistoryLimit {
             history.removeFirst(history.count - publishedHistoryLimit)
         }
@@ -2361,10 +2373,10 @@ enum MarkdownInputReconciliation {
     static func shouldApplyExternalText(
         incoming: String,
         current: String,
-        publishedHistory: [String]
+        publishedHistory: [Int]
     ) -> Bool {
         guard incoming != current else { return false }
-        return !publishedHistory.contains(incoming)
+        return !publishedHistory.contains(publishedFingerprint(incoming))
     }
 
     static func shouldScheduleStyling(

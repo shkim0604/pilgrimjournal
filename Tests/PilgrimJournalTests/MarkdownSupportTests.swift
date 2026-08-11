@@ -20,6 +20,15 @@ final class MarkdownSupportTests: XCTestCase {
         )
     }
 
+    /// Builds the history the way the editor does, one publish per keystroke.
+    private func publishedHistory(_ values: [String]) -> [Int] {
+        var history: [Int] = []
+        for value in values {
+            MarkdownInputReconciliation.recordPublishedText(value, in: &history)
+        }
+        return history
+    }
+
     func testStaleBindingEchoDoesNotOverwriteNewerTyping() {
         // The user typed "가" and then "가나". SwiftUI renders the first value
         // and delivers it after the second keystroke already reached the text
@@ -28,7 +37,7 @@ final class MarkdownSupportTests: XCTestCase {
             MarkdownInputReconciliation.shouldApplyExternalText(
                 incoming: "가",
                 current: "가나",
-                publishedHistory: ["가", "가나"]
+                publishedHistory: publishedHistory(["가", "가나"])
             )
         )
     }
@@ -40,7 +49,7 @@ final class MarkdownSupportTests: XCTestCase {
             MarkdownInputReconciliation.shouldApplyExternalText(
                 incoming: "# 제목",
                 current: "가나",
-                publishedHistory: ["가", "가나"]
+                publishedHistory: publishedHistory(["가", "가나"])
             )
         )
     }
@@ -50,13 +59,13 @@ final class MarkdownSupportTests: XCTestCase {
             MarkdownInputReconciliation.shouldApplyExternalText(
                 incoming: "가나",
                 current: "가나",
-                publishedHistory: ["가", "가나"]
+                publishedHistory: publishedHistory(["가", "가나"])
             )
         )
     }
 
     func testPublishedHistoryIsBoundedAndKeepsTheNewestValues() {
-        var history: [String] = []
+        var history: [Int] = []
         for index in 0..<200 {
             MarkdownInputReconciliation.recordPublishedText(
                 "value-\(index)",
@@ -68,8 +77,25 @@ final class MarkdownSupportTests: XCTestCase {
             history.count,
             MarkdownInputReconciliation.publishedHistoryLimit
         )
-        XCTAssertEqual(history.last, "value-199")
-        XCTAssertTrue(history.contains("value-198"))
+        XCTAssertEqual(
+            history.last,
+            MarkdownInputReconciliation.publishedFingerprint("value-199")
+        )
+        XCTAssertFalse(
+            MarkdownInputReconciliation.shouldApplyExternalText(
+                incoming: "value-199",
+                current: "value-200",
+                publishedHistory: history
+            )
+        )
+        // The oldest entries fall out of the window and read as external again.
+        XCTAssertTrue(
+            MarkdownInputReconciliation.shouldApplyExternalText(
+                incoming: "value-0",
+                current: "value-200",
+                publishedHistory: history
+            )
+        )
     }
 
     func testLiveStylingWaitsForAWordBoundary() {
