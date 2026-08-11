@@ -39,14 +39,7 @@ SwiftData에는 스키마 배포 API가 없지만 그 밑의
 `NSManagedObjectModel.makeManagedObjectModel(for:)`으로 SwiftData 모델을 다리
 놓아 이 API를 부른다. 임시 저장소를 쓰므로 사용자 기록은 건드리지 않는다.
 
-```bash
-DD=/tmp/pilgrim-dd   # iCloud 동기화 밖 경로여야 한다. docs/development.md 참고
-xcodebuild -project PilgrimJournal/PilgrimJournal.xcodeproj \
-  -scheme PilgrimJournalApp -configuration Debug \
-  -destination 'platform=macOS,arch=arm64' -derivedDataPath "$DD" build
-PILGRIM_DEPLOY_CLOUDKIT_SCHEMA=1 \
-  "$DD/Build/Products/Debug/PilgrimJournal.app/Contents/MacOS/PilgrimJournal"
-```
+명령은 `docs/development.md`의 "CloudKit 운영 도구"에 있다.
 
 그 뒤 CloudKit Console → **Development** → `Deploy Schema Changes...` → Deploy.
 

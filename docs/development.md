@@ -68,10 +68,14 @@ Debug 빌드는 환경 변수 두 개로 앱 대신 관리 작업을 수행하�
 
 ```bash
 DD=/tmp/pilgrim-dd   # iCloud 동기화 밖 경로여야 한다. 아래 "릴리스 아카이브" 참고
-BIN="$DD/Build/Products/Debug/PilgrimJournal.app/Contents/MacOS/PilgrimJournal"
 xcodebuild -project PilgrimJournal/PilgrimJournal.xcodeproj \
   -scheme PilgrimJournalApp -configuration Debug \
   -destination 'platform=macOS,arch=arm64' -derivedDataPath "$DD" build
+# macOS 제품명에 공백이 있으므로 이름을 박아 쓰지 말고 glob 으로 찾는다.
+APP=$(ls -d "$DD/Build/Products/Debug/"*.app)
+BIN="$APP/Contents/MacOS/$(/usr/libexec/PlistBuddy \
+  -c 'Print :CFBundleExecutable' "$APP/Contents/Info.plist")"
+PILGRIM_DEPLOY_CLOUDKIT_SCHEMA=1 "$BIN"
 ```
 
 | 변수 | 하는 일 |
