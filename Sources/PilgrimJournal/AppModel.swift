@@ -86,6 +86,7 @@ final class AppModel: ObservableObject {
     @Published var dataOperationDescription: String?
     @Published var lastRestoreConflicts: [RestoreConflictSummary] = []
     @Published private(set) var attachmentRevision = 0
+    @Published private(set) var isCloudImportInProgress = false
 
     var selectedEntry: JournalEntryRecord? {
         guard let selectedEntryID else { return nil }
@@ -180,12 +181,23 @@ final class AppModel: ObservableObject {
     func handleCloudSyncStoreEvent(_ event: CloudSyncStoreEvent) {
         guard cloudAccountMonitor != nil else { return }
         guard let completedAt = event.completedAt else {
+            switch event.operation {
+            case .exporting:
+                updateAttachmentTransferStates(matching: [.pending], to: .uploading)
+            case .importing:
+                isCloudImportInProgress = true
+            case .setup:
+                break
+            }
             syncState = .pending
             return
         }
+        if event.operation == .importing {
+            isCloudImportInProgress = false
+        }
         guard event.succeeded else {
             updateAttachmentTransferStates(
-                matching: [.pending, .downloading],
+                matching: [.pending, .downloading, .uploading],
                 to: .failed
             )
             syncState = .failed(
@@ -199,7 +211,10 @@ final class AppModel: ObservableObject {
         case .setup:
             syncState = .pending
         case .exporting:
-            updateAttachmentTransferStates(matching: [.pending], to: .uploaded)
+            // .pending is matched alongside .uploading so an attachment whose
+            // start-of-export event was missed (e.g. app backgrounded) still
+            // reaches .uploaded from the completion event alone.
+            updateAttachmentTransferStates(matching: [.pending, .uploading], to: .uploaded)
             syncState = .synced(completedAt)
         case .importing:
             reconcileDownloadedAttachments()
@@ -938,10 +953,6 @@ final class AppModel: ObservableObject {
 
     @discardableResult
     func addAttachment(from url: URL, to entryID: UUID) -> Bool {
-        guard let attachmentRepository = repository as? any AttachmentRepository else {
-            errorMessage = "이 저장소에서는 첨부 파일을 사용할 수 없습니다."
-            return false
-        }
         let isSecurityScoped = url.startAccessingSecurityScopedResource()
         defer {
             if isSecurityScoped { url.stopAccessingSecurityScopedResource() }
@@ -949,11 +960,35 @@ final class AppModel: ObservableObject {
         do {
             let data = try Data(contentsOf: url, options: [.mappedIfSafe])
             let contentType = UTType(filenameExtension: url.pathExtension)
+            return addAttachment(
+                data: data,
+                originalName: url.lastPathComponent,
+                mimeType: contentType?.preferredMIMEType ?? "application/octet-stream",
+                to: entryID
+            ) != nil
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    @discardableResult
+    func addAttachment(
+        data: Data,
+        originalName: String,
+        mimeType: String,
+        to entryID: UUID
+    ) -> UUID? {
+        guard let attachmentRepository = repository as? any AttachmentRepository else {
+            errorMessage = "이 저장소에서는 첨부 파일을 사용할 수 없습니다."
+            return nil
+        }
+        do {
             let stored = try AttachmentFileStore(root: paths.attachments).store(
                 data: data,
                 entryID: entryID,
-                originalName: url.lastPathComponent,
-                mimeType: contentType?.preferredMIMEType ?? "application/octet-stream"
+                originalName: originalName,
+                mimeType: mimeType
             )
             var record = stored.record
             record.state = cloudAccountMonitor == nil ? .local : .pending
@@ -961,10 +996,10 @@ final class AppModel: ObservableObject {
             try attachmentRepository.saveAttachment(record, binary: data)
             attachmentRevision += 1
             markLocalMutation()
-            return true
+            return record.id
         } catch {
             errorMessage = error.localizedDescription
-            return false
+            return nil
         }
     }
 

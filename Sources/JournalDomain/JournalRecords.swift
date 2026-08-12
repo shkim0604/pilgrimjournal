@@ -161,6 +161,7 @@ public struct EntryRevisionRecord: Codable, Equatable, Identifiable, Sendable {
 public enum AttachmentTransferState: String, Codable, Sendable {
     case local
     case pending
+    case uploading
     case uploaded
     case downloading
     case failed

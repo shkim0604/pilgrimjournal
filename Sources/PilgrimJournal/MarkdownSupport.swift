@@ -493,6 +493,30 @@ enum MarkdownCommandProcessor {
         )
     }
 
+    /// Inserts an `attachment:` image reference at the cursor, forcing
+    /// newlines around it so it always occupies its own line — the parser
+    /// classifies blocks line-by-line, and a marker sharing a line with
+    /// other text would render as literal paragraph text everywhere,
+    /// including in the preview surface that renders it as an image.
+    static func insertingAttachmentImage(
+        id: UUID,
+        into text: String,
+        selection: NSRange
+    ) -> ExpansionResult {
+        let source = text as NSString
+        let safeLocation = min(max(0, selection.location), source.length)
+        let safeLength = min(max(0, selection.length), source.length - safeLocation)
+        let safeSelection = NSRange(location: safeLocation, length: safeLength)
+        let before = source.substring(to: safeSelection.location)
+        let after = source.substring(from: NSMaxRange(safeSelection))
+        let leadingNewline = before.isEmpty || before.hasSuffix("\n") ? "" : "\n"
+        let trailingNewline = after.isEmpty || after.hasPrefix("\n") ? "" : "\n"
+        let insertion = "\(leadingNewline)![](attachment:\(id.uuidString))\(trailingNewline)"
+        let expanded = source.replacingCharacters(in: safeSelection, with: insertion)
+        let cursor = safeSelection.location + insertion.utf16.count
+        return ExpansionResult(text: expanded, cursorUTF16Offset: cursor)
+    }
+
     static func applyingKeyboardCommand(
         _ command: MarkdownKeyboardCommand,
         to text: String,
@@ -812,7 +836,7 @@ enum MarkdownCommandProcessor {
     }
 }
 
-private enum MarkdownBlockKind: Equatable {
+enum MarkdownBlockKind: Equatable {
     case heading(Int)
     case paragraph
     case bullet(Int)
@@ -821,14 +845,15 @@ private enum MarkdownBlockKind: Equatable {
     case quote
     case code(String?)
     case divider
+    case image(UUID)
 }
 
-private struct MarkdownBlock: Equatable {
+struct MarkdownBlock: Equatable {
     var kind: MarkdownBlockKind
     var content: String
 }
 
-private enum MarkdownDocumentParser {
+enum MarkdownDocumentParser {
     static func parse(_ markdown: String) -> [MarkdownBlock] {
         let lines = markdown.split(
             separator: "\n",
@@ -917,6 +942,9 @@ private enum MarkdownDocumentParser {
                     kind: .numbered(numbered.marker, indentation),
                     content: numbered.content
                 ))
+            } else if let attachmentID = attachmentImageID(from: contentLine) {
+                flushParagraph()
+                blocks.append(MarkdownBlock(kind: .image(attachmentID), content: ""))
             } else {
                 paragraphLines.append(line)
             }
@@ -961,6 +989,13 @@ private enum MarkdownDocumentParser {
         return (marker.lowercased() == "[x]", source.substring(from: 6))
     }
 
+    private static func attachmentImageID(from line: String) -> UUID? {
+        let prefix = "![](attachment:"
+        guard line.hasPrefix(prefix), line.hasSuffix(")") else { return nil }
+        let idString = line.dropFirst(prefix.count).dropLast()
+        return UUID(uuidString: String(idString))
+    }
+
     private static func numberedListItem(
         from line: String
     ) -> (marker: String, content: String)? {
@@ -981,6 +1016,7 @@ struct MarkdownBodyEditor: View {
     @Binding var text: String
     var minHeight: CGFloat = 240
     var autoFocus = false
+    var storeImageAttachment: ((Data, String, String) -> UUID?)?
     @State private var selection = NSRange(location: 0, length: 0)
     @AppStorage("editor-text-scale") private var editorTextScale =
         EditorTextScale.defaultValue
@@ -1046,7 +1082,8 @@ struct MarkdownBodyEditor: View {
                 text: $text,
                 selection: $selection,
                 autoFocus: autoFocus,
-                textScale: editorTextScale
+                textScale: editorTextScale,
+                storeImageAttachment: storeImageAttachment
             )
                 .frame(
                     maxWidth: .infinity,
@@ -1805,6 +1842,15 @@ private final class MarkdownNSTextView: NSTextView {
     /// means the caller should fall through to the normal single-character
     /// backspace.
     var removeListMarkerBeforeCursor: (() -> Bool)?
+    /// Returns whether the pasteboard held an image and it was handled as an
+    /// attachment insertion; `false` means the caller should fall through to
+    /// the normal paste behavior (plain text, etc).
+    var handleImagePaste: (() -> Bool)?
+
+    override func paste(_ sender: Any?) {
+        if handleImagePaste?() == true { return }
+        super.paste(sender)
+    }
 
     override func insertTab(_ sender: Any?) {
         if adjustListIndentation?(.indent) == true { return }
@@ -1936,6 +1982,7 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
     @Binding var selection: NSRange
     var autoFocus: Bool
     var textScale: Double
+    var storeImageAttachment: ((Data, String, String) -> UUID?)?
 
     func makeCoordinator() -> Coordinator {
         Coordinator(parent: self)
@@ -1960,6 +2007,9 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
         }
         textView.removeListMarkerBeforeCursor = { [weak coordinator = context.coordinator] in
             coordinator?.removeListMarkerBeforeCursor() ?? false
+        }
+        textView.handleImagePaste = { [weak coordinator = context.coordinator] in
+            coordinator?.handleImagePaste() ?? false
         }
         textView.isRichText = true
         textView.importsGraphics = false
@@ -2199,6 +2249,46 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
             return true
         }
 
+        /// Returns false (letting `paste(_:)` fall through to the default
+        /// behavior) whenever the pasteboard has no image, storage fails, or
+        /// there's no entry to attach to yet — non-image paste (plain text,
+        /// etc) is completely unaffected.
+        @discardableResult
+        func handleImagePaste() -> Bool {
+            guard let textView, !textView.hasMarkedText() else { return false }
+            guard let image = Self.pasteboardImageData(from: .general) else { return false }
+            guard let attachmentID = parent.storeImageAttachment?(
+                image.data,
+                image.filename,
+                image.mimeType
+            ) else { return false }
+            let result = MarkdownCommandProcessor.insertingAttachmentImage(
+                id: attachmentID,
+                into: textView.string,
+                selection: textView.selectedRange()
+            )
+            replaceExternalText(
+                result.text,
+                selection: NSRange(location: result.cursorUTF16Offset, length: 0),
+                registersUndo: true
+            )
+            return true
+        }
+
+        private static func pasteboardImageData(
+            from pasteboard: NSPasteboard
+        ) -> (data: Data, filename: String, mimeType: String)? {
+            if let data = pasteboard.data(forType: .png) {
+                return (data, "pasted.png", "image/png")
+            }
+            if let tiffData = pasteboard.data(forType: .tiff),
+               let bitmap = NSBitmapImageRep(data: tiffData),
+               let pngData = bitmap.representation(using: .png, properties: [:]) {
+                return (pngData, "pasted.png", "image/png")
+            }
+            return nil
+        }
+
         private func scheduleStyling(for textView: NSTextView) {
             stylingTask?.cancel()
             stylingTask = Task { @MainActor [weak self, weak textView] in
@@ -2249,6 +2339,15 @@ private final class MarkdownUITextView: UITextView {
     /// means the caller should fall through to the normal single-character
     /// backspace.
     var removeListMarkerBeforeCursor: (() -> Bool)?
+    /// Returns whether the pasteboard held an image and it was handled as an
+    /// attachment insertion; `false` means the caller should fall through to
+    /// the normal paste behavior (plain text, etc).
+    var handleImagePaste: (() -> Bool)?
+
+    override func paste(_ sender: Any?) {
+        if handleImagePaste?() == true { return }
+        super.paste(sender)
+    }
 
     override func deleteBackward() {
         if removeListMarkerBeforeCursor?() == true { return }
@@ -2393,6 +2492,7 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
     @Binding var selection: NSRange
     var autoFocus: Bool
     var textScale: Double
+    var storeImageAttachment: ((Data, String, String) -> UUID?)?
 
     func makeCoordinator() -> Coordinator {
         Coordinator(parent: self)
@@ -2406,6 +2506,9 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
         }
         textView.removeListMarkerBeforeCursor = { [weak coordinator = context.coordinator] in
             coordinator?.removeListMarkerBeforeCursor() ?? false
+        }
+        textView.handleImagePaste = { [weak coordinator = context.coordinator] in
+            coordinator?.handleImagePaste() ?? false
         }
         textView.delegate = context.coordinator
         textView.backgroundColor = .clear
@@ -2634,6 +2737,41 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
             return true
         }
 
+        /// Returns false (letting `paste(_:)` fall through to the default
+        /// behavior) whenever the pasteboard has no image, storage fails, or
+        /// there's no entry to attach to yet — non-image paste (plain text,
+        /// etc) is completely unaffected.
+        @discardableResult
+        func handleImagePaste() -> Bool {
+            guard let textView, textView.markedTextRange == nil else { return false }
+            guard let image = Self.pasteboardImageData(from: .general) else { return false }
+            guard let attachmentID = parent.storeImageAttachment?(
+                image.data,
+                image.filename,
+                image.mimeType
+            ) else { return false }
+            let result = MarkdownCommandProcessor.insertingAttachmentImage(
+                id: attachmentID,
+                into: textView.text,
+                selection: textView.selectedRange
+            )
+            replaceExternalText(
+                result.text,
+                selection: NSRange(location: result.cursorUTF16Offset, length: 0),
+                registersUndo: true
+            )
+            return true
+        }
+
+        private static func pasteboardImageData(
+            from pasteboard: UIPasteboard
+        ) -> (data: Data, filename: String, mimeType: String)? {
+            guard let image = pasteboard.image, let data = image.pngData() else {
+                return nil
+            }
+            return (data, "pasted.png", "image/png")
+        }
+
         private func scheduleStyling(for textView: UITextView) {
             stylingTask?.cancel()
             stylingTask = Task { @MainActor [weak self, weak textView] in
@@ -2752,6 +2890,7 @@ enum MarkdownInputReconciliation {
 }
 
 struct MarkdownPreviewView: View {
+    @EnvironmentObject private var model: AppModel
     let markdown: String
 
     var body: some View {
@@ -2843,7 +2982,52 @@ struct MarkdownPreviewView: View {
             }
         case .divider:
             Divider()
+        case let .image(attachmentID):
+            attachmentImageView(attachmentID)
         }
+    }
+
+    @ViewBuilder
+    private func attachmentImageView(_ attachmentID: UUID) -> some View {
+        if let data = model.attachmentBinary(for: attachmentID),
+           let platformImage = decodedImage(from: data) {
+            platformImage
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: .infinity)
+                .clipShape(RoundedRectangle(
+                    cornerRadius: JournalTheme.Radius.small,
+                    style: .continuous
+                ))
+        } else {
+            HStack(spacing: 8) {
+                Image(systemName: "photo")
+                Text(
+                    model.hasLocalBinary(for: attachmentID)
+                        ? "이미지를 표시할 수 없습니다"
+                        : "이미지를 아직 사용할 수 없음 · 동기화 대기 중"
+                )
+                .font(.caption)
+            }
+            .foregroundStyle(JournalTheme.inkSecondary)
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(JournalTheme.brandPrimary.opacity(0.055))
+            .clipShape(RoundedRectangle(
+                cornerRadius: JournalTheme.Radius.small,
+                style: .continuous
+            ))
+        }
+    }
+
+    private func decodedImage(from data: Data) -> Image? {
+        #if os(macOS)
+        guard let nsImage = NSImage(data: data) else { return nil }
+        return Image(nsImage: nsImage)
+        #elseif os(iOS)
+        guard let uiImage = UIImage(data: data) else { return nil }
+        return Image(uiImage: uiImage)
+        #endif
     }
 
     private func inlineText(_ source: String) -> Text {

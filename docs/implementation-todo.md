@@ -5,30 +5,6 @@
 
 ## 대기 중
 
-- **본문에 이미지 붙여넣기 지원**
-  클립보드 이미지를 마크다운 본문에 바로 붙여넣으면 지금은 조용히
-  사라진다(iOS `UITextView`는 순수 텍스트만 다루고, macOS `NSTextView`는
-  `isRichText = true`라 화면엔 잠깐 보여도 `textView.string`으로 다시 읽을 때
-  사라짐). "첨부 추가"가 쓰는 `AttachmentFileStore`/`AttachmentRepository`
-  경로를 재사용하고, 첨부를 가리키는 마크다운 문법(예: `![](attachment:id)`)을
-  새로 정의해 렌더러가 인라인으로 그리도록 해야 한다.
-  백그라운드 task로 분리해둠 — `task_769a52f2`
-  ("Support pasting images directly into entry body").
-
-- **첨부 업로드 진행률 표시**
-  `AttachmentTransferState`에 "시작 전"과 "전송 중"을 구분하는 상태가 없어서,
-  큰 파일(348MB 테스트)을 올릴 때 화면이 "iCloud 업로드 대기" 하나로만
-  뭉뚱그려 보이고 멈춘 것처럼 보인다. 세분화된 진행 상태나 최소한 대략적인
-  진행률 표시가 있으면 첨부 asset spike(task 2.4) 관련 UX가 나아진다.
-
-- **"다운로드" 버튼이 실제로 fetch를 트리거하지 않음**
-  `AppModel.requestAttachmentDownload`(`Sources/PilgrimJournal/AppModel.swift`)는
-  로컬 `state`만 `.downloading`으로 바꿀 뿐, CloudKit에 실제로 asset을
-  요청하는 코드가 없다. 지금은 CloudKit의 자체 백그라운드 동기화가 결국
-  전달해주길 기다리는 구조라, 그게 안 오면 스피너가 무한정 돈다. 명시적으로
-  fetch를 유도하는 방법이 있다면(또는 최소한 타임아웃 후 재시도 UI라도)
-  신뢰성이 올라간다.
-
 - **지난 백업 목록 화면**
   지금은 백업을 파일 하나(`.journalbackup`)로 내보내기만 하고, 앱은 그
   기록을 전혀 안 남긴다(`AppModel.lastBackupExportMessage`는 가장 최근 것
@@ -45,6 +21,24 @@
     필요하다.
 
 ## 완료
+
+- **첨부 다운로드 fetch 미트리거 / 업로드 진행률 세분화 / 이미지 붙여넣기**
+  — openspec `improve-attachment-transfer-and-paste`. CloudKit이 특정
+  레코드의 asset을 강제로 fetch하게 만드는 공개 API는 없다는 제약을 그대로
+  받아들이고, 다운로드 버튼은 타임아웃(잠정 25초) 후 재시도 UI로 바꿈 — CloudKit
+  import가 실제로 진행 중이면(`AppModel.isCloudImportInProgress`) 타임아웃을
+  미룸. `AttachmentTransferState`에 `.uploading`을 추가하고,
+  `NSPersistentCloudKitContainer.eventChangedNotification`이 이미 보내지만
+  버려지고 있던 "작업 시작" 신호(`completedAt == nil`)를 살려 "대기 중"과
+  "전송 중"을 구분함(`AppModel.handleCloudSyncStoreEvent`). 클립보드 이미지
+  붙여넣기는 "첨부 추가"와 같은 `AttachmentFileStore`/`AttachmentRepository`
+  경로로 저장하고 본문에 `![](attachment:id)` 마크다운을 삽입함(macOS/iOS
+  `paste(_:)` 오버라이드 → 기존에 안전하다고 검증된
+  `Coordinator.replaceExternalText` 경로로 삽입) — 라이브 에디터에서는 원시
+  텍스트로 보이고, 보기 모드(`MarkdownPreviewView`)에서 실제 이미지로
+  렌더링됨. 라이브 에디터 내 WYSIWYG 인라인 이미지는 `LiveMarkdownStyler`의
+  "저장되는 마크다운 문자를 절대 바꾸지 않는다" 불변조건과 충돌해 범위에서
+  제외함 (2026-08-12)
 
 - **`entry(sourceUUID:)`의 fetchLimit 500이 대량 가져오기에서 중복 판정을
   놓칠 수 있던 버그** — `SwiftDataJournalRepository.entry(sourceUUID:)`가

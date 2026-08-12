@@ -648,5 +648,78 @@ final class MarkdownSupportTests: XCTestCase {
 
         XCTAssertEqual(result.text, "1. 하나\n2. 둘")
     }
+
+    func testInsertingAttachmentImageOnEmptyDocumentAddsNoSurroundingNewlines() {
+        let id = UUID()
+        let result = MarkdownCommandProcessor.insertingAttachmentImage(
+            id: id,
+            into: "",
+            selection: NSRange(location: 0, length: 0)
+        )
+
+        XCTAssertEqual(result.text, "![](attachment:\(id.uuidString))")
+        XCTAssertEqual(result.cursorUTF16Offset, (result.text as NSString).length)
+    }
+
+    func testInsertingAttachmentImageInMiddleOfParagraphForcesSurroundingNewlines() {
+        let id = UUID()
+        let source = "앞문장 뒷문장"
+        let cursor = ("앞문장" as NSString).length
+
+        let result = MarkdownCommandProcessor.insertingAttachmentImage(
+            id: id,
+            into: source,
+            selection: NSRange(location: cursor, length: 0)
+        )
+
+        XCTAssertEqual(result.text, "앞문장\n![](attachment:\(id.uuidString))\n 뒷문장")
+    }
+
+    func testInsertingAttachmentImageAtEndOfLineAddsOnlyLeadingNewline() {
+        let id = UUID()
+        let source = "본문 줄"
+        let cursor = (source as NSString).length
+
+        let result = MarkdownCommandProcessor.insertingAttachmentImage(
+            id: id,
+            into: source,
+            selection: NSRange(location: cursor, length: 0)
+        )
+
+        XCTAssertEqual(result.text, "본문 줄\n![](attachment:\(id.uuidString))")
+        XCTAssertEqual(result.cursorUTF16Offset, (result.text as NSString).length)
+    }
+
+    func testInsertingAttachmentImageAfterExistingNewlineDoesNotDoubleIt() {
+        let id = UUID()
+        let source = "본문 줄\n"
+        let cursor = (source as NSString).length
+
+        let result = MarkdownCommandProcessor.insertingAttachmentImage(
+            id: id,
+            into: source,
+            selection: NSRange(location: cursor, length: 0)
+        )
+
+        XCTAssertEqual(result.text, "본문 줄\n![](attachment:\(id.uuidString))")
+    }
+
+    func testDocumentParserRecognizesStandaloneAttachmentImageLineAsImageBlock() {
+        let id = UUID()
+        let markdown = "본문 앞\n\n![](attachment:\(id.uuidString))\n\n본문 뒤"
+
+        let blocks = MarkdownDocumentParser.parse(markdown)
+
+        XCTAssertTrue(blocks.contains(MarkdownBlock(kind: .image(id), content: "")))
+    }
+
+    func testDocumentParserTreatsAttachmentMarkerSharingLineAsParagraphText() {
+        let id = UUID()
+        let markdown = "앞 ![](attachment:\(id.uuidString)) 뒤"
+
+        let blocks = MarkdownDocumentParser.parse(markdown)
+
+        XCTAssertEqual(blocks, [MarkdownBlock(kind: .paragraph, content: markdown)])
+    }
 }
 #endif

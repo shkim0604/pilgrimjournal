@@ -75,7 +75,17 @@ struct InlineEntryEditorView: View {
                         MarkdownBodyEditor(
                             text: $draft.body,
                             minHeight: 320,
-                            autoFocus: entry == nil
+                            autoFocus: entry == nil,
+                            storeImageAttachment: { data, name, mime in
+                                guard let targetID = persistedEntryID ?? ensurePersistedEntryID()
+                                else { return nil }
+                                return model.addAttachment(
+                                    data: data,
+                                    originalName: name,
+                                    mimeType: mime,
+                                    to: targetID
+                                )
+                            }
                         )
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
 
@@ -664,7 +674,20 @@ struct EntryEditorView: View {
 
                         typeSpecificFields
 
-                        MarkdownBodyEditor(text: $draft.body, minHeight: 380)
+                        MarkdownBodyEditor(
+                            text: $draft.body,
+                            minHeight: 380,
+                            storeImageAttachment: { data, name, mime in
+                                guard let targetID = persistedEntryID ?? ensurePersistedEntryID()
+                                else { return nil }
+                                return model.addAttachment(
+                                    data: data,
+                                    originalName: name,
+                                    mimeType: mime,
+                                    to: targetID
+                                )
+                            }
+                        )
 
                         Rectangle()
                             .fill(JournalTheme.separator)
@@ -1243,6 +1266,7 @@ private struct AttachmentEditorSection: View {
         let state = switch attachment.state {
         case .local: "이 기기에 저장됨"
         case .pending: "iCloud 업로드 대기"
+        case .uploading: "iCloud 업로드 중"
         case .uploaded: "iCloud에 저장됨"
         case .downloading: "다운로드 중"
         case .failed: "전송 실패 · 다시 시도 필요"
@@ -1257,7 +1281,9 @@ private struct AttachmentEditorSection: View {
                 model.retryAttachmentTransfer(attachment.id)
             }
             .buttonStyle(.bordered)
-        } else if attachment.state == .pending || attachment.state == .downloading {
+        } else if attachment.state == .downloading {
+            AttachmentDownloadStatusView(attachment: attachment)
+        } else if attachment.state == .pending || attachment.state == .uploading {
             ProgressView()
                 .controlSize(.small)
                 .accessibilityLabel(attachmentStatus(attachment))
@@ -1283,6 +1309,53 @@ private struct AttachmentEditorSection: View {
                 }
                 .buttonStyle(.borderless)
                 .accessibilityLabel("다른 위치에 저장")
+            }
+        }
+    }
+}
+
+/// CloudKit has no public API to force-fetch a single record's asset, so a
+/// requested download can only wait for the framework's own background
+/// import. This surfaces that honestly instead of spinning forever: while an
+/// import operation is actually running (`model.isCloudImportInProgress`) it
+/// keeps waiting, otherwise it gives up after a timeout and offers "재시도".
+private struct AttachmentDownloadStatusView: View {
+    @EnvironmentObject private var model: AppModel
+    let attachment: AttachmentRecord
+    @State private var timedOut = false
+
+    private static let timeout: Duration = .seconds(25)
+
+    var body: some View {
+        Group {
+            if timedOut {
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("iCloud에서 받아오지 못했습니다")
+                        .font(.caption2)
+                        .foregroundStyle(.red)
+                    Button("재시도") {
+                        model.retryAttachmentTransfer(attachment.id)
+                    }
+                    .buttonStyle(.bordered)
+                }
+            } else if model.isCloudImportInProgress {
+                Label("동기화 진행 중", systemImage: "arrow.triangle.2.circlepath")
+                    .font(.caption2)
+                    .foregroundStyle(JournalTheme.inkSecondary)
+            } else {
+                ProgressView()
+                    .controlSize(.small)
+                    .accessibilityLabel("다운로드 중")
+            }
+        }
+        .task(id: attachment.updatedAt) {
+            timedOut = false
+            while !Task.isCancelled {
+                try? await Task.sleep(for: Self.timeout)
+                guard !Task.isCancelled else { return }
+                if model.isCloudImportInProgress { continue }
+                timedOut = true
+                return
             }
         }
     }

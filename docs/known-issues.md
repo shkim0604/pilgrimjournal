@@ -178,6 +178,15 @@ func updateUIView(_ textView: UITextView, context: Context) {
 회귀 테스트는 `MarkdownSupportTests`에 4건 추가했다. 순수 함수라 기기 없이
 `swift test`로 검증된다 — 이 문제로 TestFlight를 왕복하지 않기 위한 장치다.
 
+**이후 에디터에 프로그래밍적으로 텍스트를 써넣는 기능(2026-08-12 이미지
+붙여넣기 포함)은 반드시 이 경로(`Coordinator.replaceExternalText` → SwiftUI
+binding 쓰기 → `publish(_:)`가 `publishedHistory`에 기록)를 통과해야 한다.**
+`textView.insertText`나 `NSTextStorage`를 직접 건드리는 우회 경로를 새로
+추가하면 이 섹션이 고친 바로 그 버그가 다른 진입점으로 재발한다. macOS
+`MarkdownNSTextView`/iOS `MarkdownUITextView`의 `paste(_:)` 오버라이드가
+이 규칙을 따르는 예시다 — 클립보드 이미지를 발견하면 `replaceExternalText`로
+삽입하고, 없으면 `super.paste(sender)`로 기본 동작에 그대로 넘긴다.
+
 ### 우리 문제가 아닌 것 — 한영 전환 지연
 
 수정 후 검증에서 "한영 전환이 조금 느리다"는 관찰이 나왔다. **제목 칸에서도

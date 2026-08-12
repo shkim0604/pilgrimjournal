@@ -870,6 +870,206 @@ final class AppModelNavigationTests: XCTestCase {
     }
 
     @MainActor
+    func testExportStartEventMarksPendingAttachmentsUploading() throws {
+        let root = FileManager.default.temporaryDirectory.appending(
+            path: "pilgrim-attachment-uploading-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+        let paths = JournalPaths(root: root)
+        try paths.prepare()
+        let repository = InMemoryJournalRepository()
+        let entry = try repository.save(
+            JournalEntryDraft(kind: .diary, body: "테스트 본문"),
+            deviceID: "Mac",
+            at: .now
+        )
+        let attachment = AttachmentRecord(
+            entryID: entry.id,
+            originalName: "photo.jpg",
+            mimeType: "image/jpeg",
+            checksum: "checksum",
+            byteCount: 3,
+            state: .pending
+        )
+        try repository.saveAttachment(attachment, binary: Data([1, 2, 3]))
+        let model = try AppModel(
+            repository: repository,
+            importStore: InMemoryImportStore(),
+            searchIndex: JournalSearchIndex(
+                url: paths.search.appending(path: "uploading.sqlite")
+            ),
+            paths: paths,
+            cloudAccountMonitor: CloudAccountMonitor(
+                containerIdentifier: "iCloud.test.PilgrimJournal"
+            )
+        )
+
+        // The export operation's start-of-work notification (endDate/completedAt
+        // still nil) used to be discarded entirely — this is the fix that makes
+        // "대기 중" and "전송 중" distinguishable.
+        model.handleCloudSyncStoreEvent(CloudSyncStoreEvent(
+            operation: .exporting,
+            completedAt: nil,
+            succeeded: false,
+            errorDescription: nil
+        ))
+        XCTAssertEqual(model.attachments(for: entry.id).first?.state, .uploading)
+        XCTAssertFalse(model.isCloudImportInProgress)
+
+        model.handleCloudSyncStoreEvent(CloudSyncStoreEvent(
+            operation: .exporting,
+            completedAt: .now,
+            succeeded: true,
+            errorDescription: nil
+        ))
+        XCTAssertEqual(model.attachments(for: entry.id).first?.state, .uploaded)
+    }
+
+    @MainActor
+    func testUploadCompletionReachesUploadedEvenWhenStartEventWasMissed() throws {
+        let root = FileManager.default.temporaryDirectory.appending(
+            path: "pilgrim-attachment-missed-start-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+        let paths = JournalPaths(root: root)
+        try paths.prepare()
+        let repository = InMemoryJournalRepository()
+        let entry = try repository.save(
+            JournalEntryDraft(kind: .diary, body: "테스트 본문"),
+            deviceID: "Mac",
+            at: .now
+        )
+        let attachment = AttachmentRecord(
+            entryID: entry.id,
+            originalName: "photo.jpg",
+            mimeType: "image/jpeg",
+            checksum: "checksum",
+            byteCount: 3,
+            state: .pending
+        )
+        try repository.saveAttachment(attachment, binary: Data([1, 2, 3]))
+        let model = try AppModel(
+            repository: repository,
+            importStore: InMemoryImportStore(),
+            searchIndex: JournalSearchIndex(
+                url: paths.search.appending(path: "missed-start.sqlite")
+            ),
+            paths: paths,
+            cloudAccountMonitor: CloudAccountMonitor(
+                containerIdentifier: "iCloud.test.PilgrimJournal"
+            )
+        )
+
+        // No start-of-export event observed (e.g. app was backgrounded) — the
+        // completion event alone must still carry a .pending attachment to
+        // .uploaded, not just .uploading, or it would be stranded forever.
+        model.handleCloudSyncStoreEvent(CloudSyncStoreEvent(
+            operation: .exporting,
+            completedAt: .now,
+            succeeded: true,
+            errorDescription: nil
+        ))
+        XCTAssertEqual(model.attachments(for: entry.id).first?.state, .uploaded)
+    }
+
+    @MainActor
+    func testUploadFailureWhileUploadingIsRetryable() throws {
+        let root = FileManager.default.temporaryDirectory.appending(
+            path: "pilgrim-attachment-uploading-failure-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+        let paths = JournalPaths(root: root)
+        try paths.prepare()
+        let repository = InMemoryJournalRepository()
+        let entry = try repository.save(
+            JournalEntryDraft(kind: .diary, body: "테스트 본문"),
+            deviceID: "Mac",
+            at: .now
+        )
+        let attachment = AttachmentRecord(
+            entryID: entry.id,
+            originalName: "photo.jpg",
+            mimeType: "image/jpeg",
+            checksum: "checksum",
+            byteCount: 3,
+            state: .pending
+        )
+        try repository.saveAttachment(attachment, binary: Data([1, 2, 3]))
+        let model = try AppModel(
+            repository: repository,
+            importStore: InMemoryImportStore(),
+            searchIndex: JournalSearchIndex(
+                url: paths.search.appending(path: "uploading-failure.sqlite")
+            ),
+            paths: paths,
+            cloudAccountMonitor: CloudAccountMonitor(
+                containerIdentifier: "iCloud.test.PilgrimJournal"
+            )
+        )
+
+        model.handleCloudSyncStoreEvent(CloudSyncStoreEvent(
+            operation: .exporting,
+            completedAt: nil,
+            succeeded: false,
+            errorDescription: nil
+        ))
+        XCTAssertEqual(model.attachments(for: entry.id).first?.state, .uploading)
+
+        // A failure that arrives while an attachment is mid-upload must still
+        // reach .failed, not strand it in .uploading with no retry button.
+        model.handleCloudSyncStoreEvent(CloudSyncStoreEvent(
+            operation: .exporting,
+            completedAt: .now,
+            succeeded: false,
+            errorDescription: "iCloud 저장 공간이 부족합니다.",
+            errorRetryable: true
+        ))
+        XCTAssertEqual(model.attachments(for: entry.id).first?.state, .failed)
+    }
+
+    @MainActor
+    func testImportStartAndEndTogglesIsCloudImportInProgress() throws {
+        let root = FileManager.default.temporaryDirectory.appending(
+            path: "pilgrim-import-in-progress-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+        let paths = JournalPaths(root: root)
+        try paths.prepare()
+        let model = try AppModel(
+            repository: InMemoryJournalRepository(),
+            importStore: InMemoryImportStore(),
+            searchIndex: JournalSearchIndex(
+                url: paths.search.appending(path: "import-in-progress.sqlite")
+            ),
+            paths: paths,
+            cloudAccountMonitor: CloudAccountMonitor(
+                containerIdentifier: "iCloud.test.PilgrimJournal"
+            )
+        )
+
+        XCTAssertFalse(model.isCloudImportInProgress)
+        model.handleCloudSyncStoreEvent(CloudSyncStoreEvent(
+            operation: .importing,
+            completedAt: nil,
+            succeeded: false,
+            errorDescription: nil
+        ))
+        XCTAssertTrue(model.isCloudImportInProgress)
+
+        model.handleCloudSyncStoreEvent(CloudSyncStoreEvent(
+            operation: .importing,
+            completedAt: .now,
+            succeeded: true,
+            errorDescription: nil
+        ))
+        XCTAssertFalse(model.isCloudImportInProgress)
+    }
+
+    @MainActor
     func testMetadataOnlyAttachmentRequestsLazyDownloadAndKeepsTombstoneHidden() throws {
         let root = FileManager.default.temporaryDirectory.appending(
             path: "pilgrim-attachment-download-\(UUID().uuidString)",
