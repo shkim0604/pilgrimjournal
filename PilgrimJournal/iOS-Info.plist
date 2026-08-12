@@ -24,6 +24,8 @@
 	<false/>
 	<key>NSFaceIDUsageDescription</key>
 	<string>개인 일기 기록의 앱 잠금을 해제하기 위해 Face ID를 사용합니다.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>기록에 첨부할 사진을 바로 촬영하기 위해 카메라를 사용합니다.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchScreen</key>

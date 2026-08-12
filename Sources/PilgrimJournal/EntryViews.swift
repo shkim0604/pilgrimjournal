@@ -1,4 +1,5 @@
 import JournalDomain
+import PhotosUI
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -7,6 +8,7 @@ import AppKit
 #endif
 #if os(iOS)
 import QuickLook
+import UIKit
 #endif
 
 #if os(macOS)
@@ -1124,6 +1126,51 @@ struct EntryEditorView: View {
     }
 }
 
+#if os(iOS)
+private struct CameraCaptureView: UIViewControllerRepresentable {
+    var onCapture: (UIImage) -> Void
+    var onCancel: () -> Void
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = .camera
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onCapture: onCapture, onCancel: onCancel)
+    }
+
+    final class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let onCapture: (UIImage) -> Void
+        let onCancel: () -> Void
+
+        init(onCapture: @escaping (UIImage) -> Void, onCancel: @escaping () -> Void) {
+            self.onCapture = onCapture
+            self.onCancel = onCancel
+        }
+
+        func imagePickerController(
+            _ picker: UIImagePickerController,
+            didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]
+        ) {
+            guard let image = info[.originalImage] as? UIImage else {
+                onCancel()
+                return
+            }
+            onCapture(image)
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            onCancel()
+        }
+    }
+}
+#endif
+
 private struct AttachmentEditorSection: View {
     @EnvironmentObject private var model: AppModel
     let entryID: UUID?
@@ -1131,8 +1178,11 @@ private struct AttachmentEditorSection: View {
     var allowsImport = true
     @State private var attachments: [AttachmentRecord] = []
     @State private var isImporting = false
+    @State private var isPresentingPhotoPicker = false
+    @State private var photoPickerSelection: [PhotosPickerItem] = []
     #if os(iOS)
     @State private var previewURL: URL?
+    @State private var isPresentingCamera = false
     #endif
     @State private var exportDocument: AttachmentDocument?
     @State private var exportContentType: UTType = .data
@@ -1147,16 +1197,32 @@ private struct AttachmentEditorSection: View {
                     .foregroundStyle(JournalTheme.inkSecondary)
                 Spacer()
                 if allowsImport {
-                    Button {
-                        guard entryID != nil || ensureEntryID() != nil else {
-                            model.errorMessage = "첨부 전에 제목이나 본문을 입력해 기록을 저장해 주세요."
-                            return
+                    HStack(spacing: JournalTheme.Spacing.small) {
+                        Button {
+                            requireEntryThenRun { isImporting = true }
+                        } label: {
+                            Label("파일", systemImage: "paperclip")
                         }
-                        isImporting = true
-                    } label: {
-                        Label("첨부 추가", systemImage: "paperclip")
+                        .buttonStyle(.borderless)
+
+                        Button {
+                            requireEntryThenRun { isPresentingPhotoPicker = true }
+                        } label: {
+                            Label("사진", systemImage: "photo.on.rectangle")
+                        }
+                        .buttonStyle(.borderless)
+
+                        #if os(iOS)
+                        if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                            Button {
+                                requireEntryThenRun { isPresentingCamera = true }
+                            } label: {
+                                Label("촬영", systemImage: "camera")
+                            }
+                            .buttonStyle(.borderless)
+                        }
+                        #endif
                     }
-                    .buttonStyle(.borderless)
                 }
             }
 
@@ -1206,6 +1272,28 @@ private struct AttachmentEditorSection: View {
                 model.errorMessage = error.localizedDescription
             }
         }
+        .photosPicker(
+            isPresented: $isPresentingPhotoPicker,
+            selection: $photoPickerSelection,
+            maxSelectionCount: 0,
+            matching: .images
+        )
+        .onChange(of: photoPickerSelection) { _, newValue in
+            guard !newValue.isEmpty else { return }
+            importPhotoPickerSelection(newValue)
+        }
+        #if os(iOS)
+        .fullScreenCover(isPresented: $isPresentingCamera) {
+            CameraCaptureView(
+                onCapture: { image in
+                    isPresentingCamera = false
+                    importCapturedPhoto(image)
+                },
+                onCancel: { isPresentingCamera = false }
+            )
+            .ignoresSafeArea()
+        }
+        #endif
         .onAppear { attachments = model.attachments(for: entryID) }
         .onChange(of: entryID) { _, newValue in
             attachments = model.attachments(for: newValue)
@@ -1229,6 +1317,57 @@ private struct AttachmentEditorSection: View {
         .quickLookPreview($previewURL)
         #endif
     }
+
+    private func requireEntryThenRun(_ action: () -> Void) {
+        guard entryID != nil || ensureEntryID() != nil else {
+            model.errorMessage = "첨부 전에 제목이나 본문을 입력해 기록을 저장해 주세요."
+            return
+        }
+        action()
+    }
+
+    private func importPhotoPickerSelection(_ items: [PhotosPickerItem]) {
+        guard let targetID = entryID ?? ensureEntryID() else {
+            model.errorMessage = "첨부할 기록을 먼저 저장해 주세요."
+            photoPickerSelection = []
+            return
+        }
+        Task {
+            for item in items {
+                guard let data = try? await item.loadTransferable(type: Data.self) else {
+                    continue
+                }
+                let contentType = item.supportedContentTypes.first
+                let fileExtension = contentType?.preferredFilenameExtension ?? "jpg"
+                let mimeType = contentType?.preferredMIMEType ?? "image/jpeg"
+                model.addAttachment(
+                    data: data,
+                    originalName: "\(UUID().uuidString).\(fileExtension)",
+                    mimeType: mimeType,
+                    to: targetID
+                )
+            }
+            attachments = model.attachments(for: targetID)
+            photoPickerSelection = []
+        }
+    }
+
+    #if os(iOS)
+    private func importCapturedPhoto(_ image: UIImage) {
+        guard let targetID = entryID ?? ensureEntryID() else {
+            model.errorMessage = "첨부할 기록을 먼저 저장해 주세요."
+            return
+        }
+        guard let data = image.jpegData(compressionQuality: 0.9) else { return }
+        model.addAttachment(
+            data: data,
+            originalName: "\(UUID().uuidString).jpg",
+            mimeType: "image/jpeg",
+            to: targetID
+        )
+        attachments = model.attachments(for: targetID)
+    }
+    #endif
 
     private func openAttachment(_ attachment: AttachmentRecord) {
         guard let url = model.temporaryPreviewURL(for: attachment.id) else { return }
