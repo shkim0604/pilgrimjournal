@@ -15,7 +15,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		9F42FD123013C28600385B48 /* PilgrimJournal.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PilgrimJournal.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9F42FD123013C28600385B48 /* Pilgrim Journal.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Pilgrim Journal.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -60,7 +60,7 @@
 		9F42FD133013C28600385B48 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				9F42FD123013C28600385B48 /* PilgrimJournal.app */,
+				9F42FD123013C28600385B48 /* Pilgrim Journal.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -93,7 +93,7 @@
 				A30000000000000000000005 /* JournalBackup */,
 			);
 			productName = PilgrimJournal;
-			productReference = 9F42FD123013C28600385B48 /* PilgrimJournal.app */;
+			productReference = 9F42FD123013C28600385B48 /* Pilgrim Journal.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -286,7 +286,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = PilgrimJournal/PilgrimJournal.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 16;
+				CURRENT_PROJECT_VERSION = 17;
 				DEVELOPMENT_TEAM = 7JZU3246YR;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
@@ -296,8 +296,8 @@
 				"GENERATE_INFOPLIST_FILE[sdk=iphonesimulator*]" = NO;
 				"INFOPLIST_FILE[sdk=iphoneos*]" = "iOS-Info.plist";
 				"INFOPLIST_FILE[sdk=iphonesimulator*]" = "iOS-Info.plist";
-				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				"INFOPLIST_KEY_CFBundleDisplayName[sdk=macosx*]" = "Pilgrim Journal";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				"INFOPLIST_KEY_LSApplicationCategoryType[sdk=macosx*]" = "public.app-category.lifestyle";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "개인 일기 기록의 앱 잠금을 해제하기 위해 Face ID를 사용합니다.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
@@ -341,7 +341,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = PilgrimJournal/PilgrimJournal.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 16;
+				CURRENT_PROJECT_VERSION = 17;
 				DEVELOPMENT_TEAM = 7JZU3246YR;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
@@ -351,8 +351,8 @@
 				"GENERATE_INFOPLIST_FILE[sdk=iphonesimulator*]" = NO;
 				"INFOPLIST_FILE[sdk=iphoneos*]" = "iOS-Info.plist";
 				"INFOPLIST_FILE[sdk=iphonesimulator*]" = "iOS-Info.plist";
-				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				"INFOPLIST_KEY_CFBundleDisplayName[sdk=macosx*]" = "Pilgrim Journal";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				"INFOPLIST_KEY_LSApplicationCategoryType[sdk=macosx*]" = "public.app-category.lifestyle";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "개인 일기 기록의 앱 잠금을 해제하기 위해 Face ID를 사용합니다.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
