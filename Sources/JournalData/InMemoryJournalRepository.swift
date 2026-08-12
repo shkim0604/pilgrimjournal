@@ -203,6 +203,62 @@ public final class InMemoryJournalRepository:
         try persist()
     }
 
+    public func purgeEntries(ids: Set<UUID>) throws -> JournalPurgeSummary {
+        guard !ids.isEmpty else { return .empty }
+        let purgedIDs = Set(entries.keys).intersection(ids)
+        guard !purgedIDs.isEmpty else { return .empty }
+        // Validate-all-then-delete, matching SwiftDataJournalRepository.
+        guard purgedIDs.allSatisfy({ entries[$0]?.isDeleted == true }) else {
+            throw JournalError.persistence("휴지통에 있는 기록만 영구 삭제할 수 있습니다.")
+        }
+
+        let originalEntries = entries
+        let originalRevisions = revisionStorage
+        let originalAttachments = attachmentStorage
+
+        let purgedSourceUUIDs = Set(purgedIDs.compactMap { entries[$0]?.sourceUUID })
+        let removedRevisionCount = purgedIDs.reduce(0) { $0 + (revisionStorage[$1]?.count ?? 0) }
+        let purgedAttachmentIDs = attachmentStorage.values
+            .filter { purgedIDs.contains($0.0.entryID) }
+            .map(\.0.id)
+        let survivingChecksums = Set(
+            attachmentStorage.values
+                .filter { !purgedIDs.contains($0.0.entryID) }
+                .map { $0.0.checksum }
+        )
+        let releasedChecksums = Set(
+            attachmentStorage.values
+                .filter { purgedIDs.contains($0.0.entryID) }
+                .map { $0.0.checksum }
+        ).subtracting(survivingChecksums)
+
+        for id in purgedIDs {
+            entries[id] = nil
+            revisionStorage[id] = nil
+        }
+        for attachmentID in purgedAttachmentIDs {
+            attachmentStorage[attachmentID] = nil
+        }
+
+        do {
+            try persist()
+        } catch {
+            entries = originalEntries
+            revisionStorage = originalRevisions
+            attachmentStorage = originalAttachments
+            try? persist()
+            throw error
+        }
+
+        return JournalPurgeSummary(
+            purgedEntryIDs: purgedIDs,
+            removedRevisionCount: removedRevisionCount,
+            removedAttachmentIDs: Set(purgedAttachmentIDs),
+            releasedChecksums: releasedChecksums,
+            purgedSourceUUIDs: purgedSourceUUIDs
+        )
+    }
+
     public func classificationRules() throws -> [ClassificationRuleRecord] {
         rules.values.sorted {
             if $0.priority != $1.priority { return $0.priority > $1.priority }
@@ -250,6 +306,10 @@ public final class InMemoryJournalRepository:
 
     public func allAttachments() throws -> [(AttachmentRecord, Data?)] {
         attachmentStorage.values.map { $0 }
+    }
+
+    public func attachmentChecksums() throws -> Set<String> {
+        Set(attachmentStorage.values.map { $0.0.checksum })
     }
 
     public func performRestoreTransaction(

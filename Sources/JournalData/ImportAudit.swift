@@ -47,6 +47,12 @@ public protocol ImportAuditStore: AnyObject {
         skipped: Int,
         failed: Int
     ) throws
+    /// Drops the retained raw Day One JSON for the given source UUIDs. Used
+    /// after a permanent delete so the "purged" entry's full body doesn't
+    /// linger on disk (and in future backups) as a source snapshot. Leaves
+    /// the `ImportItemEntity` audit log — what happened during import —
+    /// untouched.
+    func removeSourceSnapshots(sourceUUIDs: Set<String>) throws
 }
 
 public struct ImportAuditSnapshot: Sendable {
@@ -85,6 +91,12 @@ public final class InMemoryImportStore: ImportAuditStore {
 
     public func sourceSnapshots() -> [String: Data] {
         snapshot.sourceSnapshots
+    }
+
+    public func removeSourceSnapshots(sourceUUIDs: Set<String>) throws {
+        for sourceUUID in sourceUUIDs {
+            snapshot.sourceSnapshots.removeValue(forKey: sourceUUID)
+        }
     }
 
     public func finish(

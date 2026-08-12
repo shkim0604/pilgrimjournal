@@ -96,6 +96,155 @@ final class JournalDataTests: XCTestCase {
         XCTAssertFalse(try XCTUnwrap(repository.entry(id: record.id)).isDeleted)
     }
 
+    func testPurgeRemovesEntryRevisionsAndAttachmentRows() throws {
+        let repository = try makeRepository()
+        let record = try repository.save(
+            JournalEntryDraft(kind: .diary, body: "지울 기록"),
+            deviceID: "Mac",
+            at: .now
+        )
+        var edited = record.draft
+        edited.body = "지울 기록 수정"
+        _ = try repository.save(edited, deviceID: "Mac", at: .now)
+        let attachment = AttachmentRecord(
+            entryID: record.id,
+            originalName: "cover.jpg",
+            mimeType: "image/jpeg",
+            checksum: "solo-checksum",
+            byteCount: 10
+        )
+        try repository.saveAttachment(attachment, binary: Data("x".utf8))
+
+        try repository.moveToTrash(entryID: record.id, deviceID: "Mac", at: .now)
+        let summary = try repository.purgeEntries(ids: [record.id])
+
+        XCTAssertEqual(summary.purgedEntryIDs, [record.id])
+        XCTAssertEqual(summary.removedRevisionCount, 2)
+        XCTAssertEqual(summary.removedAttachmentIDs, [attachment.id])
+        XCTAssertEqual(summary.releasedChecksums, ["solo-checksum"])
+        XCTAssertNil(try repository.entry(id: record.id))
+        XCTAssertTrue(try repository.revisions(entryID: record.id).isEmpty)
+        XCTAssertTrue(try repository.allAttachments().isEmpty)
+        XCTAssertTrue(try repository.list(kind: nil, includeDeleted: true, limit: 10).isEmpty)
+    }
+
+    func testPurgeRefusesEntriesNotInTrash() throws {
+        let repository = try makeRepository()
+        let record = try repository.save(
+            JournalEntryDraft(kind: .diary, body: "살아있는 기록"),
+            deviceID: "Mac",
+            at: .now
+        )
+        XCTAssertThrowsError(try repository.purgeEntries(ids: [record.id]))
+        XCTAssertNotNil(try repository.entry(id: record.id))
+        XCTAssertFalse(try repository.revisions(entryID: record.id).isEmpty)
+    }
+
+    func testPurgeRollsBackWhenAnyIDIsNotTrashed() throws {
+        let repository = try makeRepository()
+        let trashed = try repository.save(
+            JournalEntryDraft(kind: .diary, body: "휴지통"),
+            deviceID: "Mac",
+            at: .now
+        )
+        try repository.moveToTrash(entryID: trashed.id, deviceID: "Mac", at: .now)
+        let live = try repository.save(
+            JournalEntryDraft(kind: .diary, body: "살아있음"),
+            deviceID: "Mac",
+            at: .now
+        )
+        XCTAssertThrowsError(try repository.purgeEntries(ids: [trashed.id, live.id]))
+        XCTAssertNotNil(try repository.entry(id: live.id))
+        XCTAssertTrue(try XCTUnwrap(repository.entry(id: trashed.id)).isDeleted)
+    }
+
+    func testPurgeReleasesOnlyChecksumsNoOtherEntryStillReferences() throws {
+        let repository = try makeRepository()
+        let entryA = try repository.save(
+            JournalEntryDraft(kind: .diary, body: "A"),
+            deviceID: "Mac",
+            at: .now
+        )
+        let entryB = try repository.save(
+            JournalEntryDraft(kind: .diary, body: "B"),
+            deviceID: "Mac",
+            at: .now
+        )
+        let sharedForA = AttachmentRecord(
+            entryID: entryA.id,
+            originalName: "shared-a.jpg",
+            mimeType: "image/jpeg",
+            checksum: "shared-checksum",
+            byteCount: 5
+        )
+        let sharedForB = AttachmentRecord(
+            entryID: entryB.id,
+            originalName: "shared-b.jpg",
+            mimeType: "image/jpeg",
+            checksum: "shared-checksum",
+            byteCount: 5
+        )
+        let unique = AttachmentRecord(
+            entryID: entryA.id,
+            originalName: "unique.jpg",
+            mimeType: "image/jpeg",
+            checksum: "unique-checksum",
+            byteCount: 5
+        )
+        try repository.saveAttachment(sharedForA, binary: Data("x".utf8))
+        try repository.saveAttachment(sharedForB, binary: Data("x".utf8))
+        try repository.saveAttachment(unique, binary: Data("y".utf8))
+
+        try repository.moveToTrash(entryID: entryA.id, deviceID: "Mac", at: .now)
+        let summary = try repository.purgeEntries(ids: [entryA.id])
+
+        XCTAssertEqual(summary.releasedChecksums, ["unique-checksum"])
+        XCTAssertEqual(try repository.attachmentChecksums(), ["shared-checksum"])
+    }
+
+    func testPurgeIsIdempotentForAlreadyMissingIDs() throws {
+        let repository = try makeRepository()
+        let record = try repository.save(
+            JournalEntryDraft(kind: .diary, body: "지울 기록"),
+            deviceID: "Mac",
+            at: .now
+        )
+        try repository.moveToTrash(entryID: record.id, deviceID: "Mac", at: .now)
+        let first = try repository.purgeEntries(ids: [record.id])
+        XCTAssertEqual(first.purgedEntryIDs, [record.id])
+        let second = try repository.purgeEntries(ids: [record.id])
+        XCTAssertEqual(second, .empty)
+    }
+
+    func testInMemoryPurgeMatchesSwiftDataSemantics() throws {
+        let repository = InMemoryJournalRepository()
+        let record = try repository.save(
+            JournalEntryDraft(kind: .diary, body: "메모리 기록"),
+            deviceID: "Mac",
+            at: .now
+        )
+        let attachment = AttachmentRecord(
+            entryID: record.id,
+            originalName: "a.jpg",
+            mimeType: "image/jpeg",
+            checksum: "mem-checksum",
+            byteCount: 3
+        )
+        try repository.saveAttachment(attachment, binary: Data("x".utf8))
+
+        XCTAssertThrowsError(try repository.purgeEntries(ids: [record.id]))
+
+        try repository.moveToTrash(entryID: record.id, deviceID: "Mac", at: .now)
+        let summary = try repository.purgeEntries(ids: [record.id])
+        XCTAssertEqual(summary.purgedEntryIDs, [record.id])
+        XCTAssertEqual(summary.releasedChecksums, ["mem-checksum"])
+        XCTAssertNil(try repository.entry(id: record.id))
+        XCTAssertTrue(try repository.revisions(entryID: record.id).isEmpty)
+        XCTAssertTrue(try repository.allAttachments().isEmpty)
+
+        XCTAssertEqual(try repository.purgeEntries(ids: [record.id]), .empty)
+    }
+
     func testIndependentOfflineEditsFromDifferentDevicesAreBothPreserved() throws {
         let repository = try makeRepository()
         let macEntry = try repository.save(
@@ -536,6 +685,49 @@ final class JournalDataTests: XCTestCase {
             ]
         )
         XCTAssertNil(JournalStoreChangeExtractor.extract(from: snapshotNotification))
+    }
+
+    func testStoreChangeExtractorRequestsFullRefreshForCanonicalDeletions() throws {
+        let container = try JournalContainerFactory.make(inMemory: true)
+        let context = ModelContext(container)
+
+        let entry = JournalEntryEntity()
+        entry.stableID = UUID()
+        context.insert(entry)
+        context.processPendingChanges()
+        let entryIdentifier = entry.persistentModelID
+        context.delete(entry)
+        context.processPendingChanges()
+
+        // A deleted canonical row can't be resolved back to an entry UUID,
+        // so the extractor must fall back to a full refresh instead of
+        // silently dropping the change (see JournalStoreChange.swift).
+        let deletionNotification = Notification(
+            name: ModelContext.didSave,
+            object: context,
+            userInfo: [
+                ModelContext.NotificationKey.deletedIdentifiers: Set([entryIdentifier]),
+            ]
+        )
+        let change = try XCTUnwrap(
+            JournalStoreChangeExtractor.extract(from: deletionNotification)
+        )
+        XCTAssertTrue(change.requiresFullRefresh)
+
+        let snapshot = SourceSnapshotEntity()
+        context.insert(snapshot)
+        context.processPendingChanges()
+        let snapshotIdentifier = snapshot.persistentModelID
+        context.delete(snapshot)
+        context.processPendingChanges()
+        let localDeletionNotification = Notification(
+            name: ModelContext.didSave,
+            object: context,
+            userInfo: [
+                ModelContext.NotificationKey.deletedIdentifiers: Set([snapshotIdentifier]),
+            ]
+        )
+        XCTAssertNil(JournalStoreChangeExtractor.extract(from: localDeletionNotification))
     }
 
     func testTimelineCursorKeepsStableNewestFirstOrderAndKindFilter() throws {

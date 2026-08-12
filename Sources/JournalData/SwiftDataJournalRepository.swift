@@ -207,6 +207,71 @@ public final class SwiftDataJournalRepository:
         try saveIfNeeded()
     }
 
+    public func purgeEntries(ids: Set<UUID>) throws -> JournalPurgeSummary {
+        guard !ids.isEmpty else { return .empty }
+        let idList = Array(ids)
+        let entryDescriptor = FetchDescriptor<JournalEntryEntity>(
+            predicate: #Predicate { entity in idList.contains(entity.stableID) }
+        )
+        // Deliberately no fetchLimit: a limit here would silently orphan
+        // rows past it instead of purging them.
+        let entities = try context.fetch(entryDescriptor)
+        guard !entities.isEmpty else { return .empty }
+        // Validate-all-then-delete: if any requested id isn't actually in
+        // the trash, throw before deleting anything, so a caller bug can
+        // never turn into "some live entries got deleted too". IDs that no
+        // longer exist at all are simply absent from `entities` and are
+        // skipped — repeated purge calls are idempotent.
+        guard entities.allSatisfy({ $0.deletedAt != nil }) else {
+            throw JournalError.persistence("휴지통에 있는 기록만 영구 삭제할 수 있습니다.")
+        }
+
+        let purgedIDs = Set(entities.map(\.stableID))
+        let purgedIDList = Array(purgedIDs)
+        let purgedSourceUUIDs = Set(entities.compactMap(\.sourceUUID))
+
+        let revisionDescriptor = FetchDescriptor<EntryRevisionEntity>(
+            predicate: #Predicate { revision in purgedIDList.contains(revision.entryID) }
+        )
+        let revisions = try context.fetch(revisionDescriptor)
+
+        // No SwiftData relationship links attachments to their entry, so
+        // there's no cascade — fetch every attachment row (never `.binary`,
+        // to avoid faulting external-storage blobs) and split it by hand.
+        let allAttachments = try context.fetch(FetchDescriptor<AttachmentEntity>())
+        let purgedAttachments = allAttachments.filter { purgedIDs.contains($0.entryID) }
+        let survivingChecksums = Set(
+            allAttachments
+                .filter { !purgedIDs.contains($0.entryID) }
+                .map(\.checksum)
+        )
+        let releasedChecksums = Set(purgedAttachments.map(\.checksum))
+            .subtracting(survivingChecksums)
+        let removedAttachmentIDs = Set(purgedAttachments.map(\.stableID))
+
+        // Children first: if the process dies mid-transaction, the worst
+        // surviving state is a trashed entry with no revisions/attachments
+        // (visible, re-purgeable), not orphaned rows nothing can reach.
+        for revision in revisions { context.delete(revision) }
+        for attachment in purgedAttachments { context.delete(attachment) }
+        for entity in entities { context.delete(entity) }
+
+        do {
+            try saveIfNeeded()
+        } catch {
+            context.rollback()
+            throw error
+        }
+
+        return JournalPurgeSummary(
+            purgedEntryIDs: purgedIDs,
+            removedRevisionCount: revisions.count,
+            removedAttachmentIDs: removedAttachmentIDs,
+            releasedChecksums: releasedChecksums,
+            purgedSourceUUIDs: purgedSourceUUIDs
+        )
+    }
+
     public func classificationRules() throws -> [ClassificationRuleRecord] {
         let descriptor = FetchDescriptor<ClassificationRuleEntity>(
             sortBy: [
@@ -311,6 +376,12 @@ public final class SwiftDataJournalRepository:
             )
             return (record, entity.binary)
         }
+    }
+
+    public func attachmentChecksums() throws -> Set<String> {
+        // A bare fetch of only what's needed to compute references — never
+        // touches `.binary`, unlike `allAttachments()`.
+        Set(try context.fetch(FetchDescriptor<AttachmentEntity>()).map(\.checksum))
     }
 
     public func saveAttachment(_ record: AttachmentRecord, binary: Data?) throws {

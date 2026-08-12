@@ -213,6 +213,11 @@ final class AppModel: ObservableObject {
     func handleJournalStoreChange(_ change: JournalStoreChange) {
         if change.requiresFullRefresh {
             rebuildSearchIndex()
+            // A canonical deletion (e.g. a permanent delete on another
+            // window/device) can't be resolved back to an entry ID, so it
+            // always takes this branch — make sure a currently-open trash
+            // sheet reflects it too.
+            if isPresentingTrash { refreshTrash() }
             return
         }
 
@@ -234,6 +239,7 @@ final class AppModel: ObservableObject {
                         newHistoryToken: historyToken
                     )
                     self?.refresh()
+                    if self?.isPresentingTrash == true { self?.refreshTrash() }
                 } catch {
                     self?.errorMessage = error.localizedDescription
                 }
@@ -625,10 +631,18 @@ final class AppModel: ObservableObject {
         let hasContent = !draft.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             || !draft.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         guard hasContent else { return }
-        if let id = draft.id,
-           let current = try? repository.entry(id: id),
-           current.isDeleted {
-            return
+        if let id = draft.id {
+            // A trashed entry still exists (`entry(id:)` returns it, marked
+            // deleted); a permanently deleted one doesn't exist at all
+            // (`entry(id:)` returns nil). `try? repository.entry(id: id)`
+            // flattens both "call failed" and "call succeeded with nil"
+            // into the same `nil`, so `nil` here must also block the
+            // autosave — otherwise a purge followed by closing an editor
+            // that still had the old draft open would silently recreate
+            // the entry.
+            guard let current = try? repository.entry(id: id), !current.isDeleted else {
+                return
+            }
         }
         _ = save(draft, closeEditor: false, selectSavedEntry: false)
     }
@@ -720,6 +734,112 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// Permanently removes one trashed entry — its record, revisions, and
+    /// attachments — from storage. Irreversible; the caller is expected to
+    /// have already confirmed with the user.
+    @discardableResult
+    func permanentlyDelete(_ entry: JournalEntryRecord) -> Bool {
+        applyPurge(ids: [entry.id], announceCount: false)
+    }
+
+    /// Permanently removes every entry currently in the trash. Re-lists the
+    /// trash first so it acts on the current contents, not a possibly-stale
+    /// `trashEntries` snapshot.
+    @discardableResult
+    func emptyTrash() -> Bool {
+        refreshTrash()
+        return applyPurge(ids: Set(trashEntries.map(\.id)), announceCount: true)
+    }
+
+    @discardableResult
+    private func applyPurge(ids: Set<UUID>, announceCount: Bool) -> Bool {
+        guard !ids.isEmpty else { return false }
+        do {
+            let summary = try repository.purgeEntries(ids: ids)
+            guard !summary.purgedEntryIDs.isEmpty else { return false }
+
+            for id in summary.purgedEntryIDs {
+                try? searchIndex.remove(id: id)
+            }
+
+            // Unlike moveToTrash, check selectedEntryID and editingEntry
+            // independently — a purge can be initiated from the trash sheet
+            // while a *different* window still has the entry open in its
+            // editor without it being the sidebar selection.
+            if let selectedEntryID, summary.purgedEntryIDs.contains(selectedEntryID) {
+                self.selectedEntryID = nil
+            }
+            if let editingEntry, summary.purgedEntryIDs.contains(editingEntry.id) {
+                self.editingEntry = nil
+                isPresentingEditor = false
+            }
+            selectedEntryIDs.subtract(summary.purgedEntryIDs)
+            if selectedEntryIDs.isEmpty, isBatchSelecting {
+                endBatchSelection()
+            }
+
+            attachmentRevision += 1
+            releaseAttachmentFiles(summary.releasedChecksums)
+            removePreviewTempFiles(for: summary.removedAttachmentIDs)
+            try? importStore.removeSourceSnapshots(sourceUUIDs: summary.purgedSourceUUIDs)
+
+            markLocalMutation()
+            refreshTrash()
+            refresh()
+
+            if announceCount {
+                lastOperationOutcome = JournalOperationOutcome(
+                    title: "영구 삭제 완료",
+                    message: "\(summary.purgedEntryIDs.count)개의 기록을 영구히 삭제했습니다."
+                )
+            }
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    /// Frees CAS attachment files no longer referenced by any remaining
+    /// attachment row. Runs strictly after the repository commit (the
+    /// caller just did that), so any failure here leaves an orphan file —
+    /// wasted space, not lost data — rather than a file deleted ahead of a
+    /// transaction that could still fail.
+    private func releaseAttachmentFiles(_ checksums: Set<String>) {
+        guard !checksums.isEmpty,
+              let attachmentRepository = repository as? any AttachmentRepository else { return }
+        do {
+            let store = try AttachmentFileStore(root: paths.attachments)
+            // Recomputed from the repository, over ALL remaining rows
+            // (including still-trashed ones, which may yet be restored) —
+            // never trust `checksums` alone, since checksums are shared
+            // across entries via content-addressed dedup.
+            let referenced = try attachmentRepository.attachmentChecksums()
+            for checksum in checksums {
+                try store.removeIfUnreferenced(checksum: checksum, referencedChecksums: referenced)
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Removes the QuickLook/NSWorkspace preview temp copies
+    /// `temporaryPreviewURL` writes — otherwise a "permanently deleted"
+    /// attachment stays readable in plaintext under `tmp/` until the OS
+    /// reaps it.
+    private func removePreviewTempFiles(for attachmentIDs: Set<UUID>) {
+        guard !attachmentIDs.isEmpty else { return }
+        let base = FileManager.default.temporaryDirectory
+            .appending(path: "AttachmentPreview", directoryHint: .isDirectory)
+        for attachmentID in attachmentIDs {
+            let directory = base.appending(
+                path: attachmentID.uuidString,
+                directoryHint: .isDirectory
+            )
+            try? FileManager.default.removeItem(at: directory)
+        }
+    }
+
     func revisions(for entryID: UUID) -> [EntryRevisionRecord] {
         do {
             return try repository.revisions(entryID: entryID)
@@ -772,6 +892,48 @@ final class AppModel: ObservableObject {
         return (try? attachmentRepository.allAttachments().first {
             $0.0.id == attachmentID
         }?.1) != nil
+    }
+
+    func attachmentBinary(for attachmentID: UUID) -> Data? {
+        guard let attachmentRepository = repository as? any AttachmentRepository,
+              let stored = try? attachmentRepository.allAttachments().first(where: {
+                  $0.0.id == attachmentID
+              }) else { return nil }
+        return stored.1
+    }
+
+    /// Writes the attachment's binary to a per-attachment temp directory so
+    /// QuickLook (iOS) or the default external app (macOS) can open it by
+    /// URL. The blob itself only lives in SwiftData's external storage
+    /// attribute, not as a named file, so this is the only way to hand it to
+    /// a URL-based viewer.
+    func temporaryPreviewURL(for attachmentID: UUID) -> URL? {
+        guard let attachmentRepository = repository as? any AttachmentRepository,
+              let stored = try? attachmentRepository.allAttachments().first(where: {
+                  $0.0.id == attachmentID
+              }),
+              let data = stored.1 else { return nil }
+        let record = stored.0
+        let directory = FileManager.default.temporaryDirectory
+            .appending(path: "AttachmentPreview", directoryHint: .isDirectory)
+            .appending(path: attachmentID.uuidString, directoryHint: .isDirectory)
+        let filename = record.originalName.isEmpty
+            ? attachmentID.uuidString
+            : record.originalName
+        let url = directory.appending(path: filename)
+        do {
+            try FileManager.default.createDirectory(
+                at: directory,
+                withIntermediateDirectories: true
+            )
+            if !FileManager.default.fileExists(atPath: url.path) {
+                try data.write(to: url, options: .atomic)
+            }
+            return url
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
     }
 
     @discardableResult
@@ -865,6 +1027,12 @@ final class AppModel: ObservableObject {
                 path: "\(UUID().uuidString)-\(url.lastPathComponent)"
             )
             try FileManager.default.copyItem(at: url, to: stagedURL)
+            // includeDeleted: true is intentional and must stay — a
+            // trashed-but-not-purged entry still exists and must keep
+            // blocking re-import of the same sourceUUID. Permanently
+            // deleting it (via TrashView) removes the row entirely, so it
+            // naturally drops out of `existing` and re-import is allowed
+            // again; that's `purgeEntries`' job, not this scan's.
             let existing = try repository.list(
                 kind: nil,
                 includeDeleted: true,

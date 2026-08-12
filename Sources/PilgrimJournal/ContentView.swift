@@ -168,34 +168,37 @@ struct ContentView: View {
             )
         } detail: {
             #if os(macOS)
-            if model.isPresentingSettings {
-                SettingsView()
-            } else if let entry = model.selectedEntry {
-                InlineEntryEditorView(entry: entry)
-                    .id(entry.id)
-            } else if model.selectedEntryIDs.count > 1 {
-                JournalEmptyState(
-                    title: "\(model.selectedEntryIDs.count)개의 노트를 선택했습니다",
-                    description: "도구 막대의 휴지통으로 한 번에 삭제하거나, "
-                        + "‘선택’ → ‘정리’로 유형과 태그를 바꿀 수 있습니다.",
-                    systemImage: "checklist"
-                ) {}
-            } else if model.isPresentingEditor {
-                InlineEntryEditorView(
-                    entry: nil,
-                    defaultKind: model.selectedKind?.canCreateManually == true
-                        ? model.selectedKind!
-                        : .diary,
-                    defaultNotebookName: model.newEntryNotebookName
-                )
-                .id(model.editorSessionID)
-            } else {
-                JournalEmptyState(
-                    title: "기록을 선택하세요",
-                    description: "왼쪽 목록에서 기록을 고르거나 새 기록을 시작하세요.",
-                    systemImage: "doc.text"
-                ) {}
+            Group {
+                if model.isPresentingSettings {
+                    SettingsView()
+                } else if let entry = model.selectedEntry {
+                    InlineEntryEditorView(entry: entry)
+                        .id(entry.id)
+                } else if model.selectedEntryIDs.count > 1 {
+                    JournalEmptyState(
+                        title: "\(model.selectedEntryIDs.count)개의 노트를 선택했습니다",
+                        description: "도구 막대의 휴지통으로 한 번에 삭제하거나, "
+                            + "‘선택’ → ‘정리’로 유형과 태그를 바꿀 수 있습니다.",
+                        systemImage: "checklist"
+                    ) {}
+                } else if model.isPresentingEditor {
+                    InlineEntryEditorView(
+                        entry: nil,
+                        defaultKind: model.selectedKind?.canCreateManually == true
+                            ? model.selectedKind!
+                            : .diary,
+                        defaultNotebookName: model.newEntryNotebookName
+                    )
+                    .id(model.editorSessionID)
+                } else {
+                    JournalEmptyState(
+                        title: "기록을 선택하세요",
+                        description: "왼쪽 목록에서 기록을 고르거나 새 기록을 시작하세요.",
+                        systemImage: "doc.text"
+                    ) {}
+                }
             }
+            .navigationSplitViewColumnWidth(min: JournalTheme.detailMinWidth, ideal: 560)
             #else
             // Settings is only shown when it was actually asked for. Using it
             // as the "nothing selected" fallback meant any moment where the

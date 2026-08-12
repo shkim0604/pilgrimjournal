@@ -256,7 +256,73 @@ final class MarkdownSupportTests: XCTestCase {
         )
         XCTAssertEqual(storage.string, markdown)
     }
+
+    func testChecklistMarkerAndBracketsAreHiddenNotAttachmentBased() {
+        let markdown = "- [ ] 할 일\n- [x] 완료된 일"
+        let source = markdown as NSString
+        let storage = NSTextStorage(string: markdown)
+
+        LiveMarkdownStyler.apply(to: storage)
+
+        // The checkbox is drawn by MarkdownChecklistDecoration, not an
+        // NSTextAttachment (see the comment at the checklist regex) — the
+        // marker and brackets must just be invisible, not replaced.
+        XCTAssertEqual(
+            storage.attribute(
+                .foregroundColor,
+                at: source.range(of: "-", options: [], range: NSRange(location: 0, length: 5))
+                    .location,
+                effectiveRange: nil
+            ) as? NSColor,
+            .clear
+        )
+        XCTAssertNil(storage.attribute(
+            .attachment,
+            at: 0,
+            effectiveRange: nil
+        ))
+        XCTAssertEqual(
+            storage.attribute(
+                .foregroundColor,
+                at: source.range(of: "[ ]").location,
+                effectiveRange: nil
+            ) as? NSColor,
+            .clear
+        )
+        let uncheckedContentLocation = source.range(of: "할 일").location
+        XCTAssertNil(storage.attribute(
+            .strikethroughStyle,
+            at: uncheckedContentLocation,
+            effectiveRange: nil
+        ))
+        let checkedContentLocation = source.range(of: "완료된 일").location
+        XCTAssertEqual(
+            storage.attribute(
+                .strikethroughStyle,
+                at: checkedContentLocation,
+                effectiveRange: nil
+            ) as? Int,
+            NSUnderlineStyle.single.rawValue
+        )
+        XCTAssertEqual(storage.string, markdown)
+    }
     #endif
+
+    func testChecklistDecorationLocatesMarkerAndCheckedState() {
+        let markdown = "- [ ] 할 일\n  * [X] 완료\n- 그냥 불릿"
+        let source = markdown as NSString
+
+        let matches = MarkdownChecklistDecoration.matches(in: markdown)
+
+        XCTAssertEqual(matches.count, 2)
+        XCTAssertEqual(matches[0].markerRange, source.range(of: "-"))
+        XCTAssertFalse(matches[0].checked)
+        XCTAssertEqual(
+            matches[1].markerRange,
+            source.range(of: "*", options: [], range: NSRange(location: 10, length: 10))
+        )
+        XCTAssertTrue(matches[1].checked)
+    }
 
     func testInlineFormattingWrapsSelectionWithoutChangingSelectedText() {
         let result = MarkdownCommandProcessor.applying(
@@ -397,6 +463,59 @@ final class MarkdownSupportTests: XCTestCase {
             cursorUTF16Offset: ("- [ ] \n" as NSString).length
         )
         XCTAssertEqual(stopped.text, "\n")
+    }
+
+    func testBackspaceAtMarkerBoundaryRemovesWholeMarker() {
+        let emptyItem = "- "
+        let onEmptyItem = MarkdownCommandProcessor.removingListMarkerBeforeCursor(
+            in: emptyItem,
+            cursorUTF16Offset: (emptyItem as NSString).length
+        )
+        XCTAssertEqual(onEmptyItem?.text, "")
+        XCTAssertEqual(onEmptyItem?.cursorUTF16Offset, 0)
+
+        let withContent = "- 할 일"
+        let markerOffset = 2
+        let onContent = MarkdownCommandProcessor.removingListMarkerBeforeCursor(
+            in: withContent,
+            cursorUTF16Offset: markerOffset
+        )
+        XCTAssertEqual(onContent?.text, "할 일")
+        XCTAssertEqual(onContent?.cursorUTF16Offset, 0)
+
+        let nested = "  * 하위 항목"
+        let nestedMarkerOffset = 4
+        let onNested = MarkdownCommandProcessor.removingListMarkerBeforeCursor(
+            in: nested,
+            cursorUTF16Offset: nestedMarkerOffset
+        )
+        XCTAssertEqual(onNested?.text, "하위 항목")
+
+        let checklist = "- [ ] 확인"
+        let checklistMarkerOffset = 6
+        let onChecklist = MarkdownCommandProcessor.removingListMarkerBeforeCursor(
+            in: checklist,
+            cursorUTF16Offset: checklistMarkerOffset
+        )
+        XCTAssertEqual(onChecklist?.text, "확인")
+    }
+
+    func testBackspaceInMiddleOfContentDoesNotRemoveMarker() {
+        let source = "- 할 일"
+        let midContent = 4
+        XCTAssertNil(MarkdownCommandProcessor.removingListMarkerBeforeCursor(
+            in: source,
+            cursorUTF16Offset: midContent
+        ))
+
+        // A second line's marker must not be affected by a cursor sitting
+        // in the middle of a first, unrelated line.
+        let multiline = "본문\n- 목록"
+        let firstLineOffset = 1
+        XCTAssertNil(MarkdownCommandProcessor.removingListMarkerBeforeCursor(
+            in: multiline,
+            cursorUTF16Offset: firstLineOffset
+        ))
     }
 
     func testTabIndentsAndShiftTabOutdentsListItems() {

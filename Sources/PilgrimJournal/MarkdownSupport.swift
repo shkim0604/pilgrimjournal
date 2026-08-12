@@ -715,6 +715,58 @@ enum MarkdownCommandProcessor {
         )
     }
 
+    /// Removes a list marker (indentation + bullet/number/checklist + the
+    /// following space) when the cursor sits exactly at the start of that
+    /// item's content, i.e. nothing but the marker itself precedes the
+    /// cursor on the current line. Returns nil when the cursor isn't at a
+    /// marker boundary, so a plain single-character backspace is what the
+    /// caller should fall back to.
+    ///
+    /// The marker character is rendered invisible by `LiveMarkdownStyler`
+    /// (color: clear) so it can still be styled as a list, which makes
+    /// deleting it one character at a time via the default backspace feel
+    /// broken — nothing visibly changes on the press that removes the
+    /// invisible marker glyph itself. Removing the whole marker in one
+    /// press, mirroring the empty-item removal already done on Return
+    /// (`continuingList`), fixes that.
+    static func removingListMarkerBeforeCursor(
+        in text: String,
+        cursorUTF16Offset: Int
+    ) -> ExpansionResult? {
+        let source = text as NSString
+        let cursor = min(max(0, cursorUTF16Offset), source.length)
+        guard cursor > 0 else { return nil }
+        let beforeCursor = NSRange(location: 0, length: cursor)
+        let priorNewline = source.range(
+            of: "\n",
+            options: .backwards,
+            range: beforeCursor
+        )
+        let lineStart = priorNewline.location == NSNotFound
+            ? 0
+            : NSMaxRange(priorNewline)
+        guard lineStart < cursor else { return nil }
+        let prefix = source.substring(with: NSRange(
+            location: lineStart,
+            length: cursor - lineStart
+        ))
+        // Matching with an empty `content` group means `prefix` is exactly
+        // the marker (whatever comes after the cursor on this line, if
+        // anything, is untouched by the removal below).
+        guard let item = listItem(from: prefix), item.content.isEmpty else {
+            return nil
+        }
+        let removeRange = NSRange(
+            location: lineStart,
+            length: prefix.utf16.count
+        )
+        return ExpansionResult(
+            text: source.replacingCharacters(in: removeRange, with: ""),
+            cursorUTF16Offset: lineStart,
+            selectionUTF16Range: NSRange(location: lineStart, length: 0)
+        )
+    }
+
     private static func listItem(
         from line: String
     ) -> (
@@ -1291,6 +1343,11 @@ enum LiveMarkdownStyler {
             storage.addAttributes([
                 .foregroundColor: PlatformColor.clear,
                 .font: bodyFont,
+                // The marker glyph is invisible but still occupies its own
+                // width; the drawn dot replaces it. This kern widens the
+                // gap between the dot and the following content — without
+                // it, only a single space's width separates them.
+                .kern: 3,
             ], range: match.range(at: 2))
             storage.addAttribute(
                 .paragraphStyle,
@@ -1313,10 +1370,19 @@ enum LiveMarkdownStyler {
                 with: match.range(at: 4)
             )
             let checked = state.lowercased() == "x"
+            // The checkbox itself is drawn by MarkdownChecklistDecoration
+            // (same technique as the bullet dot) rather than an
+            // NSTextAttachment: an attachment only renders when it replaces
+            // a character with the U+FFFC placeholder, but this editor
+            // never mutates the underlying markdown characters — doing so
+            // would corrupt the saved source text. Setting `.attachment` as
+            // a bare attribute on the existing "-" character is a no-op;
+            // AppKit/UIKit's glyph generator ignores it for ordinary
+            // characters, so it silently fell back to showing "-".
             storage.addAttributes([
-                .foregroundColor: EditorPalette.label,
+                .foregroundColor: PlatformColor.clear,
                 .font: bodyFont,
-                .attachment: checkboxAttachment(checked: checked),
+                .kern: 3,
             ], range: match.range(at: 2))
             storage.addAttributes([
                 .font: hiddenMarkerFont,
@@ -1328,11 +1394,10 @@ enum LiveMarkdownStyler {
                 range: match.range
             )
             if checked {
-                storage.addAttribute(
-                    .foregroundColor,
-                    value: EditorPalette.secondaryLabel,
-                    range: match.range(at: 5)
-                )
+                storage.addAttributes([
+                    .foregroundColor: EditorPalette.secondaryLabel,
+                    .strikethroughStyle: NSUnderlineStyle.single.rawValue,
+                ], range: match.range(at: 5))
             }
         }
         applyRegex(#"(?m)^(>) (.*)$"#, to: storage) { match in
@@ -1666,23 +1731,6 @@ enum LiveMarkdownStyler {
         return style
     }
 
-    private static func checkboxAttachment(checked: Bool) -> NSTextAttachment {
-        let attachment = NSTextAttachment()
-#if os(macOS)
-        attachment.image = NSImage(
-            systemSymbolName: checked ? "checkmark.square.fill" : "square",
-            accessibilityDescription: checked ? "완료" : "미완료"
-        )
-        attachment.bounds = NSRect(x: 0, y: -2, width: 14, height: 14)
-#else
-        attachment.image = UIImage(
-            systemName: checked ? "checkmark.square.fill" : "square"
-        )?.withTintColor(EditorPalette.label, renderingMode: .alwaysOriginal)
-        attachment.bounds = CGRect(x: 0, y: -2, width: 14, height: 14)
-#endif
-        return attachment
-    }
-
 }
 
 enum MarkdownBulletDecoration {
@@ -1693,6 +1741,33 @@ enum MarkdownBulletDecoration {
     static func ranges(in text: String) -> [NSRange] {
         let range = NSRange(location: 0, length: text.utf16.count)
         return regex.matches(in: text, range: range).map { $0.range(at: 1) }
+    }
+}
+
+/// Locates checklist markers so the editor can draw an actual checkbox over
+/// the (hidden) "-"/"*" character — see the comment in
+/// `LiveMarkdownStyler`'s checklist regex for why this can't be an
+/// `NSTextAttachment` in a source-preserving live editor.
+enum MarkdownChecklistDecoration {
+    struct Match {
+        var markerRange: NSRange
+        var checked: Bool
+    }
+
+    private static let regex = try! NSRegularExpression(
+        pattern: #"(?m)^[ \t]*([\-*]) \[([ xX])\] "#
+    )
+
+    static func matches(in text: String) -> [Match] {
+        let source = text as NSString
+        let range = NSRange(location: 0, length: source.length)
+        return regex.matches(in: text, range: range).map { result in
+            let state = source.substring(with: result.range(at: 2))
+            return Match(
+                markerRange: result.range(at: 1),
+                checked: state.lowercased() == "x"
+            )
+        }
     }
 }
 
@@ -1722,6 +1797,30 @@ private enum MarkdownSeparatorDecoration {
 
 @MainActor
 private final class MarkdownNSTextView: NSTextView {
+    /// Returns whether the direction was actually applied to a list line;
+    /// `false` means the current line isn't a list item, so the caller
+    /// should fall through to the normal Tab/Shift+Tab behavior.
+    var adjustListIndentation: ((MarkdownListIndentDirection) -> Bool)?
+    /// Returns whether a list marker was removed at the cursor; `false`
+    /// means the caller should fall through to the normal single-character
+    /// backspace.
+    var removeListMarkerBeforeCursor: (() -> Bool)?
+
+    override func insertTab(_ sender: Any?) {
+        if adjustListIndentation?(.indent) == true { return }
+        super.insertTab(sender)
+    }
+
+    override func insertBacktab(_ sender: Any?) {
+        if adjustListIndentation?(.outdent) == true { return }
+        super.insertBacktab(sender)
+    }
+
+    override func deleteBackward(_ sender: Any?) {
+        if removeListMarkerBeforeCursor?() == true { return }
+        super.deleteBackward(sender)
+    }
+
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
         guard let layoutManager, let textContainer else { return }
@@ -1757,20 +1856,77 @@ private final class MarkdownNSTextView: NSTextView {
             guard glyphRange.location < layoutManager.numberOfGlyphs else {
                 continue
             }
-            let fragment = layoutManager.lineFragmentRect(
-                forGlyphAt: glyphRange.location,
-                effectiveRange: nil
-            )
             let marker = layoutManager.boundingRect(
                 forGlyphRange: glyphRange,
                 in: textContainer
             )
+            // Center on the marker glyph's own bounding box, not the line
+            // fragment rect — the fragment includes the paragraph's line
+            // spacing, which sits below the glyph, so using its midY pulls
+            // the dot down off-center from the text.
             NSBezierPath(ovalIn: NSRect(
                 x: origin.x + marker.midX - 3,
-                y: origin.y + fragment.midY - 3,
+                y: origin.y + marker.midY - 3,
                 width: 6,
                 height: 6
             )).fill()
+        }
+        for checklistMatch in MarkdownChecklistDecoration.matches(in: string) {
+            let glyphRange = layoutManager.glyphRange(
+                forCharacterRange: checklistMatch.markerRange,
+                actualCharacterRange: nil
+            )
+            guard glyphRange.location < layoutManager.numberOfGlyphs else {
+                continue
+            }
+            let marker = layoutManager.boundingRect(
+                forGlyphRange: glyphRange,
+                in: textContainer
+            )
+            let boxSize: CGFloat = 15
+            let rect = NSRect(
+                x: origin.x + marker.minX,
+                y: origin.y + marker.midY - boxSize / 2,
+                width: boxSize,
+                height: boxSize
+            )
+            if checklistMatch.checked {
+                EditorPalette.label.setFill()
+                NSBezierPath(roundedRect: rect, xRadius: 4, yRadius: 4).fill()
+                let check = NSBezierPath()
+                check.lineWidth = 1.6
+                check.lineCapStyle = .round
+                check.lineJoinStyle = .round
+                check.move(to: NSPoint(
+                    x: rect.minX + rect.width * 0.22,
+                    y: rect.minY + rect.height * 0.52
+                ))
+                check.line(to: NSPoint(
+                    x: rect.minX + rect.width * 0.42,
+                    y: rect.minY + rect.height * 0.72
+                ))
+                check.line(to: NSPoint(
+                    x: rect.minX + rect.width * 0.80,
+                    y: rect.minY + rect.height * 0.28
+                ))
+                // The box fill is EditorPalette.label (adapts light/dark),
+                // so the checkmark needs the opposite of whatever that
+                // resolved to, not a fixed color.
+                let isDark = effectiveAppearance.bestMatch(
+                    from: [.darkAqua, .aqua]
+                ) == .darkAqua
+                (isDark ? PlatformColor.black : PlatformColor.white).setStroke()
+                check.stroke()
+            } else {
+                let outline = NSBezierPath(
+                    roundedRect: rect.insetBy(dx: 0.75, dy: 0.75),
+                    xRadius: 4,
+                    yRadius: 4
+                )
+                outline.lineWidth = 1.5
+                EditorPalette.secondaryLabel.setStroke()
+                outline.stroke()
+            }
         }
     }
 }
@@ -1799,6 +1955,12 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
         textView.identifier = MacMarkdownEditorFocus.identifier
         context.coordinator.textView = textView
         textView.delegate = context.coordinator
+        textView.adjustListIndentation = { [weak coordinator = context.coordinator] direction in
+            coordinator?.adjustListIndentation(direction) ?? false
+        }
+        textView.removeListMarkerBeforeCursor = { [weak coordinator = context.coordinator] in
+            coordinator?.removeListMarkerBeforeCursor() ?? false
+        }
         textView.isRichText = true
         textView.importsGraphics = false
         textView.allowsUndo = true
@@ -1859,6 +2021,7 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
         var isUpdating = false
         weak var textView: NSTextView?
         private(set) var publishedHistory: [Int] = []
+        private var stylingTask: Task<Void, Never>?
 
         /// Every write to the binding must go through here so the editor can
         /// recognise its own value when SwiftUI echoes it back a render later.
@@ -1880,6 +2043,7 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
             registersUndo: Bool
         ) {
             guard let textView, textView.string != replacement else { return }
+            stylingTask?.cancel()
             let previousText = textView.string
             let previousSelection = textView.selectedRange()
             if registersUndo, let undoManager = textView.undoManager {
@@ -1904,6 +2068,7 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
             )
             textView.typingAttributes = LiveMarkdownStyler.baseAttributes
             textView.setSelectedRange(safeSelection)
+            textView.scrollRangeToVisible(safeSelection)
             publish(replacement)
             parent.selection = safeSelection
             isUpdating = false
@@ -1932,21 +2097,49 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
                 cursorUTF16Offset: expanded.cursorUTF16Offset
             )
             if continued.text != textView.string {
+                stylingTask?.cancel()
                 textView.string = continued.text
-                textView.setSelectedRange(NSRange(
+                let cursor = NSRange(
                     location: continued.cursorUTF16Offset,
                     length: 0
-                ))
+                )
+                textView.setSelectedRange(cursor)
+                textView.scrollRangeToVisible(cursor)
             }
             publish(continued.text)
             let preservedSelection = textView.selectedRange()
             parent.selection = preservedSelection
-            LiveMarkdownStyler.apply(
-                to: textView.textStorage!,
-                revealing: preservedSelection
-            )
-            textView.typingAttributes = LiveMarkdownStyler.baseAttributes
-            textView.setSelectedRange(preservedSelection)
+            // Full-document restyling is expensive (many regex passes over
+            // the whole string) and was previously run synchronously on
+            // every keystroke, which under rapid typing (e.g. holding
+            // Return) could visibly stall/jank the scroll position. Only
+            // restyle immediately when list-continuation or slash-command
+            // expansion actually changed the text; otherwise defer to a
+            // short debounce, matching the iOS coordinator below.
+            if continued.text != expanded.text
+                || expanded.text != textView.string {
+                applyStyling(to: textView)
+            } else if MarkdownInputReconciliation.shouldScheduleStyling(
+                after: textView.string,
+                cursorUTF16Offset: NSMaxRange(preservedSelection)
+            ) {
+                scheduleStyling(for: textView)
+            } else {
+                stylingTask?.cancel()
+            }
+            // Keep the caret in view on every change, not just list
+            // continuation — otherwise newly typed lines near the bottom
+            // edge can be left scrolled out of view.
+            textView.scrollRangeToVisible(preservedSelection)
+            isUpdating = false
+        }
+
+        func textDidEndEditing(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView,
+                  !textView.hasMarkedText(), !isUpdating else { return }
+            stylingTask?.cancel()
+            isUpdating = true
+            applyStyling(to: textView)
             isUpdating = false
         }
 
@@ -1962,15 +2155,78 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
                 parent.selection = selection
                 return
             }
-            isUpdating = true
             parent.selection = selection
+            textView.needsDisplay = true
+        }
+
+        @discardableResult
+        func adjustListIndentation(_ direction: MarkdownListIndentDirection) -> Bool {
+            guard let textView, !textView.hasMarkedText() else { return false }
+            let result = MarkdownCommandProcessor.adjustingListIndentation(
+                in: textView.string,
+                selection: textView.selectedRange(),
+                direction: direction
+            )
+            guard result.text != textView.string else { return false }
+            replaceExternalText(
+                result.text,
+                selection: result.selectionUTF16Range ?? NSRange(
+                    location: result.cursorUTF16Offset,
+                    length: 0
+                ),
+                registersUndo: true
+            )
+            return true
+        }
+
+        @discardableResult
+        func removeListMarkerBeforeCursor() -> Bool {
+            guard let textView, !textView.hasMarkedText() else { return false }
+            let selection = textView.selectedRange()
+            guard selection.length == 0,
+                  let result = MarkdownCommandProcessor.removingListMarkerBeforeCursor(
+                      in: textView.string,
+                      cursorUTF16Offset: selection.location
+                  ) else { return false }
+            replaceExternalText(
+                result.text,
+                selection: result.selectionUTF16Range ?? NSRange(
+                    location: result.cursorUTF16Offset,
+                    length: 0
+                ),
+                registersUndo: true
+            )
+            return true
+        }
+
+        private func scheduleStyling(for textView: NSTextView) {
+            stylingTask?.cancel()
+            stylingTask = Task { @MainActor [weak self, weak textView] in
+                do {
+                    try await Task.sleep(for: .milliseconds(700))
+                } catch {
+                    return
+                }
+                guard !Task.isCancelled,
+                      let self,
+                      let textView,
+                      !textView.hasMarkedText(),
+                      !self.isUpdating else { return }
+                self.isUpdating = true
+                self.applyStyling(to: textView)
+                self.isUpdating = false
+            }
+        }
+
+        private func applyStyling(to textView: NSTextView) {
+            let selection = textView.selectedRange()
             LiveMarkdownStyler.apply(
                 to: textView.textStorage!,
                 revealing: selection
             )
             textView.typingAttributes = LiveMarkdownStyler.baseAttributes
-            textView.setSelectedRange(selection)
-            isUpdating = false
+            let safeSelection = clamped(selection, to: textView.string.utf16.count)
+            textView.setSelectedRange(safeSelection)
         }
     }
 }
@@ -1989,6 +2245,15 @@ private enum MarkdownSeparatorDecoration {
 @MainActor
 private final class MarkdownUITextView: UITextView {
     var adjustListIndentation: ((MarkdownListIndentDirection) -> Void)?
+    /// Returns whether a list marker was removed at the cursor; `false`
+    /// means the caller should fall through to the normal single-character
+    /// backspace.
+    var removeListMarkerBeforeCursor: (() -> Bool)?
+
+    override func deleteBackward() {
+        if removeListMarkerBeforeCursor?() == true { return }
+        super.deleteBackward()
+    }
 
     override var keyCommands: [UIKeyCommand]? {
         (super.keyCommands ?? []) + [
@@ -2050,20 +2315,75 @@ private final class MarkdownUITextView: UITextView {
             guard glyphRange.location < layoutManager.numberOfGlyphs else {
                 continue
             }
-            let fragment = layoutManager.lineFragmentRect(
-                forGlyphAt: glyphRange.location,
-                effectiveRange: nil
-            )
             let marker = layoutManager.boundingRect(
                 forGlyphRange: glyphRange,
                 in: textContainer
             )
+            // Center on the marker glyph's own bounding box, not the line
+            // fragment rect — the fragment includes the paragraph's line
+            // spacing, which sits below the glyph, so using its midY pulls
+            // the dot down off-center from the text.
             UIBezierPath(ovalIn: CGRect(
                 x: origin.x + marker.midX - 3,
-                y: origin.y + fragment.midY - 3,
+                y: origin.y + marker.midY - 3,
                 width: 6,
                 height: 6
             )).fill()
+        }
+        for checklistMatch in MarkdownChecklistDecoration.matches(in: text) {
+            let glyphRange = layoutManager.glyphRange(
+                forCharacterRange: checklistMatch.markerRange,
+                actualCharacterRange: nil
+            )
+            guard glyphRange.location < layoutManager.numberOfGlyphs else {
+                continue
+            }
+            let marker = layoutManager.boundingRect(
+                forGlyphRange: glyphRange,
+                in: textContainer
+            )
+            let boxSize: CGFloat = 15
+            let box = CGRect(
+                x: origin.x + marker.minX,
+                y: origin.y + marker.midY - boxSize / 2,
+                width: boxSize,
+                height: boxSize
+            )
+            if checklistMatch.checked {
+                EditorPalette.label.setFill()
+                UIBezierPath(roundedRect: box, cornerRadius: 4).fill()
+                let check = UIBezierPath()
+                check.lineWidth = 1.6
+                check.lineCapStyle = .round
+                check.lineJoinStyle = .round
+                check.move(to: CGPoint(
+                    x: box.minX + box.width * 0.22,
+                    y: box.minY + box.height * 0.52
+                ))
+                check.addLine(to: CGPoint(
+                    x: box.minX + box.width * 0.42,
+                    y: box.minY + box.height * 0.72
+                ))
+                check.addLine(to: CGPoint(
+                    x: box.minX + box.width * 0.80,
+                    y: box.minY + box.height * 0.28
+                ))
+                // The box fill is EditorPalette.label (adapts light/dark),
+                // so the checkmark needs the opposite of whatever that
+                // resolved to, not a fixed color.
+                (traitCollection.userInterfaceStyle == .dark
+                    ? UIColor.black
+                    : UIColor.white).setStroke()
+                check.stroke()
+            } else {
+                let outline = UIBezierPath(
+                    roundedRect: box.insetBy(dx: 0.75, dy: 0.75),
+                    cornerRadius: 4
+                )
+                outline.lineWidth = 1.5
+                EditorPalette.secondaryLabel.setStroke()
+                outline.stroke()
+            }
         }
     }
 }
@@ -2083,6 +2403,9 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
         context.coordinator.textView = textView
         textView.adjustListIndentation = { [weak coordinator = context.coordinator] direction in
             coordinator?.adjustListIndentation(direction)
+        }
+        textView.removeListMarkerBeforeCursor = { [weak coordinator = context.coordinator] in
+            coordinator?.removeListMarkerBeforeCursor() ?? false
         }
         textView.delegate = context.coordinator
         textView.backgroundColor = .clear
@@ -2187,6 +2510,7 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
             )
             textView.typingAttributes = LiveMarkdownStyler.baseAttributes
             textView.selectedRange = safeSelection
+            textView.scrollRangeToVisible(safeSelection)
             publish(replacement)
             parent.selection = safeSelection
             isUpdating = false
@@ -2218,10 +2542,12 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
             if continued.text != textView.text {
                 stylingTask?.cancel()
                 textView.text = continued.text
-                textView.selectedRange = NSRange(
+                let cursor = NSRange(
                     location: continued.cursorUTF16Offset,
                     length: 0
                 )
+                textView.selectedRange = cursor
+                textView.scrollRangeToVisible(cursor)
             }
             publish(continued.text)
             let preservedSelection = textView.selectedRange
@@ -2236,6 +2562,15 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
                 scheduleStyling(for: textView)
             } else {
                 stylingTask?.cancel()
+            }
+            // Keep the caret in view on every change, not just list
+            // continuation. Deferred one run-loop tick so the layout pass
+            // that grows the text view's content size to fit new lines has
+            // already run — see the macOS coordinator's textDidChange for
+            // the full explanation.
+            DispatchQueue.main.async { [weak textView] in
+                guard let textView else { return }
+                textView.scrollRangeToVisible(preservedSelection)
             }
             isUpdating = false
         }
@@ -2277,6 +2612,26 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
                 ),
                 registersUndo: true
             )
+        }
+
+        @discardableResult
+        func removeListMarkerBeforeCursor() -> Bool {
+            guard let textView, textView.markedTextRange == nil else { return false }
+            let selection = textView.selectedRange
+            guard selection.length == 0,
+                  let result = MarkdownCommandProcessor.removingListMarkerBeforeCursor(
+                      in: textView.text,
+                      cursorUTF16Offset: selection.location
+                  ) else { return false }
+            replaceExternalText(
+                result.text,
+                selection: result.selectionUTF16Range ?? NSRange(
+                    location: result.cursorUTF16Offset,
+                    length: 0
+                ),
+                registersUndo: true
+            )
+            return true
         }
 
         private func scheduleStyling(for textView: UITextView) {

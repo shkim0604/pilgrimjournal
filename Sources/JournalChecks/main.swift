@@ -97,6 +97,21 @@ do {
         )
         let undeleted = try repository.entry(id: restored.id)?.isDeleted
         try expect(undeleted == false, "휴지통 복원이 실패했습니다.")
+
+        try repository.moveToTrash(
+            entryID: restored.id,
+            deviceID: "Mac",
+            at: Date(timeIntervalSince1970: 6)
+        )
+        let summary = try repository.purgeEntries(ids: [restored.id])
+        try expect(
+            summary.purgedEntryIDs == [restored.id],
+            "영구 삭제 요약이 맞지 않습니다."
+        )
+        let purgedEntry = try repository.entry(id: restored.id)
+        try expect(purgedEntry == nil, "영구 삭제 후에도 기록이 남아 있습니다.")
+        let purgedRevisions = try repository.revisions(entryID: restored.id)
+        try expect(purgedRevisions.isEmpty, "영구 삭제 후에도 수정 이력이 남아 있습니다.")
     }
 
     let temporary = FileManager.default.temporaryDirectory

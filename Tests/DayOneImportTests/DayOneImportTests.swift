@@ -467,6 +467,125 @@ final class DayOneImportTests: XCTestCase {
     }
 
     @MainActor
+    func testPurgedImportedEntryCanBeReimported() async throws {
+        let repository = InMemoryJournalRepository()
+        let original = try repository.save(
+            JournalEntryDraft(
+                kind: .diary,
+                body: "지울 가져오기 기록",
+                sourceUUID: "purge-then-reimport"
+            ),
+            deviceID: "Mac",
+            at: .now
+        )
+        try repository.moveToTrash(entryID: original.id, deviceID: "Mac", at: .now)
+        // The bug this regression test locks in: a trashed-but-not-purged
+        // entry keeps blocking re-import via `entry(sourceUUID:)`, which
+        // does not filter deleted rows — only removing the row entirely
+        // (purgeEntries) frees the sourceUUID.
+        _ = try repository.purgeEntries(ids: [original.id])
+
+        let items = [
+            DayOnePreviewItem(
+                stableEntryID: UUID(),
+                sourceUUID: "purge-then-reimport",
+                draft: JournalEntryDraft(
+                    kind: .diary,
+                    body: "다시 가져온 기록",
+                    sourceUUID: "purge-then-reimport"
+                ),
+                rawJSON: Data("{}".utf8),
+                classification: ClassificationDecision(
+                    kind: .diary,
+                    ruleID: nil,
+                    isConflict: false
+                ),
+                attachments: [],
+                warnings: []
+            ),
+        ]
+        let preview = DayOneImportPreview(
+            archiveURL: URL(fileURLWithPath: "/tmp/anonymous.zip"),
+            archiveFingerprint: "anonymous",
+            exportVersion: "1.0",
+            JSONDisplayName: "journal.json",
+            items: items,
+            duplicateSourceUUIDs: [],
+            optionalFieldCounts: [:],
+            missingAttachmentCount: 0,
+            warnings: []
+        )
+
+        let result = await DayOneImportExecutor().execute(
+            preview: preview,
+            repository: repository,
+            deviceID: "Mac"
+        )
+
+        XCTAssertEqual(result.succeeded, 1)
+        XCTAssertEqual(result.skipped, 0)
+        XCTAssertEqual(result.outcomes.map(\.status), [.imported])
+        XCTAssertNotNil(try repository.entry(sourceUUID: "purge-then-reimport"))
+    }
+
+    @MainActor
+    func testTrashedButNotPurgedImportedEntryStillBlocksReimport() async throws {
+        let repository = InMemoryJournalRepository()
+        let original = try repository.save(
+            JournalEntryDraft(
+                kind: .diary,
+                body: "휴지통에만 있는 기록",
+                sourceUUID: "trashed-not-purged"
+            ),
+            deviceID: "Mac",
+            at: .now
+        )
+        try repository.moveToTrash(entryID: original.id, deviceID: "Mac", at: .now)
+
+        let items = [
+            DayOnePreviewItem(
+                stableEntryID: UUID(),
+                sourceUUID: "trashed-not-purged",
+                draft: JournalEntryDraft(
+                    kind: .diary,
+                    body: "다시 시도",
+                    sourceUUID: "trashed-not-purged"
+                ),
+                rawJSON: Data("{}".utf8),
+                classification: ClassificationDecision(
+                    kind: .diary,
+                    ruleID: nil,
+                    isConflict: false
+                ),
+                attachments: [],
+                warnings: []
+            ),
+        ]
+        let preview = DayOneImportPreview(
+            archiveURL: URL(fileURLWithPath: "/tmp/anonymous.zip"),
+            archiveFingerprint: "anonymous",
+            exportVersion: "1.0",
+            JSONDisplayName: "journal.json",
+            items: items,
+            duplicateSourceUUIDs: ["trashed-not-purged"],
+            optionalFieldCounts: [:],
+            missingAttachmentCount: 0,
+            warnings: []
+        )
+
+        let result = await DayOneImportExecutor().execute(
+            preview: preview,
+            repository: repository,
+            deviceID: "Mac"
+        )
+
+        XCTAssertEqual(result.succeeded, 0)
+        XCTAssertEqual(result.skipped, 1)
+        XCTAssertEqual(result.outcomes.map(\.status), [.skipped])
+        XCTAssertTrue(try XCTUnwrap(repository.entry(id: original.id)).isDeleted)
+    }
+
+    @MainActor
     func testExecutorImportsMediaAndIsolatesMissingAttachment() async throws {
         let url = FileManager.default.temporaryDirectory
             .appending(path: "\(UUID().uuidString).zip")

@@ -17,6 +17,7 @@ final class AppUsageGuideContentTests: XCTestCase {
                 "create-entry",
                 "entry-types",
                 "edit-entry",
+                "attachments",
                 "organize",
                 "search",
                 "trash",
@@ -31,6 +32,11 @@ final class AppUsageGuideContentTests: XCTestCase {
                 .flatMap(\.items)
                 .allSatisfy { !$0.title.isEmpty && !$0.body.isEmpty }
         )
+
+        // The trash item must cover permanent deletion, not just restore —
+        // otherwise the in-app guide silently falls behind the feature.
+        let trashItem = sections.flatMap(\.items).first { $0.id == "trash" }
+        XCTAssertTrue(trashItem?.body.contains("영구 삭제") == true)
     }
 
     func testMacGuideAddsMacOnlyDataManagement() {

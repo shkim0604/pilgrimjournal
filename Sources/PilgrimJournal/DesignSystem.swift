@@ -28,6 +28,10 @@ enum JournalTheme {
     static let editorMaxWidth: CGFloat = 720
     static let sidebarWidth: ClosedRange<CGFloat> = 220...260
     static let timelineWidth: ClosedRange<CGFloat> = 300...360
+    /// Below this, the editor's compact toolbar (kind/notebook chips + the
+    /// history menu + save status) has nowhere left to shrink and its icons
+    /// start overlapping instead.
+    static let detailMinWidth: CGFloat = 420
 
     static let brandPrimary = Color(
         lightHex: 0x2F5D50,

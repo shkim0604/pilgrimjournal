@@ -23,6 +23,34 @@ public struct JournalTimelinePage: Equatable, Sendable {
     }
 }
 
+/// The result of a `purgeEntries` call: what was actually removed, so callers
+/// (AppModel) can clean up things the repository deliberately doesn't know
+/// about — CAS attachment files on disk, QuickLook preview temp copies,
+/// retained Day One source snapshots.
+public struct JournalPurgeSummary: Equatable, Sendable {
+    public var purgedEntryIDs: Set<UUID>
+    public var removedRevisionCount: Int
+    public var removedAttachmentIDs: Set<UUID>
+    public var releasedChecksums: Set<String>
+    public var purgedSourceUUIDs: Set<String>
+
+    public init(
+        purgedEntryIDs: Set<UUID> = [],
+        removedRevisionCount: Int = 0,
+        removedAttachmentIDs: Set<UUID> = [],
+        releasedChecksums: Set<String> = [],
+        purgedSourceUUIDs: Set<String> = []
+    ) {
+        self.purgedEntryIDs = purgedEntryIDs
+        self.removedRevisionCount = removedRevisionCount
+        self.removedAttachmentIDs = removedAttachmentIDs
+        self.releasedChecksums = releasedChecksums
+        self.purgedSourceUUIDs = purgedSourceUUIDs
+    }
+
+    public static let empty = JournalPurgeSummary()
+}
+
 @MainActor
 public protocol JournalRepository: AnyObject {
     func list(kind: JournalKind?, includeDeleted: Bool, limit: Int) throws -> [JournalEntryRecord]
@@ -39,6 +67,15 @@ public protocol JournalRepository: AnyObject {
     func restore(entryID: UUID, revisionID: UUID, deviceID: String, at date: Date) throws -> JournalEntryRecord
     func moveToTrash(entryID: UUID, deviceID: String, at date: Date) throws
     func restoreFromTrash(entryID: UUID, deviceID: String, at date: Date) throws
+    /// Permanently removes the given entries — and their revisions and
+    /// attachment rows — from storage. Every id MUST already be in the
+    /// trash (`deletedAt != nil`); if any isn't, nothing is deleted and
+    /// `JournalError.persistence` is thrown (validate-all-then-delete, so a
+    /// caller bug can never turn into "some live entries got deleted too").
+    /// IDs that no longer exist are skipped silently, so repeated calls are
+    /// idempotent. Unlike `moveToTrash`, this writes no tombstone and no
+    /// revision — there's nothing left to attribute to a device or time.
+    func purgeEntries(ids: Set<UUID>) throws -> JournalPurgeSummary
     func classificationRules() throws -> [ClassificationRuleRecord]
     func saveClassificationRule(_ rule: ClassificationRuleRecord) throws
     func deleteClassificationRule(id: UUID) throws
@@ -48,6 +85,11 @@ public protocol JournalRepository: AnyObject {
 public protocol AttachmentRepository: AnyObject {
     func allAttachments() throws -> [(AttachmentRecord, Data?)]
     func saveAttachment(_ record: AttachmentRecord, binary: Data?) throws
+    /// Checksums of every attachment row currently in storage, without
+    /// touching the `binary` payload — used to recompute which CAS files on
+    /// disk are still referenced after a purge, without faulting in
+    /// potentially gigabytes of external-storage blobs.
+    func attachmentChecksums() throws -> Set<String>
 }
 
 @MainActor

@@ -3,6 +3,13 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 #if os(macOS)
+import AppKit
+#endif
+#if os(iOS)
+import QuickLook
+#endif
+
+#if os(macOS)
 struct InlineEntryEditorView: View {
     private enum FocusedField: Hashable {
         case title
@@ -102,7 +109,7 @@ struct InlineEntryEditorView: View {
         }
         .sheet(isPresented: $isPresentingHistory) {
             if let entry {
-                RevisionHistoryView(entry: entry)
+                RevisionHistoryView(entry: entry, onRestore: resyncDraftFromRepository)
             }
         }
         .confirmationDialog(
@@ -476,6 +483,23 @@ struct InlineEntryEditorView: View {
         draft.kind = pendingKind
         draft.details = (try? draft.details.validated(for: pendingKind)) ?? EntryDetails()
         self.pendingKind = nil
+    }
+
+    /// `draft` is only seeded from `entry` once, in `init`, and the editor
+    /// keeps the same SwiftUI identity (`.id(entry.id)`) across a revision
+    /// restore. Without this, the sidebar reflects the restored content but
+    /// the open editor keeps showing the pre-restore draft.
+    private func resyncDraftFromRepository() {
+        guard let id = persistedEntryID ?? entry?.id,
+              let latest = try? model.repository.entry(id: id) else { return }
+        autosaveTask?.cancel()
+        let initial = latest.draft
+        draft = initial
+        tagsText = initial.visibleTags.joined(separator: ", ")
+        lastSavedDraft = initial
+        lastSavedTagsText = tagsText
+        lastSavedAt = latest.updatedAt
+        saveState = .saved
     }
 }
 #endif
@@ -1084,6 +1108,13 @@ private struct AttachmentEditorSection: View {
     var allowsImport = true
     @State private var attachments: [AttachmentRecord] = []
     @State private var isImporting = false
+    #if os(iOS)
+    @State private var previewURL: URL?
+    #endif
+    @State private var exportDocument: AttachmentDocument?
+    @State private var exportContentType: UTType = .data
+    @State private var exportFilename = "attachment"
+    @State private var isExporting = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: JournalTheme.Spacing.small) {
@@ -1159,6 +1190,41 @@ private struct AttachmentEditorSection: View {
         .onChange(of: model.attachmentRevision) { _, _ in
             attachments = model.attachments(for: entryID)
         }
+        .fileExporter(
+            isPresented: $isExporting,
+            document: exportDocument,
+            contentType: exportContentType,
+            defaultFilename: exportFilename
+        ) { result in
+            if case let .failure(error) = result,
+               (error as NSError).code != NSUserCancelledError {
+                model.errorMessage = error.localizedDescription
+            }
+            exportDocument = nil
+        }
+        #if os(iOS)
+        .quickLookPreview($previewURL)
+        #endif
+    }
+
+    private func openAttachment(_ attachment: AttachmentRecord) {
+        guard let url = model.temporaryPreviewURL(for: attachment.id) else { return }
+        #if os(iOS)
+        previewURL = url
+        #else
+        NSWorkspace.shared.open(url)
+        #endif
+    }
+
+    private func beginExport(_ attachment: AttachmentRecord) {
+        guard let data = model.attachmentBinary(for: attachment.id) else { return }
+        exportDocument = AttachmentDocument(data: data)
+        exportContentType = UTType(mimeType: attachment.mimeType) ?? .data
+        let name = attachment.originalName.isEmpty ? "첨부파일" : attachment.originalName
+        exportFilename = (name as NSString).deletingPathExtension.isEmpty
+            ? name
+            : (name as NSString).deletingPathExtension
+        isExporting = true
     }
 
     private func attachmentIcon(for mimeType: String) -> String {
@@ -1200,6 +1266,24 @@ private struct AttachmentEditorSection: View {
                 model.requestAttachmentDownload(attachment.id)
             }
             .buttonStyle(.bordered)
+        } else {
+            HStack(spacing: JournalTheme.Spacing.small) {
+                Button {
+                    openAttachment(attachment)
+                } label: {
+                    Image(systemName: "eye")
+                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel("미리보기")
+
+                Button {
+                    beginExport(attachment)
+                } label: {
+                    Image(systemName: "square.and.arrow.down")
+                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel("다른 위치에 저장")
+            }
         }
     }
 }
@@ -1208,6 +1292,7 @@ struct RevisionHistoryView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var model: AppModel
     let entry: JournalEntryRecord
+    var onRestore: (() -> Void)?
 
     var body: some View {
         NavigationStack {
@@ -1231,6 +1316,7 @@ struct RevisionHistoryView: View {
                     if revision.id != entry.currentRevisionID {
                         Button("이 버전으로 복원") {
                             model.restoreRevision(entryID: entry.id, revisionID: revision.id)
+                            onRestore?()
                             dismiss()
                         }
                     }
@@ -1249,6 +1335,8 @@ struct RevisionHistoryView: View {
 struct TrashView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var model: AppModel
+    @State private var pendingPurge: JournalEntryRecord?
+    @State private var isConfirmingEmptyTrash = false
 
     var body: some View {
         NavigationStack {
@@ -1256,13 +1344,23 @@ struct TrashView: View {
                 #if os(iOS)
                 VStack(alignment: .leading, spacing: 10) {
                     trashEntryDescription(entry)
-                    Button {
-                        model.restoreFromTrash(entry)
-                    } label: {
-                        Label("복원", systemImage: "arrow.uturn.backward")
-                            .frame(maxWidth: .infinity)
+                    HStack(spacing: JournalTheme.Spacing.small) {
+                        Button {
+                            model.restoreFromTrash(entry)
+                        } label: {
+                            Label("복원", systemImage: "arrow.uturn.backward")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        Button(role: .destructive) {
+                            pendingPurge = entry
+                        } label: {
+                            Label("영구 삭제", systemImage: "trash.slash")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(.red)
                     }
-                    .buttonStyle(.bordered)
                 }
                 .padding(.vertical, 4)
                 #else
@@ -1271,6 +1369,9 @@ struct TrashView: View {
                     Spacer()
                     Button("복원") {
                         model.restoreFromTrash(entry)
+                    }
+                    Button("영구 삭제", role: .destructive) {
+                        pendingPurge = entry
                     }
                 }
                 #endif
@@ -1285,12 +1386,52 @@ struct TrashView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("닫기") { dismiss() }
                 }
+                ToolbarItem(placement: .primaryAction) {
+                    Button("휴지통 비우기", role: .destructive) {
+                        isConfirmingEmptyTrash = true
+                    }
+                    .disabled(model.trashEntries.isEmpty)
+                }
             }
         }
         .onAppear { model.refreshTrash() }
         #if os(macOS)
         .frame(minWidth: 460, minHeight: 420)
         #endif
+        .confirmationDialog(
+            "이 기록을 영구히 삭제할까요?",
+            isPresented: Binding(
+                get: { pendingPurge != nil },
+                set: { if !$0 { pendingPurge = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("영구 삭제", role: .destructive) {
+                if let entry = pendingPurge {
+                    model.permanentlyDelete(entry)
+                }
+                pendingPurge = nil
+            }
+            Button("취소", role: .cancel) { pendingPurge = nil }
+        } message: {
+            Text("기록과 수정 이력, 첨부가 이 기기와 iCloud에서 완전히 지워집니다. 되돌릴 수 없습니다.")
+        }
+        .confirmationDialog(
+            "휴지통을 비울까요?",
+            isPresented: $isConfirmingEmptyTrash,
+            titleVisibility: .visible
+        ) {
+            Button("휴지통 비우기", role: .destructive) {
+                model.emptyTrash()
+            }
+            Button("취소", role: .cancel) {}
+        } message: {
+            Text(
+                "휴지통의 \(model.trashEntries.count)개 기록과 수정 이력, 첨부가 이 기기와 "
+                    + "iCloud에서 완전히 지워집니다. 되돌릴 수 없습니다. 다른 기기가 동기화된 "
+                    + "뒤에 실행하세요."
+            )
+        }
     }
 
     @ViewBuilder

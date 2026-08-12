@@ -66,6 +66,18 @@ public final class LocalImportStore: ImportAuditStore {
         return values
     }
 
+    public func removeSourceSnapshots(sourceUUIDs: Set<String>) throws {
+        guard !sourceUUIDs.isEmpty else { return }
+        let snapshots = try context.fetch(
+            FetchDescriptor<SourceSnapshotEntity>()
+        ).filter { sourceUUIDs.contains($0.sourceUUID) }
+        guard !snapshots.isEmpty else { return }
+        for snapshot in snapshots {
+            context.delete(snapshot)
+        }
+        try context.save()
+    }
+
     public func finish(
         jobID: UUID,
         status: ImportJobStatus,
