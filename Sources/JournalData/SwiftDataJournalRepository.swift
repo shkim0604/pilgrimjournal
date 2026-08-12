@@ -83,12 +83,14 @@ public final class SwiftDataJournalRepository:
 
     public func entry(sourceUUID: String) throws -> JournalEntryRecord? {
         let normalized = sourceUUID.lowercased()
-        var descriptor = FetchDescriptor<JournalEntryEntity>(
+        let descriptor = FetchDescriptor<JournalEntryEntity>(
             predicate: #Predicate { entity in
                 entity.sourceUUID != nil
             }
         )
-        descriptor.fetchLimit = 500
+        // Deliberately no fetchLimit: this backs duplicate-import detection
+        // and cross-device merge matching, so a cap would silently miss
+        // matches past it once more than the limit have been imported.
         return try context.fetch(descriptor)
             .first(where: { $0.sourceUUID?.lowercased() == normalized })
             .map(map)

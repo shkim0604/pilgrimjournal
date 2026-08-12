@@ -55,6 +55,34 @@ final class JournalDataTests: XCTestCase {
         )
     }
 
+    func testSourceUUIDLookupFindsEntriesPastFiveHundred() throws {
+        let repository = try makeRepository()
+        for index in 0..<520 {
+            _ = try repository.save(
+                JournalEntryDraft(
+                    kind: .diary,
+                    body: "가져온 본문 \(index)",
+                    sourceUUID: "DAY-ONE-\(index)"
+                ),
+                deviceID: "Mac",
+                at: .now
+            )
+        }
+        XCTAssertNotNil(try repository.entry(sourceUUID: "DAY-ONE-0"))
+        XCTAssertNotNil(try repository.entry(sourceUUID: "day-one-519"))
+        XCTAssertThrowsError(
+            try repository.save(
+                JournalEntryDraft(
+                    kind: .diary,
+                    body: "중복",
+                    sourceUUID: "DAY-ONE-519"
+                ),
+                deviceID: "Mac",
+                at: .now
+            )
+        )
+    }
+
     func testTrashAndRestore() throws {
         let repository = try makeRepository()
         let record = try repository.save(
