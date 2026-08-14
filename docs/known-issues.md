@@ -259,6 +259,38 @@ binding 쓰기 → `publish(_:)`가 `publishedHistory`에 기록)를 통과해�
 **남은 것:** iOS 쪽은 이번에도 실기기/시뮬레이터 GUI로 확인하지 못했다
 (macOS만 Accessibility 자동화 대상이었음) — iPhone에서 별도 확인 필요.
 
+### 2026-08-12 — 인라인 리사이즈 가능한 이미지, 실기기 검증 대기 (신규 릴리스 게이트)
+
+붙여넣은 이미지가 라이브 편집기 안에서 바로 실제 이미지로 보이고, 커서가
+그 줄에 있을 때 우측 하단 핸들을 드래그해 가로세로 비율 고정으로 크기
+조절할 수 있게 했다(`![](attachment:<id> =WxH)` 문법, 크기는 텍스트에
+그대로 인코딩). `LiveMarkdownStyler.apply`가 이미지 마커 줄에
+`minimumLineHeight`/`maximumLineHeight`로 높이를 예약하고, `draw(_:)`가
+`dirtyRect` 교차 검사로 화면 밖 이미지는 그리지 않은 채 디코드된 이미지를
+합성한다. 순수 함수(`attachmentImageDisplaySize`, 마커 정규식 파싱, 삽입
+시 크기 접미사 부착)는 `MarkdownSupportTests`로 커버했고 `swift build`/
+`swift test`/iOS 시뮬레이터 `xcodebuild`/`scripts/check.sh`는 모두 통과했다.
+
+**이 항목은 자동화 테스트로 검증되지 않은 상태다 — 위 릴리스 게이트를
+이미지가 포함된 문서에서 반드시 다시 통과시켜야 출시 가능:**
+
+- [ ] 위 "본문을 빠르게 30초 이상 입력" 게이트를 **이미지가 1장 이상 포함된
+      본문**에서 다시 통과시킨다. `draw(_:)`에 이미지 합성이 추가되어 매
+      키 입력마다(선택 변경 시에도) 호출되는 이 경로의 비용이 늘었다 —
+      씹힘 회귀와 같은 코드 경로이므로 선택 사항이 아니다.
+- [ ] 이미지가 여러 장(3장 이상) 있는 긴 문서에서 스크롤하며 입력했을 때
+      체감 랙이 없는지 확인한다.
+- [ ] macOS에서 핸들을 드래그해 리사이즈 — 비율이 고정되는지, 드래그 중
+      다른 줄 입력이 막히지 않는지, 놓았을 때 `=WxH`가 저장되는지.
+- [ ] iOS에서 동일 리사이즈 — 팬 제스처가 텍스트 선택/커서 이동과
+      충돌하지 않는지(핸들 밖 터치는 정상적으로 텍스트 뷰가 받아야 함).
+- [ ] 창 크기 변경(macOS)·회전(iOS) 후 이미지 주변 여백이 즉시 재계산되는지.
+- [ ] 첨부를 휴지통에서 삭제한 뒤에도 이미지 마커가 placeholder로 깨지지
+      않고 표시되는지(캐시 미스 시 무한 재시도하지 않는지).
+
+관련: `docs/device-verification.md`/`docs/pre-release-checklist.md`에 같은
+게이트 추가.
+
 ### 2026-08-12 — 체크리스트가 실제로는 한 번도 렌더링된 적이 없었음 (별도 발견, macOS 실측 후 수정)
 
 위 불릿 버그를 라이브로 검증하던 중 사용자가 직접 체크리스트를 만들어보고
@@ -287,3 +319,113 @@ attribute를 기존 `-` 문자 위에 그냥 얹는 방식으로 붙이고 있�
 macOS 디버그 인스턴스에서 체크됨/안 됨 둘 다 실제로 그려지는 것을 스크린샷으로
 확인함. iOS는 미검증(같은 코드 경로를 UIKit 버전으로 동일하게 고쳤지만
 직접 확인은 못 했다).
+
+### 2026-08-14 — 첨부 있는 기록이 계속 느렸던 진짜 원인: `allAttachments()`가 렌더 경로에서 DB 전체를 읽고 있었음
+
+build 19까지 `draw(_:)` 쪽만 두 번 손봤는데도(화면 밖 이미지 컬링, 이미지
+상하반전/재조회 버그 수정) 사용자가 "여전히 엄청 느리다"고 재보고. 이번엔
+draw()가 아니라 데이터 접근 계층과 SwiftUI 렌더 경로 전체를 조사했다.
+
+**근본 원인:** `AttachmentEntity.binary`는 `@Attribute(.externalStorage)`라
+blob마다 디스크의 별도 파일인데, `AttachmentRepository.allAttachments()`가
+predicate도 fetchLimit도 없이 전 행을 가져오면서 `.binary`를 건드려
+**저널의 모든 첨부 blob을 폴트**시켰다. 이게 SwiftUI view body 안에서
+호출되고 있었다 — 특히 `EntryViews.swift`의 `attachmentAction(_:)`가
+`ForEach(attachments)` **행마다** `hasLocalBinary`를 통해 이를 호출해서,
+기록에 첨부 A개·앱 전체 첨부 T개면 렌더 한 번에 A×T개 blob이 폴트됐다.
+본문 편집기는 키 입력 한 번에 최소 두 번 렌더되므로(`saveState = .saving`
+재대입, 아래 참고) 첨부가 많을수록 정확히 체감 그대로 느려졌다.
+`allAttachments()`의 프로토콜 문서 주석에는 이미 "`attachment(id:)`가 hot
+path에서 안전한 대안"이라고 적혀 있었는데, 정작 5개 메서드가 그 관례를
+따르지 않고 있었다.
+
+같은 뿌리의 문제 두 가지도 같이 발견:
+- CloudKit 동기화 이벤트마다 `updateAttachmentTransferStates`/
+  `reconcileDownloadedAttachments`가 전체를 읽고 상태 enum 하나 바꾸자고
+  blob을 통째로 다시 썼다(같은 CKAsset을 이중으로 재업로드하는 부작용까지).
+- Day One 가져오기의 첨부 중복 검사가 **첨부 루프 안에서** `allAttachments()`를
+  불러, K장 가져오기가 이미 가져온 blob 수만큼 반복 재스캔하는 O(K²)였다.
+
+그리고 저장소 전체에 **다운샘플링이 한 줄도 없었다.** 12MP 사진을 원본
+해상도로 디코드해 매 draw() 호출마다 ~600px로 리샘플링하고 있었다.
+
+**조치 (`AttachmentRepository`에 범위를 좁힌 조회 3개 추가 —
+`attachments(forEntry:)`/`attachments(inStates:)`/`attachmentChecksum(id:)`,
+전부 `.binary`를 건드리지 않음):**
+- `AppModel`의 첨부 관련 메서드 8개를 전부 이 좁은 조회로 교체.
+  `hasLocalBinary`는 이제 `AttachmentFileStore`의 CAS 파일 존재 여부만
+  확인(`FileManager.fileExists`, 내용 I/O 0)하고, 다른 기기에서 동기화돼
+  CAS 파일이 아직 없는 경우에만 DB blob으로 폴백하면서 그 자리에 CAS를
+  채워 넣어(`hydrate`) 다음부터는 다시 빠른 경로를 타게 함(self-healing).
+- `updateAttachmentTransferStates`/`reconcileDownloadedAttachments`는 상태
+  전이 전용 `updateAttachmentState(id:state:updatedAt:)`로 바꿔 blob 재기록
+  자체를 없앰.
+- Day One 가져오기는 루프 진입 전에 `attachmentChecksums()`(blob 안 건드림)로
+  한 번만 집합을 만들도록 고쳐 O(K²)를 O(K)로.
+- 새 `AttachmentImageCache`(앱 생명주기 동안 유지되는 공유 캐시)가
+  `CGImageSourceCreateThumbnailAtIndex`로 **원본 해상도가 아니라 목표
+  크기로 직접** 디코드하고 첨부 id로 캐싱 — 이 앱은 첨부가 생성된 뒤
+  바이너리가 절대 바뀌지 않으므로(전송 상태만 바뀜) id 키가 안전함.
+  편집기 Coordinator의 기존 동기 프런트 캐시는 그대로 두고(그 캐시가
+  `draw()`의 필수 동기·무비용 히트 경로라는 문서화된 이유 때문), 그
+  뒤쪽 비동기 로드 경로에서만 이 공유 캐시를 거치도록 배선(교체가 아니라
+  뒤에 붙임).
+- `MarkdownPreviewView.attachmentImageView`는 body 안에서 디스크 I/O를
+  하고 있었는데, `AttachmentDownloadStatusView`가 이미 쓰던
+  `.task(id:)` + `@State` 패턴으로 분리(`AttachmentImageView`).
+
+**같이 고친, 첨부와 무관한 렌더 낭비:**
+- `saveState = .saving`을 매 키 입력마다 무조건 재대입해 편집기 전체가
+  두 번째로 다시 렌더되던 것 — 이미 `.saving`이면 재대입 안 하도록 가드.
+  이건 이 문서가 예전부터 "증상이 남으면 다음으로 볼 곳"이라고 적어뒀던
+  바로 그 지점이다.
+- `draft.body.count`(글자 수 표시)가 매 렌더 전체 문서를 grapheme 단위로
+  훑던 것 — `@State`로 캐싱해 실제 본문이 바뀔 때만 재계산.
+  `trailingSlashQuery`가 문서 전체를 줄 단위로 split하던 것 — 뒤에서부터
+  마지막 줄만 찾도록 변경. `scheduleAutosave`의 `trimmingCharacters` 전체
+  본문 복사 2회 — `contains(where:)`로 단락.
+- `draw(_:)`의 구분선·불릿·체크리스트 3개 루프에 dirty-rect 컬링이 아예
+  없어 화면 밖 매치까지 매번 layoutManager를 호출하던 것(이미지 루프만
+  build 19에서 컬링이 있었음) — 세 루프 모두에 동일하게 적용.
+- `LiveMarkdownStyler.applyRegex`가 호출마다 `NSRegularExpression`을 새로
+  컴파일하던 것(`apply()` 1회에 ~15번) — 패턴별로 컴파일된 정규식을
+  캐싱(락으로 보호된 딕셔너리).
+
+**미룬 것 — 별도 승인 전엔 하지 않음:** `performAutosave`가 650ms마다
+`refresh()` 전체(500행 재조회 + JSON 디코드 1000회 + 노트북 카탈로그
+O(n²) 재계산 + iCloud KVS 쓰기 + 앱 전체 재렌더)를 도는 것도 확인했지만,
+이건 계획서 자체가 "가장 조심할 부분"으로 명시한 항목이라(수정 이력·목록
+정렬 등 다른 기능이 의존) 실측 없이 진행하지 않았다. 다음에 이 항목을
+다시 볼 때는 반드시 실기기 프로파일링으로 여전히 병목인지 먼저 확인할 것.
+
+**검증:** `swift build`/`swift test`(새 회귀 테스트 포함 — 범위 좁힌 조회가
+다른 기록 첨부를 안 섞는지, 상태 전이가 binary를 보존하는지, 다운샘플
+캐시가 id별로 독립적인지)/iOS 시뮬레이터 컴파일/`scripts/check.sh` 전부
+통과. **실기기 성능 실측과 아래 릴리스 게이트 재통과는 아직 안 함** —
+이번 변경이 `draw(_:)` 렌더 경로와 편집기 재렌더 빈도를 직접 건드리므로
+다음 TestFlight 전에 필수.
+
+### 2026-08-14 — 태그 입력창에서 한글 조합이 깨짐 (근본 원인 미확정, 유력 후보만 수정)
+
+사용자가 태그 입력 필드에 한글을 입력하니 완성된 음절이 아니라 낱개 자모가
+그대로 찍히는 스크린샷을 제보(`#ㅜㅏㅏ`, `ㅓㅣㅣ` 등) — IME 조합이 매
+키 입력마다 끊기는 전형적인 증상.
+
+**유력 후보(확정 아님):** `tagsEditor`/`mobileTagsEditor`
+(`EntryViews.swift`)의 태그 입력 `TextField`가 `ScrollView(.horizontal)`
+안, 칩 `ForEach` 바로 뒤에 있고 `.frame(minWidth:)`만 걸려 있었다.
+`TextField`의 고유 너비는 보통 내용 길이를 따라 자라므로, 글자를 입력할
+때마다 이 HStack의 전체 너비가 바뀌고 — 가로 스크롤뷰 안에서는 이게 매
+키 입력마다 콘텐츠 크기 재계산(relayout)을 유발한다. 이런 relayout이
+진행 중이던 IME 조합 세션을 끊는 건 SwiftUI에서 알려진 패턴이다.
+
+**조치:** `minWidth` → 고정 `width`(macOS 190, iOS 140)로 바꿔, 타이핑
+중 필드 자체의 렌더 폭이 바뀌지 않게 함(텍스트는 필드 안에서 스크롤).
+
+**왜 미확정인가:** 이 클래스의 버그는 IME 조합 상태 머신에 좌우되는데,
+`swift test`는 실제 IME 조합을 재현하지 못한다. 이 수정은 가장 유력한
+후보에 대한 것이지, 실기기에서 재현·확인을 거치지 않았다 — 태그 필드에
+빠르게 한글을 입력해 자모가 정상적으로 조합되는지 실기기 검증 필요.
+같은 파일의 배치 태그 편집 시트(`TextField("쉼표로 여러 태그 입력", ...)`,
+`Form`/`Section` 안, ScrollView 아님)는 같은 구조가 아니라 손대지 않았다
+— 거기서도 증상이 재현되면 원인이 다른 곳에 있다는 뜻이니 참고할 것.

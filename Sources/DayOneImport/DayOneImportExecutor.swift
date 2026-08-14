@@ -120,6 +120,18 @@ public struct DayOneImportExecutor {
         }
 
         var warnings: [String] = []
+        // Scoped to this entry and fetched once, not once per attachment
+        // reference. The previous version called `allAttachments()` (a
+        // full-table scan that faults every blob in the whole journal)
+        // *inside* this loop, so a K-attachment import did O(K) full-table
+        // scans against an ever-growing table — O(K²) blob faults overall,
+        // exactly during the "large-import responsiveness" scenario
+        // docs/development.md calls out as a device-verification gate.
+        var existingChecksums = Set(
+            (try? attachmentRepository.attachments(forEntry: entryID))?
+                .filter { $0.deletedAt == nil }
+                .map(\.checksum) ?? []
+        )
         for reference in item.attachments {
             guard let zipEntry = matchingEntry(
                 reference.filename,
@@ -136,13 +148,7 @@ public struct DayOneImportExecutor {
                 let checksum = SHA256.hash(data: data)
                     .map { String(format: "%02x", $0) }
                     .joined()
-                let existing = try attachmentRepository.allAttachments()
-                    .contains { record, _ in
-                        record.entryID == entryID
-                            && record.checksum == checksum
-                            && record.deletedAt == nil
-                    }
-                guard !existing else { continue }
+                guard !existingChecksums.contains(checksum) else { continue }
                 let record = AttachmentRecord(
                     entryID: entryID,
                     originalName: reference.filename,
@@ -152,6 +158,7 @@ public struct DayOneImportExecutor {
                     state: .pending
                 )
                 try attachmentRepository.saveAttachment(record, binary: data)
+                existingChecksums.insert(checksum)
             } catch {
                 warnings.append(
                     "첨부 파일 \(reference.filename)을(를) 가져오지 못했습니다: "

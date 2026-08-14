@@ -468,6 +468,99 @@ final class AppModelNavigationTests: XCTestCase {
     }
 
     @MainActor
+    func testRestoreFromTrashIDsRestoresOnlyTheSelectedEntries() throws {
+        let root = FileManager.default.temporaryDirectory.appending(
+            path: "pilgrim-restore-selection-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+        let paths = JournalPaths(root: root)
+        try paths.prepare()
+        let repository = InMemoryJournalRepository()
+        let restoreA = try repository.save(
+            JournalEntryDraft(kind: .diary, title: "복원할 A"),
+            deviceID: "test-device",
+            at: .now
+        )
+        let restoreB = try repository.save(
+            JournalEntryDraft(kind: .diary, title: "복원할 B"),
+            deviceID: "test-device",
+            at: .now
+        )
+        let stayTrashed = try repository.save(
+            JournalEntryDraft(kind: .diary, title: "그대로 휴지통"),
+            deviceID: "test-device",
+            at: .now
+        )
+        try repository.moveToTrash(entryID: restoreA.id, deviceID: "test-device", at: .now)
+        try repository.moveToTrash(entryID: restoreB.id, deviceID: "test-device", at: .now)
+        try repository.moveToTrash(entryID: stayTrashed.id, deviceID: "test-device", at: .now)
+        let model = try AppModel(
+            repository: repository,
+            importStore: InMemoryImportStore(),
+            searchIndex: JournalSearchIndex(
+                url: paths.search.appending(path: "restore-selection.sqlite")
+            ),
+            paths: paths,
+            cloudAccountMonitor: nil
+        )
+
+        model.restoreFromTrash(ids: [restoreA.id, restoreB.id])
+
+        XCTAssertEqual(model.trashEntries.map(\.id), [stayTrashed.id])
+        XCTAssertEqual(Set(model.entries.map(\.id)), [restoreA.id, restoreB.id])
+        XCTAssertFalse(try XCTUnwrap(repository.entry(id: restoreA.id)).isDeleted)
+        XCTAssertFalse(try XCTUnwrap(repository.entry(id: restoreB.id)).isDeleted)
+        XCTAssertTrue(try XCTUnwrap(repository.entry(id: stayTrashed.id)).isDeleted)
+    }
+
+    @MainActor
+    func testPermanentDeleteIDsPurgesOnlyTheSelectedEntries() throws {
+        let root = FileManager.default.temporaryDirectory.appending(
+            path: "pilgrim-purge-selection-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+        let paths = JournalPaths(root: root)
+        try paths.prepare()
+        let repository = InMemoryJournalRepository()
+        let purgeA = try repository.save(
+            JournalEntryDraft(kind: .diary, title: "지울 A"),
+            deviceID: "test-device",
+            at: .now
+        )
+        let purgeB = try repository.save(
+            JournalEntryDraft(kind: .diary, title: "지울 B"),
+            deviceID: "test-device",
+            at: .now
+        )
+        let stayTrashed = try repository.save(
+            JournalEntryDraft(kind: .diary, title: "그대로 휴지통"),
+            deviceID: "test-device",
+            at: .now
+        )
+        try repository.moveToTrash(entryID: purgeA.id, deviceID: "test-device", at: .now)
+        try repository.moveToTrash(entryID: purgeB.id, deviceID: "test-device", at: .now)
+        try repository.moveToTrash(entryID: stayTrashed.id, deviceID: "test-device", at: .now)
+        let model = try AppModel(
+            repository: repository,
+            importStore: InMemoryImportStore(),
+            searchIndex: JournalSearchIndex(
+                url: paths.search.appending(path: "purge-selection.sqlite")
+            ),
+            paths: paths,
+            cloudAccountMonitor: nil
+        )
+
+        XCTAssertTrue(model.permanentlyDelete(ids: [purgeA.id, purgeB.id]))
+
+        XCTAssertEqual(model.trashEntries.map(\.id), [stayTrashed.id])
+        XCTAssertNil(try repository.entry(id: purgeA.id))
+        XCTAssertNil(try repository.entry(id: purgeB.id))
+        XCTAssertNotNil(try repository.entry(id: stayTrashed.id))
+    }
+
+    @MainActor
     func testPermanentDeleteRemovesUnreferencedAttachmentFileButKeepsSharedOne() throws {
         let root = FileManager.default.temporaryDirectory.appending(
             path: "pilgrim-purge-cas-\(UUID().uuidString)",
@@ -769,7 +862,7 @@ final class AppModelNavigationTests: XCTestCase {
     }
 
     @MainActor
-    func testSharedEditorAttachmentFlowStoresMetadataBinaryAndLocalFile() throws {
+    func testSharedEditorAttachmentFlowStoresMetadataBinaryAndLocalFile() async throws {
         let root = FileManager.default.temporaryDirectory.appending(
             path: "pilgrim-editor-attachment-\(UUID().uuidString)",
             directoryHint: .isDirectory
@@ -796,7 +889,8 @@ final class AppModelNavigationTests: XCTestCase {
         let sourceData = Data("첨부 본문".utf8)
         try sourceData.write(to: sourceURL)
 
-        XCTAssertTrue(model.addAttachment(from: sourceURL, to: entry.id))
+        let added = await model.addAttachment(from: sourceURL, to: entry.id)
+        XCTAssertTrue(added)
 
         let attachment = try XCTUnwrap(model.attachments(for: entry.id).first)
         XCTAssertEqual(attachment.originalName, "sample.txt")
@@ -810,6 +904,71 @@ final class AppModelNavigationTests: XCTestCase {
             sourceData
         )
         XCTAssertEqual(try repository.allAttachments().first?.1, sourceData)
+    }
+
+    @MainActor
+    func testDeleteAttachmentRemovesUnreferencedFileButKeepsSharedOne() throws {
+        let root = FileManager.default.temporaryDirectory.appending(
+            path: "pilgrim-delete-attachment-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+        let paths = JournalPaths(root: root)
+        try paths.prepare()
+        let repository = InMemoryJournalRepository()
+        let entryA = try repository.save(
+            JournalEntryDraft(kind: .diary, title: "A"),
+            deviceID: "test-device",
+            at: .now
+        )
+        let entryB = try repository.save(
+            JournalEntryDraft(kind: .diary, title: "B"),
+            deviceID: "test-device",
+            at: .now
+        )
+        let store = try AttachmentFileStore(root: paths.attachments)
+        let sharedData = Data("shared content".utf8)
+        let uniqueData = Data("unique content".utf8)
+        let sharedForA = try store.store(
+            data: sharedData,
+            entryID: entryA.id,
+            originalName: "shared-a.jpg",
+            mimeType: "image/jpeg"
+        )
+        let sharedForB = try store.store(
+            data: sharedData,
+            entryID: entryB.id,
+            originalName: "shared-b.jpg",
+            mimeType: "image/jpeg"
+        )
+        let unique = try store.store(
+            data: uniqueData,
+            entryID: entryA.id,
+            originalName: "unique.jpg",
+            mimeType: "image/jpeg"
+        )
+        try repository.saveAttachment(sharedForA.record, binary: sharedData)
+        try repository.saveAttachment(sharedForB.record, binary: sharedData)
+        try repository.saveAttachment(unique.record, binary: uniqueData)
+        let model = try AppModel(
+            repository: repository,
+            importStore: InMemoryImportStore(),
+            searchIndex: JournalSearchIndex(
+                url: paths.search.appending(path: "delete-attachment.sqlite")
+            ),
+            paths: paths,
+            cloudAccountMonitor: nil
+        )
+
+        model.deleteAttachment(sharedForA.record.id)
+        model.deleteAttachment(unique.record.id)
+
+        XCTAssertEqual(model.attachments(for: entryA.id), [])
+        XCTAssertEqual(model.attachments(for: entryB.id).map(\.id), [sharedForB.record.id])
+        // Shared checksum file survives because entryB's copy still references it.
+        XCTAssertEqual(try store.data(checksum: sharedForA.record.checksum), sharedData)
+        // The uniquely-referenced file is gone once its only row is deleted.
+        XCTAssertThrowsError(try store.data(checksum: unique.record.checksum))
     }
 
     @MainActor

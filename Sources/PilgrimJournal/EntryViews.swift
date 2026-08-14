@@ -23,9 +23,17 @@ struct InlineEntryEditorView: View {
         EditorTextScale.defaultValue
     @FocusState private var focusedField: FocusedField?
     @State private var draft: JournalEntryDraft
+    /// Comma-joined *committed* tags only — a tag leaves the raw text the
+    /// moment it's finished (comma, Return, or autosave) and becomes just a
+    /// chip. See `tagInputDraft` for what's still being typed.
     @State private var tagsText: String
+    /// The tag currently being typed, not yet committed to `tagsText`. Kept
+    /// separate so the text field only ever shows the in-progress tag, not
+    /// every previously-typed tag alongside its own chip.
+    @State private var tagInputDraft = ""
     @State private var lastSavedDraft: JournalEntryDraft
     @State private var lastSavedTagsText: String
+    @State private var lastSavedTagInputDraft = ""
     @State private var pendingKind: JournalKind?
     @State private var isConfirmingTypeChange = false
     @State private var isPresentingHistory = false
@@ -33,6 +41,12 @@ struct InlineEntryEditorView: View {
     @State private var lastSavedAt: Date?
     @State private var autosaveTask: Task<Void, Never>?
     @State private var persistedEntryID: UUID?
+    // Grapheme-cluster counting the whole body is O(body length) — cheap
+    // once, but the footer used to compute `draft.body.count` directly in
+    // `body`, which reruns on every SwiftUI render pass (multiple per
+    // keystroke). Computed once per actual body change instead, in the
+    // `onChange(of: draft)` handler below.
+    @State private var bodyCharacterCount: Int
     private let entry: JournalEntryRecord?
 
     init(
@@ -50,6 +64,7 @@ struct InlineEntryEditorView: View {
         _lastSavedTagsText = State(initialValue: initialTags)
         _lastSavedAt = State(initialValue: entry?.updatedAt)
         _persistedEntryID = State(initialValue: entry?.id)
+        _bodyCharacterCount = State(initialValue: initial.body.count)
     }
 
     var body: some View {
@@ -81,13 +96,15 @@ struct InlineEntryEditorView: View {
                             storeImageAttachment: { data, name, mime in
                                 guard let targetID = persistedEntryID ?? ensurePersistedEntryID()
                                 else { return nil }
-                                return model.addAttachment(
+                                return await model.addAttachment(
                                     data: data,
                                     originalName: name,
                                     mimeType: mime,
                                     to: targetID
                                 )
-                            }
+                            },
+                            attachmentImage: { id in model.attachmentData(for: id) },
+                            attachmentRevision: model.attachmentRevision
                         )
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
 
@@ -107,8 +124,12 @@ struct InlineEntryEditorView: View {
             }
         }
         .background(JournalTheme.canvas)
-        .onChange(of: draft) { _, _ in scheduleAutosave() }
+        .onChange(of: draft) { _, newValue in
+            bodyCharacterCount = newValue.body.count
+            scheduleAutosave()
+        }
         .onChange(of: tagsText) { _, _ in scheduleAutosave() }
+        .onChange(of: tagInputDraft) { _, _ in scheduleAutosave() }
         .onReceive(
             NotificationCenter.default.publisher(for: .saveJournalEntry)
         ) { _ in
@@ -258,7 +279,6 @@ struct InlineEntryEditorView: View {
         }
         .buttonStyle(.plain)
         .keyboardShortcut(.return, modifiers: [.command])
-        .help(saveState == .saved ? "모든 변경이 저장되었습니다." : "지금 다시 저장")
     }
 
     @ViewBuilder
@@ -354,9 +374,23 @@ struct InlineEntryEditorView: View {
         return labels
     }
 
+    /// Tags already committed to `tagsText` — these, and only these, render
+    /// as chips.
+    private var committedTags: [String] {
+        Self.parseTags(tagsText)
+    }
+
+    /// Committed tags plus whatever's currently typed but not yet
+    /// comma/Return-committed — this is what actually gets saved, so
+    /// autosave never requires a trailing comma to pick up the tag you're
+    /// mid-typing.
     private var parsedTags: [String] {
+        Self.mergingTag(tagInputDraft, into: committedTags)
+    }
+
+    private static func parseTags(_ text: String) -> [String] {
         var result: [String] = []
-        let candidates = tagsText
+        let candidates = text
             .split(separator: ",")
             .map { String($0).trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
@@ -370,6 +404,38 @@ struct InlineEntryEditorView: View {
         return result
     }
 
+    private static func mergingTag(_ tag: String, into tags: [String]) -> [String] {
+        let trimmed = tag.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty,
+              !tags.contains(where: { $0.caseInsensitiveCompare(trimmed) == .orderedSame })
+        else { return tags }
+        return tags + [trimmed]
+    }
+
+    /// Commits `tagInputDraft` (and anything else typed up to a trailing
+    /// comma) into `tagsText`, then clears the field — a tag disappears
+    /// from the raw text the moment it's finished, leaving only its chip.
+    private func commitTagInput(_ rawValue: String) {
+        let pieces = rawValue.split(separator: ",", omittingEmptySubsequences: false)
+        let completed = pieces.dropLast().map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        if !completed.isEmpty {
+            var merged = committedTags
+            for tag in completed {
+                merged = Self.mergingTag(tag, into: merged)
+            }
+            tagsText = merged.joined(separator: ", ")
+        }
+        tagInputDraft = String(pieces.last ?? "")
+    }
+
+    private func commitCurrentTagInputDraft() {
+        guard !tagInputDraft.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        tagsText = Self.mergingTag(tagInputDraft, into: committedTags)
+            .joined(separator: ", ")
+        tagInputDraft = ""
+    }
+
     private var tagsEditor: some View {
         VStack(alignment: .leading, spacing: JournalTheme.Spacing.small) {
             Text("태그")
@@ -377,13 +443,28 @@ struct InlineEntryEditorView: View {
                 .foregroundStyle(JournalTheme.inkSecondary)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: JournalTheme.Spacing.small) {
-                    ForEach(parsedTags, id: \.self) { tag in
+                    ForEach(committedTags, id: \.self) { tag in
                         TagChip(tag: tag) { removeTag(tag) }
                     }
-                    TextField("태그 추가 (쉼표로 구분)", text: $tagsText)
+                    TextField(
+                        "태그 추가 (쉼표로 구분)",
+                        text: Binding(
+                            get: { tagInputDraft },
+                            set: { commitTagInput($0) }
+                        )
+                    )
                         .textFieldStyle(.plain)
                         .focused($focusedField, equals: .tags)
-                        .frame(minWidth: 190)
+                        .onSubmit { commitCurrentTagInputDraft() }
+                        // Fixed, not minWidth: a TextField's intrinsic
+                        // width otherwise grows with its text content, so
+                        // every keystroke changed this HStack's total
+                        // width — inside a horizontal ScrollView, that
+                        // forces a content-size relayout on every
+                        // keystroke, which can interrupt an in-progress
+                        // IME composition (Korean input showing as
+                        // uncombined jamo instead of composed syllables).
+                        .frame(width: 190)
                 }
             }
         }
@@ -391,7 +472,7 @@ struct InlineEntryEditorView: View {
 
     private var editorFooter: some View {
         HStack(spacing: JournalTheme.Spacing.medium) {
-            Label("\(draft.body.count)자", systemImage: "character.cursor.ibeam")
+            Label("\(bodyCharacterCount)자", systemImage: "character.cursor.ibeam")
             if let lastSavedAt {
                 Label(
                     lastSavedAt.formatted(date: .omitted, time: .shortened),
@@ -410,7 +491,7 @@ struct InlineEntryEditorView: View {
     }
 
     private func removeTag(_ tag: String) {
-        tagsText = parsedTags
+        tagsText = committedTags
             .filter { $0.caseInsensitiveCompare(tag) != .orderedSame }
             .joined(separator: ", ")
     }
@@ -423,19 +504,28 @@ struct InlineEntryEditorView: View {
     }
 
     private var isDirty: Bool {
-        draft != lastSavedDraft || tagsText != lastSavedTagsText
+        draft != lastSavedDraft
+            || tagsText != lastSavedTagsText
+            || tagInputDraft != lastSavedTagInputDraft
     }
 
     private func scheduleAutosave() {
         guard isDirty else { return }
-        let hasContent = !draft.title.trimmingCharacters(
-            in: .whitespacesAndNewlines
-        ).isEmpty || !draft.body.trimmingCharacters(
-            in: .whitespacesAndNewlines
-        ).isEmpty
+        // `trimmingCharacters(in:).isEmpty` allocates a full trimmed copy of
+        // the body just to answer a yes/no question; `contains(where:)`
+        // short-circuits at the first non-whitespace character instead (the
+        // common case, since content is usually near the start).
+        let hasContent = draft.title.contains { !$0.isWhitespace }
+            || draft.body.contains { !$0.isWhitespace }
         guard hasContent else { return }
         autosaveTask?.cancel()
-        saveState = .saving
+        // Reassigning `.saving` to itself on every keystroke still forces a
+        // SwiftUI re-render of this whole editor (state writes aren't
+        // diffed against the current value) — while continuously typing,
+        // this was doubling every render the body-length/binding-echo path
+        // already causes. Only the *first* keystroke after becoming dirty
+        // needs to flip the state.
+        if saveState != .saving { saveState = .saving }
         autosaveTask = Task { @MainActor in
             do {
                 try await Task.sleep(for: .milliseconds(650))
@@ -456,11 +546,12 @@ struct InlineEntryEditorView: View {
             saveState = .saved
             return
         }
-        let hasContent = !draft.title.trimmingCharacters(
-            in: .whitespacesAndNewlines
-        ).isEmpty || !draft.body.trimmingCharacters(
-            in: .whitespacesAndNewlines
-        ).isEmpty
+        // `trimmingCharacters(in:).isEmpty` allocates a full trimmed copy of
+        // the body just to answer a yes/no question; `contains(where:)`
+        // short-circuits at the first non-whitespace character instead (the
+        // common case, since content is usually near the start).
+        let hasContent = draft.title.contains { !$0.isWhitespace }
+            || draft.body.contains { !$0.isWhitespace }
         guard hasContent else { return }
         autosaveTask?.cancel()
         saveState = .saving
@@ -481,6 +572,7 @@ struct InlineEntryEditorView: View {
         persistedEntryID = record.id
         lastSavedDraft = draft
         lastSavedTagsText = tagsText
+        lastSavedTagInputDraft = tagInputDraft
         lastSavedAt = record.updatedAt
         saveState = .saved
     }
@@ -508,8 +600,10 @@ struct InlineEntryEditorView: View {
         let initial = latest.draft
         draft = initial
         tagsText = initial.visibleTags.joined(separator: ", ")
+        tagInputDraft = ""
         lastSavedDraft = initial
         lastSavedTagsText = tagsText
+        lastSavedTagInputDraft = tagInputDraft
         lastSavedAt = latest.updatedAt
         saveState = .saved
     }
@@ -633,9 +727,17 @@ struct EntryEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var model: AppModel
     @State private var draft: JournalEntryDraft
+    /// Comma-joined *committed* tags only — a tag leaves the raw text the
+    /// moment it's finished (comma, Return, or autosave) and becomes just a
+    /// chip. See `tagInputDraft` for what's still being typed.
     @State private var tagsText: String
+    /// The tag currently being typed, not yet committed to `tagsText`. Kept
+    /// separate so the text field only ever shows the in-progress tag, not
+    /// every previously-typed tag alongside its own chip.
+    @State private var tagInputDraft = ""
     @State private var lastSavedDraft: JournalEntryDraft
     @State private var lastSavedTagsText: String
+    @State private var lastSavedTagInputDraft = ""
     @State private var saveState = EditorSaveState.saved
     @State private var lastSavedAt: Date?
     @State private var autosaveTask: Task<Void, Never>?
@@ -643,6 +745,8 @@ struct EntryEditorView: View {
     @State private var pendingKind: JournalKind?
     @State private var isConfirmingTypeChange = false
     @State private var isShowingMetadata = false
+    // See the matching field on InlineEntryEditorView (macOS).
+    @State private var bodyCharacterCount: Int
 
     init(
         entry: JournalEntryRecord?,
@@ -658,6 +762,7 @@ struct EntryEditorView: View {
         _lastSavedTagsText = State(initialValue: initialTags)
         _lastSavedAt = State(initialValue: entry?.updatedAt)
         _persistedEntryID = State(initialValue: entry?.id)
+        _bodyCharacterCount = State(initialValue: initial.body.count)
     }
 
     var body: some View {
@@ -682,13 +787,15 @@ struct EntryEditorView: View {
                             storeImageAttachment: { data, name, mime in
                                 guard let targetID = persistedEntryID ?? ensurePersistedEntryID()
                                 else { return nil }
-                                return model.addAttachment(
+                                return await model.addAttachment(
                                     data: data,
                                     originalName: name,
                                     mimeType: mime,
                                     to: targetID
                                 )
-                            }
+                            },
+                            attachmentImage: { id in model.attachmentData(for: id) },
+                            attachmentRevision: model.attachmentRevision
                         )
 
                         Rectangle()
@@ -750,8 +857,12 @@ struct EntryEditorView: View {
         .sheet(isPresented: $isShowingMetadata) {
             mobileMetadataSheet
         }
-        .onChange(of: draft) { _, _ in scheduleAutosave() }
+        .onChange(of: draft) { _, newValue in
+            bodyCharacterCount = newValue.body.count
+            scheduleAutosave()
+        }
         .onChange(of: tagsText) { _, _ in scheduleAutosave() }
+        .onChange(of: tagInputDraft) { _, _ in scheduleAutosave() }
         .confirmationDialog(
             "기록 유형을 바꾸면 일부 상세 정보가 제거됩니다.",
             isPresented: $isConfirmingTypeChange,
@@ -874,12 +985,20 @@ struct EntryEditorView: View {
                 .foregroundStyle(JournalTheme.inkSecondary)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: JournalTheme.Spacing.small) {
-                    ForEach(parsedTags, id: \.self) { tag in
+                    ForEach(committedTags, id: \.self) { tag in
                         TagChip(tag: tag) { removeTag(tag) }
                     }
-                    TextField("태그 추가", text: $tagsText)
+                    TextField(
+                        "태그 추가",
+                        text: Binding(
+                            get: { tagInputDraft },
+                            set: { commitTagInput($0) }
+                        )
+                    )
                         .textFieldStyle(.plain)
-                        .frame(minWidth: 140)
+                        .onSubmit { commitCurrentTagInputDraft() }
+                        // See the matching comment on the macOS tagsEditor.
+                        .frame(width: 140)
                 }
             }
         }
@@ -887,7 +1006,7 @@ struct EntryEditorView: View {
 
     private var mobileFooter: some View {
         HStack {
-            Label("\(draft.body.count)자", systemImage: "character.cursor.ibeam")
+            Label("\(bodyCharacterCount)자", systemImage: "character.cursor.ibeam")
             if let lastSavedAt {
                 Label(
                     lastSavedAt.formatted(date: .omitted, time: .shortened),
@@ -1002,12 +1121,28 @@ struct EntryEditorView: View {
     }
 
     private var isDirty: Bool {
-        draft != lastSavedDraft || tagsText != lastSavedTagsText
+        draft != lastSavedDraft
+            || tagsText != lastSavedTagsText
+            || tagInputDraft != lastSavedTagInputDraft
     }
 
+    /// Tags already committed to `tagsText` — these, and only these, render
+    /// as chips.
+    private var committedTags: [String] {
+        Self.parseTags(tagsText)
+    }
+
+    /// Committed tags plus whatever's currently typed but not yet
+    /// comma/Return-committed — this is what actually gets saved, so
+    /// autosave never requires a trailing comma to pick up the tag you're
+    /// mid-typing.
     private var parsedTags: [String] {
+        Self.mergingTag(tagInputDraft, into: committedTags)
+    }
+
+    private static func parseTags(_ text: String) -> [String] {
         var result: [String] = []
-        let candidates = tagsText
+        let candidates = text
             .split(separator: ",")
             .map({ String($0).trimmingCharacters(in: .whitespaces) })
             .filter({ !$0.isEmpty })
@@ -1021,22 +1156,58 @@ struct EntryEditorView: View {
         return result
     }
 
+    private static func mergingTag(_ tag: String, into tags: [String]) -> [String] {
+        let trimmed = tag.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty,
+              !tags.contains(where: { $0.caseInsensitiveCompare(trimmed) == .orderedSame })
+        else { return tags }
+        return tags + [trimmed]
+    }
+
+    /// Commits `tagInputDraft` (and anything else typed up to a trailing
+    /// comma) into `tagsText`, then clears the field — a tag disappears
+    /// from the raw text the moment it's finished, leaving only its chip.
+    private func commitTagInput(_ rawValue: String) {
+        let pieces = rawValue.split(separator: ",", omittingEmptySubsequences: false)
+        let completed = pieces.dropLast().map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        if !completed.isEmpty {
+            var merged = committedTags
+            for tag in completed {
+                merged = Self.mergingTag(tag, into: merged)
+            }
+            tagsText = merged.joined(separator: ", ")
+        }
+        tagInputDraft = String(pieces.last ?? "")
+    }
+
+    private func commitCurrentTagInputDraft() {
+        guard !tagInputDraft.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        tagsText = Self.mergingTag(tagInputDraft, into: committedTags)
+            .joined(separator: ", ")
+        tagInputDraft = ""
+    }
+
     private func removeTag(_ tag: String) {
-        tagsText = parsedTags
+        tagsText = committedTags
             .filter { $0.caseInsensitiveCompare(tag) != .orderedSame }
             .joined(separator: ", ")
     }
 
     private func scheduleAutosave() {
         guard isDirty else { return }
-        let hasContent = !draft.title.trimmingCharacters(
-            in: .whitespacesAndNewlines
-        ).isEmpty || !draft.body.trimmingCharacters(
-            in: .whitespacesAndNewlines
-        ).isEmpty
+        // `trimmingCharacters(in:).isEmpty` allocates a full trimmed copy of
+        // the body just to answer a yes/no question; `contains(where:)`
+        // short-circuits at the first non-whitespace character instead (the
+        // common case, since content is usually near the start).
+        let hasContent = draft.title.contains { !$0.isWhitespace }
+            || draft.body.contains { !$0.isWhitespace }
         guard hasContent else { return }
         autosaveTask?.cancel()
-        saveState = .saving
+        // See the matching comment on the macOS editor's scheduleAutosave —
+        // reassigning `.saving` to itself on every keystroke still forces a
+        // full re-render of this editor.
+        if saveState != .saving { saveState = .saving }
         autosaveTask = Task { @MainActor in
             do {
                 try await Task.sleep(for: .milliseconds(650))
@@ -1058,11 +1229,12 @@ struct EntryEditorView: View {
             saveState = .saved
             return true
         }
-        let hasContent = !draft.title.trimmingCharacters(
-            in: .whitespacesAndNewlines
-        ).isEmpty || !draft.body.trimmingCharacters(
-            in: .whitespacesAndNewlines
-        ).isEmpty
+        // `trimmingCharacters(in:).isEmpty` allocates a full trimmed copy of
+        // the body just to answer a yes/no question; `contains(where:)`
+        // short-circuits at the first non-whitespace character instead (the
+        // common case, since content is usually near the start).
+        let hasContent = draft.title.contains { !$0.isWhitespace }
+            || draft.body.contains { !$0.isWhitespace }
         guard hasContent else {
             saveState = .saved
             return true
@@ -1086,6 +1258,7 @@ struct EntryEditorView: View {
         persistedEntryID = record.id
         lastSavedDraft = draft
         lastSavedTagsText = tagsText
+        lastSavedTagInputDraft = tagInputDraft
         lastSavedAt = record.updatedAt
         saveState = .saved
         return true
@@ -1188,6 +1361,7 @@ private struct AttachmentEditorSection: View {
     @State private var exportContentType: UTType = .data
     @State private var exportFilename = "attachment"
     @State private var isExporting = false
+    @State private var pendingDelete: AttachmentRecord?
 
     var body: some View {
         VStack(alignment: .leading, spacing: JournalTheme.Spacing.small) {
@@ -1231,26 +1405,41 @@ private struct AttachmentEditorSection: View {
                     .font(.caption)
                     .foregroundStyle(JournalTheme.inkSecondary)
             } else {
-                ForEach(attachments) { attachment in
-                    HStack(spacing: JournalTheme.Spacing.small) {
-                        Image(systemName: attachmentIcon(for: attachment.mimeType))
-                            .foregroundStyle(JournalTheme.brandPrimary)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(attachment.originalName)
-                                .lineLimit(1)
-                            Text(attachmentStatus(attachment))
-                                .font(.caption2)
-                                .foregroundStyle(
-                                    attachment.state == .failed
-                                        ? Color.red
-                                        : JournalTheme.inkSecondary
-                                )
+                // Capped so a record with many attachments scrolls inside
+                // this section instead of pushing tags/footer far down the
+                // outer editor scroll view.
+                ScrollView {
+                    VStack(spacing: JournalTheme.Spacing.small) {
+                        ForEach(attachments) { attachment in
+                            HStack(spacing: JournalTheme.Spacing.small) {
+                                Image(systemName: attachmentIcon(for: attachment.mimeType))
+                                    .foregroundStyle(JournalTheme.brandPrimary)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(attachment.originalName)
+                                        .lineLimit(1)
+                                    Text(attachmentStatus(attachment))
+                                        .font(.caption2)
+                                        .foregroundStyle(
+                                            attachment.state == .failed
+                                                ? Color.red
+                                                : JournalTheme.inkSecondary
+                                        )
+                                }
+                                Spacer()
+                                attachmentAction(attachment)
+                                Button(role: .destructive) {
+                                    pendingDelete = attachment
+                                } label: {
+                                    Image(systemName: "trash")
+                                }
+                                .buttonStyle(.borderless)
+                                .accessibilityLabel("첨부 삭제")
+                            }
+                            .accessibilityElement(children: .combine)
                         }
-                        Spacer()
-                        attachmentAction(attachment)
                     }
-                    .accessibilityElement(children: .combine)
                 }
+                .frame(maxHeight: 240)
             }
         }
         .fileImporter(
@@ -1265,8 +1454,10 @@ private struct AttachmentEditorSection: View {
                     model.errorMessage = "첨부할 기록을 먼저 저장해 주세요."
                     return
                 }
-                if model.addAttachment(from: url, to: targetID) {
-                    attachments = model.attachments(for: targetID)
+                Task {
+                    if await model.addAttachment(from: url, to: targetID) {
+                        attachments = model.attachments(for: targetID)
+                    }
                 }
             } catch {
                 model.errorMessage = error.localizedDescription
@@ -1316,6 +1507,24 @@ private struct AttachmentEditorSection: View {
         #if os(iOS)
         .quickLookPreview($previewURL)
         #endif
+        .confirmationDialog(
+            "이 첨부를 삭제할까요?",
+            isPresented: Binding(
+                get: { pendingDelete != nil },
+                set: { if !$0 { pendingDelete = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("삭제", role: .destructive) {
+                if let attachment = pendingDelete {
+                    model.deleteAttachment(attachment.id)
+                }
+                pendingDelete = nil
+            }
+            Button("취소", role: .cancel) { pendingDelete = nil }
+        } message: {
+            Text("이 기기와 iCloud에서 완전히 지워지며 되돌릴 수 없습니다.")
+        }
     }
 
     private func requireEntryThenRun(_ action: () -> Void) {
@@ -1325,6 +1534,14 @@ private struct AttachmentEditorSection: View {
         }
         action()
     }
+
+    /// Photos from the library can be tens of megabytes at full resolution
+    /// (HEIC, ProRAW-adjacent JPEGs). Only large images are recompressed —
+    /// small ones (typically pasted screenshots elsewhere in the editor)
+    /// pass through untouched so text stays crisp.
+    private nonisolated static let compressionSizeThreshold = 3 * 1024 * 1024
+    private nonisolated static let compressionMaxDimension: CGFloat = 2048
+    private nonisolated static let compressionQuality: CGFloat = 0.85
 
     private func importPhotoPickerSelection(_ items: [PhotosPickerItem]) {
         guard let targetID = entryID ?? ensureEntryID() else {
@@ -1338,10 +1555,22 @@ private struct AttachmentEditorSection: View {
                     continue
                 }
                 let contentType = item.supportedContentTypes.first
-                let fileExtension = contentType?.preferredFilenameExtension ?? "jpg"
-                let mimeType = contentType?.preferredMIMEType ?? "image/jpeg"
-                model.addAttachment(
-                    data: data,
+                let isImage = contentType?.conforms(to: .image) ?? true
+                var uploadData = data
+                var fileExtension = contentType?.preferredFilenameExtension ?? "jpg"
+                var mimeType = contentType?.preferredMIMEType ?? "image/jpeg"
+                if isImage, data.count > Self.compressionSizeThreshold {
+                    let compressed = await Task.detached(priority: .userInitiated) {
+                        Self.compressedForUpload(data)
+                    }.value
+                    if let compressed {
+                        uploadData = compressed
+                        fileExtension = "jpg"
+                        mimeType = "image/jpeg"
+                    }
+                }
+                await model.addAttachment(
+                    data: uploadData,
                     originalName: "\(UUID().uuidString).\(fileExtension)",
                     mimeType: mimeType,
                     to: targetID
@@ -1359,15 +1588,72 @@ private struct AttachmentEditorSection: View {
             return
         }
         guard let data = image.jpegData(compressionQuality: 0.9) else { return }
-        model.addAttachment(
-            data: data,
-            originalName: "\(UUID().uuidString).jpg",
-            mimeType: "image/jpeg",
-            to: targetID
-        )
-        attachments = model.attachments(for: targetID)
+        Task {
+            let uploadData: Data
+            if data.count > Self.compressionSizeThreshold {
+                uploadData = await Task.detached(priority: .userInitiated) {
+                    Self.compressedForUpload(data)
+                }.value ?? data
+            } else {
+                uploadData = data
+            }
+            await model.addAttachment(
+                data: uploadData,
+                originalName: "\(UUID().uuidString).jpg",
+                mimeType: "image/jpeg",
+                to: targetID
+            )
+            attachments = model.attachments(for: targetID)
+        }
     }
     #endif
+
+    /// Decodes, downscales to `compressionMaxDimension` on the longest side
+    /// (no upscaling), and re-encodes as JPEG. Called off the main actor —
+    /// decoding and re-encoding a large image is itself not free.
+    private nonisolated static func compressedForUpload(_ data: Data) -> Data? {
+        #if os(iOS)
+        guard let image = UIImage(data: data) else { return nil }
+        let longestSide = max(image.size.width, image.size.height)
+        let scale = longestSide > compressionMaxDimension
+            ? compressionMaxDimension / longestSide
+            : 1
+        let targetSize = CGSize(
+            width: (image.size.width * scale).rounded(),
+            height: (image.size.height * scale).rounded()
+        )
+        let renderer = UIGraphicsImageRenderer(size: targetSize)
+        let resized = renderer.image { _ in
+            image.draw(in: CGRect(origin: .zero, size: targetSize))
+        }
+        return resized.jpegData(compressionQuality: compressionQuality)
+        #elseif os(macOS)
+        guard let image = NSImage(data: data) else { return nil }
+        let longestSide = max(image.size.width, image.size.height)
+        let scale = longestSide > compressionMaxDimension
+            ? compressionMaxDimension / longestSide
+            : 1
+        let targetSize = NSSize(
+            width: (image.size.width * scale).rounded(),
+            height: (image.size.height * scale).rounded()
+        )
+        let resized = NSImage(size: targetSize)
+        resized.lockFocus()
+        image.draw(
+            in: NSRect(origin: .zero, size: targetSize),
+            from: .zero,
+            operation: .copy,
+            fraction: 1
+        )
+        resized.unlockFocus()
+        guard let tiffData = resized.tiffRepresentation,
+              let bitmap = NSBitmapImageRep(data: tiffData) else { return nil }
+        return bitmap.representation(
+            using: .jpeg,
+            properties: [.compressionFactor: compressionQuality]
+        )
+        #endif
+    }
 
     private func openAttachment(_ attachment: AttachmentRecord) {
         guard let url = model.temporaryPreviewURL(for: attachment.id) else { return }
@@ -1379,7 +1665,7 @@ private struct AttachmentEditorSection: View {
     }
 
     private func beginExport(_ attachment: AttachmentRecord) {
-        guard let data = model.attachmentBinary(for: attachment.id) else { return }
+        guard let data = model.attachmentData(for: attachment.id) else { return }
         exportDocument = AttachmentDocument(data: data)
         exportContentType = UTType(mimeType: attachment.mimeType) ?? .data
         let name = attachment.originalName.isEmpty ? "첨부파일" : attachment.originalName
@@ -1547,47 +1833,28 @@ struct RevisionHistoryView: View {
 struct TrashView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var model: AppModel
-    @State private var pendingPurge: JournalEntryRecord?
+    @State private var selection = Set<UUID>()
+    @State private var isConfirmingPurge = false
     @State private var isConfirmingEmptyTrash = false
+    #if os(iOS)
+    @State private var editMode: EditMode = .active
+    #endif
 
     var body: some View {
         NavigationStack {
-            List(model.trashEntries) { entry in
-                #if os(iOS)
-                VStack(alignment: .leading, spacing: 10) {
-                    trashEntryDescription(entry)
-                    HStack(spacing: JournalTheme.Spacing.small) {
-                        Button {
-                            model.restoreFromTrash(entry)
-                        } label: {
-                            Label("복원", systemImage: "arrow.uturn.backward")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.bordered)
-                        Button(role: .destructive) {
-                            pendingPurge = entry
-                        } label: {
-                            Label("영구 삭제", systemImage: "trash.slash")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.bordered)
-                        .tint(.red)
-                    }
-                }
-                .padding(.vertical, 4)
-                #else
-                HStack {
-                    trashEntryDescription(entry)
-                    Spacer()
-                    Button("복원") {
-                        model.restoreFromTrash(entry)
-                    }
-                    Button("영구 삭제", role: .destructive) {
-                        pendingPurge = entry
-                    }
-                }
-                #endif
+            List(model.trashEntries, selection: $selection) { entry in
+                trashEntryDescription(entry)
+                    .tag(entry.id)
             }
+            #if os(iOS)
+            .environment(\.editMode, $editMode)
+            #endif
+            #if os(macOS)
+            .onDeleteCommand {
+                guard !selection.isEmpty else { return }
+                isConfirmingPurge = true
+            }
+            #endif
             .overlay {
                 if model.trashEntries.isEmpty {
                     ContentUnavailableView("휴지통이 비었습니다", systemImage: "trash")
@@ -1598,7 +1865,28 @@ struct TrashView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("닫기") { dismiss() }
                 }
-                ToolbarItem(placement: .primaryAction) {
+                ToolbarItemGroup(placement: .primaryAction) {
+                    Button {
+                        model.restoreFromTrash(ids: selection)
+                        selection.removeAll()
+                    } label: {
+                        Label(
+                            selection.isEmpty ? "복원" : "복원 \(selection.count)",
+                            systemImage: "arrow.uturn.backward"
+                        )
+                    }
+                    .disabled(selection.isEmpty)
+
+                    Button(role: .destructive) {
+                        isConfirmingPurge = true
+                    } label: {
+                        Label(
+                            selection.isEmpty ? "영구 삭제" : "영구 삭제 \(selection.count)",
+                            systemImage: "trash.slash"
+                        )
+                    }
+                    .disabled(selection.isEmpty)
+
                     Button("휴지통 비우기", role: .destructive) {
                         isConfirmingEmptyTrash = true
                     }
@@ -1608,23 +1896,25 @@ struct TrashView: View {
         }
         .onAppear { model.refreshTrash() }
         #if os(macOS)
-        .frame(minWidth: 460, minHeight: 420)
+        // 4 labeled toolbar buttons (닫기/복원/영구 삭제/휴지통 비우기) don't
+        // fit at 460pt — macOS silently collapses the low-priority ones into
+        // an overflow chevron, which reads as "the delete button vanished"
+        // rather than "click the >> to find it". Wide enough that all four
+        // always render inline.
+        .frame(minWidth: 640, minHeight: 420)
         #endif
         .confirmationDialog(
-            "이 기록을 영구히 삭제할까요?",
-            isPresented: Binding(
-                get: { pendingPurge != nil },
-                set: { if !$0 { pendingPurge = nil } }
-            ),
+            selection.count > 1
+                ? "선택한 \(selection.count)개 기록을 영구히 삭제할까요?"
+                : "이 기록을 영구히 삭제할까요?",
+            isPresented: $isConfirmingPurge,
             titleVisibility: .visible
         ) {
             Button("영구 삭제", role: .destructive) {
-                if let entry = pendingPurge {
-                    model.permanentlyDelete(entry)
-                }
-                pendingPurge = nil
+                model.permanentlyDelete(ids: selection)
+                selection.removeAll()
             }
-            Button("취소", role: .cancel) { pendingPurge = nil }
+            Button("취소", role: .cancel) {}
         } message: {
             Text("기록과 수정 이력, 첨부가 이 기기와 iCloud에서 완전히 지워집니다. 되돌릴 수 없습니다.")
         }
@@ -1635,6 +1925,7 @@ struct TrashView: View {
         ) {
             Button("휴지통 비우기", role: .destructive) {
                 model.emptyTrash()
+                selection.removeAll()
             }
             Button("취소", role: .cancel) {}
         } message: {

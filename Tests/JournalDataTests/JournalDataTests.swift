@@ -576,6 +576,117 @@ final class JournalDataTests: XCTestCase {
         XCTAssertThrowsError(try store.data(checksum: first.record.checksum))
     }
 
+    func testAttachmentFileStoreHydrateIsIdempotentAndSelfHealing() throws {
+        let root = FileManager.default.temporaryDirectory.appending(
+            path: "pilgrim-attachment-hydrate-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = try AttachmentFileStore(root: root)
+        let checksum = "deadbeef"
+        let binary = Data("synced from another device".utf8)
+
+        XCTAssertFalse(store.hasData(checksum: checksum))
+        try store.hydrate(checksum: checksum, data: binary)
+        XCTAssertTrue(store.hasData(checksum: checksum))
+        XCTAssertEqual(try store.data(checksum: checksum), binary)
+
+        // Idempotent: re-hydrating with different bytes must not overwrite
+        // an already-present file (checksum is trusted, not recomputed).
+        try store.hydrate(checksum: checksum, data: Data("different".utf8))
+        XCTAssertEqual(try store.data(checksum: checksum), binary)
+    }
+
+    func testAttachmentsForEntryOnlyReturnsThatEntrysAttachmentsAndNeverBinary() throws {
+        let repository = try makeRepository()
+        let entryA = try repository.save(
+            JournalEntryDraft(kind: .diary, body: "A"), deviceID: "Mac"
+        ).id
+        let entryB = try repository.save(
+            JournalEntryDraft(kind: .diary, body: "B"), deviceID: "Mac"
+        ).id
+        let attachmentA = AttachmentRecord(
+            entryID: entryA, originalName: "a.png", mimeType: "image/png",
+            checksum: "checksum-a", byteCount: 1, state: .local
+        )
+        let attachmentB = AttachmentRecord(
+            entryID: entryB, originalName: "b.png", mimeType: "image/png",
+            checksum: "checksum-b", byteCount: 1, state: .local
+        )
+        try repository.saveAttachment(attachmentA, binary: Data([0x01]))
+        try repository.saveAttachment(attachmentB, binary: Data([0x02]))
+
+        let resultsForA = try repository.attachments(forEntry: entryA)
+
+        XCTAssertEqual(resultsForA.map(\.id), [attachmentA.id])
+        XCTAssertEqual(resultsForA.first?.checksum, "checksum-a")
+    }
+
+    func testUpdateAttachmentStatePreservesBinaryAndReturnsFalseForMissingRow() throws {
+        let repository = try makeRepository()
+        let entryID = try repository.save(
+            JournalEntryDraft(kind: .diary, body: "본문"), deviceID: "Mac"
+        ).id
+        let binary = Data("original bytes".utf8)
+        let record = AttachmentRecord(
+            entryID: entryID, originalName: "photo.jpg", mimeType: "image/jpeg",
+            checksum: "checksum-c", byteCount: Int64(binary.count), state: .pending
+        )
+        try repository.saveAttachment(record, binary: binary)
+
+        let updated = try repository.updateAttachmentState(
+            id: record.id, state: .uploaded, updatedAt: Date(timeIntervalSince1970: 100)
+        )
+
+        XCTAssertTrue(updated)
+        let stored = try XCTUnwrap(repository.attachment(id: record.id))
+        XCTAssertEqual(stored.0.state, .uploaded)
+        XCTAssertEqual(stored.0.updatedAt, Date(timeIntervalSince1970: 100))
+        // The whole point of this method: binary must survive a state-only update.
+        XCTAssertEqual(stored.1, binary)
+
+        let missing = try repository.updateAttachmentState(
+            id: UUID(), state: .uploaded, updatedAt: .now
+        )
+        XCTAssertFalse(missing)
+    }
+
+    func testAttachmentsInStatesFiltersByStateOnly() throws {
+        let repository = try makeRepository()
+        let entryID = try repository.save(
+            JournalEntryDraft(kind: .diary, body: "본문"), deviceID: "Mac"
+        ).id
+        let pending = AttachmentRecord(
+            entryID: entryID, originalName: "p.jpg", mimeType: "image/jpeg",
+            checksum: "checksum-pending", byteCount: 1, state: .pending
+        )
+        let uploaded = AttachmentRecord(
+            entryID: entryID, originalName: "u.jpg", mimeType: "image/jpeg",
+            checksum: "checksum-uploaded", byteCount: 1, state: .uploaded
+        )
+        try repository.saveAttachment(pending, binary: Data([0x01]))
+        try repository.saveAttachment(uploaded, binary: Data([0x02]))
+
+        let pendingOnly = try repository.attachments(inStates: [.pending])
+
+        XCTAssertEqual(pendingOnly.map(\.0.id), [pending.id])
+    }
+
+    func testAttachmentChecksumNeverReadsBinaryButFindsIt() throws {
+        let repository = try makeRepository()
+        let entryID = try repository.save(
+            JournalEntryDraft(kind: .diary, body: "본문"), deviceID: "Mac"
+        ).id
+        let record = AttachmentRecord(
+            entryID: entryID, originalName: "x.jpg", mimeType: "image/jpeg",
+            checksum: "checksum-x", byteCount: 1, state: .local
+        )
+        try repository.saveAttachment(record, binary: Data([0xFF]))
+
+        XCTAssertEqual(try repository.attachmentChecksum(id: record.id), "checksum-x")
+        XCTAssertNil(try repository.attachmentChecksum(id: UUID()))
+    }
+
     func testVersionedSchemaDiskReopenAndSourceSnapshotIsolation() throws {
         XCTAssertEqual(
             PilgrimJournalSchemaV1.versionIdentifier,

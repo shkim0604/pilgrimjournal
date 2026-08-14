@@ -16,10 +16,12 @@ enum EditorTextScale {
 import AppKit
 private typealias PlatformFont = NSFont
 private typealias PlatformColor = NSColor
+private typealias PlatformImage = NSImage
 #elseif os(iOS)
 import UIKit
 private typealias PlatformFont = UIFont
 private typealias PlatformColor = UIColor
+private typealias PlatformImage = UIImage
 #endif
 
 private enum EditorPalette {
@@ -350,10 +352,14 @@ enum MarkdownCommandProcessor {
     }
 
     static func trailingSlashQuery(in text: String) -> String? {
-        let line = text.split(
-            separator: "\n",
-            omittingEmptySubsequences: false
-        ).last.map(String.init) ?? ""
+        // `split(separator:)` builds an array of every line in the whole
+        // document just to take the last one — called from
+        // `MarkdownBodyEditor.body` on every render. A backwards search for
+        // the last newline finds the last line directly, in time
+        // proportional to that line's length (typically short — the cursor
+        // is on it), not the whole document.
+        let line = text.range(of: "\n", options: .backwards).map { text[$0.upperBound...] }
+            ?? text[...]
         guard line.hasPrefix("/"), !line.contains(" ") else { return nil }
         return String(line.dropFirst()).lowercased()
     }
@@ -500,6 +506,7 @@ enum MarkdownCommandProcessor {
     /// including in the preview surface that renders it as an image.
     static func insertingAttachmentImage(
         id: UUID,
+        displaySize: CGSize? = nil,
         into text: String,
         selection: NSRange
     ) -> ExpansionResult {
@@ -511,7 +518,10 @@ enum MarkdownCommandProcessor {
         let after = source.substring(from: NSMaxRange(safeSelection))
         let leadingNewline = before.isEmpty || before.hasSuffix("\n") ? "" : "\n"
         let trailingNewline = after.isEmpty || after.hasPrefix("\n") ? "" : "\n"
-        let insertion = "\(leadingNewline)![](attachment:\(id.uuidString))\(trailingNewline)"
+        let sizeSuffix = displaySize.map {
+            " =\(Int($0.width.rounded()))x\(Int($0.height.rounded()))"
+        } ?? ""
+        let insertion = "\(leadingNewline)![](attachment:\(id.uuidString)\(sizeSuffix))\(trailingNewline)"
         let expanded = source.replacingCharacters(in: safeSelection, with: insertion)
         let cursor = safeSelection.location + insertion.utf16.count
         return ExpansionResult(text: expanded, cursorUTF16Offset: cursor)
@@ -992,7 +1002,11 @@ enum MarkdownDocumentParser {
     private static func attachmentImageID(from line: String) -> UUID? {
         let prefix = "![](attachment:"
         guard line.hasPrefix(prefix), line.hasSuffix(")") else { return nil }
-        let idString = line.dropFirst(prefix.count).dropLast()
+        let inner = line.dropFirst(prefix.count).dropLast()
+        // Tolerates an optional trailing " =WIDTHxHEIGHT" size suffix (used
+        // by the live editor's inline resize) — a UUID's canonical form
+        // never contains a space, so splitting on the first one is safe.
+        let idString = inner.split(separator: " ", maxSplits: 1).first ?? inner
         return UUID(uuidString: String(idString))
     }
 
@@ -1016,7 +1030,12 @@ struct MarkdownBodyEditor: View {
     @Binding var text: String
     var minHeight: CGFloat = 240
     var autoFocus = false
-    var storeImageAttachment: ((Data, String, String) -> UUID?)?
+    var storeImageAttachment: ((Data, String, String) async -> UUID?)?
+    var attachmentImage: ((UUID) async -> Data?)?
+    /// Bumped whenever any attachment's state changes (e.g. a background
+    /// CloudKit download finishes). Lets the editor retry attachments it
+    /// previously failed to load, without needing to reopen the entry.
+    var attachmentRevision = 0
     @State private var selection = NSRange(location: 0, length: 0)
     @AppStorage("editor-text-scale") private var editorTextScale =
         EditorTextScale.defaultValue
@@ -1083,7 +1102,9 @@ struct MarkdownBodyEditor: View {
                 selection: $selection,
                 autoFocus: autoFocus,
                 textScale: editorTextScale,
-                storeImageAttachment: storeImageAttachment
+                storeImageAttachment: storeImageAttachment,
+                attachmentImage: attachmentImage,
+                attachmentRevision: attachmentRevision
             )
                 .frame(
                     maxWidth: .infinity,
@@ -1301,7 +1322,8 @@ enum LiveMarkdownStyler {
 
     static func apply(
         to storage: NSTextStorage,
-        revealing selection: NSRange? = nil
+        revealing selection: NSRange? = nil,
+        containerWidth: CGFloat = 600
     ) {
         let fullRange = NSRange(location: 0, length: storage.length)
         guard fullRange.length > 0 else { return }
@@ -1384,11 +1406,19 @@ enum LiveMarkdownStyler {
                 // width; the drawn dot replaces it. This kern widens the
                 // gap between the dot and the following content — without
                 // it, only a single space's width separates them.
-                .kern: 3,
+                // `bulletParagraphStyle`'s headIndent measures using this
+                // exact same value, so the gap and the wrap-alignment never
+                // drift apart.
+                .kern: bulletMarkerKern,
             ], range: match.range(at: 2))
             storage.addAttribute(
                 .paragraphStyle,
-                value: bulletParagraphStyle,
+                value: bulletParagraphStyle(
+                    indentationLevel: indentationLevel(
+                        of: match.range(at: 1),
+                        in: storage.string
+                    )
+                ),
                 range: match.range
             )
         }
@@ -1419,7 +1449,7 @@ enum LiveMarkdownStyler {
             storage.addAttributes([
                 .foregroundColor: PlatformColor.clear,
                 .font: bodyFont,
-                .kern: 3,
+                .kern: bulletMarkerKern,
             ], range: match.range(at: 2))
             storage.addAttributes([
                 .font: hiddenMarkerFont,
@@ -1427,7 +1457,12 @@ enum LiveMarkdownStyler {
             ], range: match.range(at: 3))
             storage.addAttribute(
                 .paragraphStyle,
-                value: bulletParagraphStyle,
+                value: bulletParagraphStyle(
+                    indentationLevel: indentationLevel(
+                        of: match.range(at: 1),
+                        in: storage.string
+                    )
+                ),
                 range: match.range
             )
             if checked {
@@ -1436,6 +1471,26 @@ enum LiveMarkdownStyler {
                     .strikethroughStyle: NSUnderlineStyle.single.rawValue,
                 ], range: match.range(at: 5))
             }
+        }
+        for imageMatch in MarkdownAttachmentImageDecoration.matches(in: storage.string) {
+            // Hidden the same way checklist/bullet markers are — draw(_:)
+            // renders the actual decoded image over this reserved space
+            // instead. Never an NSTextAttachment (see the checklist comment
+            // above): the saved characters must stay exactly
+            // `![](attachment:id ...)`.
+            storage.addAttributes([
+                .foregroundColor: PlatformColor.clear,
+                .font: hiddenMarkerFont,
+            ], range: imageMatch.markerRange)
+            storage.addAttribute(
+                .paragraphStyle,
+                value: attachmentImageParagraphStyle(
+                    storedWidth: imageMatch.storedWidth,
+                    storedHeight: imageMatch.storedHeight,
+                    containerWidth: containerWidth
+                ),
+                range: imageMatch.markerRange
+            )
         }
         applyRegex(#"(?m)^(>) (.*)$"#, to: storage) { match in
             #if os(macOS)
@@ -1599,14 +1654,32 @@ enum LiveMarkdownStyler {
         return results
     }
 
+    // `apply()` calls `applyRegex`/`applyInlineStyle` with the same ~15
+    // pattern strings every time it runs (debounced, but still 15
+    // `NSRegularExpression` compiles per call before this cache existed).
+    // Keyed by pattern text so call sites don't need to change. Lock-guarded
+    // rather than `@MainActor`-isolating the whole enum — every real caller
+    // already runs on the main actor, but `LiveMarkdownStyler` also exposes
+    // plain pure functions used directly from tests, and isolating those
+    // too would be unrelated scope creep.
+    private static let compiledRegexCacheLock = NSLock()
+    nonisolated(unsafe) private static var compiledRegexCache: [String: NSRegularExpression] = [:]
+
+    private static func cachedRegex(_ pattern: String) -> NSRegularExpression? {
+        compiledRegexCacheLock.lock()
+        defer { compiledRegexCacheLock.unlock() }
+        if let cached = compiledRegexCache[pattern] { return cached }
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+        compiledRegexCache[pattern] = regex
+        return regex
+    }
+
     private static func applyRegex(
         _ pattern: String,
         to storage: NSTextStorage,
         body: (NSTextCheckingResult) -> Void
     ) {
-        guard let regex = try? NSRegularExpression(pattern: pattern) else {
-            return
-        }
+        guard let regex = cachedRegex(pattern) else { return }
         let range = NSRange(location: 0, length: storage.length)
         regex.matches(in: storage.string, range: range).forEach(body)
     }
@@ -1687,11 +1760,45 @@ enum LiveMarkdownStyler {
         return style
     }
 
-    private static var bulletParagraphStyle: NSParagraphStyle {
+    /// Gap between the drawn bullet dot and the following text — applied as
+    /// `.kern` on the hidden marker character, so it also occupies real
+    /// glyph advance width (unlike `hiddenMarkerFont`-hidden markers, which
+    /// are sized to ~0 width on purpose).
+    private static let bulletMarkerKern: CGFloat = 6
+    /// Additional per-level indent for nested bullets, layered *on top of*
+    /// the 2-space-per-level the source text already carries (inserted by
+    /// `adjustingListIndentation`) — the natural 2-space width alone reads
+    /// as too subtle to distinguish nesting visually.
+    private static let bulletExtraIndentPerLevel: CGFloat = 14
+
+    /// `headIndent` controls where a *wrapped* continuation line lands, and
+    /// must match exactly where the marker-hidden first line's visible text
+    /// begins — not an approximation. The marker ("-"/"*") is hidden via
+    /// `.foregroundColor: clear`, not a near-zero font size, so it (plus
+    /// `bulletMarkerKern` and the literal trailing space) still occupies
+    /// real `bodyFont` glyph width that a wrapped line must account for, on
+    /// top of one level's worth of leading whitespace repeated
+    /// `indentationLevel` times (those characters are real, un-hidden text).
+    private static func bulletParagraphStyle(indentationLevel: Int) -> NSParagraphStyle {
         let style = bodyParagraphStyle.mutableCopy() as! NSMutableParagraphStyle
-        style.firstLineHeadIndent = 2
-        style.headIndent = 20
+        let base: CGFloat = 4 + CGFloat(indentationLevel) * bulletExtraIndentPerLevel
+        let markerWidth = measuredWidth("-", kern: bulletMarkerKern) + measuredWidth(" ")
+        let levelWhitespaceWidth = CGFloat(indentationLevel) * measuredWidth("  ")
+        style.firstLineHeadIndent = base
+        style.headIndent = base + levelWhitespaceWidth + markerWidth
         return style
+    }
+
+    private static func measuredWidth(_ text: String, kern: CGFloat = 0) -> CGFloat {
+        (text as NSString).size(withAttributes: [.font: bodyFont, .kern: kern]).width
+    }
+
+    private static func indentationLevel(of range: NSRange, in text: String) -> Int {
+        let indentText = (text as NSString).substring(with: range)
+        let spaces = indentText.reduce(into: 0) { count, character in
+            count += character == "\t" ? 2 : 1
+        }
+        return spaces / 2
     }
 
     private static func quoteParagraphStyle() -> NSParagraphStyle {
@@ -1768,16 +1875,72 @@ enum LiveMarkdownStyler {
         return style
     }
 
+    /// The displayed height of an inline attachment image, clamped to fit
+    /// `containerWidth` while preserving aspect ratio, reserved as fixed
+    /// line height so TextKit1 lays the surrounding text out around the
+    /// space `draw(_:)` later paints the decoded image into. Mirrors
+    /// `separatorParagraphStyle`'s min/max-line-height technique.
+    static func attachmentImageDisplaySize(
+        storedWidth: CGFloat?,
+        storedHeight: CGFloat?,
+        containerWidth: CGFloat
+    ) -> CGSize {
+        let maxWidth = max(containerWidth, 40)
+        let rawWidth = storedWidth ?? maxWidth
+        let rawHeight = storedHeight ?? (rawWidth * 0.6)
+        guard rawWidth > 0, rawHeight > 0 else { return CGSize(width: maxWidth, height: maxWidth * 0.6) }
+        guard rawWidth > maxWidth else { return CGSize(width: rawWidth, height: rawHeight) }
+        let scale = maxWidth / rawWidth
+        return CGSize(width: maxWidth, height: rawHeight * scale)
+    }
+
+    /// Shared with the resize-drag and window-resize recompute paths in the
+    /// Coordinators below, so all three ways an image's reserved height can
+    /// change build that height the exact same way.
+    static func attachmentImageParagraphStyle(
+        storedWidth: CGFloat?,
+        storedHeight: CGFloat?,
+        containerWidth: CGFloat
+    ) -> NSParagraphStyle {
+        let size = attachmentImageDisplaySize(
+            storedWidth: storedWidth, storedHeight: storedHeight, containerWidth: containerWidth
+        )
+        let style = bodyParagraphStyle.mutableCopy() as! NSMutableParagraphStyle
+        style.minimumLineHeight = size.height
+        style.maximumLineHeight = size.height
+        style.paragraphSpacingBefore = 6
+        style.paragraphSpacing = 6
+        return style
+    }
+
 }
 
 enum MarkdownBulletDecoration {
+    struct Match {
+        var markerRange: NSRange
+        /// 0 = top level (filled dot); 1+ = nested (hollow ring). Computed
+        /// the same way as `MarkdownDocumentParser.indentationLevel` — two
+        /// spaces or one tab per level.
+        var indentationLevel: Int
+    }
+
     private static let regex = try! NSRegularExpression(
-        pattern: #"(?m)^[ \t]*([\-*]) (?!\[[ xX]\] )"#
+        pattern: #"(?m)^([ \t]*)([\-*]) (?!\[[ xX]\] )"#
     )
 
-    static func ranges(in text: String) -> [NSRange] {
-        let range = NSRange(location: 0, length: text.utf16.count)
-        return regex.matches(in: text, range: range).map { $0.range(at: 1) }
+    static func matches(in text: String) -> [Match] {
+        let source = text as NSString
+        let range = NSRange(location: 0, length: source.length)
+        return regex.matches(in: text, range: range).map { result in
+            let indentText = source.substring(with: result.range(at: 1))
+            let spaces = indentText.reduce(into: 0) { count, character in
+                count += character == "\t" ? 2 : 1
+            }
+            return Match(
+                markerRange: result.range(at: 2),
+                indentationLevel: spaces / 2
+            )
+        }
     }
 }
 
@@ -1805,6 +1968,74 @@ enum MarkdownChecklistDecoration {
                 checked: state.lowercased() == "x"
             )
         }
+    }
+}
+
+/// Locates `![](attachment:<uuid>)` (optionally ` =WIDTHxHEIGHT`) marker
+/// lines so the live editor can reserve line height for and draw the actual
+/// image in place of the (hidden) raw syntax — same "find it, draw over it,
+/// never touch the saved characters" technique as bullets/checklists above.
+enum MarkdownAttachmentImageDecoration {
+    struct Match {
+        /// The whole marker line — this is what gets hidden (colored clear)
+        /// and given the paragraph style that reserves the image's height.
+        var markerRange: NSRange
+        var attachmentID: UUID
+        var storedWidth: CGFloat?
+        var storedHeight: CGFloat?
+    }
+
+    private static let regex = try! NSRegularExpression(
+        pattern: #"(?m)^!\[\]\(attachment:([0-9A-Fa-f-]{36})(?:[ \t]+=(\d+)x(\d+))?\)$"#
+    )
+
+    static func matches(in text: String) -> [Match] {
+        let source = text as NSString
+        let range = NSRange(location: 0, length: source.length)
+        return regex.matches(in: text, range: range).compactMap { result in
+            let idRange = result.range(at: 1)
+            guard let attachmentID = UUID(uuidString: source.substring(with: idRange))
+            else { return nil }
+            let widthRange = result.range(at: 2)
+            let heightRange = result.range(at: 3)
+            let storedWidth = widthRange.location != NSNotFound
+                ? CGFloat(Int(source.substring(with: widthRange)) ?? 0)
+                : nil
+            let storedHeight = heightRange.location != NSNotFound
+                ? CGFloat(Int(source.substring(with: heightRange)) ?? 0)
+                : nil
+            return Match(
+                markerRange: result.range,
+                attachmentID: attachmentID,
+                storedWidth: storedWidth,
+                storedHeight: storedHeight
+            )
+        }
+    }
+
+    /// The on-screen rect an image marker line occupies, anchored at its
+    /// line fragment's origin. Shared between `draw(_:)` and the resize
+    /// handlers so hit-testing always agrees with what was painted.
+    static func imageRect(origin: CGPoint, fragment: CGRect, displaySize: CGSize) -> CGRect {
+        CGRect(
+            x: origin.x + fragment.minX,
+            y: origin.y + fragment.minY,
+            width: displaySize.width,
+            height: displaySize.height
+        )
+    }
+
+    /// The resize-drag hit target, anchored to an image rect's bottom-right
+    /// corner. Shared between `draw(_:)` (visual) and the mouse/pan-gesture
+    /// handlers (hit-testing) so they never disagree about where it is.
+    static func handleRect(for imageRect: CGRect) -> CGRect {
+        let size: CGFloat = 14
+        return CGRect(
+            x: imageRect.maxX - size - 4,
+            y: imageRect.maxY - size - 4,
+            width: size,
+            height: size
+        )
     }
 }
 
@@ -1846,6 +2077,28 @@ private final class MarkdownNSTextView: NSTextView {
     /// attachment insertion; `false` means the caller should fall through to
     /// the normal paste behavior (plain text, etc).
     var handleImagePaste: (() -> Bool)?
+    /// Synchronous cache lookup — nil means not yet decoded, and as a side
+    /// effect kicks off an async load (see `Coordinator.cachedAttachmentImage`).
+    /// Never call anything async directly from `draw(_:)`.
+    var attachmentImage: ((UUID) -> PlatformImage?)?
+    /// Begins/continues/ends a resize drag if the point hits an image's
+    /// resize handle; `begin` returns whether it was consumed.
+    var beginAttachmentResize: ((NSPoint) -> Bool)?
+    var continueAttachmentResize: ((NSPoint) -> Void)?
+    var endAttachmentResize: ((NSPoint) -> Void)?
+    private var isResizingAttachment = false
+    /// Called when the text container's width changes meaningfully (window
+    /// resize) so images sized as a fraction of it can be recomputed.
+    var containerWidthChanged: ((CGFloat) -> Void)?
+    private var lastKnownContainerWidth: CGFloat = 0
+
+    override func layout() {
+        super.layout()
+        guard let width = textContainer?.size.width,
+              abs(width - lastKnownContainerWidth) > 1 else { return }
+        lastKnownContainerWidth = width
+        containerWidthChanged?(width)
+    }
 
     override func paste(_ sender: Any?) {
         if handleImagePaste?() == true { return }
@@ -1871,8 +2124,20 @@ private final class MarkdownNSTextView: NSTextView {
         super.draw(dirtyRect)
         guard let layoutManager, let textContainer else { return }
         let origin = textContainerOrigin
+        // Computed once per draw() call, not per match: lets every loop
+        // below skip `lineFragmentRect`/`glyphRange`/`boundingRect` entirely
+        // for matches outside the dirty rect, instead of paying for layout
+        // on every match in the whole document on every keystroke.
+        let visibleGlyphRange = layoutManager.glyphRange(
+            forBoundingRect: dirtyRect, in: textContainer
+        )
+        let visibleCharRange = layoutManager.characterRange(
+            forGlyphRange: visibleGlyphRange, actualGlyphRange: nil
+        )
         EditorPalette.separator.setStroke()
         for characterRange in MarkdownSeparatorDecoration.ranges(in: string) {
+            guard NSIntersectionRange(characterRange, visibleCharRange).length > 0
+            else { continue }
             let glyphRange = layoutManager.glyphRange(
                 forCharacterRange: characterRange,
                 actualCharacterRange: nil
@@ -1893,10 +2158,11 @@ private final class MarkdownNSTextView: NSTextView {
             ))
             line.stroke()
         }
-        EditorPalette.label.setFill()
-        for characterRange in MarkdownBulletDecoration.ranges(in: string) {
+        for bulletMatch in MarkdownBulletDecoration.matches(in: string) {
+            guard NSIntersectionRange(bulletMatch.markerRange, visibleCharRange).length > 0
+            else { continue }
             let glyphRange = layoutManager.glyphRange(
-                forCharacterRange: characterRange,
+                forCharacterRange: bulletMatch.markerRange,
                 actualCharacterRange: nil
             )
             guard glyphRange.location < layoutManager.numberOfGlyphs else {
@@ -1910,14 +2176,25 @@ private final class MarkdownNSTextView: NSTextView {
             // fragment rect — the fragment includes the paragraph's line
             // spacing, which sits below the glyph, so using its midY pulls
             // the dot down off-center from the text.
-            NSBezierPath(ovalIn: NSRect(
+            let dot = NSRect(
                 x: origin.x + marker.midX - 3,
                 y: origin.y + marker.midY - 3,
                 width: 6,
                 height: 6
-            )).fill()
+            )
+            if bulletMatch.indentationLevel == 0 {
+                EditorPalette.label.setFill()
+                NSBezierPath(ovalIn: dot).fill()
+            } else {
+                let ring = NSBezierPath(ovalIn: dot.insetBy(dx: 0.75, dy: 0.75))
+                ring.lineWidth = 1.2
+                EditorPalette.label.setStroke()
+                ring.stroke()
+            }
         }
         for checklistMatch in MarkdownChecklistDecoration.matches(in: string) {
+            guard NSIntersectionRange(checklistMatch.markerRange, visibleCharRange).length > 0
+            else { continue }
             let glyphRange = layoutManager.glyphRange(
                 forCharacterRange: checklistMatch.markerRange,
                 actualCharacterRange: nil
@@ -1974,6 +2251,96 @@ private final class MarkdownNSTextView: NSTextView {
                 outline.stroke()
             }
         }
+        let cursorLocation = selectedRange().location
+        for imageMatch in MarkdownAttachmentImageDecoration.matches(in: string) {
+            guard NSIntersectionRange(imageMatch.markerRange, visibleCharRange).length > 0
+            else { continue }
+            let glyphRange = layoutManager.glyphRange(
+                forCharacterRange: imageMatch.markerRange,
+                actualCharacterRange: nil
+            )
+            guard glyphRange.location < layoutManager.numberOfGlyphs else { continue }
+            let fragment = layoutManager.lineFragmentRect(
+                forGlyphAt: glyphRange.location,
+                effectiveRange: nil
+            )
+            let displaySize = LiveMarkdownStyler.attachmentImageDisplaySize(
+                storedWidth: imageMatch.storedWidth,
+                storedHeight: imageMatch.storedHeight,
+                containerWidth: textContainer.size.width
+            )
+            let imageRect = MarkdownAttachmentImageDecoration.imageRect(
+                origin: origin, fragment: fragment, displaySize: displaySize
+            )
+            guard dirtyRect.intersects(imageRect) else { continue }
+            if let image = attachmentImage?(imageMatch.attachmentID) {
+                // NSImage's high-level draw(in:from:operation:fraction:) can
+                // render upside down in a flipped, layer-backed NSTextView
+                // (a known AppKit quirk — the ambient flip the text view
+                // sets up and NSImage's own flip-awareness fight each
+                // other). Drawing the CGImage directly with an explicit
+                // counter-flip around the target rect sidesteps that
+                // ambiguity entirely instead of depending on it.
+                if let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil),
+                   let context = NSGraphicsContext.current?.cgContext {
+                    context.saveGState()
+                    context.translateBy(x: 0, y: imageRect.minY + imageRect.maxY)
+                    context.scaleBy(x: 1, y: -1)
+                    context.draw(cgImage, in: imageRect)
+                    context.restoreGState()
+                } else {
+                    image.draw(
+                        in: imageRect, from: .zero, operation: .sourceOver, fraction: 1
+                    )
+                }
+            } else {
+                EditorPalette.codeBackground.setFill()
+                NSBezierPath(roundedRect: imageRect, xRadius: 6, yRadius: 6).fill()
+                EditorPalette.secondaryLabel.setStroke()
+                NSBezierPath(
+                    roundedRect: imageRect.insetBy(dx: 0.5, dy: 0.5), xRadius: 6, yRadius: 6
+                ).stroke()
+            }
+            let lineRange = (string as NSString).lineRange(for: imageMatch.markerRange)
+            let cursorOnThisLine = cursorLocation >= lineRange.location
+                && cursorLocation <= NSMaxRange(lineRange)
+            if cursorOnThisLine {
+                let handle = MarkdownAttachmentImageDecoration.handleRect(for: imageRect)
+                let path = NSBezierPath(ovalIn: handle)
+                EditorPalette.label.setFill()
+                path.fill()
+                (effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+                    ? PlatformColor.black : PlatformColor.white).setStroke()
+                path.lineWidth = 1.5
+                path.stroke()
+            }
+        }
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        if beginAttachmentResize?(point) == true {
+            isResizingAttachment = true
+            return
+        }
+        super.mouseDown(with: event)
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        guard isResizingAttachment else {
+            super.mouseDragged(with: event)
+            return
+        }
+        continueAttachmentResize?(convert(event.locationInWindow, from: nil))
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        guard isResizingAttachment else {
+            super.mouseUp(with: event)
+            return
+        }
+        isResizingAttachment = false
+        endAttachmentResize?(convert(event.locationInWindow, from: nil))
     }
 }
 
@@ -1982,7 +2349,9 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
     @Binding var selection: NSRange
     var autoFocus: Bool
     var textScale: Double
-    var storeImageAttachment: ((Data, String, String) -> UUID?)?
+    var storeImageAttachment: ((Data, String, String) async -> UUID?)?
+    var attachmentImage: ((UUID) async -> Data?)?
+    var attachmentRevision = 0
 
     func makeCoordinator() -> Coordinator {
         Coordinator(parent: self)
@@ -2011,6 +2380,21 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
         textView.handleImagePaste = { [weak coordinator = context.coordinator] in
             coordinator?.handleImagePaste() ?? false
         }
+        textView.attachmentImage = { [weak coordinator = context.coordinator] id in
+            coordinator?.cachedAttachmentImage(for: id)
+        }
+        textView.beginAttachmentResize = { [weak coordinator = context.coordinator] point in
+            coordinator?.beginAttachmentResize(at: point) ?? false
+        }
+        textView.continueAttachmentResize = { [weak coordinator = context.coordinator] point in
+            coordinator?.continueAttachmentResize(to: point)
+        }
+        textView.endAttachmentResize = { [weak coordinator = context.coordinator] point in
+            coordinator?.endAttachmentResize(at: point)
+        }
+        textView.containerWidthChanged = { [weak coordinator = context.coordinator] width in
+            coordinator?.recomputeAttachmentImageSizes(containerWidth: width)
+        }
         textView.isRichText = true
         textView.importsGraphics = false
         textView.allowsUndo = true
@@ -2023,7 +2407,8 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
         textView.string = text
         LiveMarkdownStyler.apply(
             to: textView.textStorage!,
-            revealing: selection
+            revealing: selection,
+            containerWidth: textView.textContainer?.size.width ?? 600
         )
         textView.typingAttributes = LiveMarkdownStyler.baseAttributes
         scrollView.documentView = textView
@@ -2038,6 +2423,7 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
 
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         context.coordinator.parent = self
+        context.coordinator.attachmentRevisionDidChange(to: attachmentRevision)
         guard let textView = scrollView.documentView as? NSTextView,
               !context.coordinator.isUpdating else { return }
         if abs(scrollView.magnification - CGFloat(textScale)) > 0.001 {
@@ -2072,6 +2458,28 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
         weak var textView: NSTextView?
         private(set) var publishedHistory: [Int] = []
         private var stylingTask: Task<Void, Never>?
+        private var imageCache: [UUID: PlatformImage] = [:]
+        private var loadingAttachmentIDs: Set<UUID> = []
+        /// Attachments whose data wasn't available (not yet downloaded from
+        /// CloudKit, or undecodable) on the last attempt. Without this,
+        /// `cachedAttachmentImage` re-queries the store on *every* redraw —
+        /// including every keystroke — for as long as the attachment stays
+        /// unavailable, which is indistinguishable from a permanent typing
+        /// stall. Cleared on `attachmentRevisionChanged` so a completed
+        /// download is picked up without needing to reopen the entry.
+        private var missingAttachmentIDs: Set<UUID> = []
+        private var lastSeenAttachmentRevision: Int?
+        private var resizingAttachmentID: UUID?
+        private var resizeStartPoint: NSPoint = .zero
+        private var resizeStartSize: CGSize = .zero
+
+        func attachmentRevisionDidChange(to revision: Int) {
+            guard lastSeenAttachmentRevision != revision else { return }
+            lastSeenAttachmentRevision = revision
+            guard !missingAttachmentIDs.isEmpty else { return }
+            missingAttachmentIDs.removeAll()
+            textView?.setNeedsDisplay(textView?.bounds ?? .zero)
+        }
 
         /// Every write to the binding must go through here so the editor can
         /// recognise its own value when SwiftUI echoes it back a render later.
@@ -2085,6 +2493,129 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
 
         init(parent: LiveMarkdownTextEditor) {
             self.parent = parent
+        }
+
+        /// Synchronous — returns the cached decoded image if present, and as
+        /// a side effect starts (at most one) async load per attachment.
+        /// Never call `parent.attachmentImage` (async) directly from
+        /// `draw(_:)`; this is the only sanctioned entry point.
+        func cachedAttachmentImage(for id: UUID) -> PlatformImage? {
+            if let image = imageCache[id] { return image }
+            // Second synchronous check, still zero-cost: the shared cache
+            // may already have this image decoded from a previous entry
+            // (this Coordinator's own `imageCache` is thrown away whenever
+            // the editor is recreated, e.g. switching entries).
+            if let shared = AttachmentImageCache.shared.cachedImage(id: id) {
+                imageCache[id] = shared
+                return shared
+            }
+            guard !loadingAttachmentIDs.contains(id), !missingAttachmentIDs.contains(id),
+                  let provider = parent.attachmentImage
+            else { return nil }
+            loadingAttachmentIDs.insert(id)
+            Task { @MainActor [weak self] in
+                defer { self?.loadingAttachmentIDs.remove(id) }
+                // Decodes downsampled (never at the source's full
+                // resolution) — see AttachmentImageCache's doc comment.
+                guard let self, let data = await provider(id),
+                      let image = await AttachmentImageCache.shared.loadAndCache(
+                          id: id, data: data
+                      ) else {
+                    self?.missingAttachmentIDs.insert(id)
+                    return
+                }
+                self.imageCache[id] = image
+                self.textView?.setNeedsDisplay(self.textView?.bounds ?? .zero)
+            }
+            return nil
+        }
+
+        func beginAttachmentResize(at point: NSPoint) -> Bool {
+            guard let textView, let layoutManager = textView.layoutManager,
+                  let textContainer = textView.textContainer else { return false }
+            let origin = textView.textContainerOrigin
+            for match in MarkdownAttachmentImageDecoration.matches(in: textView.string) {
+                let glyphRange = layoutManager.glyphRange(
+                    forCharacterRange: match.markerRange, actualCharacterRange: nil
+                )
+                guard glyphRange.location < layoutManager.numberOfGlyphs else { continue }
+                let fragment = layoutManager.lineFragmentRect(
+                    forGlyphAt: glyphRange.location, effectiveRange: nil
+                )
+                let displaySize = LiveMarkdownStyler.attachmentImageDisplaySize(
+                    storedWidth: match.storedWidth,
+                    storedHeight: match.storedHeight,
+                    containerWidth: textContainer.size.width
+                )
+                let imageRect = MarkdownAttachmentImageDecoration.imageRect(
+                    origin: origin, fragment: fragment, displaySize: displaySize
+                )
+                let handle = MarkdownAttachmentImageDecoration.handleRect(for: imageRect)
+                guard handle.contains(point) else { continue }
+                resizingAttachmentID = match.attachmentID
+                resizeStartPoint = point
+                resizeStartSize = displaySize
+                return true
+            }
+            return false
+        }
+
+        /// Live-drags the image's paragraph style height only — never runs a
+        /// full restyle mid-drag. Attribute-only edits like this don't
+        /// trigger `textDidChange` (see docs/known-issues.md), so there's no
+        /// reentrancy risk running this on every mouse-moved event.
+        func continueAttachmentResize(to point: NSPoint) {
+            guard let id = resizingAttachmentID, let textView,
+                  let storage = textView.textStorage,
+                  let textContainer = textView.textContainer else { return }
+            let size = draggedSize(to: point, containerWidth: textContainer.size.width)
+            guard let match = MarkdownAttachmentImageDecoration.matches(in: textView.string)
+                .first(where: { $0.attachmentID == id }) else { return }
+            let style = LiveMarkdownStyler.attachmentImageParagraphStyle(
+                storedWidth: size.width, storedHeight: size.height,
+                containerWidth: textContainer.size.width
+            )
+            storage.addAttribute(.paragraphStyle, value: style, range: match.markerRange)
+            textView.setNeedsDisplay(textView.bounds)
+        }
+
+        /// Recomputes every image's reserved height for a new container
+        /// width (window resize) without a full restyle pass. Attribute-only
+        /// edits like this never trigger `textDidChange` (see
+        /// docs/known-issues.md), so this is safe to call from `layout()`.
+        func recomputeAttachmentImageSizes(containerWidth: CGFloat) {
+            guard let textView, let storage = textView.textStorage else { return }
+            for match in MarkdownAttachmentImageDecoration.matches(in: textView.string) {
+                let style = LiveMarkdownStyler.attachmentImageParagraphStyle(
+                    storedWidth: match.storedWidth, storedHeight: match.storedHeight,
+                    containerWidth: containerWidth
+                )
+                storage.addAttribute(.paragraphStyle, value: style, range: match.markerRange)
+            }
+            textView.setNeedsDisplay(textView.bounds)
+        }
+
+        func endAttachmentResize(at point: NSPoint) {
+            defer { resizingAttachmentID = nil }
+            guard let id = resizingAttachmentID, let textView,
+                  let textContainer = textView.textContainer else { return }
+            let size = draggedSize(to: point, containerWidth: textContainer.size.width)
+            guard let match = MarkdownAttachmentImageDecoration.matches(in: textView.string)
+                .first(where: { $0.attachmentID == id }) else { return }
+            let replaced = (textView.string as NSString).replacingCharacters(
+                in: match.markerRange,
+                with: "![](attachment:\(id.uuidString) =\(Int(size.width.rounded()))x\(Int(size.height.rounded())))"
+            )
+            let cursor = NSRange(location: match.markerRange.location, length: 0)
+            replaceExternalText(replaced, selection: cursor, registersUndo: true)
+        }
+
+        /// Aspect-locked: only the horizontal drag distance drives the
+        /// resize, height follows the original aspect ratio.
+        private func draggedSize(to point: NSPoint, containerWidth: CGFloat) -> CGSize {
+            let aspect = resizeStartSize.height / max(resizeStartSize.width, 1)
+            let width = max(40, min(containerWidth, resizeStartSize.width + (point.x - resizeStartPoint.x)))
+            return CGSize(width: width, height: width * aspect)
         }
 
         func replaceExternalText(
@@ -2114,7 +2645,8 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
             )
             LiveMarkdownStyler.apply(
                 to: textView.textStorage!,
-                revealing: safeSelection
+                revealing: safeSelection,
+                containerWidth: textView.textContainer?.size.width ?? 600
             )
             textView.typingAttributes = LiveMarkdownStyler.baseAttributes
             textView.setSelectedRange(safeSelection)
@@ -2250,28 +2782,42 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
         }
 
         /// Returns false (letting `paste(_:)` fall through to the default
-        /// behavior) whenever the pasteboard has no image, storage fails, or
-        /// there's no entry to attach to yet — non-image paste (plain text,
-        /// etc) is completely unaffected.
+        /// behavior) whenever the pasteboard has no image or there's no
+        /// entry to attach to yet — non-image paste (plain text, etc) is
+        /// completely unaffected. Storage (hashing + disk write) is
+        /// off-main-actor and can take a moment for a large image, so once
+        /// this returns `true` the actual insertion happens asynchronously;
+        /// the cursor position is captured now, not when storage finishes.
         @discardableResult
         func handleImagePaste() -> Bool {
             guard let textView, !textView.hasMarkedText() else { return false }
             guard let image = Self.pasteboardImageData(from: .general) else { return false }
-            guard let attachmentID = parent.storeImageAttachment?(
-                image.data,
-                image.filename,
-                image.mimeType
-            ) else { return false }
-            let result = MarkdownCommandProcessor.insertingAttachmentImage(
-                id: attachmentID,
-                into: textView.string,
-                selection: textView.selectedRange()
-            )
-            replaceExternalText(
-                result.text,
-                selection: NSRange(location: result.cursorUTF16Offset, length: 0),
-                registersUndo: true
-            )
+            let selection = textView.selectedRange()
+            Task { @MainActor [weak self] in
+                guard let self, let attachmentID = await self.parent.storeImageAttachment?(
+                    image.data,
+                    image.filename,
+                    image.mimeType
+                ), let textView = self.textView else { return }
+                let displaySize = NSImage(data: image.data).map {
+                    LiveMarkdownStyler.attachmentImageDisplaySize(
+                        storedWidth: $0.size.width,
+                        storedHeight: $0.size.height,
+                        containerWidth: textView.textContainer?.size.width ?? 600
+                    )
+                }
+                let result = MarkdownCommandProcessor.insertingAttachmentImage(
+                    id: attachmentID,
+                    displaySize: displaySize,
+                    into: textView.string,
+                    selection: selection
+                )
+                self.replaceExternalText(
+                    result.text,
+                    selection: NSRange(location: result.cursorUTF16Offset, length: 0),
+                    registersUndo: true
+                )
+            }
             return true
         }
 
@@ -2312,7 +2858,8 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
             let selection = textView.selectedRange()
             LiveMarkdownStyler.apply(
                 to: textView.textStorage!,
-                revealing: selection
+                revealing: selection,
+                containerWidth: textView.textContainer?.size.width ?? 600
             )
             textView.typingAttributes = LiveMarkdownStyler.baseAttributes
             let safeSelection = clamped(selection, to: textView.string.utf16.count)
@@ -2333,7 +2880,13 @@ private enum MarkdownSeparatorDecoration {
 }
 
 @MainActor
-private final class MarkdownUITextView: UITextView {
+private final class MarkdownUITextView: UITextView, UIGestureRecognizerDelegate {
+    func gestureRecognizer(
+        _ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch
+    ) -> Bool {
+        isPointOnAttachmentResizeHandle?(touch.location(in: self)) ?? false
+    }
+
     var adjustListIndentation: ((MarkdownListIndentDirection) -> Void)?
     /// Returns whether a list marker was removed at the cursor; `false`
     /// means the caller should fall through to the normal single-character
@@ -2343,6 +2896,68 @@ private final class MarkdownUITextView: UITextView {
     /// attachment insertion; `false` means the caller should fall through to
     /// the normal paste behavior (plain text, etc).
     var handleImagePaste: (() -> Bool)?
+    /// Synchronous cache lookup — nil means not yet decoded, and as a side
+    /// effect kicks off an async load (see `Coordinator.cachedAttachmentImage`).
+    /// Never call anything async directly from `draw(_:)`.
+    var attachmentImage: ((UUID) -> PlatformImage?)?
+    /// Pure hit test used by the pan gesture's delegate to decide whether to
+    /// even claim the touch — must not mutate state (see `shouldReceive`).
+    var isPointOnAttachmentResizeHandle: ((CGPoint) -> Bool)?
+    var beginAttachmentResize: ((CGPoint) -> Bool)?
+    var continueAttachmentResize: ((CGPoint) -> Void)?
+    var endAttachmentResize: ((CGPoint) -> Void)?
+    /// Called when the text container's width changes meaningfully (device
+    /// rotation, split-view resize) so images sized as a fraction of it can
+    /// be recomputed.
+    var containerWidthChanged: ((CGFloat) -> Void)?
+    private var lastKnownContainerWidth: CGFloat = 0
+
+    override init(frame: CGRect, textContainer: NSTextContainer?) {
+        super.init(frame: frame, textContainer: textContainer)
+        configureAttachmentResizeGesture()
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        configureAttachmentResizeGesture()
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        let width = textContainer.size.width
+        guard abs(width - lastKnownContainerWidth) > 1 else { return }
+        lastKnownContainerWidth = width
+        containerWidthChanged?(width)
+    }
+
+    // Deliberately NOT overriding touchesBegan/touchesMoved: UITextView's
+    // own text selection/loupe/drag gestures are built from private
+    // gesture-recognizer internals that are easy to break by intercepting
+    // touches directly. A separate UIPanGestureRecognizer + delegate
+    // hit-test keeps this fully decoupled from UITextView's own handling.
+    private func configureAttachmentResizeGesture() {
+        let gesture = UIPanGestureRecognizer(
+            target: self, action: #selector(handleAttachmentResizePan(_:))
+        )
+        gesture.delegate = self
+        addGestureRecognizer(gesture)
+    }
+
+    @objc private func handleAttachmentResizePan(_ gesture: UIPanGestureRecognizer) {
+        let point = gesture.location(in: self)
+        switch gesture.state {
+        case .began:
+            if beginAttachmentResize?(point) != true {
+                gesture.state = .cancelled
+            }
+        case .changed:
+            continueAttachmentResize?(point)
+        case .ended, .cancelled, .failed:
+            endAttachmentResize?(point)
+        default:
+            break
+        }
+    }
 
     override func paste(_ sender: Any?) {
         if handleImagePaste?() == true { return }
@@ -2383,8 +2998,18 @@ private final class MarkdownUITextView: UITextView {
             x: textContainerInset.left,
             y: textContainerInset.top
         )
+        // Computed once per draw() call, not per match — see the matching
+        // comment in the macOS override.
+        let visibleGlyphRange = layoutManager.glyphRange(
+            forBoundingRect: rect, in: textContainer
+        )
+        let visibleCharRange = layoutManager.characterRange(
+            forGlyphRange: visibleGlyphRange, actualGlyphRange: nil
+        )
         EditorPalette.separator.setStroke()
         for characterRange in MarkdownSeparatorDecoration.ranges(in: text) {
+            guard NSIntersectionRange(characterRange, visibleCharRange).length > 0
+            else { continue }
             let glyphRange = layoutManager.glyphRange(
                 forCharacterRange: characterRange,
                 actualCharacterRange: nil
@@ -2405,10 +3030,11 @@ private final class MarkdownUITextView: UITextView {
             ))
             path.stroke()
         }
-        EditorPalette.label.setFill()
-        for characterRange in MarkdownBulletDecoration.ranges(in: text) {
+        for bulletMatch in MarkdownBulletDecoration.matches(in: text) {
+            guard NSIntersectionRange(bulletMatch.markerRange, visibleCharRange).length > 0
+            else { continue }
             let glyphRange = layoutManager.glyphRange(
-                forCharacterRange: characterRange,
+                forCharacterRange: bulletMatch.markerRange,
                 actualCharacterRange: nil
             )
             guard glyphRange.location < layoutManager.numberOfGlyphs else {
@@ -2422,14 +3048,25 @@ private final class MarkdownUITextView: UITextView {
             // fragment rect — the fragment includes the paragraph's line
             // spacing, which sits below the glyph, so using its midY pulls
             // the dot down off-center from the text.
-            UIBezierPath(ovalIn: CGRect(
+            let dot = CGRect(
                 x: origin.x + marker.midX - 3,
                 y: origin.y + marker.midY - 3,
                 width: 6,
                 height: 6
-            )).fill()
+            )
+            if bulletMatch.indentationLevel == 0 {
+                EditorPalette.label.setFill()
+                UIBezierPath(ovalIn: dot).fill()
+            } else {
+                let ring = UIBezierPath(ovalIn: dot.insetBy(dx: 0.75, dy: 0.75))
+                ring.lineWidth = 1.2
+                EditorPalette.label.setStroke()
+                ring.stroke()
+            }
         }
         for checklistMatch in MarkdownChecklistDecoration.matches(in: text) {
+            guard NSIntersectionRange(checklistMatch.markerRange, visibleCharRange).length > 0
+            else { continue }
             let glyphRange = layoutManager.glyphRange(
                 forCharacterRange: checklistMatch.markerRange,
                 actualCharacterRange: nil
@@ -2484,6 +3121,52 @@ private final class MarkdownUITextView: UITextView {
                 outline.stroke()
             }
         }
+        let cursorLocation = selectedRange.location
+        for imageMatch in MarkdownAttachmentImageDecoration.matches(in: text) {
+            guard NSIntersectionRange(imageMatch.markerRange, visibleCharRange).length > 0
+            else { continue }
+            let glyphRange = layoutManager.glyphRange(
+                forCharacterRange: imageMatch.markerRange,
+                actualCharacterRange: nil
+            )
+            guard glyphRange.location < layoutManager.numberOfGlyphs else { continue }
+            let fragment = layoutManager.lineFragmentRect(
+                forGlyphAt: glyphRange.location,
+                effectiveRange: nil
+            )
+            let displaySize = LiveMarkdownStyler.attachmentImageDisplaySize(
+                storedWidth: imageMatch.storedWidth,
+                storedHeight: imageMatch.storedHeight,
+                containerWidth: textContainer.size.width
+            )
+            let imageRect = MarkdownAttachmentImageDecoration.imageRect(
+                origin: origin, fragment: fragment, displaySize: displaySize
+            )
+            guard rect.intersects(imageRect) else { continue }
+            if let image = attachmentImage?(imageMatch.attachmentID) {
+                image.draw(in: imageRect)
+            } else {
+                EditorPalette.codeBackground.setFill()
+                UIBezierPath(roundedRect: imageRect, cornerRadius: 6).fill()
+                EditorPalette.secondaryLabel.setStroke()
+                UIBezierPath(
+                    roundedRect: imageRect.insetBy(dx: 0.5, dy: 0.5), cornerRadius: 6
+                ).stroke()
+            }
+            let lineRange = (text as NSString).lineRange(for: imageMatch.markerRange)
+            let cursorOnThisLine = cursorLocation >= lineRange.location
+                && cursorLocation <= NSMaxRange(lineRange)
+            if cursorOnThisLine {
+                let handle = MarkdownAttachmentImageDecoration.handleRect(for: imageRect)
+                let path = UIBezierPath(ovalIn: handle)
+                EditorPalette.label.setFill()
+                path.fill()
+                (traitCollection.userInterfaceStyle == .dark
+                    ? UIColor.black : UIColor.white).setStroke()
+                path.lineWidth = 1.5
+                path.stroke()
+            }
+        }
     }
 }
 
@@ -2492,7 +3175,9 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
     @Binding var selection: NSRange
     var autoFocus: Bool
     var textScale: Double
-    var storeImageAttachment: ((Data, String, String) -> UUID?)?
+    var storeImageAttachment: ((Data, String, String) async -> UUID?)?
+    var attachmentImage: ((UUID) async -> Data?)?
+    var attachmentRevision = 0
 
     func makeCoordinator() -> Coordinator {
         Coordinator(parent: self)
@@ -2510,6 +3195,24 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
         textView.handleImagePaste = { [weak coordinator = context.coordinator] in
             coordinator?.handleImagePaste() ?? false
         }
+        textView.attachmentImage = { [weak coordinator = context.coordinator] id in
+            coordinator?.cachedAttachmentImage(for: id)
+        }
+        textView.isPointOnAttachmentResizeHandle = { [weak coordinator = context.coordinator] point in
+            coordinator?.attachmentResizeTarget(at: point) != nil
+        }
+        textView.beginAttachmentResize = { [weak coordinator = context.coordinator] point in
+            coordinator?.beginAttachmentResize(at: point) ?? false
+        }
+        textView.continueAttachmentResize = { [weak coordinator = context.coordinator] point in
+            coordinator?.continueAttachmentResize(to: point)
+        }
+        textView.endAttachmentResize = { [weak coordinator = context.coordinator] point in
+            coordinator?.endAttachmentResize(at: point)
+        }
+        textView.containerWidthChanged = { [weak coordinator = context.coordinator] width in
+            coordinator?.recomputeAttachmentImageSizes(containerWidth: width)
+        }
         textView.delegate = context.coordinator
         textView.backgroundColor = .clear
         textView.isScrollEnabled = true
@@ -2524,7 +3227,8 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
         textView.text = text
         LiveMarkdownStyler.apply(
             to: textView.textStorage,
-            revealing: selection
+            revealing: selection,
+            containerWidth: textView.textContainer.size.width
         )
         textView.typingAttributes = LiveMarkdownStyler.baseAttributes
         if autoFocus {
@@ -2537,6 +3241,7 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
 
     func updateUIView(_ textView: UITextView, context: Context) {
         context.coordinator.parent = self
+        context.coordinator.attachmentRevisionDidChange(to: attachmentRevision)
         guard !context.coordinator.isUpdating else { return }
         guard MarkdownInputReconciliation.canMutateTextStorage(
             isComposing: textView.markedTextRange != nil
@@ -2577,9 +3282,162 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
             parent.text = newText
         }
         private var stylingTask: Task<Void, Never>?
+        private var imageCache: [UUID: PlatformImage] = [:]
+        private var loadingAttachmentIDs: Set<UUID> = []
+        /// See the matching field in the macOS Coordinator: without this,
+        /// an attachment whose data isn't available yet gets re-queried on
+        /// every single redraw forever, which reads as permanent typing lag.
+        private var missingAttachmentIDs: Set<UUID> = []
+        private var lastSeenAttachmentRevision: Int?
+        private var resizingAttachmentID: UUID?
+        private var resizeStartPoint: CGPoint = .zero
+        private var resizeStartSize: CGSize = .zero
 
         init(parent: LiveMarkdownTextEditor) {
             self.parent = parent
+        }
+
+        func attachmentRevisionDidChange(to revision: Int) {
+            guard lastSeenAttachmentRevision != revision else { return }
+            lastSeenAttachmentRevision = revision
+            guard !missingAttachmentIDs.isEmpty else { return }
+            missingAttachmentIDs.removeAll()
+            textView?.setNeedsDisplay()
+        }
+
+        /// Synchronous — returns the cached decoded image if present, and as
+        /// a side effect starts (at most one) async load per attachment.
+        /// Never call `parent.attachmentImage` (async) directly from
+        /// `draw(_:)`; this is the only sanctioned entry point.
+        func cachedAttachmentImage(for id: UUID) -> PlatformImage? {
+            if let image = imageCache[id] { return image }
+            // Second synchronous check, still zero-cost: the shared cache
+            // may already have this image decoded from a previous entry
+            // (this Coordinator's own `imageCache` is thrown away whenever
+            // the editor is recreated, e.g. switching entries).
+            if let shared = AttachmentImageCache.shared.cachedImage(id: id) {
+                imageCache[id] = shared
+                return shared
+            }
+            guard !loadingAttachmentIDs.contains(id), !missingAttachmentIDs.contains(id),
+                  let provider = parent.attachmentImage
+            else { return nil }
+            loadingAttachmentIDs.insert(id)
+            Task { @MainActor [weak self] in
+                defer { self?.loadingAttachmentIDs.remove(id) }
+                // Decodes downsampled (never at the source's full
+                // resolution) — see AttachmentImageCache's doc comment.
+                guard let self, let data = await provider(id),
+                      let image = await AttachmentImageCache.shared.loadAndCache(
+                          id: id, data: data
+                      ) else {
+                    self?.missingAttachmentIDs.insert(id)
+                    return
+                }
+                self.imageCache[id] = image
+                self.textView?.setNeedsDisplay()
+            }
+            return nil
+        }
+
+        /// Pure hit test — which attachment (if any) has its resize handle
+        /// under `point`, and what its current display size is. Used both by
+        /// the gesture delegate's `shouldReceive` (no side effects allowed
+        /// there) and by `beginAttachmentResize`.
+        func attachmentResizeTarget(at point: CGPoint) -> (id: UUID, size: CGSize)? {
+            guard let textView else { return nil }
+            let origin = CGPoint(
+                x: textView.textContainerInset.left, y: textView.textContainerInset.top
+            )
+            let layoutManager = textView.layoutManager
+            let textContainer = textView.textContainer
+            for match in MarkdownAttachmentImageDecoration.matches(in: textView.text) {
+                let glyphRange = layoutManager.glyphRange(
+                    forCharacterRange: match.markerRange, actualCharacterRange: nil
+                )
+                guard glyphRange.location < layoutManager.numberOfGlyphs else { continue }
+                let fragment = layoutManager.lineFragmentRect(
+                    forGlyphAt: glyphRange.location, effectiveRange: nil
+                )
+                let displaySize = LiveMarkdownStyler.attachmentImageDisplaySize(
+                    storedWidth: match.storedWidth,
+                    storedHeight: match.storedHeight,
+                    containerWidth: textContainer.size.width
+                )
+                let imageRect = MarkdownAttachmentImageDecoration.imageRect(
+                    origin: origin, fragment: fragment, displaySize: displaySize
+                )
+                let handle = MarkdownAttachmentImageDecoration.handleRect(for: imageRect)
+                if handle.contains(point) { return (match.attachmentID, displaySize) }
+            }
+            return nil
+        }
+
+        func beginAttachmentResize(at point: CGPoint) -> Bool {
+            guard let target = attachmentResizeTarget(at: point) else { return false }
+            resizingAttachmentID = target.id
+            resizeStartPoint = point
+            resizeStartSize = target.size
+            return true
+        }
+
+        /// Live-drags the image's paragraph style height only — never runs a
+        /// full restyle mid-drag. Attribute-only edits like this don't
+        /// trigger `textViewDidChange` (see docs/known-issues.md), so
+        /// there's no reentrancy risk running this on every pan update.
+        func continueAttachmentResize(to point: CGPoint) {
+            guard let id = resizingAttachmentID, let textView else { return }
+            let size = draggedSize(to: point, containerWidth: textView.textContainer.size.width)
+            guard let match = MarkdownAttachmentImageDecoration.matches(in: textView.text)
+                .first(where: { $0.attachmentID == id }) else { return }
+            let style = LiveMarkdownStyler.attachmentImageParagraphStyle(
+                storedWidth: size.width, storedHeight: size.height,
+                containerWidth: textView.textContainer.size.width
+            )
+            textView.textStorage.addAttribute(
+                .paragraphStyle, value: style, range: match.markerRange
+            )
+            textView.setNeedsDisplay()
+        }
+
+        /// Recomputes every image's reserved height for a new container
+        /// width (rotation/split-view resize) without a full restyle pass.
+        /// Attribute-only edits like this never trigger `textViewDidChange`
+        /// (see docs/known-issues.md), so this is safe from `layoutSubviews`.
+        func recomputeAttachmentImageSizes(containerWidth: CGFloat) {
+            guard let textView else { return }
+            for match in MarkdownAttachmentImageDecoration.matches(in: textView.text) {
+                let style = LiveMarkdownStyler.attachmentImageParagraphStyle(
+                    storedWidth: match.storedWidth, storedHeight: match.storedHeight,
+                    containerWidth: containerWidth
+                )
+                textView.textStorage.addAttribute(
+                    .paragraphStyle, value: style, range: match.markerRange
+                )
+            }
+            textView.setNeedsDisplay()
+        }
+
+        func endAttachmentResize(at point: CGPoint) {
+            defer { resizingAttachmentID = nil }
+            guard let id = resizingAttachmentID, let textView else { return }
+            let size = draggedSize(to: point, containerWidth: textView.textContainer.size.width)
+            guard let match = MarkdownAttachmentImageDecoration.matches(in: textView.text)
+                .first(where: { $0.attachmentID == id }) else { return }
+            let replaced = (textView.text as NSString).replacingCharacters(
+                in: match.markerRange,
+                with: "![](attachment:\(id.uuidString) =\(Int(size.width.rounded()))x\(Int(size.height.rounded())))"
+            )
+            let cursor = NSRange(location: match.markerRange.location, length: 0)
+            replaceExternalText(replaced, selection: cursor, registersUndo: true)
+        }
+
+        /// Aspect-locked: only the horizontal drag distance drives the
+        /// resize, height follows the original aspect ratio.
+        private func draggedSize(to point: CGPoint, containerWidth: CGFloat) -> CGSize {
+            let aspect = resizeStartSize.height / max(resizeStartSize.width, 1)
+            let width = max(40, min(containerWidth, resizeStartSize.width + (point.x - resizeStartPoint.x)))
+            return CGSize(width: width, height: width * aspect)
         }
 
         func replaceExternalText(
@@ -2609,7 +3467,8 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
             )
             LiveMarkdownStyler.apply(
                 to: textView.textStorage,
-                revealing: safeSelection
+                revealing: safeSelection,
+                containerWidth: textView.textContainer.size.width
             )
             textView.typingAttributes = LiveMarkdownStyler.baseAttributes
             textView.selectedRange = safeSelection
@@ -2738,28 +3597,42 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
         }
 
         /// Returns false (letting `paste(_:)` fall through to the default
-        /// behavior) whenever the pasteboard has no image, storage fails, or
-        /// there's no entry to attach to yet — non-image paste (plain text,
-        /// etc) is completely unaffected.
+        /// behavior) whenever the pasteboard has no image or there's no
+        /// entry to attach to yet — non-image paste (plain text, etc) is
+        /// completely unaffected. Storage (hashing + disk write) is
+        /// off-main-actor and can take a moment for a large image, so once
+        /// this returns `true` the actual insertion happens asynchronously;
+        /// the cursor position is captured now, not when storage finishes.
         @discardableResult
         func handleImagePaste() -> Bool {
             guard let textView, textView.markedTextRange == nil else { return false }
             guard let image = Self.pasteboardImageData(from: .general) else { return false }
-            guard let attachmentID = parent.storeImageAttachment?(
-                image.data,
-                image.filename,
-                image.mimeType
-            ) else { return false }
-            let result = MarkdownCommandProcessor.insertingAttachmentImage(
-                id: attachmentID,
-                into: textView.text,
-                selection: textView.selectedRange
-            )
-            replaceExternalText(
-                result.text,
-                selection: NSRange(location: result.cursorUTF16Offset, length: 0),
-                registersUndo: true
-            )
+            let selection = textView.selectedRange
+            Task { @MainActor [weak self] in
+                guard let self, let attachmentID = await self.parent.storeImageAttachment?(
+                    image.data,
+                    image.filename,
+                    image.mimeType
+                ), let textView = self.textView else { return }
+                let displaySize = UIImage(data: image.data).map {
+                    LiveMarkdownStyler.attachmentImageDisplaySize(
+                        storedWidth: $0.size.width,
+                        storedHeight: $0.size.height,
+                        containerWidth: textView.textContainer.size.width
+                    )
+                }
+                let result = MarkdownCommandProcessor.insertingAttachmentImage(
+                    id: attachmentID,
+                    displaySize: displaySize,
+                    into: textView.text,
+                    selection: selection
+                )
+                self.replaceExternalText(
+                    result.text,
+                    selection: NSRange(location: result.cursorUTF16Offset, length: 0),
+                    registersUndo: true
+                )
+            }
             return true
         }
 
@@ -2795,7 +3668,8 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
             let selection = textView.selectedRange
             LiveMarkdownStyler.apply(
                 to: textView.textStorage,
-                revealing: selection
+                revealing: selection,
+                containerWidth: textView.textContainer.size.width
             )
             textView.typingAttributes = LiveMarkdownStyler.baseAttributes
             textView.selectedRange = clamped(
@@ -2983,51 +3857,8 @@ struct MarkdownPreviewView: View {
         case .divider:
             Divider()
         case let .image(attachmentID):
-            attachmentImageView(attachmentID)
+            AttachmentImageView(attachmentID: attachmentID)
         }
-    }
-
-    @ViewBuilder
-    private func attachmentImageView(_ attachmentID: UUID) -> some View {
-        if let data = model.attachmentBinary(for: attachmentID),
-           let platformImage = decodedImage(from: data) {
-            platformImage
-                .resizable()
-                .scaledToFit()
-                .frame(maxWidth: .infinity)
-                .clipShape(RoundedRectangle(
-                    cornerRadius: JournalTheme.Radius.small,
-                    style: .continuous
-                ))
-        } else {
-            HStack(spacing: 8) {
-                Image(systemName: "photo")
-                Text(
-                    model.hasLocalBinary(for: attachmentID)
-                        ? "이미지를 표시할 수 없습니다"
-                        : "이미지를 아직 사용할 수 없음 · 동기화 대기 중"
-                )
-                .font(.caption)
-            }
-            .foregroundStyle(JournalTheme.inkSecondary)
-            .padding(12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(JournalTheme.brandPrimary.opacity(0.055))
-            .clipShape(RoundedRectangle(
-                cornerRadius: JournalTheme.Radius.small,
-                style: .continuous
-            ))
-        }
-    }
-
-    private func decodedImage(from data: Data) -> Image? {
-        #if os(macOS)
-        guard let nsImage = NSImage(data: data) else { return nil }
-        return Image(nsImage: nsImage)
-        #elseif os(iOS)
-        guard let uiImage = UIImage(data: data) else { return nil }
-        return Image(uiImage: uiImage)
-        #endif
     }
 
     private func inlineText(_ source: String) -> Text {
@@ -3136,6 +3967,72 @@ struct MarkdownPreviewView: View {
         case 4: .title3.bold()
         case 5: .headline
         default: .subheadline.bold()
+        }
+    }
+}
+
+/// Loads and decodes its attachment off `body` — the previous
+/// `MarkdownPreviewView.attachmentImageView` did both
+/// `model.attachmentData(for:)` (disk I/O) and full-resolution image
+/// decoding directly inside a `@ViewBuilder`, which reruns on every render
+/// of the enclosing view, not just when the attachment actually changes.
+/// `.task(id:)` here only redoes the load when the attachment id changes or
+/// `attachmentRevision` bumps (e.g. a background CloudKit download
+/// finishes) — mirrors the pattern already used by
+/// `AttachmentDownloadStatusView` in EntryViews.swift.
+private struct AttachmentImageView: View {
+    @EnvironmentObject private var model: AppModel
+    let attachmentID: UUID
+    @State private var image: Image?
+    @State private var hasLocalBinary = false
+
+    var body: some View {
+        Group {
+            if let image {
+                image
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: .infinity)
+                    .clipShape(RoundedRectangle(
+                        cornerRadius: JournalTheme.Radius.small,
+                        style: .continuous
+                    ))
+            } else {
+                HStack(spacing: 8) {
+                    Image(systemName: "photo")
+                    Text(
+                        hasLocalBinary
+                            ? "이미지를 표시할 수 없습니다"
+                            : "이미지를 아직 사용할 수 없음 · 동기화 대기 중"
+                    )
+                    .font(.caption)
+                }
+                .foregroundStyle(JournalTheme.inkSecondary)
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(JournalTheme.brandPrimary.opacity(0.055))
+                .clipShape(RoundedRectangle(
+                    cornerRadius: JournalTheme.Radius.small,
+                    style: .continuous
+                ))
+            }
+        }
+        .task(id: "\(attachmentID)#\(model.attachmentRevision)") {
+            image = nil
+            guard let data = model.attachmentData(for: attachmentID) else {
+                hasLocalBinary = model.hasLocalBinary(for: attachmentID)
+                return
+            }
+            hasLocalBinary = true
+            guard let decoded = await AttachmentImageCache.shared.loadAndCache(
+                id: attachmentID, data: data
+            ) else { return }
+            guard !Task.isCancelled else { return }
+            #if os(macOS)
+            image = Image(nsImage: decoded)
+            #elseif os(iOS)
+            image = Image(uiImage: decoded)
+            #endif
         }
     }
 }

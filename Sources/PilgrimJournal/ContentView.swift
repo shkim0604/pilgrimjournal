@@ -373,8 +373,12 @@ struct ContentView: View {
         withAnimation(.easeInOut(duration: 0.2)) {
             columnVisibility = targetVisibility
         }
-        Task { @MainActor in
-            await Task.yield()
+        // Dispatched (not `Task.yield()`) so this runs strictly after the
+        // current SwiftUI update cycle's own AppKit layout pass finishes,
+        // rather than after just one Swift concurrency suspension point —
+        // MacNavigationSplitFocus mutates the same view hierarchy SwiftUI is
+        // still settling.
+        DispatchQueue.main.async {
             columnVisibility = targetVisibility
             #if os(macOS)
             MacNavigationSplitFocus.setCollapsed(enabled)
@@ -415,27 +419,40 @@ struct ContentView: View {
 #if os(macOS)
 @MainActor
 private enum MacNavigationSplitFocus {
+    /// Bypasses SwiftUI's own `columnVisibility` state to force an
+    /// immediate, fully-collapsed layout (`columnVisibility` alone was too
+    /// slow/partial on its own). Because it mutates AppKit's split view
+    /// hierarchy directly and outside SwiftUI's diffing, it must never touch
+    /// a view/controller that isn't actually still attached to the key
+    /// window — SwiftUI can swap the whole detail column's content (e.g. a
+    /// fresh `InlineEntryEditorView` from a new-entry action) around the
+    /// same moment this runs, and mutating a torn-down hierarchy is exactly
+    /// the kind of thing that produces a hard-to-reproduce AppKit crash.
     static func setCollapsed(_ collapsed: Bool) {
-        guard let root = NSApp.keyWindow?.contentViewController else { return }
+        guard let keyWindow = NSApp.keyWindow,
+              let root = keyWindow.contentViewController else { return }
         let controllers = splitControllers(below: root)
         controllers.forEach { controller in
-            guard controller.splitViewItems.count >= 2 else { return }
+            guard controller.view.window === keyWindow,
+                  controller.splitViewItems.count >= 2 else { return }
             for item in controller.splitViewItems.dropLast() {
                 item.isCollapsed = collapsed
             }
         }
-        guard let contentView = NSApp.keyWindow?.contentView else { return }
+        guard let contentView = keyWindow.contentView else { return }
         let views = splitViews(below: contentView)
         views
             .filter {
-                $0.isVertical
+                $0.window === keyWindow
+                    && $0.isVertical
                     && $0.bounds.width > 500
                     && $0.bounds.height > 300
             }
             .forEach { splitView in
-                for view in splitView.arrangedSubviews.dropLast() {
+                for view in splitView.arrangedSubviews.dropLast() where view.window === keyWindow {
                     view.isHidden = collapsed
                 }
+                guard splitView.window === keyWindow else { return }
                 splitView.needsLayout = true
                 splitView.layoutSubtreeIfNeeded()
             }

@@ -84,12 +84,53 @@ public protocol JournalRepository: AnyObject {
 @MainActor
 public protocol AttachmentRepository: AnyObject {
     func allAttachments() throws -> [(AttachmentRecord, Data?)]
+    /// A single attachment by id, without scanning or materializing every
+    /// other attachment's binary in storage — unlike `allAttachments()`,
+    /// safe to call from a hot path (e.g. the live editor's inline image
+    /// rendering) that only ever needs one specific attachment.
+    func attachment(id: UUID) throws -> (AttachmentRecord, Data?)?
+    /// Just the checksum for one attachment, without touching `binary` —
+    /// unlike `attachment(id:)`, which always faults the blob even when the
+    /// caller only needs to know which CAS file to look for. Used to check
+    /// CAS presence (`AttachmentFileStore.hasData(checksum:)`) without
+    /// paying for a blob fault on every call.
+    func attachmentChecksum(id: UUID) throws -> String?
     func saveAttachment(_ record: AttachmentRecord, binary: Data?) throws
     /// Checksums of every attachment row currently in storage, without
     /// touching the `binary` payload — used to recompute which CAS files on
     /// disk are still referenced after a purge, without faulting in
     /// potentially gigabytes of external-storage blobs.
     func attachmentChecksums() throws -> Set<String>
+    /// Metadata for every attachment belonging to one entry, without
+    /// touching `binary` — safe to call from a view body / hot path, unlike
+    /// `allAttachments()` which faults every external-storage blob in the
+    /// entire store just to filter by entryID.
+    func attachments(forEntry entryID: UUID) throws -> [AttachmentRecord]
+    /// Attachments currently in one of `states`, with binary — for callers
+    /// that must inspect the binary to decide a state transition (e.g. "is
+    /// the download actually done"). Scoped to just those states rather than
+    /// `allAttachments()`'s full-table scan; in practice `states` is a
+    /// small, transient subset (pending/uploading/downloading), so this
+    /// still avoids faulting the vast majority of blobs in storage.
+    func attachments(
+        inStates states: Set<AttachmentTransferState>
+    ) throws -> [(AttachmentRecord, Data?)]
+    /// Updates only the transfer state (and `updatedAt`) of one attachment
+    /// row, leaving `binary` untouched. Returns whether a row with `id`
+    /// existed. Use this instead of `saveAttachment(_:binary:)` for state
+    /// transitions (upload/download progress) — round-tripping the binary
+    /// through `saveAttachment` just to flip an enum rewrites the entire
+    /// blob to disk for no reason.
+    @discardableResult
+    func updateAttachmentState(
+        id: UUID, state: AttachmentTransferState, updatedAt: Date
+    ) throws -> Bool
+    /// Removes one attachment row (metadata + binary). Returns the removed
+    /// row's checksum so the caller can release the underlying CAS file once
+    /// it re-verifies no other row still references it — or `nil` if no row
+    /// with `id` existed (idempotent under races).
+    @discardableResult
+    func deleteAttachment(id: UUID) throws -> String?
 }
 
 @MainActor

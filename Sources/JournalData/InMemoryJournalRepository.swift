@@ -308,8 +308,51 @@ public final class InMemoryJournalRepository:
         attachmentStorage.values.map { $0 }
     }
 
+    public func attachment(id: UUID) throws -> (AttachmentRecord, Data?)? {
+        attachmentStorage[id]
+    }
+
+    public func attachmentChecksum(id: UUID) throws -> String? {
+        attachmentStorage[id]?.0.checksum
+    }
+
     public func attachmentChecksums() throws -> Set<String> {
         Set(attachmentStorage.values.map { $0.0.checksum })
+    }
+
+    public func attachments(forEntry entryID: UUID) throws -> [AttachmentRecord] {
+        attachmentStorage.values.map(\.0).filter { $0.entryID == entryID }
+    }
+
+    public func attachments(
+        inStates states: Set<AttachmentTransferState>
+    ) throws -> [(AttachmentRecord, Data?)] {
+        attachmentStorage.values.filter { states.contains($0.0.state) }
+    }
+
+    @discardableResult
+    public func updateAttachmentState(
+        id: UUID, state: AttachmentTransferState, updatedAt: Date
+    ) throws -> Bool {
+        guard var entry = attachmentStorage[id] else { return false }
+        entry.0.state = state
+        entry.0.updatedAt = updatedAt
+        attachmentStorage[id] = entry
+        try persist()
+        return true
+    }
+
+    @discardableResult
+    public func deleteAttachment(id: UUID) throws -> String? {
+        guard let removed = attachmentStorage[id] else { return nil }
+        attachmentStorage[id] = nil
+        do {
+            try persist()
+        } catch {
+            attachmentStorage[id] = removed
+            throw error
+        }
+        return removed.0.checksum
     }
 
     public func performRestoreTransaction(

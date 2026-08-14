@@ -378,10 +378,114 @@ public final class SwiftDataJournalRepository:
         }
     }
 
+    public func attachment(id: UUID) throws -> (AttachmentRecord, Data?)? {
+        var descriptor = FetchDescriptor<AttachmentEntity>(
+            predicate: #Predicate { entity in entity.stableID == id }
+        )
+        descriptor.fetchLimit = 1
+        guard let entity = try context.fetch(descriptor).first else { return nil }
+        let record = AttachmentRecord(
+            id: entity.stableID,
+            entryID: entity.entryID,
+            originalName: entity.originalName,
+            mimeType: entity.mimeType,
+            checksum: entity.checksum,
+            byteCount: entity.byteCount,
+            state: AttachmentTransferState(rawValue: entity.stateRaw) ?? .failed,
+            updatedAt: entity.updatedAt,
+            deletedAt: entity.deletedAt
+        )
+        return (record, entity.binary)
+    }
+
+    public func attachmentChecksum(id: UUID) throws -> String? {
+        var descriptor = FetchDescriptor<AttachmentEntity>(
+            predicate: #Predicate { entity in entity.stableID == id }
+        )
+        descriptor.fetchLimit = 1
+        // Never touches `.binary` — see the protocol doc comment.
+        return try context.fetch(descriptor).first?.checksum
+    }
+
     public func attachmentChecksums() throws -> Set<String> {
         // A bare fetch of only what's needed to compute references — never
         // touches `.binary`, unlike `allAttachments()`.
         Set(try context.fetch(FetchDescriptor<AttachmentEntity>()).map(\.checksum))
+    }
+
+    public func attachments(forEntry entryID: UUID) throws -> [AttachmentRecord] {
+        let descriptor = FetchDescriptor<AttachmentEntity>(
+            predicate: #Predicate { entity in entity.entryID == entryID }
+        )
+        // Deliberately never touches `entity.binary` — see the protocol doc
+        // comment. This is the metadata-only, entryID-scoped counterpart to
+        // `attachment(id:)`.
+        return try context.fetch(descriptor).map { entity in
+            AttachmentRecord(
+                id: entity.stableID,
+                entryID: entity.entryID,
+                originalName: entity.originalName,
+                mimeType: entity.mimeType,
+                checksum: entity.checksum,
+                byteCount: entity.byteCount,
+                state: AttachmentTransferState(rawValue: entity.stateRaw) ?? .failed,
+                updatedAt: entity.updatedAt,
+                deletedAt: entity.deletedAt
+            )
+        }
+    }
+
+    public func attachments(
+        inStates states: Set<AttachmentTransferState>
+    ) throws -> [(AttachmentRecord, Data?)] {
+        let rawStates = states.map(\.rawValue)
+        let descriptor = FetchDescriptor<AttachmentEntity>(
+            predicate: #Predicate { entity in rawStates.contains(entity.stateRaw) }
+        )
+        return try context.fetch(descriptor).map { entity in
+            let record = AttachmentRecord(
+                id: entity.stableID,
+                entryID: entity.entryID,
+                originalName: entity.originalName,
+                mimeType: entity.mimeType,
+                checksum: entity.checksum,
+                byteCount: entity.byteCount,
+                state: AttachmentTransferState(rawValue: entity.stateRaw) ?? .failed,
+                updatedAt: entity.updatedAt,
+                deletedAt: entity.deletedAt
+            )
+            return (record, entity.binary)
+        }
+    }
+
+    @discardableResult
+    public func updateAttachmentState(
+        id: UUID, state: AttachmentTransferState, updatedAt: Date
+    ) throws -> Bool {
+        var descriptor = FetchDescriptor<AttachmentEntity>(
+            predicate: #Predicate { entity in entity.stableID == id }
+        )
+        descriptor.fetchLimit = 1
+        guard let entity = try context.fetch(descriptor).first else { return false }
+        // Never touches `.binary` — that's the whole point versus routing
+        // this through `saveAttachment(_:binary:)`.
+        entity.stateRaw = state.rawValue
+        entity.updatedAt = updatedAt
+        try saveIfNeeded()
+        return true
+    }
+
+    @discardableResult
+    public func deleteAttachment(id: UUID) throws -> String? {
+        var descriptor = FetchDescriptor<AttachmentEntity>(
+            predicate: #Predicate { entity in entity.stableID == id }
+        )
+        descriptor.fetchLimit = 1
+        guard let entity = try context.fetch(descriptor).first else { return nil }
+        let checksum = entity.checksum
+        context.delete(entity)
+        try saveIfNeeded()
+        return checksum
     }
 
     public func saveAttachment(_ record: AttachmentRecord, binary: Data?) throws {

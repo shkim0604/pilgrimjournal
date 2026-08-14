@@ -195,7 +195,7 @@ final class MarkdownSupportTests: XCTestCase {
             .clear
         )
         XCTAssertEqual(
-            MarkdownBulletDecoration.ranges(in: markdown),
+            MarkdownBulletDecoration.matches(in: markdown).map(\.markerRange),
             [source.range(of: "*")]
         )
         let quoteStyle = storage.attribute(
@@ -255,6 +255,69 @@ final class MarkdownSupportTests: XCTestCase {
             .clear
         )
         XCTAssertEqual(storage.string, markdown)
+    }
+
+    func testNestedBulletsGetHigherIndentationLevel() {
+        let markdown = "* 상위\n  * 하위\n    * 더 하위"
+        let source = markdown as NSString
+
+        let matches = MarkdownBulletDecoration.matches(in: markdown)
+
+        XCTAssertEqual(matches.map(\.indentationLevel), [0, 1, 2])
+        XCTAssertEqual(matches[0].markerRange, source.range(of: "*"))
+    }
+
+    func testNestedBulletWrapIndentGrowsWithLevel() {
+        let markdown = "* 상위\n  * 하위"
+        let source = markdown as NSString
+        let storage = NSTextStorage(string: markdown)
+
+        LiveMarkdownStyler.apply(to: storage)
+
+        let topStyle = try! XCTUnwrap(storage.attribute(
+            .paragraphStyle,
+            at: source.range(of: "상위").location,
+            effectiveRange: nil
+        ) as? NSParagraphStyle)
+        let nestedStyle = try! XCTUnwrap(storage.attribute(
+            .paragraphStyle,
+            at: source.range(of: "하위").location,
+            effectiveRange: nil
+        ) as? NSParagraphStyle)
+
+        // A wrapped continuation line under the nested bullet must indent
+        // further than one under the top-level bullet, or it lands back at
+        // the top-level column instead of under its own marker.
+        XCTAssertGreaterThan(nestedStyle.headIndent, topStyle.headIndent)
+        // Deeper levels also get more first-line margin, on top of the
+        // source text's own 2-space-per-level indent — otherwise nesting
+        // reads as too subtle to see.
+        XCTAssertGreaterThan(nestedStyle.firstLineHeadIndent, topStyle.firstLineHeadIndent)
+    }
+
+    func testWrappedBulletLineAlignsWithFirstLinesTextStart() {
+        // Regression test for a real bug: a wrapped continuation line
+        // landed to the right of where the first line's visible text
+        // (after the hidden "- " marker) actually starts, at every
+        // indentation level — headIndent must never exceed
+        // firstLineHeadIndent by more than roughly one marker's width.
+        for markdown in ["* 최상위 항목", "  * 중첩 항목", "    * 더 중첩된 항목"] {
+            let storage = NSTextStorage(string: markdown)
+            LiveMarkdownStyler.apply(to: storage)
+            let style = try! XCTUnwrap(storage.attribute(
+                .paragraphStyle, at: 0, effectiveRange: nil
+            ) as? NSParagraphStyle)
+
+            // The wrapped line must land at or after the first line's own
+            // margin (never to its left — text would look mis-nested)...
+            XCTAssertGreaterThanOrEqual(style.headIndent, style.firstLineHeadIndent)
+            // ...and reasonably close to it — the old formula left roughly
+            // an extra 16pt gap (20 vs. 2 at level 0) that isn't explained
+            // by the hidden marker's own width, which reads as clearly
+            // misaligned. A single "- " marker plus its kern gap is well
+            // under 30pt at any standard body text size.
+            XCTAssertLessThan(style.headIndent - style.firstLineHeadIndent, 30)
+        }
     }
 
     func testChecklistMarkerAndBracketsAreHiddenNotAttachmentBased() {
@@ -720,6 +783,99 @@ final class MarkdownSupportTests: XCTestCase {
         let blocks = MarkdownDocumentParser.parse(markdown)
 
         XCTAssertEqual(blocks, [MarkdownBlock(kind: .paragraph, content: markdown)])
+    }
+
+    func testInsertingAttachmentImageWithDisplaySizeAppendsSizeSuffix() {
+        let id = UUID()
+
+        let result = MarkdownCommandProcessor.insertingAttachmentImage(
+            id: id,
+            displaySize: CGSize(width: 400, height: 300.4),
+            into: "",
+            selection: NSRange(location: 0, length: 0)
+        )
+
+        XCTAssertEqual(result.text, "![](attachment:\(id.uuidString) =400x300)")
+    }
+
+    func testInsertingAttachmentImageWithoutDisplaySizeMatchesOriginalSyntax() {
+        let id = UUID()
+
+        let result = MarkdownCommandProcessor.insertingAttachmentImage(
+            id: id,
+            into: "",
+            selection: NSRange(location: 0, length: 0)
+        )
+
+        XCTAssertEqual(result.text, "![](attachment:\(id.uuidString))")
+    }
+
+    func testDocumentParserRecognizesSizedAttachmentImageLineAsImageBlockWithSameID() {
+        let id = UUID()
+        let markdown = "본문 앞\n\n![](attachment:\(id.uuidString) =400x300)\n\n본문 뒤"
+
+        let blocks = MarkdownDocumentParser.parse(markdown)
+
+        XCTAssertTrue(blocks.contains(MarkdownBlock(kind: .image(id), content: "")))
+    }
+
+    func testAttachmentImageDecorationParsesIDAndSizeFromSizedMarker() {
+        let id = UUID()
+        let markdown = "![](attachment:\(id.uuidString) =400x300)"
+        let source = markdown as NSString
+
+        let matches = MarkdownAttachmentImageDecoration.matches(in: markdown)
+
+        XCTAssertEqual(matches.count, 1)
+        XCTAssertEqual(matches[0].markerRange, NSRange(location: 0, length: source.length))
+        XCTAssertEqual(matches[0].attachmentID, id)
+        XCTAssertEqual(matches[0].storedWidth, 400)
+        XCTAssertEqual(matches[0].storedHeight, 300)
+    }
+
+    func testAttachmentImageDecorationParsesIDWithNilSizeFromUnsizedMarker() {
+        let id = UUID()
+        let markdown = "![](attachment:\(id.uuidString))"
+
+        let matches = MarkdownAttachmentImageDecoration.matches(in: markdown)
+
+        XCTAssertEqual(matches.count, 1)
+        XCTAssertEqual(matches[0].attachmentID, id)
+        XCTAssertNil(matches[0].storedWidth)
+        XCTAssertNil(matches[0].storedHeight)
+    }
+
+    func testAttachmentImageDecorationIgnoresMarkerSharingLineWithOtherText() {
+        let id = UUID()
+        let markdown = "앞 ![](attachment:\(id.uuidString) =400x300) 뒤"
+
+        XCTAssertTrue(MarkdownAttachmentImageDecoration.matches(in: markdown).isEmpty)
+    }
+
+    func testAttachmentImageDisplaySizeKeepsStoredSizeWhenNarrowerThanContainer() {
+        let size = LiveMarkdownStyler.attachmentImageDisplaySize(
+            storedWidth: 300, storedHeight: 150, containerWidth: 600
+        )
+
+        XCTAssertEqual(size, CGSize(width: 300, height: 150))
+    }
+
+    func testAttachmentImageDisplaySizeClampsToContainerWidthPreservingAspectRatio() {
+        let size = LiveMarkdownStyler.attachmentImageDisplaySize(
+            storedWidth: 1200, storedHeight: 600, containerWidth: 600
+        )
+
+        XCTAssertEqual(size.width, 600)
+        XCTAssertEqual(size.height, 300)
+    }
+
+    func testAttachmentImageDisplaySizeWithoutStoredSizeFillsContainerWidth() {
+        let size = LiveMarkdownStyler.attachmentImageDisplaySize(
+            storedWidth: nil, storedHeight: nil, containerWidth: 500
+        )
+
+        XCTAssertEqual(size.width, 500)
+        XCTAssertEqual(size.height, 300)
     }
 }
 #endif

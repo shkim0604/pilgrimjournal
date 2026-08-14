@@ -36,9 +36,28 @@
   `paste(_:)` 오버라이드 → 기존에 안전하다고 검증된
   `Coordinator.replaceExternalText` 경로로 삽입) — 라이브 에디터에서는 원시
   텍스트로 보이고, 보기 모드(`MarkdownPreviewView`)에서 실제 이미지로
-  렌더링됨. 라이브 에디터 내 WYSIWYG 인라인 이미지는 `LiveMarkdownStyler`의
-  "저장되는 마크다운 문자를 절대 바꾸지 않는다" 불변조건과 충돌해 범위에서
-  제외함 (2026-08-12)
+  렌더링됨. (2026-08-12)
+
+- **라이브 에디터 내 인라인 리사이즈 가능한 이미지** — 위 항목에서 범위
+  제외했던 것을 사용자 요청으로 이어서 구현함. 문자 치환 없이
+  `LiveMarkdownStyler`의 "저장되는 마크다운 문자를 절대 바꾸지 않는다"
+  불변조건을 지키면서, 이미지 마커 줄에 `NSParagraphStyle.minimumLineHeight`
+  /`maximumLineHeight`로 높이를 예약하고(기존 `separatorParagraphStyle`
+  패턴 재사용) `draw(_:)`가 그 자리에 디코드된 이미지를 직접 합성하는
+  방식으로 해결함. 크기는 `![](attachment:id =WxH)`로 텍스트 자체에
+  인코딩(별도 메타데이터 저장소 없음). 커서가 이미지 줄에 있을 때만 보이는
+  리사이즈 핸들을 드래그하면 가로세로 비율 고정으로 크기가 바뀌고, 놓는
+  순간 한 번만 `Coordinator.replaceExternalText`로 `=WxH`를 확정함(드래그
+  중에는 attribute만 바꿔 `textDidChange` 재진입 위험 없음). macOS는
+  `mouseDown`/`mouseDragged`/`mouseUp` 오버라이드, iOS는 `UITextView`의
+  내장 제스처와 충돌하지 않도록 `UIPanGestureRecognizer` +
+  `UIGestureRecognizerDelegate` 히트테스트로 구현. 이미지 데이터는
+  `draw(_:)`에서 동기 호출하지 않고, 첨부 전체를 스캔하던 기존
+  `allAttachments()` 대신 새로 추가한 단일 조회
+  `AttachmentRepository.attachment(id:)`로 Coordinator가 캐시하며 비동기
+  로드함. `dirtyRect` 교차 검사로 화면 밖 이미지는 합성하지 않아 편집기
+  입력 씹힘 회귀와 같은 `draw(_:)` 경로의 비용 증가를 최소화함 —
+  실기기 검증은 `docs/pre-release-checklist.md`로 미룸 (2026-08-12)
 
 - **`entry(sourceUUID:)`의 fetchLimit 500이 대량 가져오기에서 중복 판정을
   놓칠 수 있던 버그** — `SwiftDataJournalRepository.entry(sourceUUID:)`가

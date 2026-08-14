@@ -113,6 +113,12 @@ final class AppModel: ObservableObject {
     private let notebookCloudStore: NSUbiquitousKeyValueStore?
     private var deletedNotebookNames: [String]
     private var dayOneTask: Task<Void, Never>?
+    /// Constructed once rather than per-call — `AttachmentFileStore.init`
+    /// touches the filesystem (`createDirectory`), and this is read from
+    /// hot paths like `hasLocalBinary`/`attachmentData` that can run once
+    /// per attachment row per render.
+    private lazy var attachmentFileStore: AttachmentFileStore? =
+        try? AttachmentFileStore(root: paths.attachments)
 
     private static let notebookDefaultsKey = "journal-notebooks"
     private static let deletedNotebookDefaultsKey = "journal-deleted-notebooks"
@@ -737,6 +743,33 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// Restores every trashed entry in `ids`. Stops at the first failure
+    /// (matching `moveSelectedEntriesToTrash`'s error handling) but still
+    /// refreshes if anything succeeded before that point.
+    func restoreFromTrash(ids: Set<UUID>) {
+        guard !ids.isEmpty else { return }
+        var restoredEntryIDs = Set<UUID>()
+        do {
+            for id in ids {
+                try repository.restoreFromTrash(entryID: id, deviceID: deviceID, at: .now)
+                restoredEntryIDs.insert(id)
+                if let restored = try repository.entry(id: id) {
+                    try searchIndex.upsert(restored)
+                }
+            }
+            markLocalMutation()
+            refreshTrash()
+            refresh()
+        } catch {
+            if !restoredEntryIDs.isEmpty {
+                markLocalMutation()
+                refreshTrash()
+                refresh()
+            }
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func refreshTrash() {
         do {
             trashEntries = try repository.list(
@@ -755,6 +788,13 @@ final class AppModel: ObservableObject {
     @discardableResult
     func permanentlyDelete(_ entry: JournalEntryRecord) -> Bool {
         applyPurge(ids: [entry.id], announceCount: false)
+    }
+
+    /// Permanently removes every entry in `ids` — same semantics as
+    /// `permanentlyDelete(_:)`, batched for a multi-selection.
+    @discardableResult
+    func permanentlyDelete(ids: Set<UUID>) -> Bool {
+        applyPurge(ids: ids, announceCount: true)
     }
 
     /// Permanently removes every entry currently in the trash. Re-lists the
@@ -887,9 +927,12 @@ final class AppModel: ObservableObject {
             return []
         }
         do {
-            return try attachmentRepository.allAttachments()
-                .map(\.0)
-                .filter { $0.entryID == entryID && $0.deletedAt == nil }
+            // Scoped to this entry and never touches `.binary` — unlike the
+            // old `allAttachments()`-based version, which faulted every
+            // attachment blob in the whole journal just to filter and
+            // immediately discard them.
+            return try attachmentRepository.attachments(forEntry: entryID)
+                .filter { $0.deletedAt == nil }
                 .sorted {
                     if $0.updatedAt != $1.updatedAt { return $0.updatedAt > $1.updatedAt }
                     return $0.id.uuidString < $1.id.uuidString
@@ -900,20 +943,45 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// Checks CAS file presence only — never faults the SwiftData blob.
+    /// Fast path for attachments created on this device (their CAS file was
+    /// written at upload time) and for anything already hydrated by a prior
+    /// call. Only faults the DB blob (once, then self-heals — see
+    /// `AttachmentFileStore.hydrate`) for attachments synced in from
+    /// another device, whose CAS file was never written locally.
     func hasLocalBinary(for attachmentID: UUID) -> Bool {
-        guard let attachmentRepository = repository as? any AttachmentRepository else {
+        guard let attachmentRepository = repository as? any AttachmentRepository,
+              let checksum = try? attachmentRepository.attachmentChecksum(id: attachmentID),
+              let fileStore = attachmentFileStore else {
             return false
         }
-        return (try? attachmentRepository.allAttachments().first {
-            $0.0.id == attachmentID
-        }?.1) != nil
+        if fileStore.hasData(checksum: checksum) { return true }
+        guard let stored = try? attachmentRepository.attachment(id: attachmentID),
+              let binary = stored.1 else { return false }
+        try? fileStore.hydrate(checksum: checksum, data: binary)
+        return true
     }
 
-    func attachmentBinary(for attachmentID: UUID) -> Data? {
-        guard let attachmentRepository = repository as? any AttachmentRepository,
-              let stored = try? attachmentRepository.allAttachments().first(where: {
-                  $0.0.id == attachmentID
-              }) else { return nil }
+    /// Same cheap-first, self-healing strategy as `hasLocalBinary`: try the
+    /// mmap'd CAS file (no blob fault) before falling back to the SwiftData
+    /// blob, hydrating the CAS on the way through so the next call is cheap.
+    /// Backed by single-row queries throughout — safe for hot paths like the
+    /// live editor's inline image rendering, which can be called often and
+    /// must not scan the whole journal each time.
+    func attachmentData(for attachmentID: UUID) -> Data? {
+        guard let attachmentRepository = repository as? any AttachmentRepository else {
+            return nil
+        }
+        if let checksum = try? attachmentRepository.attachmentChecksum(id: attachmentID),
+           let fileStore = attachmentFileStore,
+           let cached = try? fileStore.data(checksum: checksum) {
+            return cached
+        }
+        guard let stored = try? attachmentRepository.attachment(id: attachmentID)
+        else { return nil }
+        if let fileStore = attachmentFileStore, let binary = stored.1 {
+            try? fileStore.hydrate(checksum: stored.0.checksum, data: binary)
+        }
         return stored.1
     }
 
@@ -924,10 +992,8 @@ final class AppModel: ObservableObject {
     /// a URL-based viewer.
     func temporaryPreviewURL(for attachmentID: UUID) -> URL? {
         guard let attachmentRepository = repository as? any AttachmentRepository,
-              let stored = try? attachmentRepository.allAttachments().first(where: {
-                  $0.0.id == attachmentID
-              }),
-              let data = stored.1 else { return nil }
+              let stored = try? attachmentRepository.attachment(id: attachmentID),
+              let data = attachmentData(for: attachmentID) else { return nil }
         let record = stored.0
         let directory = FileManager.default.temporaryDirectory
             .appending(path: "AttachmentPreview", directoryHint: .isDirectory)
@@ -951,16 +1017,23 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// Reading the file and hashing/writing it into the CAS store both scale
+    /// with file size and used to run synchronously on the main actor,
+    /// blocking editor typing while a large attachment imported. Both now
+    /// happen off the main actor; only the final SwiftData save (which must
+    /// stay on the main actor) runs here.
     @discardableResult
-    func addAttachment(from url: URL, to entryID: UUID) -> Bool {
+    func addAttachment(from url: URL, to entryID: UUID) async -> Bool {
         let isSecurityScoped = url.startAccessingSecurityScopedResource()
         defer {
             if isSecurityScoped { url.stopAccessingSecurityScopedResource() }
         }
         do {
-            let data = try Data(contentsOf: url, options: [.mappedIfSafe])
+            let data = try await Task.detached(priority: .userInitiated) {
+                try Data(contentsOf: url, options: [.mappedIfSafe])
+            }.value
             let contentType = UTType(filenameExtension: url.pathExtension)
-            return addAttachment(
+            return await addAttachment(
                 data: data,
                 originalName: url.lastPathComponent,
                 mimeType: contentType?.preferredMIMEType ?? "application/octet-stream",
@@ -972,24 +1045,29 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// See `addAttachment(from:to:)` — the CAS hash+write is offloaded for
+    /// the same reason.
     @discardableResult
     func addAttachment(
         data: Data,
         originalName: String,
         mimeType: String,
         to entryID: UUID
-    ) -> UUID? {
+    ) async -> UUID? {
         guard let attachmentRepository = repository as? any AttachmentRepository else {
             errorMessage = "이 저장소에서는 첨부 파일을 사용할 수 없습니다."
             return nil
         }
+        let attachmentsRoot = paths.attachments
         do {
-            let stored = try AttachmentFileStore(root: paths.attachments).store(
-                data: data,
-                entryID: entryID,
-                originalName: originalName,
-                mimeType: mimeType
-            )
+            let stored = try await Task.detached(priority: .userInitiated) {
+                try AttachmentFileStore(root: attachmentsRoot).store(
+                    data: data,
+                    entryID: entryID,
+                    originalName: originalName,
+                    mimeType: mimeType
+                )
+            }.value
             var record = stored.record
             record.state = cloudAccountMonitor == nil ? .local : .pending
             record.updatedAt = .now
@@ -1003,24 +1081,39 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// Removes one attachment from its entry. Irreversible; the caller is
+    /// expected to have already confirmed with the user. Frees the CAS file
+    /// only if no other row (including other entries, via checksum dedupe)
+    /// still references it.
+    func deleteAttachment(_ attachmentID: UUID) {
+        guard let attachmentRepository = repository as? any AttachmentRepository else { return }
+        do {
+            guard let checksum = try attachmentRepository.deleteAttachment(id: attachmentID)
+            else { return }
+            attachmentRevision += 1
+            markLocalMutation()
+            releaseAttachmentFiles([checksum])
+            removePreviewTempFiles(for: [attachmentID])
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func requestAttachmentDownload(_ attachmentID: UUID) {
         guard let attachmentRepository = repository as? any AttachmentRepository else { return }
         do {
-            guard let stored = try attachmentRepository.allAttachments().first(where: {
-                $0.0.id == attachmentID
-            }) else { return }
-            if stored.1 != nil {
-                var available = stored.0
-                available.state = cloudAccountMonitor == nil ? .local : .uploaded
-                available.updatedAt = .now
-                try attachmentRepository.saveAttachment(available, binary: stored.1)
-                attachmentRevision += 1
-                return
-            }
-            var downloading = stored.0
-            downloading.state = .downloading
-            downloading.updatedAt = .now
-            try attachmentRepository.saveAttachment(downloading, binary: nil)
+            // Single-row fetch — needed to know whether the binary is
+            // already present (decides which state to transition to) — but
+            // the actual write goes through `updateAttachmentState`, which
+            // never rewrites that binary back to disk.
+            guard let stored = try attachmentRepository.attachment(id: attachmentID)
+            else { return }
+            let newState: AttachmentTransferState = stored.1 != nil
+                ? (cloudAccountMonitor == nil ? .local : .uploaded)
+                : .downloading
+            try attachmentRepository.updateAttachmentState(
+                id: attachmentID, state: newState, updatedAt: .now
+            )
             attachmentRevision += 1
         } catch {
             errorMessage = error.localizedDescription
@@ -1030,13 +1123,12 @@ final class AppModel: ObservableObject {
     func retryAttachmentTransfer(_ attachmentID: UUID) {
         guard let attachmentRepository = repository as? any AttachmentRepository else { return }
         do {
-            guard let stored = try attachmentRepository.allAttachments().first(where: {
-                $0.0.id == attachmentID
-            }) else { return }
-            var retrying = stored.0
-            retrying.state = stored.1 == nil ? .downloading : .pending
-            retrying.updatedAt = .now
-            try attachmentRepository.saveAttachment(retrying, binary: stored.1)
+            guard let stored = try attachmentRepository.attachment(id: attachmentID)
+            else { return }
+            let newState: AttachmentTransferState = stored.1 == nil ? .downloading : .pending
+            try attachmentRepository.updateAttachmentState(
+                id: attachmentID, state: newState, updatedAt: .now
+            )
             attachmentRevision += 1
             markLocalMutation()
         } catch {
@@ -1453,13 +1545,18 @@ final class AppModel: ObservableObject {
         guard let attachmentRepository = repository as? any AttachmentRepository else { return }
         do {
             var didUpdate = false
-            for stored in try attachmentRepository.allAttachments()
-            where states.contains(stored.0.state) && stored.0.deletedAt == nil {
-                var record = stored.0
-                record.state = newState
-                record.updatedAt = .now
-                try attachmentRepository.saveAttachment(record, binary: stored.1)
-                didUpdate = true
+            // Scoped to just the matching states — a small, transient
+            // subset — and never rewrites `binary` (unlike the old
+            // saveAttachment(record, binary:) round-trip, which faulted
+            // every matching row's blob just to flip an enum, and could
+            // re-upload the same CKAsset on every sync event).
+            for stored in try attachmentRepository.attachments(inStates: states)
+            where stored.0.deletedAt == nil {
+                if try attachmentRepository.updateAttachmentState(
+                    id: stored.0.id, state: newState, updatedAt: .now
+                ) {
+                    didUpdate = true
+                }
             }
             if didUpdate { attachmentRevision += 1 }
         } catch {
@@ -1471,13 +1568,13 @@ final class AppModel: ObservableObject {
         guard let attachmentRepository = repository as? any AttachmentRepository else { return }
         do {
             var didUpdate = false
-            for stored in try attachmentRepository.allAttachments()
-            where stored.0.state == .downloading && stored.1 != nil {
-                var record = stored.0
-                record.state = .uploaded
-                record.updatedAt = .now
-                try attachmentRepository.saveAttachment(record, binary: stored.1)
-                didUpdate = true
+            for stored in try attachmentRepository.attachments(inStates: [.downloading])
+            where stored.1 != nil {
+                if try attachmentRepository.updateAttachmentState(
+                    id: stored.0.id, state: .uploaded, updatedAt: .now
+                ) {
+                    didUpdate = true
+                }
             }
             if didUpdate { attachmentRevision += 1 }
         } catch {
