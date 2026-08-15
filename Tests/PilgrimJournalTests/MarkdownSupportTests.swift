@@ -878,6 +878,76 @@ final class MarkdownSupportTests: XCTestCase {
         XCTAssertEqual(size.height, 300)
     }
 
+    // An image line has to stay exactly `![](attachment:id …)` or the marker
+    // stops matching and the picture is replaced by its raw markdown, so a
+    // keystroke landing on that line is given a line of its own.
+    private static let imageMarker =
+        "![](attachment:11111111-1111-1111-1111-111111111111)"
+
+    func testTypingAtTheEndOfAnImageLineMovesBelowTheImage() {
+        let marker = Self.imageMarker
+        let end = (marker as NSString).length
+
+        let relocation = MarkdownAttachmentImageDecoration.insertionRelocation(
+            in: marker, cursorUTF16Offset: end
+        )
+
+        XCTAssertEqual(
+            relocation,
+            .init(newlineOffset: end, caretOffset: end + 1)
+        )
+    }
+
+    func testTypingAtTheStartOfAnImageLineMovesAboveTheImage() {
+        let relocation = MarkdownAttachmentImageDecoration.insertionRelocation(
+            in: Self.imageMarker, cursorUTF16Offset: 0
+        )
+
+        XCTAssertEqual(relocation, .init(newlineOffset: 0, caretOffset: 0))
+    }
+
+    func testTypingInsideAnImageMarkerMovesBelowTheImage() {
+        let marker = Self.imageMarker
+        let end = (marker as NSString).length
+
+        let relocation = MarkdownAttachmentImageDecoration.insertionRelocation(
+            in: marker, cursorUTF16Offset: 5
+        )
+
+        XCTAssertEqual(
+            relocation,
+            .init(newlineOffset: end, caretOffset: end + 1)
+        )
+    }
+
+    func testTypingOnAnImageLineAmongOtherLinesUsesThatLinesBounds() {
+        let text = "위\n\(Self.imageMarker)\n아래"
+        let markerStart = ("위\n" as NSString).length
+        let markerEnd = markerStart + (Self.imageMarker as NSString).length
+
+        let relocation = MarkdownAttachmentImageDecoration.insertionRelocation(
+            in: text, cursorUTF16Offset: markerEnd
+        )
+
+        XCTAssertEqual(
+            relocation,
+            .init(newlineOffset: markerEnd, caretOffset: markerEnd + 1)
+        )
+    }
+
+    func testTypingOnOrdinaryLinesIsNotRelocated() {
+        let text = "위\n\(Self.imageMarker)\n아래"
+        // Start of the document, the blank line's newline, and the line below.
+        for cursor in [0, 1, (text as NSString).length] {
+            XCTAssertNil(
+                MarkdownAttachmentImageDecoration.insertionRelocation(
+                    in: text, cursorUTF16Offset: cursor
+                ),
+                "cursor \(cursor) should type normally"
+            )
+        }
+    }
+
     func testCompletingABlockMarkerStylesOnThatKeystroke() {
         for line in [
             "# ", "###### ", "- ", "* ", "- [ ] ", "- [x] ", "> ",

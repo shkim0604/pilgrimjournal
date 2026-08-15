@@ -2014,6 +2014,43 @@ enum MarkdownAttachmentImageDecoration {
         }
     }
 
+    /// Where a keystroke should go when the caret is sitting on an image
+    /// line, or `nil` when it isn't and the keystroke can be taken as-is.
+    ///
+    /// An image line is atomic: the saved characters have to stay exactly
+    /// `![](attachment:id …)` for the marker to be recognised, so a single
+    /// character typed into it stops it matching and the picture is replaced
+    /// by its raw markdown. Editors that model images as blocks (Notion,
+    /// Bear) never let text be typed into the image itself — it goes to a
+    /// line of its own, above the image if the caret was at its start and
+    /// below otherwise. That's what this computes.
+    static func insertionRelocation(
+        in text: String,
+        cursorUTF16Offset: Int
+    ) -> InsertionRelocation? {
+        guard let match = matches(in: text).first(where: {
+            cursorUTF16Offset >= $0.markerRange.location
+                && cursorUTF16Offset <= NSMaxRange($0.markerRange)
+        }) else { return nil }
+        let atStart = cursorUTF16Offset == match.markerRange.location
+        let newlineOffset = atStart
+            ? match.markerRange.location
+            : NSMaxRange(match.markerRange)
+        return InsertionRelocation(
+            newlineOffset: newlineOffset,
+            // Above the image the caret stays put and the image moves down;
+            // below it, the caret follows the newline it just created.
+            caretOffset: atStart ? newlineOffset : newlineOffset + 1
+        )
+    }
+
+    struct InsertionRelocation: Equatable {
+        /// Where the newline separating text from the image belongs.
+        var newlineOffset: Int
+        /// Where the caret ends up once that newline exists.
+        var caretOffset: Int
+    }
+
     /// The on-screen rect an image marker line occupies, anchored at its
     /// line fragment's origin. Shared between `draw(_:)` and the resize
     /// handlers so hit-testing always agrees with what was painted.
@@ -2082,6 +2119,11 @@ private final class MarkdownNSTextView: NSTextView {
     /// effect kicks off an async load (see `Coordinator.cachedAttachmentImage`).
     /// Never call anything async directly from `draw(_:)`.
     var attachmentImage: ((UUID) -> PlatformImage?)?
+    /// The size an image is being dragged to, while the drag is in progress.
+    /// The marker text — and with it `storedWidth`/`storedHeight` — is only
+    /// rewritten when the drag ends, so without this the reserved space
+    /// resized live while the picture inside it stayed at its old size.
+    var attachmentResizePreview: (id: UUID, size: CGSize)?
     /// Begins/continues/ends a resize drag if the point hits an image's
     /// resize handle; `begin` returns whether it was consumed.
     var beginAttachmentResize: ((NSPoint) -> Bool)?
@@ -2148,6 +2190,7 @@ private final class MarkdownNSTextView: NSTextView {
     /// composition (Korean) first shows up on screen, and `insertText` is
     /// where committed and non-IME input arrives.
     override func insertText(_ string: Any, replacementRange: NSRange) {
+        moveInsertionOffImageLine()
         restoreTypingAttributesIfHidden()
         super.insertText(string, replacementRange: replacementRange)
     }
@@ -2157,12 +2200,34 @@ private final class MarkdownNSTextView: NSTextView {
         selectedRange: NSRange,
         replacementRange: NSRange
     ) {
+        moveInsertionOffImageLine()
         restoreTypingAttributesIfHidden()
         super.setMarkedText(
             string,
             selectedRange: selectedRange,
             replacementRange: replacementRange
         )
+    }
+
+    /// Keeps an image line atomic by giving the keystroke a line of its own
+    /// — see `MarkdownAttachmentImageDecoration.insertionRelocation`. A
+    /// non-empty selection is left alone: replacing a selected image with
+    /// typed text is a deliberate edit, not an accident.
+    private func moveInsertionOffImageLine() {
+        let selection = selectedRange()
+        guard selection.length == 0,
+              let relocation = MarkdownAttachmentImageDecoration
+                  .insertionRelocation(
+                      in: string,
+                      cursorUTF16Offset: selection.location
+                  ) else { return }
+        let insertionPoint = NSRange(
+            location: relocation.newlineOffset, length: 0
+        )
+        setSelectedRange(insertionPoint)
+        // `super`, not `self`: this must not recurse back through the guard.
+        super.insertText("\n", replacementRange: insertionPoint)
+        setSelectedRange(NSRange(location: relocation.caretOffset, length: 0))
     }
 
     private func restoreTypingAttributesIfHidden() {
@@ -2333,11 +2398,13 @@ private final class MarkdownNSTextView: NSTextView {
                 forGlyphAt: glyphRange.location,
                 effectiveRange: nil
             )
-            let displaySize = LiveMarkdownStyler.attachmentImageDisplaySize(
-                storedWidth: imageMatch.storedWidth,
-                storedHeight: imageMatch.storedHeight,
-                containerWidth: textContainer.size.width
-            )
+            let displaySize = attachmentResizePreview
+                .flatMap { $0.id == imageMatch.attachmentID ? $0.size : nil }
+                ?? LiveMarkdownStyler.attachmentImageDisplaySize(
+                    storedWidth: imageMatch.storedWidth,
+                    storedHeight: imageMatch.storedHeight,
+                    containerWidth: textContainer.size.width
+                )
             let imageRect = MarkdownAttachmentImageDecoration.imageRect(
                 origin: origin, fragment: fragment, displaySize: displaySize
             )
@@ -2645,6 +2712,9 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
                 containerWidth: textContainer.size.width
             )
             storage.addAttribute(.paragraphStyle, value: style, range: match.markerRange)
+            // Scales the drawn picture with the space being reserved for it;
+            // the marker text only catches up when the drag ends.
+            (textView as? MarkdownNSTextView)?.attachmentResizePreview = (id, size)
             textView.setNeedsDisplay(textView.bounds)
         }
 
@@ -2665,7 +2735,10 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
         }
 
         func endAttachmentResize(at point: NSPoint) {
-            defer { resizingAttachmentID = nil }
+            defer {
+                resizingAttachmentID = nil
+                (textView as? MarkdownNSTextView)?.attachmentResizePreview = nil
+            }
             guard let id = resizingAttachmentID, let textView,
                   let textContainer = textView.textContainer else { return }
             let size = draggedSize(to: point, containerWidth: textContainer.size.width)
@@ -3012,6 +3085,9 @@ private final class MarkdownUITextView: UITextView, UIGestureRecognizerDelegate 
     /// effect kicks off an async load (see `Coordinator.cachedAttachmentImage`).
     /// Never call anything async directly from `draw(_:)`.
     var attachmentImage: ((UUID) -> PlatformImage?)?
+    /// The size an image is being dragged to, while the drag is in progress
+    /// — see the macOS view for why the marker text can't supply it yet.
+    var attachmentResizePreview: (id: UUID, size: CGSize)?
     /// Pure hit test used by the pan gesture's delegate to decide whether to
     /// even claim the touch — must not mutate state (see `shouldReceive`).
     var isPointOnAttachmentResizeHandle: ((CGPoint) -> Bool)?
@@ -3092,13 +3168,31 @@ private final class MarkdownUITextView: UITextView, UIGestureRecognizerDelegate 
     /// See the macOS view: typed text must never inherit a hidden marker's
     /// clear 0.1pt attributes. `setMarkedText` covers IME composition.
     override func insertText(_ text: String) {
+        moveInsertionOffImageLine()
         restoreTypingAttributesIfHidden()
         super.insertText(text)
     }
 
     override func setMarkedText(_ markedText: String?, selectedRange: NSRange) {
+        moveInsertionOffImageLine()
         restoreTypingAttributesIfHidden()
         super.setMarkedText(markedText, selectedRange: selectedRange)
+    }
+
+    /// See the macOS view: an image line is atomic, so a keystroke landing on
+    /// it gets a line of its own rather than breaking the marker.
+    private func moveInsertionOffImageLine() {
+        let selection = selectedRange
+        guard selection.length == 0,
+              let relocation = MarkdownAttachmentImageDecoration
+                  .insertionRelocation(
+                      in: text,
+                      cursorUTF16Offset: selection.location
+                  ) else { return }
+        selectedRange = NSRange(location: relocation.newlineOffset, length: 0)
+        // `super`, not `self`: this must not recurse back through the guard.
+        super.insertText("\n")
+        selectedRange = NSRange(location: relocation.caretOffset, length: 0)
     }
 
     private func restoreTypingAttributesIfHidden() {
@@ -3284,11 +3378,13 @@ private final class MarkdownUITextView: UITextView, UIGestureRecognizerDelegate 
                 forGlyphAt: glyphRange.location,
                 effectiveRange: nil
             )
-            let displaySize = LiveMarkdownStyler.attachmentImageDisplaySize(
-                storedWidth: imageMatch.storedWidth,
-                storedHeight: imageMatch.storedHeight,
-                containerWidth: textContainer.size.width
-            )
+            let displaySize = attachmentResizePreview
+                .flatMap { $0.id == imageMatch.attachmentID ? $0.size : nil }
+                ?? LiveMarkdownStyler.attachmentImageDisplaySize(
+                    storedWidth: imageMatch.storedWidth,
+                    storedHeight: imageMatch.storedHeight,
+                    containerWidth: textContainer.size.width
+                )
             let imageRect = MarkdownAttachmentImageDecoration.imageRect(
                 origin: origin, fragment: fragment, displaySize: displaySize
             )
@@ -3547,6 +3643,8 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
             textView.textStorage.addAttribute(
                 .paragraphStyle, value: style, range: match.markerRange
             )
+            // Scales the drawn picture with the space being reserved for it.
+            (textView as? MarkdownUITextView)?.attachmentResizePreview = (id, size)
             textView.setNeedsDisplay()
         }
 
@@ -3569,7 +3667,10 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
         }
 
         func endAttachmentResize(at point: CGPoint) {
-            defer { resizingAttachmentID = nil }
+            defer {
+                resizingAttachmentID = nil
+                (textView as? MarkdownUITextView)?.attachmentResizePreview = nil
+            }
             guard let id = resizingAttachmentID, let textView else { return }
             let size = draggedSize(to: point, containerWidth: textView.textContainer.size.width)
             guard let match = MarkdownAttachmentImageDecoration.matches(in: textView.text)
