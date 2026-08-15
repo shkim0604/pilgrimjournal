@@ -1895,6 +1895,30 @@ enum LiveMarkdownStyler {
         return CGSize(width: maxWidth, height: rawHeight * scale)
     }
 
+    private static let headingPrefixRegex = try! NSRegularExpression(
+        pattern: #"^(#{1,6})[ \t]+"#
+    )
+
+    /// The attributes text typed at the end of `linePrefix` should carry.
+    ///
+    /// Styling is derived by `apply` from the whole document on a debounce,
+    /// and that debounce is cancelled by every non-whitespace keystroke, so
+    /// text typed into a heading would sit at body size until something else
+    /// triggered a restyle — the heading only snapped to its real size once
+    /// Return was pressed. Typing attributes carry the block's own size
+    /// instead, so it looks like a heading from the first character.
+    static func typingAttributes(
+        forLinePrefix linePrefix: String
+    ) -> [NSAttributedString.Key: Any] {
+        var attributes = baseAttributes
+        let range = NSRange(location: 0, length: (linePrefix as NSString).length)
+        guard let match = headingPrefixRegex.firstMatch(
+            in: linePrefix, range: range
+        ) else { return attributes }
+        attributes[.font] = headingFont(level: match.range(at: 1).length)
+        return attributes
+    }
+
     /// Shared with the resize-drag and window-resize recompute paths in the
     /// Coordinators below, so all three ways an image's reserved height can
     /// change build that height the exact same way.
@@ -2230,13 +2254,31 @@ private final class MarkdownNSTextView: NSTextView {
         setSelectedRange(NSRange(location: relocation.caretOffset, length: 0))
     }
 
+    /// Keeps typing attributes agreeing with the block the caret is in: the
+    /// repair for inheriting a hidden marker's clear 0.1pt text, and the
+    /// heading size a restyle would eventually apply anyway. Anything already
+    /// correct is left untouched, so ordinary typing — IME composition above
+    /// all — is never disturbed.
     private func restoreTypingAttributesIfHidden() {
-        guard MarkdownInputReconciliation.shouldRestoreTypingAttributes(
-            fontPointSize: (typingAttributes[.font] as? NSFont)?.pointSize,
+        let desired = LiveMarkdownStyler.typingAttributes(
+            forLinePrefix: MarkdownInputReconciliation.lineText(
+                in: string, upTo: selectedRange().location
+            )
+        )
+        let currentFont = typingAttributes[.font] as? NSFont
+        let isHidden = MarkdownInputReconciliation.shouldRestoreTypingAttributes(
+            fontPointSize: currentFont?.pointSize,
             foregroundAlpha: (typingAttributes[.foregroundColor] as? NSColor)?
                 .usingColorSpace(.deviceRGB)?.alphaComponent
-        ) else { return }
-        typingAttributes = LiveMarkdownStyler.baseAttributes
+        )
+        // Point size, not font equality: AppKit substitutes the concrete face
+        // once Korean text is involved (system UI font → Apple SD Gothic Neo),
+        // so comparing fonts would report a difference on every Korean
+        // keystroke and rewrite the attributes needlessly mid-composition.
+        let sizeDiffers = currentFont?.pointSize
+            != (desired[.font] as? NSFont)?.pointSize
+        guard isHidden || sizeDiffers else { return }
+        typingAttributes = desired
     }
 
     override func insertTab(_ sender: Any?) {
@@ -3195,17 +3237,30 @@ private final class MarkdownUITextView: UITextView, UIGestureRecognizerDelegate 
         selectedRange = NSRange(location: relocation.caretOffset, length: 0)
     }
 
+    /// See the macOS view: typing attributes follow the block the caret is
+    /// in, both to escape a hidden marker and to type headings at their size.
     private func restoreTypingAttributesIfHidden() {
+        let desired = LiveMarkdownStyler.typingAttributes(
+            forLinePrefix: MarkdownInputReconciliation.lineText(
+                in: text, upTo: selectedRange.location
+            )
+        )
         var alpha: CGFloat?
         if let color = typingAttributes[.foregroundColor] as? UIColor {
             var value: CGFloat = 1
             if color.getWhite(nil, alpha: &value) { alpha = value }
         }
-        guard MarkdownInputReconciliation.shouldRestoreTypingAttributes(
-            fontPointSize: (typingAttributes[.font] as? UIFont)?.pointSize,
+        let currentFont = typingAttributes[.font] as? UIFont
+        let isHidden = MarkdownInputReconciliation.shouldRestoreTypingAttributes(
+            fontPointSize: currentFont?.pointSize,
             foregroundAlpha: alpha
-        ) else { return }
-        typingAttributes = LiveMarkdownStyler.baseAttributes
+        )
+        // Point size, not font equality — see the macOS view: the concrete
+        // face gets substituted for Korean text.
+        let sizeDiffers = currentFont?.pointSize
+            != (desired[.font] as? UIFont)?.pointSize
+        guard isHidden || sizeDiffers else { return }
+        typingAttributes = desired
     }
 
     override func deleteBackward() {
@@ -4003,9 +4058,21 @@ enum MarkdownInputReconciliation {
         in text: String,
         cursorUTF16Offset: Int
     ) -> Bool {
+        let line = lineText(in: text, upTo: cursorUTF16Offset)
+        guard !line.isEmpty else { return false }
+        return blockMarkerRegex.firstMatch(
+            in: line,
+            range: NSRange(location: 0, length: (line as NSString).length)
+        ) != nil
+    }
+
+    /// The current line from its start up to the caret — what decides which
+    /// block the caret is in, for both marker completion and the attributes
+    /// the next keystroke should carry.
+    static func lineText(in text: String, upTo cursorUTF16Offset: Int) -> String {
         let source = text as NSString
         let cursor = min(max(0, cursorUTF16Offset), source.length)
-        guard cursor > 0 else { return false }
+        guard cursor > 0 else { return "" }
         let previousNewline = source.range(
             of: "\n",
             options: .backwards,
@@ -4014,15 +4081,10 @@ enum MarkdownInputReconciliation {
         let lineStart = previousNewline.location == NSNotFound
             ? 0
             : NSMaxRange(previousNewline)
-        let line = source.substring(with: NSRange(
+        return source.substring(with: NSRange(
             location: lineStart,
             length: cursor - lineStart
         ))
-        guard !line.isEmpty else { return false }
-        return blockMarkerRegex.firstMatch(
-            in: line,
-            range: NSRange(location: 0, length: (line as NSString).length)
-        ) != nil
     }
 
     /// Whether the text view's current typing attributes would render the

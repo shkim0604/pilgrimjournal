@@ -948,6 +948,63 @@ final class MarkdownSupportTests: XCTestCase {
         }
     }
 
+    #if os(macOS)
+    /// Typed text has to carry the size the styler would give it, or a
+    /// heading types at body size and only snaps to its real size when
+    /// something else triggers a restyle. Comparing against `apply`'s own
+    /// output keeps the two from drifting apart.
+    ///
+    /// Point size rather than font equality: AppKit substitutes the concrete
+    /// face for Korean text, so the styled run reports Apple SD Gothic Neo
+    /// where the typing attributes still hold the system font.
+    func testHeadingsAreTypedAtTheSizeTheStylerWouldApply() {
+        for level in 1...6 {
+            let marker = String(repeating: "#", count: level) + " "
+            let storage = NSTextStorage(string: marker + "제목")
+            LiveMarkdownStyler.apply(to: storage)
+            let styled = (storage.attributes(
+                at: (marker as NSString).length, effectiveRange: nil
+            )[.font] as? NSFont)?.pointSize
+
+            let typed = (LiveMarkdownStyler.typingAttributes(
+                forLinePrefix: marker
+            )[.font] as? NSFont)?.pointSize
+
+            XCTAssertEqual(typed, styled, "level \(level) types at the wrong size")
+        }
+    }
+
+    func testOrdinaryLinesAreTypedAtBodySize() {
+        let body = (LiveMarkdownStyler.baseAttributes[.font] as? NSFont)?
+            .pointSize
+        for prefix in ["", "본문", "#제목", "#", "- ", "> ", "####### "] {
+            XCTAssertEqual(
+                (LiveMarkdownStyler.typingAttributes(
+                    forLinePrefix: prefix
+                )[.font] as? NSFont)?.pointSize,
+                body,
+                "\(prefix.debugDescription) should type at body size"
+            )
+        }
+    }
+    #endif
+
+    func testLineTextStopsAtTheLineTheCursorIsOn() {
+        let text = "첫 줄\n# 제목\n셋째"
+        let secondLineStart = ("첫 줄\n" as NSString).length
+
+        XCTAssertEqual(
+            MarkdownInputReconciliation.lineText(
+                in: text, upTo: secondLineStart + 2
+            ),
+            "# "
+        )
+        XCTAssertEqual(
+            MarkdownInputReconciliation.lineText(in: text, upTo: 0),
+            ""
+        )
+    }
+
     func testCompletingABlockMarkerStylesOnThatKeystroke() {
         for line in [
             "# ", "###### ", "- ", "* ", "- [ ] ", "- [x] ", "> ",
