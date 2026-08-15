@@ -2763,16 +2763,22 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
                     origin: origin, markerBounds: marker
                 )
                 guard box.contains(point) else { continue }
-                let toggled = MarkdownChecklistDecoration.togglingItem(
-                    match, in: textView.string
+                // One character, edited in place. Rewriting the whole string
+                // and restyling the whole document — what `replaceExternalText`
+                // does — is far too much work for flipping a checkbox, and the
+                // delay was plainly visible on a long entry. Nothing else about
+                // the document changes, so nothing else needs recomputing.
+                let replacement = match.checked ? " " : "x"
+                guard textView.shouldChangeText(
+                    in: match.stateRange, replacementString: replacement
+                ) else { return true }
+                textView.textStorage?.replaceCharacters(
+                    in: match.stateRange, with: replacement
                 )
-                // Same length either way (`[ ]` ↔ `[x]`), so the caret needs
-                // no adjusting.
-                replaceExternalText(
-                    toggled,
-                    selection: textView.selectedRange(),
-                    registersUndo: true
-                )
+                // Registers undo and notifies the delegate, which publishes
+                // the new text so it autosaves and syncs as usual.
+                textView.didChangeText()
+                textView.setNeedsDisplay(box)
                 return true
             }
             return false
@@ -3821,15 +3827,30 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
         /// it undoes, autosaves and syncs like any other. `[ ]` and `[x]` are
         /// the same length, so the caret needs no adjusting.
         func toggleChecklistItem(at point: CGPoint) -> Bool {
-            guard let textView, let match = checklistTarget(at: point) else {
-                return false
-            }
-            replaceExternalText(
-                MarkdownChecklistDecoration.togglingItem(match, in: textView.text),
-                selection: textView.selectedRange,
-                registersUndo: true
-            )
+            guard let match = checklistTarget(at: point) else { return false }
+            setChecklistState(match.checked ? " " : "x", at: match.stateRange)
             return true
+        }
+
+        /// One character, edited in place. Rewriting the whole string and
+        /// restyling the whole document — what `replaceExternalText` does —
+        /// is far too much work for flipping a checkbox, and the delay was
+        /// plainly visible on a long entry.
+        private func setChecklistState(_ character: String, at range: NSRange) {
+            guard let textView else { return }
+            let previous = (textView.text as NSString).substring(with: range)
+            textView.undoManager?.registerUndo(withTarget: self) { target in
+                target.setChecklistState(previous, at: range)
+            }
+            textView.undoManager?.setActionName("체크리스트")
+            // `[ ]` and `[x]` are the same length, so `range` stays valid for
+            // the undo above and the selection needs no adjusting.
+            let storage = textView.textStorage
+            storage.beginEditing()
+            storage.replaceCharacters(in: range, with: character)
+            storage.endEditing()
+            publish(textView.text)
+            textView.setNeedsDisplay()
         }
 
         func attachmentResizeTarget(at point: CGPoint) -> (id: UUID, size: CGSize)? {
