@@ -877,5 +877,70 @@ final class MarkdownSupportTests: XCTestCase {
         XCTAssertEqual(size.width, 500)
         XCTAssertEqual(size.height, 300)
     }
+
+    // Typed text that inherits a hidden marker's attributes is stored but
+    // never drawn — see the 2026-08-15 entry in docs/known-issues.md.
+    func testTypingAttributesAreRestoredWhenInheritedFromAHiddenMarker() {
+        XCTAssertTrue(
+            MarkdownInputReconciliation.shouldRestoreTypingAttributes(
+                fontPointSize: 0.1, foregroundAlpha: 0
+            )
+        )
+        XCTAssertTrue(
+            MarkdownInputReconciliation.shouldRestoreTypingAttributes(
+                fontPointSize: 0.1, foregroundAlpha: 1
+            )
+        )
+        XCTAssertTrue(
+            MarkdownInputReconciliation.shouldRestoreTypingAttributes(
+                fontPointSize: 13, foregroundAlpha: 0
+            )
+        )
+    }
+
+    func testTypingAttributesAreLeftAloneForOrdinaryText() {
+        XCTAssertFalse(
+            MarkdownInputReconciliation.shouldRestoreTypingAttributes(
+                fontPointSize: 13, foregroundAlpha: 0.8
+            )
+        )
+        // Headings type at a larger size; nothing here may disturb them.
+        XCTAssertFalse(
+            MarkdownInputReconciliation.shouldRestoreTypingAttributes(
+                fontPointSize: 28, foregroundAlpha: 1
+            )
+        )
+        // Missing attributes mean the platform default, which is visible.
+        XCTAssertFalse(
+            MarkdownInputReconciliation.shouldRestoreTypingAttributes(
+                fontPointSize: nil, foregroundAlpha: nil
+            )
+        )
+    }
+
+    #if os(macOS)
+    /// The marker attributes the styler actually produces must be recognised
+    /// as hidden — if the styler ever changes how it hides markers, this
+    /// fails rather than silently letting typed text go invisible again.
+    func testStylerHiddenMarkerAttributesAreDetectedAsNeedingRestore() {
+        for markdown in [
+            "# 제목",
+            "![](attachment:11111111-1111-1111-1111-111111111111)",
+        ] {
+            let storage = NSTextStorage(string: markdown)
+            LiveMarkdownStyler.apply(to: storage)
+            let attrs = storage.attributes(at: 0, effectiveRange: nil)
+
+            XCTAssertTrue(
+                MarkdownInputReconciliation.shouldRestoreTypingAttributes(
+                    fontPointSize: (attrs[.font] as? NSFont)?.pointSize,
+                    foregroundAlpha: (attrs[.foregroundColor] as? NSColor)?
+                        .usingColorSpace(.deviceRGB)?.alphaComponent
+                ),
+                "hidden marker of \(markdown.debugDescription) not detected"
+            )
+        }
+    }
+    #endif
 }
 #endif

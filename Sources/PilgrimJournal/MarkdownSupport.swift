@@ -2143,6 +2143,37 @@ private final class MarkdownNSTextView: NSTextView {
             .conforms(to: .image) ?? false
     }
 
+    /// Guarantees typed text is never painted with a hidden marker's
+    /// attributes. Both entry points matter: `setMarkedText` is where an IME
+    /// composition (Korean) first shows up on screen, and `insertText` is
+    /// where committed and non-IME input arrives.
+    override func insertText(_ string: Any, replacementRange: NSRange) {
+        restoreTypingAttributesIfHidden()
+        super.insertText(string, replacementRange: replacementRange)
+    }
+
+    override func setMarkedText(
+        _ string: Any,
+        selectedRange: NSRange,
+        replacementRange: NSRange
+    ) {
+        restoreTypingAttributesIfHidden()
+        super.setMarkedText(
+            string,
+            selectedRange: selectedRange,
+            replacementRange: replacementRange
+        )
+    }
+
+    private func restoreTypingAttributesIfHidden() {
+        guard MarkdownInputReconciliation.shouldRestoreTypingAttributes(
+            fontPointSize: (typingAttributes[.font] as? NSFont)?.pointSize,
+            foregroundAlpha: (typingAttributes[.foregroundColor] as? NSColor)?
+                .usingColorSpace(.deviceRGB)?.alphaComponent
+        ) else { return }
+        typingAttributes = LiveMarkdownStyler.baseAttributes
+    }
+
     override func insertTab(_ sender: Any?) {
         if adjustListIndentation?(.indent) == true { return }
         super.insertTab(sender)
@@ -2686,8 +2717,15 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
                 revealing: safeSelection,
                 containerWidth: textView.textContainer?.size.width ?? 600
             )
-            textView.typingAttributes = LiveMarkdownStyler.baseAttributes
+            // Order matters: AppKit re-derives `typingAttributes` from the
+            // character before the caret whenever the selection moves, so
+            // resetting them *before* `setSelectedRange` would be undone
+            // immediately. A caret landing after a hidden marker — `# ` from
+            // a slash command, an image line — would then type clear 0.1pt
+            // text. The caret-move guard in `textViewDidChangeSelection`
+            // can't cover this either: `isUpdating` is true right here.
             textView.setSelectedRange(safeSelection)
+            textView.typingAttributes = LiveMarkdownStyler.baseAttributes
             textView.scrollRangeToVisible(safeSelection)
             publish(replacement)
             parent.selection = safeSelection
@@ -2923,9 +2961,10 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
                 revealing: selection,
                 containerWidth: textView.textContainer?.size.width ?? 600
             )
-            textView.typingAttributes = LiveMarkdownStyler.baseAttributes
             let safeSelection = clamped(selection, to: textView.string.utf16.count)
+            // Must follow the caret move — see `replaceExternalText`.
             textView.setSelectedRange(safeSelection)
+            textView.typingAttributes = LiveMarkdownStyler.baseAttributes
         }
     }
 }
@@ -3037,6 +3076,31 @@ private final class MarkdownUITextView: UITextView, UIGestureRecognizerDelegate 
             return true
         }
         return super.canPerformAction(action, withSender: sender)
+    }
+
+    /// See the macOS view: typed text must never inherit a hidden marker's
+    /// clear 0.1pt attributes. `setMarkedText` covers IME composition.
+    override func insertText(_ text: String) {
+        restoreTypingAttributesIfHidden()
+        super.insertText(text)
+    }
+
+    override func setMarkedText(_ markedText: String?, selectedRange: NSRange) {
+        restoreTypingAttributesIfHidden()
+        super.setMarkedText(markedText, selectedRange: selectedRange)
+    }
+
+    private func restoreTypingAttributesIfHidden() {
+        var alpha: CGFloat?
+        if let color = typingAttributes[.foregroundColor] as? UIColor {
+            var value: CGFloat = 1
+            if color.getWhite(nil, alpha: &value) { alpha = value }
+        }
+        guard MarkdownInputReconciliation.shouldRestoreTypingAttributes(
+            fontPointSize: (typingAttributes[.font] as? UIFont)?.pointSize,
+            foregroundAlpha: alpha
+        ) else { return }
+        typingAttributes = LiveMarkdownStyler.baseAttributes
     }
 
     override func deleteBackward() {
@@ -3545,8 +3609,10 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
                 revealing: safeSelection,
                 containerWidth: textView.textContainer.size.width
             )
-            textView.typingAttributes = LiveMarkdownStyler.baseAttributes
+            // Must follow the caret move — see the macOS coordinator's
+            // `replaceExternalText` for why.
             textView.selectedRange = safeSelection
+            textView.typingAttributes = LiveMarkdownStyler.baseAttributes
             textView.scrollRangeToVisible(safeSelection)
             publish(replacement)
             parent.selection = safeSelection
@@ -3751,11 +3817,12 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
                 revealing: selection,
                 containerWidth: textView.textContainer.size.width
             )
-            textView.typingAttributes = LiveMarkdownStyler.baseAttributes
+            // Must follow the caret move — see `replaceExternalText`.
             textView.selectedRange = clamped(
                 selection,
                 to: textView.text.utf16.count
             )
+            textView.typingAttributes = LiveMarkdownStyler.baseAttributes
         }
     }
 }
@@ -3794,6 +3861,31 @@ enum MarkdownInputReconciliation {
         var hasher = Hasher()
         hasher.combine(text)
         return hasher.finalize()
+    }
+
+    /// Whether the text view's current typing attributes would render the
+    /// next keystroke invisible, and must be reset to the base attributes.
+    ///
+    /// Markers are hidden by painting them clear at a 0.1pt font and drawing
+    /// the real decoration over them, and AppKit/UIKit seed typing attributes
+    /// from the character before the caret. A caret that lands just after a
+    /// hidden marker — the `# ` a slash command leaves behind, or an image
+    /// line, which is hidden in its entirety — therefore types text that is
+    /// stored correctly but never drawn. Restyling repairs it, but
+    /// `shouldScheduleStyling` cancels the pending pass on the first
+    /// non-whitespace character, so it can stay invisible indefinitely.
+    ///
+    /// Checked at the moment of insertion rather than at each of the many
+    /// places the caret can move, so no path can miss it. Ordinary typing
+    /// leaves attributes untouched — important for IME composition, which
+    /// must not be disturbed (see `docs/known-issues.md`).
+    static func shouldRestoreTypingAttributes(
+        fontPointSize: CGFloat?,
+        foregroundAlpha: CGFloat?
+    ) -> Bool {
+        if let fontPointSize, fontPointSize < 1 { return true }
+        if let foregroundAlpha, foregroundAlpha <= 0 { return true }
+        return false
     }
 
     /// Records a value the editor pushed into its SwiftUI binding.
