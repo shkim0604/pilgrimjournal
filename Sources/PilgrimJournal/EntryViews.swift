@@ -537,12 +537,16 @@ struct InlineEntryEditorView: View {
         }
     }
 
-    private func performAutosave() {
+    /// `force` skips the `isDirty`/`hasContent` guards — needed when a
+    /// caller (attachment paste/picker/drag-drop) needs an entry to exist
+    /// *right now* so it can attach a file, even on an otherwise-untouched
+    /// blank new entry that wouldn't normally trigger an autosave yet.
+    private func performAutosave(force: Bool = false) {
         guard !model.isEntryDeleted(persistedEntryID ?? draft.id) else {
             saveState = .saved
             return
         }
-        guard isDirty else {
+        guard force || isDirty else {
             saveState = .saved
             return
         }
@@ -552,7 +556,7 @@ struct InlineEntryEditorView: View {
         // common case, since content is usually near the start).
         let hasContent = draft.title.contains { !$0.isWhitespace }
             || draft.body.contains { !$0.isWhitespace }
-        guard hasContent else { return }
+        guard force || hasContent else { return }
         autosaveTask?.cancel()
         saveState = .saving
         var outgoing = draft
@@ -578,7 +582,7 @@ struct InlineEntryEditorView: View {
     }
 
     private func ensurePersistedEntryID() -> UUID? {
-        performAutosave()
+        performAutosave(force: persistedEntryID == nil)
         return persistedEntryID
     }
 
@@ -1219,13 +1223,17 @@ struct EntryEditorView: View {
         }
     }
 
+    /// `force` skips the `isDirty`/`hasContent` guards — needed when a
+    /// caller (attachment paste/picker/drag-drop) needs an entry to exist
+    /// *right now* so it can attach a file, even on an otherwise-untouched
+    /// blank new entry that wouldn't normally trigger an autosave yet.
     @discardableResult
-    private func performAutosave() -> Bool {
+    private func performAutosave(force: Bool = false) -> Bool {
         guard !model.isEntryDeleted(persistedEntryID ?? draft.id) else {
             saveState = .saved
             return true
         }
-        guard isDirty else {
+        guard force || isDirty else {
             saveState = .saved
             return true
         }
@@ -1235,7 +1243,7 @@ struct EntryEditorView: View {
         // common case, since content is usually near the start).
         let hasContent = draft.title.contains { !$0.isWhitespace }
             || draft.body.contains { !$0.isWhitespace }
-        guard hasContent else {
+        guard force || hasContent else {
             saveState = .saved
             return true
         }
@@ -1265,7 +1273,7 @@ struct EntryEditorView: View {
     }
 
     private func ensurePersistedEntryID() -> UUID? {
-        guard performAutosave() else { return nil }
+        guard performAutosave(force: persistedEntryID == nil) else { return nil }
         return persistedEntryID
     }
 
