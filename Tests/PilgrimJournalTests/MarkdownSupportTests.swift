@@ -878,6 +878,46 @@ final class MarkdownSupportTests: XCTestCase {
         XCTAssertEqual(size.height, 300)
     }
 
+    func testCompletingABlockMarkerStylesOnThatKeystroke() {
+        for line in [
+            "# ", "###### ", "- ", "* ", "- [ ] ", "- [x] ", "> ",
+            "---", "***", "___", "  - ", "\t# ",
+        ] {
+            XCTAssertTrue(
+                MarkdownInputReconciliation.completesBlockMarker(
+                    in: line, cursorUTF16Offset: (line as NSString).length
+                ),
+                "\(line.debugDescription) should restyle immediately"
+            )
+        }
+        // Also on a later line, not just the first.
+        XCTAssertTrue(
+            MarkdownInputReconciliation.completesBlockMarker(
+                in: "본문\n## ", cursorUTF16Offset: 6
+            )
+        )
+    }
+
+    func testIncompleteOrOrdinaryTextDoesNotStyleEagerly() {
+        for (text, cursor) in [
+            ("#", 1),            // no space yet
+            ("#제목", 4),         // no space at all — not a heading
+            ("# 제목", 5),        // heading already styled; keep the debounce
+            ("-", 1),
+            ("--", 2),
+            ("본문 ", 4),
+            ("", 0),
+            ("####### ", 8),     // seven hashes is not a heading
+        ] {
+            XCTAssertFalse(
+                MarkdownInputReconciliation.completesBlockMarker(
+                    in: text, cursorUTF16Offset: cursor
+                ),
+                "\(text.debugDescription) should not restyle eagerly"
+            )
+        }
+    }
+
     // Typed text that inherits a hidden marker's attributes is stored but
     // never drawn — see the 2026-08-15 entry in docs/known-issues.md.
     func testTypingAttributesAreRestoredWhenInheritedFromAHiddenMarker() {

@@ -2777,6 +2777,17 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
             if continued.text != expanded.text
                 || expanded.text != textView.string {
                 applyStyling(to: textView)
+            } else if MarkdownInputReconciliation.completesBlockMarker(
+                in: textView.string,
+                cursorUTF16Offset: NSMaxRange(preservedSelection)
+            ) {
+                // The keystroke that completed a block marker ("# ", "- ",
+                // "> ") is the one where its formatting should appear. Left
+                // to the debounce below it would arrive 700ms later, and the
+                // next character typed would cancel it outright — so the
+                // heading only showed up after Return.
+                stylingTask?.cancel()
+                applyStyling(to: textView)
             } else if MarkdownInputReconciliation.shouldScheduleStyling(
                 after: textView.string,
                 cursorUTF16Offset: NSMaxRange(preservedSelection)
@@ -3658,6 +3669,14 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
             if continued.text != expanded.text
                 || expanded.text != textView.text {
                 applyStyling(to: textView)
+            } else if MarkdownInputReconciliation.completesBlockMarker(
+                in: textView.text,
+                cursorUTF16Offset: NSMaxRange(preservedSelection)
+            ) {
+                // See the macOS coordinator: style on the keystroke that
+                // completes the marker, not 700ms later.
+                stylingTask?.cancel()
+                applyStyling(to: textView)
             } else if MarkdownInputReconciliation.shouldScheduleStyling(
                 after: textView.text,
                 cursorUTF16Offset: NSMaxRange(preservedSelection)
@@ -3861,6 +3880,48 @@ enum MarkdownInputReconciliation {
         var hasher = Hasher()
         hasher.combine(text)
         return hasher.finalize()
+    }
+
+    /// Block-level markers, matched against a whole line: the line holds
+    /// nothing but the marker, so the caret is sitting right where the
+    /// formatting should switch on.
+    private static let blockMarkerRegex = try! NSRegularExpression(
+        pattern: #"^[ \t]*(?:#{1,6} |[-*] (?:\[[ xX]\] )?|> |---|\*\*\*|___)$"#
+    )
+
+    /// Whether the caret has just completed a block marker, meaning the line
+    /// should be restyled on this keystroke instead of on the debounce.
+    ///
+    /// Restyling the whole document is expensive, so it normally waits for a
+    /// pause — but a marker is exactly the case where waiting is visible:
+    /// typing `# ` left the line unformatted, and the very next character
+    /// cancelled the pending pass (`shouldScheduleStyling`), so the heading
+    /// only appeared after Return. Markers complete rarely, so styling
+    /// eagerly here costs nothing in ordinary typing.
+    static func completesBlockMarker(
+        in text: String,
+        cursorUTF16Offset: Int
+    ) -> Bool {
+        let source = text as NSString
+        let cursor = min(max(0, cursorUTF16Offset), source.length)
+        guard cursor > 0 else { return false }
+        let previousNewline = source.range(
+            of: "\n",
+            options: .backwards,
+            range: NSRange(location: 0, length: cursor)
+        )
+        let lineStart = previousNewline.location == NSNotFound
+            ? 0
+            : NSMaxRange(previousNewline)
+        let line = source.substring(with: NSRange(
+            location: lineStart,
+            length: cursor - lineStart
+        ))
+        guard !line.isEmpty else { return false }
+        return blockMarkerRegex.firstMatch(
+            in: line,
+            range: NSRange(location: 0, length: (line as NSString).length)
+        ) != nil
     }
 
     /// Whether the text view's current typing attributes would render the
