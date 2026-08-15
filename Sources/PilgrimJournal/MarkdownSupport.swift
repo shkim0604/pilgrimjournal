@@ -2106,6 +2106,43 @@ private final class MarkdownNSTextView: NSTextView {
         super.paste(sender)
     }
 
+    /// AppKit decides whether Edit ▸ Paste (and therefore ⌘V) is enabled
+    /// *before* it would ever call `paste(_:)` above, by matching the
+    /// pasteboard against `readablePasteboardTypes`. This view keeps
+    /// `importsGraphics = false` on purpose — attachments live as markdown
+    /// references, not as `NSTextAttachment`s in the text storage — so that
+    /// list is text-only, and an image-only clipboard matches nothing:
+    /// the menu item goes grey, ⌘V does nothing, and the image-paste
+    /// override never runs. Enabling it here is what lets the override run.
+    ///
+    /// Only `paste:` is special-cased, and only to *enable* it; everything
+    /// else falls through to `NSTextView`. `readablePasteboardTypes` is
+    /// deliberately left alone so `super.paste(_:)` can never be handed an
+    /// image type and insert a text attachment behind our back.
+    override func validateUserInterfaceItem(
+        _ item: NSValidatedUserInterfaceItem
+    ) -> Bool {
+        if item.action == #selector(paste(_:)),
+           isEditable,
+           Self.pasteboardHoldsImage(.general) {
+            return true
+        }
+        return super.validateUserInterfaceItem(item)
+    }
+
+    /// Mirrors what `Coordinator.pasteboardImageData` will accept, but only
+    /// inspects types and the file extension — menu validation runs on every
+    /// menu open, so it must never read image bytes off disk.
+    private static func pasteboardHoldsImage(_ pasteboard: NSPasteboard) -> Bool {
+        if pasteboard.data(forType: .png) != nil { return true }
+        if pasteboard.data(forType: .tiff) != nil { return true }
+        guard let url = pasteboard.readObjects(
+            forClasses: [NSURL.self], options: nil
+        )?.first as? URL else { return false }
+        return UTType(filenameExtension: url.pathExtension)?
+            .conforms(to: .image) ?? false
+    }
+
     override func insertTab(_ sender: Any?) {
         if adjustListIndentation?(.indent) == true { return }
         super.insertTab(sender)
@@ -2977,6 +3014,19 @@ private final class MarkdownUITextView: UITextView, UIGestureRecognizerDelegate 
     override func paste(_ sender: Any?) {
         if handleImagePaste?() == true { return }
         super.paste(sender)
+    }
+
+    /// Same gate as the macOS view: UIKit decides whether "붙여넣기" appears in
+    /// the edit menu before it would ever call `paste(_:)`, and a plain-text
+    /// `UITextView` bases that on the pasteboard holding *strings*. An
+    /// image-only clipboard offers none, so the menu item is absent and the
+    /// override above never runs. `hasImages` is the detection-only API —
+    /// unlike reading `.image` it does not trip the paste notification.
+    override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
+        if action == #selector(paste(_:)), isEditable, UIPasteboard.general.hasImages {
+            return true
+        }
+        return super.canPerformAction(action, withSender: sender)
     }
 
     override func deleteBackward() {

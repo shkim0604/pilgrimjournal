@@ -429,3 +429,42 @@ O(n²) 재계산 + iCloud KVS 쓰기 + 앱 전체 재렌더)를 도는 것도 �
 같은 파일의 배치 태그 편집 시트(`TextField("쉼표로 여러 태그 입력", ...)`,
 `Form`/`Section` 안, ScrollView 아님)는 같은 구조가 아니라 손대지 않았다
 — 거기서도 증상이 재현되면 원인이 다른 곳에 있다는 뜻이니 참고할 것.
+
+### 2026-08-15 — 이미지 붙여넣기가 "비활성"이던 진짜 원인: AppKit이 `paste(_:)`를 부르기도 전에 메뉴를 잠근다
+
+사용자가 클립보드에 이미지를 담은 채로 편집기에서 **붙여넣기 메뉴가 회색**이고
+⌘V도 무반응이라고 제보. 메모·Day One에는 같은 클립보드가 잘 붙었다.
+
+**원인:** `MarkdownNSTextView`는 `importsGraphics = false`로 만든다 — 첨부를
+`NSTextAttachment`가 아니라 마크다운 참조로 관리하므로 의도된 설정이다. 그런데
+`NSTextView`는 붙여넣기 메뉴의 활성 여부를 자기 `readablePasteboardTypes`와
+클립보드 타입의 교집합으로 판정하고, `importsGraphics = false`면 그 목록에
+**이미지 타입이 하나도 없다**(RTF/RTFD/HTML/URL/문자열/파일명/색상/폰트/룰러뿐).
+이미지만 든 클립보드는 교집합이 0 → 메뉴 비활성 → `paste(_:)` 오버라이드가
+**애초에 호출되지 않는다.** iOS의 `MarkdownUITextView`도 같은 구조로, 평문
+`UITextView`는 `hasStrings` 기준이라 이미지 전용 클립보드에서 메뉴가 안 뜬다.
+
+**이 함정이 위험한 이유:** 증상이 "붙여넣기 코드가 이미지를 못 알아본다"처럼
+보인다. 실제로 이 세션에서 `pasteboardImageData`(빈 새 기록 저장 문제, 파일 URL
+미처리)를 두 번 고쳤지만 **둘 다 호출되지 않는 코드라 아무 효과가 없었다.**
+붙여넣기가 "안 먹는다"는 제보를 받으면 **핸들러 내부보다 검증 단계를 먼저
+의심할 것** — 메뉴가 회색인지 아닌지가 그 둘을 가르는 결정적 단서다.
+
+**조치:** 핸들러가 아니라 검증을 고쳤다.
+- macOS: `validateUserInterfaceItem(_:)`을 오버라이드해 클립보드에 이미지가
+  있으면 `paste:`만 활성화. `readablePasteboardTypes`는 **일부러 그대로 뒀다** —
+  거기에 이미지 타입을 넣으면 `super.paste(_:)`가 텍스트 저장소에 실제
+  `NSTextAttachment`를 꽂아 넣어 평문 모델이 깨질 수 있다.
+- iOS: `canPerformAction(_:withSender:)`에서 `UIPasteboard.general.hasImages`로
+  동일 처리(`hasImages`는 감지 전용이라 `.image`와 달리 붙여넣기 알림이 뜨지 않음).
+
+**검증 방법(추정 금지 — 실측 가능하다):** GUI를 띄우지 않고 확인할 수 있다.
+`swiftc`로 작은 AppKit 스크립트를 만들어 (a) `readablePasteboardTypes`를
+`importsGraphics` 양쪽 값으로 출력해 이미지 타입 유무를 보고, (b) `paste:`
+셀렉터를 가진 `NSMenuItem`으로 수정 전/후 서브클래스의
+`validateUserInterfaceItem`을 호출해 `false → true`가 되는지 본다. 클립보드는
+읽기만 하므로 사용자 클립보드를 건드리지 않는다(`osascript -e 'clipboard info'`
+도 읽기 전용이라 실제 타입 확인에 쓸 수 있다).
+
+**남은 확인:** 실기기/실빌드에서 이미지 복사 후 메뉴가 활성화되고 실제로
+첨부가 삽입되는지. 자동화 테스트는 이 경로(AppKit 메뉴 검증)를 덮지 못한다.
