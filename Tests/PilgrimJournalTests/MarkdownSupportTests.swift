@@ -989,6 +989,41 @@ final class MarkdownSupportTests: XCTestCase {
     }
     #endif
 
+    // Tapping the drawn box is the only practical way to check an item — the
+    // `- [x]` source is hidden behind the box.
+    func testTogglingAChecklistItemFlipsOnlyThatItemsState() {
+        let text = "- [ ] 첫째\n- [x] 둘째\n- [ ] 셋째"
+        let matches = MarkdownChecklistDecoration.matches(in: text)
+        XCTAssertEqual(matches.count, 3)
+        XCTAssertEqual(matches.map(\.checked), [false, true, false])
+
+        XCTAssertEqual(
+            MarkdownChecklistDecoration.togglingItem(matches[0], in: text),
+            "- [x] 첫째\n- [x] 둘째\n- [ ] 셋째"
+        )
+        XCTAssertEqual(
+            MarkdownChecklistDecoration.togglingItem(matches[1], in: text),
+            "- [ ] 첫째\n- [ ] 둘째\n- [ ] 셋째"
+        )
+    }
+
+    func testTogglingIsReversibleAndPreservesIndentationAndMarker() throws {
+        let text = "  * [X] 들여쓴 항목"
+        let match = try XCTUnwrap(
+            MarkdownChecklistDecoration.matches(in: text).first
+        )
+        let unchecked = MarkdownChecklistDecoration.togglingItem(match, in: text)
+
+        XCTAssertEqual(unchecked, "  * [ ] 들여쓴 항목")
+        XCTAssertEqual(
+            MarkdownChecklistDecoration.togglingItem(
+                try XCTUnwrap(MarkdownChecklistDecoration.matches(in: unchecked).first),
+                in: unchecked
+            ),
+            "  * [x] 들여쓴 항목"
+        )
+    }
+
     func testLineTextStopsAtTheLineTheCursorIsOn() {
         let text = "첫 줄\n# 제목\n셋째"
         let secondLineStart = ("첫 줄\n" as NSString).length

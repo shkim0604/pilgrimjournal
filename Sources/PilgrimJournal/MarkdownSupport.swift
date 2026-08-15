@@ -1976,6 +1976,8 @@ enum MarkdownBulletDecoration {
 enum MarkdownChecklistDecoration {
     struct Match {
         var markerRange: NSRange
+        /// The single character between the brackets — what a toggle rewrites.
+        var stateRange: NSRange
         var checked: Bool
     }
 
@@ -1990,9 +1992,36 @@ enum MarkdownChecklistDecoration {
             let state = source.substring(with: result.range(at: 2))
             return Match(
                 markerRange: result.range(at: 1),
+                stateRange: result.range(at: 2),
                 checked: state.lowercased() == "x"
             )
         }
+    }
+
+    /// The box drawn over the (hidden) list marker. Shared between `draw(_:)`
+    /// and the tap/click hit test so what is clicked is always what was
+    /// painted — the same discipline `imageRect` follows for attachments.
+    static let boxSize: CGFloat = 15
+
+    static func boxRect(origin: CGPoint, markerBounds: CGRect) -> CGRect {
+        CGRect(
+            x: origin.x + markerBounds.minX,
+            y: origin.y + markerBounds.midY - boxSize / 2,
+            width: boxSize,
+            height: boxSize
+        )
+    }
+
+    /// Flips one item between `[ ]` and `[x]`.
+    ///
+    /// The saved characters are the only source of truth for the state — the
+    /// checkbox is painted from them — so toggling is a text edit, which also
+    /// means it lands in the undo stack and syncs like any other edit.
+    static func togglingItem(_ match: Match, in text: String) -> String {
+        (text as NSString).replacingCharacters(
+            in: match.stateRange,
+            with: match.checked ? " " : "x"
+        )
     }
 }
 
@@ -2143,6 +2172,9 @@ private final class MarkdownNSTextView: NSTextView {
     /// effect kicks off an async load (see `Coordinator.cachedAttachmentImage`).
     /// Never call anything async directly from `draw(_:)`.
     var attachmentImage: ((UUID) -> PlatformImage?)?
+    /// Toggles the checklist item whose box is under the point; returns
+    /// whether one was hit and the click therefore consumed.
+    var toggleChecklistItem: ((NSPoint) -> Bool)?
     /// The size an image is being dragged to, while the drag is in progress.
     /// The marker text — and with it `storedWidth`/`storedHeight` — is only
     /// rewritten when the drag ends, so without this the reserved space
@@ -2382,13 +2414,10 @@ private final class MarkdownNSTextView: NSTextView {
                 forGlyphRange: glyphRange,
                 in: textContainer
             )
-            let boxSize: CGFloat = 15
-            let rect = NSRect(
-                x: origin.x + marker.minX,
-                y: origin.y + marker.midY - boxSize / 2,
-                width: boxSize,
-                height: boxSize
+            let rect = MarkdownChecklistDecoration.boxRect(
+                origin: origin, markerBounds: marker
             )
+            let boxSize = MarkdownChecklistDecoration.boxSize
             if checklistMatch.checked {
                 EditorPalette.label.setFill()
                 NSBezierPath(roundedRect: rect, xRadius: 4, yRadius: 4).fill()
@@ -2501,6 +2530,9 @@ private final class MarkdownNSTextView: NSTextView {
             isResizingAttachment = true
             return
         }
+        // Before `super`, which would place the caret instead: a click on the
+        // box toggles the item and leaves the text alone otherwise.
+        if toggleChecklistItem?(point) == true { return }
         super.mouseDown(with: event)
     }
 
@@ -2560,6 +2592,9 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
         }
         textView.attachmentImage = { [weak coordinator = context.coordinator] id in
             coordinator?.cachedAttachmentImage(for: id)
+        }
+        textView.toggleChecklistItem = { [weak coordinator = context.coordinator] point in
+            coordinator?.toggleChecklistItem(at: point) ?? false
         }
         textView.beginAttachmentResize = { [weak coordinator = context.coordinator] point in
             coordinator?.beginAttachmentResize(at: point) ?? false
@@ -2706,6 +2741,41 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
                 self.textView?.setNeedsDisplay(self.textView?.bounds ?? .zero)
             }
             return nil
+        }
+
+        /// Toggling is a text edit rather than a display-only flag, so it
+        /// registers undo, autosaves and syncs like anything else the user
+        /// types. The caret is left where it was — clicking a box is not a
+        /// request to move the insertion point.
+        func toggleChecklistItem(at point: NSPoint) -> Bool {
+            guard let textView, let layoutManager = textView.layoutManager,
+                  let textContainer = textView.textContainer else { return false }
+            let origin = textView.textContainerOrigin
+            for match in MarkdownChecklistDecoration.matches(in: textView.string) {
+                let glyphRange = layoutManager.glyphRange(
+                    forCharacterRange: match.markerRange, actualCharacterRange: nil
+                )
+                guard glyphRange.location < layoutManager.numberOfGlyphs else { continue }
+                let marker = layoutManager.boundingRect(
+                    forGlyphRange: glyphRange, in: textContainer
+                )
+                let box = MarkdownChecklistDecoration.boxRect(
+                    origin: origin, markerBounds: marker
+                )
+                guard box.contains(point) else { continue }
+                let toggled = MarkdownChecklistDecoration.togglingItem(
+                    match, in: textView.string
+                )
+                // Same length either way (`[ ]` ↔ `[x]`), so the caret needs
+                // no adjusting.
+                replaceExternalText(
+                    toggled,
+                    selection: textView.selectedRange(),
+                    registersUndo: true
+                )
+                return true
+            }
+            return false
         }
 
         func beginAttachmentResize(at point: NSPoint) -> Bool {
@@ -3111,7 +3181,11 @@ private final class MarkdownUITextView: UITextView, UIGestureRecognizerDelegate 
     func gestureRecognizer(
         _ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch
     ) -> Bool {
-        isPointOnAttachmentResizeHandle?(touch.location(in: self)) ?? false
+        let point = touch.location(in: self)
+        if gestureRecognizer === checklistTapGesture {
+            return isPointOnChecklistBox?(point) ?? false
+        }
+        return isPointOnAttachmentResizeHandle?(point) ?? false
     }
 
     var adjustListIndentation: ((MarkdownListIndentDirection) -> Void)?
@@ -3133,6 +3207,11 @@ private final class MarkdownUITextView: UITextView, UIGestureRecognizerDelegate 
     /// Pure hit test used by the pan gesture's delegate to decide whether to
     /// even claim the touch — must not mutate state (see `shouldReceive`).
     var isPointOnAttachmentResizeHandle: ((CGPoint) -> Bool)?
+    /// The same split for the checklist tap: a pure hit test that decides
+    /// whether the tap is ours at all, then the toggle itself.
+    var isPointOnChecklistBox: ((CGPoint) -> Bool)?
+    var toggleChecklistItem: ((CGPoint) -> Bool)?
+    private weak var checklistTapGesture: UITapGestureRecognizer?
     var beginAttachmentResize: ((CGPoint) -> Bool)?
     var continueAttachmentResize: ((CGPoint) -> Void)?
     var endAttachmentResize: ((CGPoint) -> Void)?
@@ -3145,11 +3224,13 @@ private final class MarkdownUITextView: UITextView, UIGestureRecognizerDelegate 
     override init(frame: CGRect, textContainer: NSTextContainer?) {
         super.init(frame: frame, textContainer: textContainer)
         configureAttachmentResizeGesture()
+        configureChecklistTapGesture()
     }
 
     required init?(coder: NSCoder) {
         super.init(coder: coder)
         configureAttachmentResizeGesture()
+        configureChecklistTapGesture()
     }
 
     override func layoutSubviews() {
@@ -3171,6 +3252,22 @@ private final class MarkdownUITextView: UITextView, UIGestureRecognizerDelegate 
         )
         gesture.delegate = self
         addGestureRecognizer(gesture)
+    }
+
+    /// Same decoupling as the resize pan: the delegate's hit test means this
+    /// recognizer only ever receives touches that land on a checkbox, so
+    /// UITextView's own selection handling is untouched everywhere else.
+    private func configureChecklistTapGesture() {
+        let gesture = UITapGestureRecognizer(
+            target: self, action: #selector(handleChecklistTap(_:))
+        )
+        gesture.delegate = self
+        addGestureRecognizer(gesture)
+        checklistTapGesture = gesture
+    }
+
+    @objc private func handleChecklistTap(_ gesture: UITapGestureRecognizer) {
+        _ = toggleChecklistItem?(gesture.location(in: self))
     }
 
     @objc private func handleAttachmentResizePan(_ gesture: UIPanGestureRecognizer) {
@@ -3377,12 +3474,8 @@ private final class MarkdownUITextView: UITextView, UIGestureRecognizerDelegate 
                 forGlyphRange: glyphRange,
                 in: textContainer
             )
-            let boxSize: CGFloat = 15
-            let box = CGRect(
-                x: origin.x + marker.minX,
-                y: origin.y + marker.midY - boxSize / 2,
-                width: boxSize,
-                height: boxSize
+            let box = MarkdownChecklistDecoration.boxRect(
+                origin: origin, markerBounds: marker
             )
             if checklistMatch.checked {
                 EditorPalette.label.setFill()
@@ -3501,6 +3594,12 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
         }
         textView.isPointOnAttachmentResizeHandle = { [weak coordinator = context.coordinator] point in
             coordinator?.attachmentResizeTarget(at: point) != nil
+        }
+        textView.isPointOnChecklistBox = { [weak coordinator = context.coordinator] point in
+            coordinator?.checklistTarget(at: point) != nil
+        }
+        textView.toggleChecklistItem = { [weak coordinator = context.coordinator] point in
+            coordinator?.toggleChecklistItem(at: point) ?? false
         }
         textView.beginAttachmentResize = { [weak coordinator = context.coordinator] point in
             coordinator?.beginAttachmentResize(at: point) ?? false
@@ -3645,6 +3744,45 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
         /// under `point`, and what its current display size is. Used both by
         /// the gesture delegate's `shouldReceive` (no side effects allowed
         /// there) and by `beginAttachmentResize`.
+        /// The checklist item whose box is under the point, if any. Pure —
+        /// the gesture delegate calls it to decide whether to claim a touch.
+        func checklistTarget(at point: CGPoint) -> MarkdownChecklistDecoration.Match? {
+            guard let textView else { return nil }
+            let origin = CGPoint(
+                x: textView.textContainerInset.left, y: textView.textContainerInset.top
+            )
+            let layoutManager = textView.layoutManager
+            for match in MarkdownChecklistDecoration.matches(in: textView.text) {
+                let glyphRange = layoutManager.glyphRange(
+                    forCharacterRange: match.markerRange, actualCharacterRange: nil
+                )
+                guard glyphRange.location < layoutManager.numberOfGlyphs else { continue }
+                let marker = layoutManager.boundingRect(
+                    forGlyphRange: glyphRange, in: textView.textContainer
+                )
+                let box = MarkdownChecklistDecoration.boxRect(
+                    origin: origin, markerBounds: marker
+                )
+                if box.contains(point) { return match }
+            }
+            return nil
+        }
+
+        /// See the macOS coordinator: toggling is an ordinary text edit, so
+        /// it undoes, autosaves and syncs like any other. `[ ]` and `[x]` are
+        /// the same length, so the caret needs no adjusting.
+        func toggleChecklistItem(at point: CGPoint) -> Bool {
+            guard let textView, let match = checklistTarget(at: point) else {
+                return false
+            }
+            replaceExternalText(
+                MarkdownChecklistDecoration.togglingItem(match, in: textView.text),
+                selection: textView.selectedRange,
+                registersUndo: true
+            )
+            return true
+        }
+
         func attachmentResizeTarget(at point: CGPoint) -> (id: UUID, size: CGSize)? {
             guard let textView else { return nil }
             let origin = CGPoint(
