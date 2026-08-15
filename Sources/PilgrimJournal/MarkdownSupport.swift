@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import UniformTypeIdentifiers
 
 extension Notification.Name {
     static let applyMarkdownKeyboardCommand = Notification.Name(
@@ -2831,6 +2832,20 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
                let bitmap = NSBitmapImageRep(data: tiffData),
                let pngData = bitmap.representation(using: .png, properties: [:]) {
                 return (pngData, "pasted.png", "image/png")
+            }
+            // Copying a file (Finder "복사", or a browser's "이미지 복사" that
+            // hands over a file reference instead of raw bytes) puts a file
+            // URL on the pasteboard rather than `.png`/`.tiff` data — the two
+            // checks above both miss it silently. Other apps (Notes, Day
+            // One) resolve this case; without it, pasting a copied image
+            // *file* here looked like paste wasn't working at all.
+            if let url = pasteboard.readObjects(
+                forClasses: [NSURL.self], options: nil
+            )?.first as? URL,
+               let contentType = UTType(filenameExtension: url.pathExtension),
+               contentType.conforms(to: .image),
+               let data = try? Data(contentsOf: url) {
+                return (data, url.lastPathComponent, contentType.preferredMIMEType ?? "application/octet-stream")
             }
             return nil
         }
