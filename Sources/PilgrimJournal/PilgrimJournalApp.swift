@@ -582,6 +582,24 @@ struct PilgrimJournalApp: App {
             if let reading = savedRecords.first(where: { $0.kind == .reading }) {
                 appModel.beginEditing(reading)
             }
+        case "editor-long":
+            // A body several screens tall. Short fixtures can't show whether
+            // a long entry actually scrolls, which is exactly where the
+            // iPhone editor's nested-scroll-view bug lived.
+            var long = JournalEntryDraft(
+                kind: .diary,
+                title: "긴 본문 스크롤 확인",
+                body: (1...60)
+                    .map { "\($0)번째 문단 — 본문이 화면보다 길어졌을 때 스크롤되는지 확인하기 위한 문장이다." }
+                    .joined(separator: "\n\n"),
+                occurredAt: baseDate
+            )
+            long.notebookName = "레이아웃 확인"
+            if let record = appModel.saveAndReturnRecord(
+                long, closeEditor: false, selectSavedEntry: false
+            ) {
+                appModel.beginEditing(record)
+            }
         default:
             break
         }

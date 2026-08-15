@@ -57,6 +57,29 @@ Cloud identity 검사도 실제 사용자 데이터와 분리된다. SwiftPM의 
 `DEBUG`를 명시해 이 격리를 동일하게 적용한다. Release/TestFlight 빌드에서는
 해당 우회가 컴파일되지 않는다.
 
+## 긴 본문 레이아웃 확인 (2026-08-15 추가)
+
+`PILGRIM_VISUAL_TEST_SCREEN=editor-long`은 화면보다 몇 배 긴 본문(60문단)을 가진
+기록을 만들고 편집기를 연다. 짧은 fixture로는 **본문이 길어졌을 때만 드러나는
+레이아웃 문제**를 볼 수 없다 — iPhone 편집기가 스크롤 뷰 안의 스크롤 뷰라
+긴 기록의 뒷부분에 아예 닿을 수 없던 버그가 그렇게 숨어 있었다.
+
+```sh
+xcodebuild -project PilgrimJournal/PilgrimJournal.xcodeproj \
+  -scheme PilgrimJournalApp -configuration Debug \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  -derivedDataPath /tmp/pilgrim-sim CODE_SIGNING_ALLOWED=NO build
+
+xcrun simctl install booted /tmp/pilgrim-sim/Build/Products/Debug-iphonesimulator/PilgrimJournal.app
+SIMCTL_CHILD_PILGRIM_VISUAL_TESTING=1 \
+SIMCTL_CHILD_PILGRIM_VISUAL_TEST_SCREEN=editor-long \
+  xcrun simctl launch booted com.dhouse.PilgrimJournal
+xcrun simctl io booted screenshot /tmp/editor-long.png
+```
+
+`simctl`은 터치·키 입력을 넣지 못하므로 **레이아웃까지만** 확인된다. 실제 스크롤
+동작과 "긴 글 끝에서 타이핑할 때 커서가 따라오는지"는 실기기에서 봐야 한다.
+
 ## Scripted simulator matrix (2026-08-11)
 
 `scripts/capture_ios_screens.sh`가 `PILGRIM_VISUAL_TESTING=1`로 앱을 띄우고

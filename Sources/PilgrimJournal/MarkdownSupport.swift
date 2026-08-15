@@ -3615,8 +3615,15 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
         }
         textView.delegate = context.coordinator
         textView.backgroundColor = .clear
-        textView.isScrollEnabled = true
-        textView.alwaysBounceVertical = true
+        // The editor sits inside the screen's own ScrollView, so it must grow
+        // to its full content height and let that one scroll view do the
+        // scrolling. Left scrollable, it was a scroll view inside a scroll
+        // view: the body stayed boxed at `minHeight` showing only its first
+        // few paragraphs, the outer view took the drag, and the rest of a
+        // long entry could not be reached at all.
+        textView.isScrollEnabled = false
+        textView.setContentCompressionResistancePriority(.required, for: .vertical)
+        textView.setContentHuggingPriority(.defaultHigh, for: .vertical)
         textView.keyboardDismissMode = .interactive
         textView.textContainerInset = UIEdgeInsets(
             top: 8,
@@ -3637,6 +3644,25 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
             }
         }
         return textView
+    }
+
+    /// Without this SwiftUI sizes the editor from `intrinsicContentSize`, and
+    /// a non-scrolling `UITextView` reports the width its text would occupy
+    /// *unwrapped* — which made the whole page wider than the screen and
+    /// pushed it sideways out of view. Pin the width to what SwiftUI offers
+    /// and measure the wrapped height at exactly that width.
+    func sizeThatFits(
+        _ proposal: ProposedViewSize,
+        uiView: UITextView,
+        context: Context
+    ) -> CGSize? {
+        guard let width = proposal.width, width.isFinite, width > 0 else {
+            return nil
+        }
+        let fitted = uiView.sizeThatFits(
+            CGSize(width: width, height: .greatestFiniteMagnitude)
+        )
+        return CGSize(width: width, height: fitted.height)
     }
 
     func updateUIView(_ textView: UITextView, context: Context) {
@@ -3744,6 +3770,29 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
         /// under `point`, and what its current display size is. Used both by
         /// the gesture delegate's `shouldReceive` (no side effects allowed
         /// there) and by `beginAttachmentResize`.
+        /// Brings the caret into view.
+        ///
+        /// `scrollRangeToVisible` does nothing now that the text view no
+        /// longer scrolls itself, so the screen's scroll view has to be asked
+        /// directly — otherwise typing near the end of a long entry runs off
+        /// the bottom of the screen with nothing following it.
+        func scrollCaretIntoView(_ textView: UITextView) {
+            guard let position = textView.selectedTextRange?.end else { return }
+            var view: UIView? = textView.superview
+            while let candidate = view, !(candidate is UIScrollView) {
+                view = candidate.superview
+            }
+            guard let scrollView = view as? UIScrollView else { return }
+            let caret = textView.caretRect(for: position)
+            guard !caret.isNull, caret.origin.y.isFinite,
+                  caret.size.height.isFinite else { return }
+            // A little margin so the caret doesn't sit flush against the edge.
+            scrollView.scrollRectToVisible(
+                scrollView.convert(caret, from: textView).insetBy(dx: 0, dy: -24),
+                animated: false
+            )
+        }
+
         /// The checklist item whose box is under the point, if any. Pure —
         /// the gesture delegate calls it to decide whether to claim a touch.
         func checklistTarget(at point: CGPoint) -> MarkdownChecklistDecoration.Match? {
@@ -3918,7 +3967,7 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
             // `replaceExternalText` for why.
             textView.selectedRange = safeSelection
             textView.typingAttributes = LiveMarkdownStyler.baseAttributes
-            textView.scrollRangeToVisible(safeSelection)
+            scrollCaretIntoView(textView)
             publish(replacement)
             parent.selection = safeSelection
             isUpdating = false
@@ -3955,7 +4004,7 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
                     length: 0
                 )
                 textView.selectedRange = cursor
-                textView.scrollRangeToVisible(cursor)
+                scrollCaretIntoView(textView)
             }
             publish(continued.text)
             let preservedSelection = textView.selectedRange
@@ -3984,9 +4033,9 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
             // that grows the text view's content size to fit new lines has
             // already run — see the macOS coordinator's textDidChange for
             // the full explanation.
-            DispatchQueue.main.async { [weak textView] in
-                guard let textView else { return }
-                textView.scrollRangeToVisible(preservedSelection)
+            DispatchQueue.main.async { [weak self, weak textView] in
+                guard let self, let textView else { return }
+                self.scrollCaretIntoView(textView)
             }
             isUpdating = false
         }
