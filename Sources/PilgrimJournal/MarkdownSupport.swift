@@ -2776,6 +2776,16 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
                 return
             }
             parent.selection = selection
+            // Every visible style in this editor is derived by `apply` from
+            // the text itself, so typing attributes must always be the plain
+            // base — but AppKit resets them to the attributes of whatever
+            // character precedes the caret. Hidden markers are drawn as clear
+            // 0.1pt text (the image line is hidden *in its entirety*), so a
+            // caret landing right after one makes the next keystrokes
+            // invisible. Restyling would repair it, except
+            // `shouldScheduleStyling` cancels the pending pass as soon as a
+            // non-whitespace character is typed — which is exactly this case.
+            textView.typingAttributes = LiveMarkdownStyler.baseAttributes
             textView.needsDisplay = true
         }
 
@@ -3620,6 +3630,11 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
                 return
             }
             parent.selection = selection
+            // See the macOS coordinator: a caret landing just after a hidden
+            // marker (clear, 0.1pt) would otherwise make the next keystrokes
+            // invisible, and the restyle that would repair it gets cancelled
+            // by the first non-whitespace character typed.
+            textView.typingAttributes = LiveMarkdownStyler.baseAttributes
             textView.setNeedsDisplay()
         }
 

@@ -468,3 +468,45 @@ O(n²) 재계산 + iCloud KVS 쓰기 + 앱 전체 재렌더)를 도는 것도 �
 
 **남은 확인:** 실기기/실빌드에서 이미지 복사 후 메뉴가 활성화되고 실제로
 첨부가 삽입되는지. 자동화 테스트는 이 경로(AppKit 메뉴 검증)를 덮지 못한다.
+
+### 2026-08-15 — 이미지 뒤에서 Enter를 치면 글자가 안 보임: 숨긴 마커의 속성이 입력에 상속된다
+
+사진을 붙여넣은 직후 Enter를 치고 타이핑하면 **글자가 화면에 나타나지 않는다.**
+글자는 실제로 저장돼 있고, 화면에만 안 보인다.
+
+**원인:** 이미지 마커 줄(`![](attachment:<id>)`)은 `LiveMarkdownStyler.apply`가
+**줄 전체**를 투명(`PlatformColor.clear`) + `hiddenMarkerFont`(0.1pt)로 숨기고,
+그 자리에 `draw(_:)`가 디코드한 이미지를 그린다. AppKit/UIKit은 캐럿 앞 문자의
+속성을 `typingAttributes`로 삼으므로, 마커 줄 끝에서 Enter를 치면 새로 입력하는
+글자가 **투명 0.1pt로 찍힌다.**
+
+재스타일링(`apply`)이 전체를 base 속성으로 되돌려 복구해주지만,
+`MarkdownInputReconciliation.shouldScheduleStyling`은 캐럿 앞이 **공백·줄바꿈일
+때만** 재스타일링을 예약하고 그 외에는 `stylingTask?.cancel()`로 **취소한다**
+(성능 최적화). 즉 Enter로 예약된 재스타일링이 첫 글자를 입력하는 순간 취소돼서,
+포커스를 뺄 때까지(`textDidEndEditing`) 영영 복구되지 않는다.
+
+불릿·체크리스트·인용은 줄 **앞부분 마커만** 숨기므로 줄 끝 문자가 정상 속성이라
+이 문제가 없다. **줄 전체가 숨겨지는 유일한 케이스가 이미지 줄**이라 이미지에서만
+증상이 나타난다.
+
+**조치:** 이 편집기의 모든 시각 스타일은 `apply`가 텍스트에서 파생시키므로
+`typingAttributes`는 **항상 base여야 한다**는 불변식을 캐럿 이동마다 강제한다
+(macOS/iOS 코디네이터의 `textViewDidChangeSelection`). 기존에도 `apply` 직후엔
+base로 되돌리고 있었으나, 캐럿 이동 후를 강제하는 곳이 없었다.
+
+**검증 방법(추정 금지 — GUI 없이 실측 가능):** `swiftc`로 AppKit 스크립트를 만들어
+마커 범위를 clear+0.1pt로 칠한 `NSTextStorage`를 `NSTextView`에 넣고, 캐럿을 줄
+끝에 두고 `insertNewline` → `insertText` 한 뒤 삽입된 글자의 폰트 크기·알파를
+읽는다. 수정 전 `font=0.1pt alpha=0.0`, 수정 후 `font=13.0pt alpha=1.0`으로
+확인했다.
+
+**자동화 테스트로 못 잡는 이유:** 이 경로는 코디네이터의 델리게이트 콜백 순서와
+AppKit의 `typingAttributes` 상속에 달려 있어 순수 함수 테스트로 재현되지 않는다.
+숨김 마커를 **줄 전체**에 적용하는 스타일을 새로 추가할 때는 이 항목을 다시 볼 것.
+
+### 참고 — `BGSystemTaskSchedulerErrorDomain Code=3` 로그는 우리 문제가 아니다
+
+앱은 `BGTaskScheduler`를 전혀 쓰지 않는다(코드·plist·entitlements 어디에도 등록
+없음). 이 로그는 시스템 프레임워크가 자체 백그라운드 작업을 스케줄하다 남기는
+잡음이며, 편집기·첨부·동기화 동작과 무관하다. 이걸 단서로 삼아 파지 말 것.
