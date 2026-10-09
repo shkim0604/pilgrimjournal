@@ -517,7 +517,11 @@ struct InlineEntryEditorView: View {
         // common case, since content is usually near the start).
         let hasContent = draft.title.contains { !$0.isWhitespace }
             || draft.body.contains { !$0.isWhitespace }
-        guard hasContent else { return }
+        guard hasContent || persistedEntryID != nil || draft.id != nil else {
+            autosaveTask?.cancel()
+            saveState = .saved
+            return
+        }
         autosaveTask?.cancel()
         // Reassigning `.saving` to itself on every keystroke still forces a
         // SwiftUI re-render of this whole editor (state writes aren't
@@ -556,7 +560,11 @@ struct InlineEntryEditorView: View {
         // common case, since content is usually near the start).
         let hasContent = draft.title.contains { !$0.isWhitespace }
             || draft.body.contains { !$0.isWhitespace }
-        guard force || hasContent else { return }
+        guard force || hasContent || persistedEntryID != nil || draft.id != nil else {
+            autosaveTask?.cancel()
+            saveState = .saved
+            return
+        }
         autosaveTask?.cancel()
         saveState = .saving
         var outgoing = draft
@@ -857,7 +865,7 @@ struct EntryEditorView: View {
         #if os(macOS)
         .frame(minWidth: 420, minHeight: 520)
         #endif
-        .interactiveDismissDisabled(saveState == .saving)
+        .interactiveDismissDisabled(saveState != .saved)
         .sheet(isPresented: $isShowingMetadata) {
             mobileMetadataSheet
         }
@@ -1206,7 +1214,11 @@ struct EntryEditorView: View {
         // common case, since content is usually near the start).
         let hasContent = draft.title.contains { !$0.isWhitespace }
             || draft.body.contains { !$0.isWhitespace }
-        guard hasContent else { return }
+        guard hasContent || persistedEntryID != nil || draft.id != nil else {
+            autosaveTask?.cancel()
+            saveState = .saved
+            return
+        }
         autosaveTask?.cancel()
         // See the matching comment on the macOS editor's scheduleAutosave —
         // reassigning `.saving` to itself on every keystroke still forces a
@@ -1243,7 +1255,8 @@ struct EntryEditorView: View {
         // common case, since content is usually near the start).
         let hasContent = draft.title.contains { !$0.isWhitespace }
             || draft.body.contains { !$0.isWhitespace }
-        guard force || hasContent else {
+        guard force || hasContent || persistedEntryID != nil || draft.id != nil else {
+            autosaveTask?.cancel()
             saveState = .saved
             return true
         }

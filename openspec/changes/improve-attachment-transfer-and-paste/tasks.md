@@ -43,3 +43,13 @@
 - [x] 7.4 `docs/device-verification.md`(세션 C-5 신규)와 `docs/pre-release-checklist.md`(미룬 항목에 추가, 기존 "참고만 해둘 관찰"·"백로그" 항목은 해소로 갱신)에 실기기 검증 게이트를 추가했다.
 - [ ] 7.5 다운로드 타임아웃 값과 붙여넣기 UX 카피(design.md Open Questions)를 실기기 검증 결과에 따라 확정하고 문서에 반영한다. — 실기기 접근이 없어 이번 세션에서는 미룸, `docs/pre-release-checklist.md`의 미룬 항목으로 추적.
 - [x] 7.6 `./scripts/check.sh`를 실행해 통과를 확인했다(빌드 + `swift test` 167건 + JournalChecks + 개인정보 스캔, 전부 통과).
+
+## 마감 점검 (2026-10-10)
+
+- 7.5의 붙여넣기 UX 카피 질문은 후속 인라인 이미지 표시 구현과 build 21의
+  사용자 확인으로 해소했다(`design.md` 후속 구현 반영).
+- 7.5의 다운로드 대기시간은 실기기 CloudKit import 지연 기록이 없어 25초
+  잠정값을 유지한다. `docs/device-verification.md` 세션 C-5의 결과를 확보한
+  뒤 확정해야 하므로 이 변경은 아직 archive하지 않는다.
+- 전체 `scripts/check.sh` 재실행 통과: Swift 테스트 213개, JournalChecks,
+  개인정보 파일 검사. 자동화 검증은 위 실기기 측정을 대체하지 않는다.

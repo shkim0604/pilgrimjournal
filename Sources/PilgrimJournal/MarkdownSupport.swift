@@ -2554,7 +2554,7 @@ private final class MarkdownNSTextView: NSTextView {
     }
 }
 
-private struct LiveMarkdownTextEditor: NSViewRepresentable {
+struct LiveMarkdownTextEditor: NSViewRepresentable {
     @Binding var text: String
     @Binding var selection: NSRange
     var autoFocus: Bool
@@ -2712,7 +2712,7 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
         /// a side effect starts (at most one) async load per attachment.
         /// Never call `parent.attachmentImage` (async) directly from
         /// `draw(_:)`; this is the only sanctioned entry point.
-        func cachedAttachmentImage(for id: UUID) -> PlatformImage? {
+        fileprivate func cachedAttachmentImage(for id: UUID) -> PlatformImage? {
             if let image = imageCache[id] { return image }
             // Second synchronous check, still zero-cost: the shared cache
             // may already have this image decoded from a previous entry
@@ -2945,7 +2945,8 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
                 in: expanded.text,
                 cursorUTF16Offset: expanded.cursorUTF16Offset
             )
-            if continued.text != textView.string {
+            let transformedText = continued.text != textView.string
+            if transformedText {
                 stylingTask?.cancel()
                 textView.string = continued.text
                 let cursor = NSRange(
@@ -2961,31 +2962,19 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
             // Full-document restyling is expensive (many regex passes over
             // the whole string) and was previously run synchronously on
             // every keystroke, which under rapid typing (e.g. holding
-            // Return) could visibly stall/jank the scroll position. Only
-            // restyle immediately when list-continuation or slash-command
-            // expansion actually changed the text; otherwise defer to a
-            // short debounce, matching the iOS coordinator below.
-            if continued.text != expanded.text
-                || expanded.text != textView.string {
-                applyStyling(to: textView)
-            } else if MarkdownInputReconciliation.completesBlockMarker(
-                in: textView.string,
-                cursorUTF16Offset: NSMaxRange(preservedSelection)
-            ) {
-                // The keystroke that completed a block marker ("# ", "- ",
-                // "> ") is the one where its formatting should appear. Left
-                // to the debounce below it would arrive 700ms later, and the
-                // next character typed would cancel it outright — so the
-                // heading only showed up after Return.
-                stylingTask?.cancel()
-                applyStyling(to: textView)
-            } else if MarkdownInputReconciliation.shouldScheduleStyling(
+            // Return) could visibly stall/jank the scroll position. Commands
+            // and syntax delimiters style immediately; other committed edits
+            // always schedule a deferred pass, including deletion.
+            if transformedText || MarkdownInputReconciliation.shouldStyleImmediately(
                 after: textView.string,
                 cursorUTF16Offset: NSMaxRange(preservedSelection)
             ) {
-                scheduleStyling(for: textView)
-            } else {
+                // Apply syntax on the completing keystroke, without requiring
+                // an extra space or Return to make the formatting visible.
                 stylingTask?.cancel()
+                applyStyling(to: textView)
+            } else {
+                scheduleStyling(for: textView)
             }
             // Keep the caret in view on every change, not just list
             // continuation — otherwise newly typed lines near the bottom
@@ -3022,9 +3011,7 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
             // character precedes the caret. Hidden markers are drawn as clear
             // 0.1pt text (the image line is hidden *in its entirety*), so a
             // caret landing right after one makes the next keystrokes
-            // invisible. Restyling would repair it, except
-            // `shouldScheduleStyling` cancels the pending pass as soon as a
-            // non-whitespace character is typed — which is exactly this case.
+            // invisible until the next styling pass. Restore before typing.
             textView.typingAttributes = LiveMarkdownStyler.baseAttributes
             textView.needsDisplay = true
         }
@@ -3141,7 +3128,7 @@ private struct LiveMarkdownTextEditor: NSViewRepresentable {
             stylingTask?.cancel()
             stylingTask = Task { @MainActor [weak self, weak textView] in
                 do {
-                    try await Task.sleep(for: .milliseconds(700))
+                    try await Task.sleep(for: .milliseconds(250))
                 } catch {
                     return
                 }
@@ -4017,7 +4004,8 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
                 in: expanded.text,
                 cursorUTF16Offset: expanded.cursorUTF16Offset
             )
-            if continued.text != textView.text {
+            let transformedText = continued.text != textView.text
+            if transformedText {
                 stylingTask?.cancel()
                 textView.text = continued.text
                 let cursor = NSRange(
@@ -4030,24 +4018,15 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
             publish(continued.text)
             let preservedSelection = textView.selectedRange
             parent.selection = preservedSelection
-            if continued.text != expanded.text
-                || expanded.text != textView.text {
-                applyStyling(to: textView)
-            } else if MarkdownInputReconciliation.completesBlockMarker(
-                in: textView.text,
-                cursorUTF16Offset: NSMaxRange(preservedSelection)
-            ) {
-                // See the macOS coordinator: style on the keystroke that
-                // completes the marker, not 700ms later.
-                stylingTask?.cancel()
-                applyStyling(to: textView)
-            } else if MarkdownInputReconciliation.shouldScheduleStyling(
+            if transformedText || MarkdownInputReconciliation.shouldStyleImmediately(
                 after: textView.text,
                 cursorUTF16Offset: NSMaxRange(preservedSelection)
             ) {
-                scheduleStyling(for: textView)
-            } else {
+                // See the macOS coordinator: delimiters style immediately.
                 stylingTask?.cancel()
+                applyStyling(to: textView)
+            } else {
+                scheduleStyling(for: textView)
             }
             // Keep the caret in view on every change, not just list
             // continuation. Deferred one run-loop tick so the layout pass
@@ -4081,8 +4060,7 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
             parent.selection = selection
             // See the macOS coordinator: a caret landing just after a hidden
             // marker (clear, 0.1pt) would otherwise make the next keystrokes
-            // invisible, and the restyle that would repair it gets cancelled
-            // by the first non-whitespace character typed.
+            // invisible until the next styling pass.
             textView.typingAttributes = LiveMarkdownStyler.baseAttributes
             textView.setNeedsDisplay()
         }
@@ -4178,7 +4156,7 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
             stylingTask?.cancel()
             stylingTask = Task { @MainActor [weak self, weak textView] in
                 do {
-                    try await Task.sleep(for: .milliseconds(700))
+                    try await Task.sleep(for: .milliseconds(250))
                 } catch {
                     return
                 }
@@ -4259,7 +4237,7 @@ enum MarkdownInputReconciliation {
     /// Restyling the whole document is expensive, so it normally waits for a
     /// pause — but a marker is exactly the case where waiting is visible:
     /// typing `# ` left the line unformatted, and the very next character
-    /// cancelled the pending pass (`shouldScheduleStyling`), so the heading
+    /// used to cancel the pending pass, so the heading
     /// only appeared after Return. Markers complete rarely, so styling
     /// eagerly here costs nothing in ordinary typing.
     static func completesBlockMarker(
@@ -4303,9 +4281,8 @@ enum MarkdownInputReconciliation {
     /// from the character before the caret. A caret that lands just after a
     /// hidden marker — the `# ` a slash command leaves behind, or an image
     /// line, which is hidden in its entirety — therefore types text that is
-    /// stored correctly but never drawn. Restyling repairs it, but
-    /// `shouldScheduleStyling` cancels the pending pass on the first
-    /// non-whitespace character, so it can stay invisible indefinitely.
+    /// stored correctly but never drawn until restyling repairs it. Restore
+    /// the attributes before insertion instead of waiting for that pass.
     ///
     /// Checked at the moment of insertion rather than at each of the many
     /// places the caret can move, so no path can miss it. Ordinary typing
@@ -4350,10 +4327,15 @@ enum MarkdownInputReconciliation {
         return !publishedHistory.contains(publishedFingerprint(incoming))
     }
 
-    static func shouldScheduleStyling(
+    /// Called after composition ends. Delimiters can complete inline syntax
+    /// without a following space; other edits use the deferred styling pass.
+    static func shouldStyleImmediately(
         after text: String,
         cursorUTF16Offset: Int
     ) -> Bool {
+        if completesBlockMarker(in: text, cursorUTF16Offset: cursorUTF16Offset) {
+            return true
+        }
         let source = text as NSString
         guard cursorUTF16Offset > 0,
               cursorUTF16Offset <= source.length else { return false }
@@ -4361,9 +4343,7 @@ enum MarkdownInputReconciliation {
             location: cursorUTF16Offset - 1,
             length: 1
         ))
-        return lastCharacter.rangeOfCharacter(
-            from: .whitespacesAndNewlines
-        ) != nil
+        return ["*", "_", "~", "=", "`", ")", "]"].contains(lastCharacter)
     }
 }
 

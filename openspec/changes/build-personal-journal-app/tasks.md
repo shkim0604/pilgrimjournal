@@ -11,11 +11,11 @@
 ## 2. SwiftData·CloudKit 기술 검증
 
 - [x] 2.1 안정 UUID, optional/scalar 연결, 수정 시각과 device ID를 사용하는 최소 SwiftData CloudKit 호환 schema를 만든다
-- [ ] 2.2 Mac과 iPhone 실제 기기에서 같은 iCloud 계정으로 생성·수정·background 수신 왕복 spike를 수행한다
-- [ ] 2.3 두 기기 오프라인 동시 편집, tombstone 삭제와 명시적 복원 수렴을 spike에서 검증한다
-- [ ] 2.4 외부 저장 binary 첨부의 CloudKit asset 업로드·지연 다운로드·용량 오류를 spike에서 검증한다
+- [x] 2.2 Mac과 iPhone 실제 기기에서 같은 iCloud 계정으로 생성·수정·background 수신 왕복 spike를 수행한다
+- [x] 2.3 두 기기 오프라인 동시 편집, tombstone 삭제와 명시적 복원 수렴을 spike에서 검증한다
+- [x] 2.4 외부 저장 binary 첨부의 CloudKit asset 업로드·지연 다운로드·용량 오류를 spike에서 검증한다
 - [ ] 2.5 대량 합성 기록 batch를 넣어 CloudKit queue, 메모리와 수렴 시간을 측정한다
-- [ ] 2.6 spike 결과로 SwiftData go/no-go를 기록하고 실패 시 동일 저장소 protocol의 NSPersistentCloudKitContainer adapter로 전환한다
+- [x] 2.6 spike 결과로 SwiftData go/no-go를 기록하고 실패 시 동일 저장소 protocol의 NSPersistentCloudKitContainer adapter로 전환한다
 - [x] 2.7 선택한 저장 adapter의 개발 schema를 초기화하고 production 승격 전 schema snapshot 검토 절차를 만든다
 
 ## 3. Canonical 데이터와 로컬 보조 저장소
@@ -37,7 +37,7 @@
 - [x] 4.5 iCloud account 상태, local saved, pending, synced, retryable error를 구분하는 상태 model을 구현한다
 - [x] 4.6 CloudKit remote change를 canonical UI와 search indexing queue에 전달하는 observer를 구현한다
 - [x] 4.7 서로 다른 기록 편집, 같은 기록 동시 편집, 삭제·오래된 기기 연결과 복원 통합 테스트를 추가한다
-- [ ] 4.8 Mac과 iPhone 실제 기기에서 비행기 모드 전환을 포함한 오프라인 수렴 시나리오를 검증한다
+- [x] 4.8 Mac과 iPhone 실제 기기에서 비행기 모드 전환을 포함한 오프라인 수렴 시나리오를 검증한다
 - [x] 4.9 `CKContainer.accountStatus`와 계정 변경 알림을 관찰해 Apple 접근 인증과 별개로 시스템 iCloud 사용 가능 상태와 local-only fallback을 전환한다
 - [x] 4.10 iCloud 계정별 persistent store·검색 인덱스·pending queue를 격리하고 local-only 기록의 명시적 이전 use case를 구현한다
 
@@ -88,7 +88,7 @@
 - [x] 8.5 성공·건너뜀·실패·경고·미분류 항목을 탐색하는 macOS 결과 report UI를 구현한다
 - [x] 8.6 Mac 로컬 가져오기 완료와 CloudKit·iPhone 수렴 상태를 구분해 표시한다
 - [x] 8.7 정상, 부분 손상, 누락 첨부, 취소, 동일 파일과 일부 완료 재실행 통합 테스트를 추가한다
-- [ ] 8.8 익명 합성 Day One batch를 Mac에서 가져와 iPhone에 수렴하는 실제 기기 E2E 테스트를 수행한다
+- [x] 8.8 익명 합성 Day One batch를 Mac에서 가져와 iPhone에 수렴하는 실제 기기 E2E 테스트를 수행한다
 - [ ] 8.9 태그·첨부가 포함된 추가 익명 실제 샘플이 확보되면 adapter compatibility regression을 보강한다
 
 ## 9. 첨부 파일 lifecycle
@@ -127,7 +127,7 @@
 ## 12. 개인정보, 접근성 및 출시 검증
 
 - [x] 12.1 Apple 로그인 접근 인증, 시스템 iCloud 저장·용량 사용, 인증 후 local-only 상태, 자체 server 미사용과 앱 잠금의 UI 보호 범위를 설명하는 onboarding·privacy 안내를 작성한다
-- [ ] 12.2 시스템 iCloud account 변경·로그아웃·재로그인에서 이전 계정·새 계정·local-only 데이터와 검색 인덱스가 섞이지 않는지 검증한다
+- [x] 12.2 시스템 iCloud account 변경·로그아웃·재로그인에서 이전 계정·새 계정·local-only 데이터와 검색 인덱스가 섞이지 않는지 검증한다
 - [ ] 12.3 VoiceOver, Dynamic Type, keyboard navigation, contrast, 긴 한국어 본문과 작은 Mac window를 점검한다
 - [ ] 12.4 Mac·iPhone 오프라인 기록, 동기화, 가져오기, 첨부, 검색, backup·restore 전체 E2E를 실행한다
 - [x] 12.5 대량 Day One ZIP의 memory·disk 한도, 진행률, 취소와 temporary file 정리를 성능 테스트한다
@@ -153,5 +153,21 @@
 - [x] 14.5 설정의 로그아웃 확인과 session 제거 후 로그인 화면 복귀를 구현한다
 - [x] 14.6 기존 로컬 데이터를 최초 Apple 사용자에게 귀속하고 다른 식별자의 데이터 접근·자동 병합을 차단한다
 - [x] 14.7 로그인 성공·재실행·취소·실패·철회·오프라인·로그아웃·다른 사용자 차단 단위 및 UI 테스트를 추가한다
-- [ ] 14.8 Apple Developer Team으로 서명한 Mac과 iPhone 실제 기기에서 첫 로그인·재로그인·권한 철회·업데이트 데이터 보존을 검증한다
+- [x] 14.8 Apple Developer Team으로 서명한 Mac과 iPhone 실제 기기에서 첫 로그인·재로그인·권한 철회·업데이트 데이터 보존을 검증한다
 - [x] 14.9 CloudKit private database를 Apple 로그인 사용자 해시에 귀속하고 불일치 접근 차단·local-only fallback을 테스트한다
+
+## 검증 기록 동기화 (2026-10-10)
+
+`docs/pre-release-checklist.md`의 기존 완료 기록을 반영했다. 이번 세션에서
+실기기 검증을 새로 실행한 것은 아니다.
+
+- 2.2·2.3·2.4·4.8: 세션 A-1~A-3 통과 기록.
+- 2.6: 세션 A-4의 SwiftData go 결정. 대량 배치(2.5)는 제외된 조건부 결정이다.
+- 8.8: 세션 C-1 합성 Day One export 가져오기·기기 간 수렴 통과 기록.
+- 12.2: 2026-08-15 사용자 확인, 세션 B-2 계정 전환·검색 격리 통과.
+- 14.8: 세션 B-1 첫 로그인·재실행·오프라인·철회·재설치 보존 완료 기록.
+
+남은 2.5·10.8은 대량 성능 측정, 8.9는 추가 익명 샘플 확보,
+11.10·12.4는 백업 복원 포함 E2E, 12.3은 접근성 전체 검수,
+12.8은 설치·업데이트 데이터 보존 확인이다. 빌드 25 출시 사실만으로
+이 검증들을 완료로 처리하지 않는다. 해당 증거 확보 전에는 archive하지 않는다.

@@ -11,7 +11,7 @@
 - [x] 2.1 에버그린 배경, 단일 열린 페이지와 골드 책갈피로 구성된 1024px vector master를 만들고 반복 책장·별·그라데이션·문자를 제거한다
 - [x] 2.2 vector master에서 iOS 1024px와 macOS 16~1024px icon set, iOS dark·tinted appearance variant를 생성한다
 - [x] 2.3 Asset Catalog에 새 icon을 연결하고 alpha, 크기, filename과 appearance slot을 검증한다
-- [ ] 2.4 16px·32px·60px·128px·1024px, macOS Dock과 iPhone 홈 화면에서 silhouette·negative space·optical size를 시각 검수한다
+- [x] 2.4 16px·32px·60px·128px·1024px, macOS Dock과 iPhone 홈 화면에서 silhouette·negative space·optical size를 시각 검수한다
 
 ## 3. 탐색 shell과 기록 목록
 
@@ -49,3 +49,12 @@
 - [ ] 6.4 긴 기록의 typing, scroll, live Markdown과 autosave가 UI hitch 없이 동작하는지 Instruments 및 수동 smoke test로 확인한다
 - [x] 6.5 Swift test 전체와 macOS·iOS simulator build를 실행하고 저장·CloudKit·Day One 가져오기 데이터 계약이 변하지 않았음을 회귀 검증한다
 - [ ] 6.6 새 아이콘과 디자인을 포함한 TestFlight 내부 build를 설치·업데이트하고 기존 기록 보존, Mac·iPhone 편집과 appearance 전환을 smoke test한다
+
+## 검증 기록 동기화 (2026-10-10)
+
+- 2.4: `docs/pre-release-checklist.md`의 세션 E-3 아이콘 실기기 검수 통과
+  (Dock/Finder, iPhone 홈 화면/Spotlight 크기별) 기록을 반영했다.
+- `docs/visual-design-validation.md`에 일부 iPhone screenshot과 Mac 직접 조작
+  증거가 있지만, 1.1·5.4·6.2·6.3의 전체 기기·화면 조합을 덮지는 않는다.
+- 6.4 성능 측정과 6.6 설치·업데이트 보존 smoke test도 미완료로 유지한다.
+  App Store 출시와 이 검증의 통과는 별개다.

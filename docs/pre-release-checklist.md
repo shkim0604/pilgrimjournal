@@ -122,6 +122,9 @@
       (`PILGRIM_VISUAL_TESTING=1`)를 띄우고 System Events로 실제 키 입력을
       보내 스크린샷으로 하나씩 확인. 상세는 `docs/known-issues.md`의
       "2026-08-12 — 불릿 목록 버그 수정" 참고.
+- [x] macOS 집중 모드에서 툴바 패널 버튼을 누르면 집중 모드가 풀림 (2026-09-26).
+      Debug 빌드를 직접 실행해 사용자가 수동 확인, 정상 동작. `swift build`
+      통과, `swift test` 17개 통과 (집중 모드 자동 테스트는 없음).
 
 ## 아직 시작 안 한 세션
 
@@ -173,3 +176,16 @@
 (2026-08-12에 openspec `improve-attachment-transfer-and-paste`로 해소 — 첨부
 업로드 진행률 세분화, 다운로드 타임아웃/재시도, 본문 이미지 붙여넣기. 아래
 "미룬 항목"의 실기기 검증 게이트만 남음.)
+
+## OpenSpec 정리 (2026-10-10)
+
+- 기존 완료 증거를 `build-personal-journal-app`의 동기화·인증·가져오기·계정
+  격리 8개 항목과 `refresh-journal-visual-design`의 아이콘 검수에 반영했다.
+- `add-trash-permanent-delete`는 31개 작업 완료 및 기존 2대 기기 수렴 확인을
+  근거로 정식 스펙에 병합하고 `2026-10-10-add-trash-permanent-delete`로 archive했다.
+- 전체 `scripts/check.sh` 통과(213개 테스트, JournalChecks, 개인정보 파일 검사).
+  집중 모드 테스트에서 `.automatic`이 `.doubleColumn`과 다르다는 가정을 제거했다.
+  현재 macOS SwiftUI에서는 두 값이 같으며, 명시적 `.all`·`.detailOnly`의
+  복구와 집중 모드 종료 상태 검증은 유지한다. 앱 실행 코드는 변경하지 않았다.
+- 실기기 검증을 새로 수행한 것은 아니다. 미확인 항목과 매 빌드 입력 회귀
+  검증은 계속 미완료로 둔다. 빌드 25 출시만으로 완료 처리하지 않는다.

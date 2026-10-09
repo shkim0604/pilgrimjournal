@@ -862,6 +862,40 @@ final class AppModelNavigationTests: XCTestCase {
     }
 
     @MainActor
+    func testEmptyExistingDraftReportsSaveFailureAndPreservesStoredRecord() throws {
+        let root = FileManager.default.temporaryDirectory.appending(
+            path: "pilgrim-empty-edit-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+        let paths = JournalPaths(root: root)
+        try paths.prepare()
+        let repository = InMemoryJournalRepository()
+        let model = try AppModel(
+            repository: repository,
+            importStore: InMemoryImportStore(),
+            searchIndex: JournalSearchIndex(
+                url: paths.search.appending(path: "empty-edit.sqlite")
+            ),
+            paths: paths,
+            cloudAccountMonitor: nil
+        )
+        let record = try XCTUnwrap(model.saveAndReturnRecord(
+            JournalEntryDraft(kind: .diary, body: "저장된 본문"),
+            closeEditor: false,
+            selectSavedEntry: false
+        ))
+        var empty = record.draft
+        empty.body = " \n"
+        model.autosaveOnEditorExit(empty)
+        XCTAssertEqual(model.errorMessage, JournalError.emptyContent.localizedDescription)
+        XCTAssertEqual(try repository.entry(id: record.id)?.body, record.body)
+        XCTAssertNil(model.saveAndReturnRecord(
+            empty, closeEditor: false, selectSavedEntry: false
+        ))
+    }
+
+    @MainActor
     func testSharedEditorAttachmentFlowStoresMetadataBinaryAndLocalFile() async throws {
         let root = FileManager.default.temporaryDirectory.appending(
             path: "pilgrim-editor-attachment-\(UUID().uuidString)",

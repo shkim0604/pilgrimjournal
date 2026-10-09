@@ -2,11 +2,59 @@
 import Foundation
 @testable import PilgrimJournal
 import XCTest
+import SwiftUI
 #if os(macOS)
 import AppKit
 #endif
 
 final class MarkdownSupportTests: XCTestCase {
+    #if os(macOS)
+    @MainActor
+    func testNativeDelegateStylesInlineMarkdownOnClosingDelimiter() throws {
+        let view = NSTextView()
+        view.string = "**굵게**"
+        view.setSelectedRange(NSRange(location: view.string.utf16.count, length: 0))
+        let editor = LiveMarkdownTextEditor(
+            text: .constant(view.string),
+            selection: .constant(view.selectedRange()),
+            autoFocus: false,
+            textScale: 1
+        )
+        let coordinator = editor.makeCoordinator()
+        coordinator.textView = view
+        coordinator.textDidChange(Notification(name: NSText.didChangeNotification, object: view))
+
+        let font = try XCTUnwrap(view.textStorage?.attribute(.font, at: 2, effectiveRange: nil) as? NSFont)
+        XCTAssertTrue(NSFontManager.shared.traits(of: font).contains(.boldFontMask))
+        XCTAssertEqual(view.string, "**굵게**")
+        XCTAssertEqual(view.selectedRange().location, view.string.utf16.count)
+    }
+
+    @MainActor
+    func testNativeDelegateRestylesAfterDeletingClosingDelimiter() async throws {
+        let view = NSTextView()
+        view.string = "**bold**"
+        LiveMarkdownStyler.apply(to: view.textStorage!)
+        view.textStorage?.deleteCharacters(in: NSRange(location: 6, length: 2))
+        view.setSelectedRange(NSRange(location: 6, length: 0))
+        let editor = LiveMarkdownTextEditor(
+            text: .constant(view.string),
+            selection: .constant(view.selectedRange()),
+            autoFocus: false,
+            textScale: 1
+        )
+        let coordinator = editor.makeCoordinator()
+        coordinator.textView = view
+        coordinator.textDidChange(Notification(name: NSText.didChangeNotification, object: view))
+        try await Task.sleep(for: .milliseconds(500))
+
+        let font = try XCTUnwrap(view.textStorage?.attribute(.font, at: 2, effectiveRange: nil) as? NSFont)
+        XCTAssertFalse(NSFontManager.shared.traits(of: font).contains(.boldFontMask))
+        XCTAssertEqual(view.string, "**bold")
+        XCTAssertEqual(view.selectedRange().location, 6)
+    }
+    #endif
+
     func testIMECompositionDefersTextStorageMutation() {
         XCTAssertFalse(
             MarkdownInputReconciliation.canMutateTextStorage(
@@ -98,31 +146,31 @@ final class MarkdownSupportTests: XCTestCase {
         )
     }
 
-    func testLiveStylingWaitsForAWordBoundary() {
-        XCTAssertFalse(
-            MarkdownInputReconciliation.shouldScheduleStyling(
-                after: "한글",
-                cursorUTF16Offset: 2
-            )
-        )
-        XCTAssertFalse(
-            MarkdownInputReconciliation.shouldScheduleStyling(
-                after: "English",
-                cursorUTF16Offset: 7
-            )
-        )
-        XCTAssertTrue(
-            MarkdownInputReconciliation.shouldScheduleStyling(
-                after: "한글 ",
-                cursorUTF16Offset: 3
-            )
-        )
-        XCTAssertTrue(
-            MarkdownInputReconciliation.shouldScheduleStyling(
-                after: "English\n",
-                cursorUTF16Offset: 8
-            )
-        )
+    func testInlineMarkdownStylesWithoutTrailingWhitespace() {
+        for text in ["**굵게**", "_기울임_", "~~취소~~", "==강조==",
+                     "`code`", "[링크](https://example.com)", "```"] {
+            XCTAssertTrue(MarkdownInputReconciliation.shouldStyleImmediately(
+                after: text, cursorUTF16Offset: text.utf16.count
+            ), text)
+        }
+    }
+
+    func testOrdinaryTypingUsesDeferredStyling() {
+        for text in ["한글", "English", "본문 ", "문장\n", "😀", ""] {
+            XCTAssertFalse(MarkdownInputReconciliation.shouldStyleImmediately(
+                after: text, cursorUTF16Offset: text.utf16.count
+            ), text)
+        }
+    }
+
+    func testImmediateStylingUsesCaretInsteadOfDocumentEnd() {
+        let prefix = "😀 **굵게**"
+        XCTAssertTrue(MarkdownInputReconciliation.shouldStyleImmediately(
+            after: prefix + " 뒤 문장", cursorUTF16Offset: prefix.utf16.count
+        ))
+        XCTAssertFalse(MarkdownInputReconciliation.shouldStyleImmediately(
+            after: "text", cursorUTF16Offset: 99
+        ))
     }
 
     func testDayOneEscapesArePresentationOnlyAndKeepStoredMarkdown() {

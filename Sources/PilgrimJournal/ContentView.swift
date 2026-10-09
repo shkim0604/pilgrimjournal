@@ -36,6 +36,12 @@ struct ContentView: View {
             preferredCompactColumn: $preferredCompactColumn
         ) {
             JournalSidebar(preferredCompactColumn: $preferredCompactColumn)
+                #if os(macOS)
+                // While focused, the system panel toggle would only fight
+                // `FocusModeLayoutPolicy`; the toolbar's own "집중 모드 종료"
+                // button is the way out.
+                .toolbar(removing: isFocusMode ? .sidebarToggle : nil)
+                #endif
         } content: {
             Group {
                 if model.isBatchSelecting {
@@ -234,6 +240,24 @@ struct ContentView: View {
             TrashView()
         }
         #if os(macOS)
+        // Swapping the detail column's content (switching entries, a new
+        // note's autosave) makes SwiftUI write its own idea of the layout back
+        // into `columnVisibility`. Treating that as "the user reopened the
+        // panels" is what made focus mode drop out while typing. Focus mode
+        // owns the layout instead: undo any write-back, and leave ending it to
+        // explicit commands (toolbar button, ⌘⇧F, ⌃⌘S, Escape). With
+        // `.doubleColumn` (see `FocusModeLayoutPolicy`) SwiftUI no longer
+        // writes back at all; this is the safety net if a later macOS does.
+        .onChange(of: columnVisibility) { _, newValue in
+            guard FocusModeLayoutPolicy.shouldReassert(
+                isFocusMode: isFocusMode,
+                visibility: newValue
+            ) else { return }
+            DispatchQueue.main.async {
+                guard isFocusMode else { return }
+                applyFocusLayout(animated: false)
+            }
+        }
         .onReceive(
             NotificationCenter.default.publisher(
                 for: .toggleJournalFocusMode
@@ -367,23 +391,31 @@ struct ContentView: View {
 
     private func setFocusMode(_ enabled: Bool) {
         isFocusMode = enabled
-        let targetVisibility: NavigationSplitViewVisibility = enabled
-            ? .detailOnly
-            : .all
-        withAnimation(.easeInOut(duration: 0.2)) {
+        applyFocusLayout(animated: true)
+    }
+
+    private func applyFocusLayout(animated: Bool) {
+        let targetVisibility = FocusModeLayoutPolicy.visibility(
+            isFocusMode: isFocusMode
+        )
+        if animated {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                columnVisibility = targetVisibility
+            }
+        } else {
             columnVisibility = targetVisibility
         }
+        #if os(macOS)
+        let hidesTimeline = isFocusMode
         // Dispatched (not `Task.yield()`) so this runs strictly after the
         // current SwiftUI update cycle's own AppKit layout pass finishes,
         // rather than after just one Swift concurrency suspension point —
         // MacNavigationSplitFocus mutates the same view hierarchy SwiftUI is
         // still settling.
         DispatchQueue.main.async {
-            columnVisibility = targetVisibility
-            #if os(macOS)
-            MacNavigationSplitFocus.setCollapsed(enabled)
-            #endif
+            MacNavigationSplitFocus.setTimelineHidden(hidesTimeline)
         }
+        #endif
     }
 
     #if os(macOS)
@@ -416,53 +448,59 @@ struct ContentView: View {
     #endif
 }
 
+/// The split view layout focus mode keeps on macOS.
+///
+/// A three-column `NavigationSplitView` on macOS ignores `.detailOnly`, but
+/// honours `.doubleColumn`. So focus mode lets SwiftUI collapse the sidebar
+/// with `.doubleColumn` — SwiftUI then knows the true layout and has nothing
+/// to "correct" — and only the timeline column is hidden behind its back
+/// (`MacNavigationSplitFocus`). While focused, any other visibility is a
+/// SwiftUI write-back to undo, not a request to leave focus mode.
+enum FocusModeLayoutPolicy {
+    static func visibility(isFocusMode: Bool) -> NavigationSplitViewVisibility {
+        isFocusMode ? .doubleColumn : .all
+    }
+
+    static func shouldReassert(
+        isFocusMode: Bool,
+        visibility: NavigationSplitViewVisibility
+    ) -> Bool {
+        isFocusMode && visibility != Self.visibility(isFocusMode: true)
+    }
+}
+
 #if os(macOS)
 @MainActor
 private enum MacNavigationSplitFocus {
-    /// Bypasses SwiftUI's own `columnVisibility` state to force an
-    /// immediate, fully-collapsed layout (`columnVisibility` alone was too
-    /// slow/partial on its own). Because it mutates AppKit's split view
-    /// hierarchy directly and outside SwiftUI's diffing, it must never touch
-    /// a view/controller that isn't actually still attached to the key
-    /// window — SwiftUI can swap the whole detail column's content (e.g. a
-    /// fresh `InlineEntryEditorView` from a new-entry action) around the
-    /// same moment this runs, and mutating a torn-down hierarchy is exactly
-    /// the kind of thing that produces a hard-to-reproduce AppKit crash.
-    static func setCollapsed(_ collapsed: Bool) {
+    /// Hides the middle (timeline) column of the journal's split view.
+    ///
+    /// SwiftUI cannot hide that column itself on macOS (see
+    /// `FocusModeLayoutPolicy`), and it never re-shows it on its own, so a
+    /// plain `isHidden` on the arranged subview holds across detail swaps.
+    /// Because it mutates AppKit's split view hierarchy directly and outside
+    /// SwiftUI's diffing, it must never touch a view that isn't actually
+    /// still attached to the key window — SwiftUI can swap the whole detail
+    /// column's content (e.g. a fresh `InlineEntryEditorView` from a
+    /// new-entry action) around the same moment this runs, and mutating a
+    /// torn-down hierarchy is exactly the kind of thing that produces a
+    /// hard-to-reproduce AppKit crash.
+    static func setTimelineHidden(_ hidden: Bool) {
         guard let keyWindow = NSApp.keyWindow,
-              let root = keyWindow.contentViewController else { return }
-        let controllers = splitControllers(below: root)
-        controllers.forEach { controller in
-            guard controller.view.window === keyWindow,
-                  controller.splitViewItems.count >= 2 else { return }
-            for item in controller.splitViewItems.dropLast() {
-                item.isCollapsed = collapsed
-            }
-        }
-        guard let contentView = keyWindow.contentView else { return }
-        let views = splitViews(below: contentView)
-        views
+              let contentView = keyWindow.contentView else { return }
+        splitViews(below: contentView)
             .filter {
                 $0.window === keyWindow
                     && $0.isVertical
-                    && $0.bounds.width > 500
-                    && $0.bounds.height > 300
+                    && $0.arrangedSubviews.count == 3
             }
             .forEach { splitView in
-                for view in splitView.arrangedSubviews.dropLast() where view.window === keyWindow {
-                    view.isHidden = collapsed
-                }
-                guard splitView.window === keyWindow else { return }
+                let timeline = splitView.arrangedSubviews[1]
+                guard timeline.window === keyWindow,
+                      timeline.isHidden != hidden else { return }
+                timeline.isHidden = hidden
                 splitView.needsLayout = true
                 splitView.layoutSubtreeIfNeeded()
             }
-    }
-
-    private static func splitControllers(
-        below controller: NSViewController
-    ) -> [NSSplitViewController] {
-        let current = (controller as? NSSplitViewController).map { [$0] } ?? []
-        return current + controller.children.flatMap(splitControllers(below:))
     }
 
     private static func splitViews(below view: NSView) -> [NSSplitView] {

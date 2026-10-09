@@ -651,7 +651,7 @@ final class AppModel: ObservableObject {
     func autosaveOnEditorExit(_ draft: JournalEntryDraft) {
         let hasContent = !draft.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             || !draft.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        guard hasContent else { return }
+        guard hasContent || draft.id != nil else { return }
         if let id = draft.id {
             // A trashed entry still exists (`entry(id:)` returns it, marked
             // deleted); a permanently deleted one doesn't exist at all
