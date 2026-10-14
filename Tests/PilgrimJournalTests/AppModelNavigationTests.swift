@@ -947,7 +947,7 @@ final class AppModelNavigationTests: XCTestCase {
             ),
             sourceData
         )
-        XCTAssertEqual(try repository.allAttachments().first?.1, sourceData)
+        XCTAssertEqual(try repository.allAttachments().first?.binary, sourceData)
     }
 
     @MainActor

@@ -1,7 +1,7 @@
 import Foundation
 import JournalDomain
 
-public struct StoredAttachment: Sendable {
+public struct StoredAttachmentFile: Sendable {
     public var record: AttachmentRecord
     public var localURL: URL
     public var wasDeduplicated: Bool
@@ -23,7 +23,7 @@ public final class AttachmentFileStore: @unchecked Sendable {
         entryID: UUID,
         originalName: String,
         mimeType: String
-    ) throws -> StoredAttachment {
+    ) throws -> StoredAttachmentFile {
         try withLock {
             let checksum = ContentHash.sha256Hex(data)
             let directory = root.appending(
@@ -43,7 +43,7 @@ public final class AttachmentFileStore: @unchecked Sendable {
                     throw error
                 }
             }
-            return StoredAttachment(
+            return StoredAttachmentFile(
                 record: AttachmentRecord(
                     entryID: entryID,
                     originalName: originalName,

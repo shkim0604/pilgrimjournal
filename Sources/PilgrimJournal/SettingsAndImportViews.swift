@@ -10,8 +10,8 @@ struct SettingsView: View {
     @EnvironmentObject private var authentication: AppleAuthenticationCoordinator
     @EnvironmentObject private var journalSession: JournalSessionController
     @State private var restoreMode = RestoreMode.merge
-    @State private var showRestoreConfirmation = false
-    @State private var showSignOutConfirmation = false
+    @State private var isConfirmingRestore = false
+    @State private var isConfirmingSignOut = false
 
     var body: some View {
         Form {
@@ -27,7 +27,7 @@ struct SettingsView: View {
                         .textSelection(.enabled)
                 }
                 Button("로그아웃", role: .destructive) {
-                    showSignOutConfirmation = true
+                    isConfirmingSignOut = true
                 }
                 Text("로그아웃해도 이 기기의 일기 데이터는 삭제되지 않으며, 다시 인증하기 전까지 화면만 잠깁니다.")
                     .font(.caption)
@@ -113,7 +113,7 @@ struct SettingsView: View {
             Section("백업 및 복원") {
                 Toggle(
                     "Day One 원본 snapshot 포함",
-                    isOn: $model.includeSourceSnapshotsInBackup
+                    isOn: $model.backupIncludesSourceSnapshots
                 )
                 Text(
                     "원본 snapshot에는 Day One의 전체 메타데이터가 들어갈 수 있습니다. 필요할 때만 포함하고 백업 파일을 민감한 데이터로 다루세요."
@@ -231,7 +231,7 @@ struct SettingsView: View {
         .navigationTitle("설정")
         .confirmationDialog(
             "Apple 계정에서 로그아웃할까요?",
-            isPresented: $showSignOutConfirmation,
+            isPresented: $isConfirmingSignOut,
             titleVisibility: .visible
         ) {
             Button("로그아웃", role: .destructive) {
@@ -274,14 +274,14 @@ struct SettingsView: View {
                 let accessing = url.startAccessingSecurityScopedResource()
                 defer { if accessing { url.stopAccessingSecurityScopedResource() } }
                 model.pendingRestoreData = try Data(contentsOf: url)
-                showRestoreConfirmation = true
+                isConfirmingRestore = true
             } catch {
                 model.errorMessage = error.localizedDescription
             }
         }
         .confirmationDialog(
             restoreMode == .replace ? "현재 데이터를 백업으로 교체할까요?" : "백업을 병합할까요?",
-            isPresented: $showRestoreConfirmation,
+            isPresented: $isConfirmingRestore,
             titleVisibility: .visible
         ) {
             Button(

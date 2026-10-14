@@ -7,23 +7,18 @@ public final class InMemoryJournalRepository:
     AttachmentRepository,
     BackupRestoreRepository
 {
-    private struct StoredAttachmentSnapshot: Codable {
-        var record: AttachmentRecord
-        var binary: Data?
-    }
-
     private struct PersistenceSnapshot: Codable {
         var entries: [JournalEntryRecord]
         var revisions: [EntryRevisionRecord]
         var rules: [ClassificationRuleRecord]
-        var attachments: [StoredAttachmentSnapshot]
+        var attachments: [StoredAttachment]
         var restoreEpochs: [RestoreEpochRecord]
     }
 
     private var entries: [UUID: JournalEntryRecord] = [:]
     private var revisionStorage: [UUID: [EntryRevisionRecord]] = [:]
     private var rules: [UUID: ClassificationRuleRecord] = [:]
-    private var attachmentStorage: [UUID: (AttachmentRecord, Data?)] = [:]
+    private var attachmentStorage: [UUID: StoredAttachment] = [:]
     private var restoreEpochs: [RestoreEpochRecord] = []
     private let storageURL: URL?
 
@@ -31,20 +26,22 @@ public final class InMemoryJournalRepository:
         storageURL = nil
     }
 
-    public init(storageURL: URL) throws {
-        self.storageURL = storageURL
-        guard FileManager.default.fileExists(atPath: storageURL.path) else { return }
+    /// A repository that loads from, and saves every change back to, a JSON
+    /// snapshot at `url`. Used by the local-only adapter outside SwiftData
+    /// builds; `init()` keeps everything in memory only.
+    public init(persistingTo url: URL) throws {
+        storageURL = url
+        guard FileManager.default.fileExists(atPath: url.path) else { return }
         let snapshot = try JSONDecoder().decode(
             PersistenceSnapshot.self,
-            from: Data(contentsOf: storageURL)
+            from: Data(contentsOf: url)
         )
         entries = Dictionary(uniqueKeysWithValues: snapshot.entries.map { ($0.id, $0) })
         revisionStorage = Dictionary(grouping: snapshot.revisions, by: \.entryID)
         rules = Dictionary(uniqueKeysWithValues: snapshot.rules.map { ($0.id, $0) })
         attachmentStorage = Dictionary(
-            uniqueKeysWithValues: snapshot.attachments.map {
-                ($0.record.id, ($0.record, $0.binary))
-            })
+            uniqueKeysWithValues: snapshot.attachments.map { ($0.record.id, $0) }
+        )
         restoreEpochs = snapshot.restoreEpochs
     }
 
@@ -225,17 +222,17 @@ public final class InMemoryJournalRepository:
         let purgedSourceUUIDs = Set(purgedIDs.compactMap { entries[$0]?.sourceUUID })
         let removedRevisionCount = purgedIDs.reduce(0) { $0 + (revisionStorage[$1]?.count ?? 0) }
         let purgedAttachmentIDs = attachmentStorage.values
-            .filter { purgedIDs.contains($0.0.entryID) }
-            .map(\.0.id)
+            .filter { purgedIDs.contains($0.record.entryID) }
+            .map(\.record.id)
         let survivingChecksums = Set(
             attachmentStorage.values
-                .filter { !purgedIDs.contains($0.0.entryID) }
-                .map { $0.0.checksum }
+                .filter { !purgedIDs.contains($0.record.entryID) }
+                .map { $0.record.checksum }
         )
         let releasedChecksums = Set(
             attachmentStorage.values
-                .filter { purgedIDs.contains($0.0.entryID) }
-                .map { $0.0.checksum }
+                .filter { purgedIDs.contains($0.record.entryID) }
+                .map { $0.record.checksum }
         ).subtracting(survivingChecksums)
 
         for id in purgedIDs {
@@ -308,34 +305,34 @@ public final class InMemoryJournalRepository:
     }
 
     public func saveAttachment(_ record: AttachmentRecord, binary: Data?) throws {
-        attachmentStorage[record.id] = (record, binary)
+        attachmentStorage[record.id] = StoredAttachment(record: record, binary: binary)
         try persist()
     }
 
-    public func allAttachments() throws -> [(AttachmentRecord, Data?)] {
-        attachmentStorage.values.map { $0 }
+    public func allAttachments() throws -> [StoredAttachment] {
+        Array(attachmentStorage.values)
     }
 
-    public func attachment(id: UUID) throws -> (AttachmentRecord, Data?)? {
+    public func attachment(id: UUID) throws -> StoredAttachment? {
         attachmentStorage[id]
     }
 
     public func attachmentChecksum(id: UUID) throws -> String? {
-        attachmentStorage[id]?.0.checksum
+        attachmentStorage[id]?.record.checksum
     }
 
     public func attachmentChecksums() throws -> Set<String> {
-        Set(attachmentStorage.values.map { $0.0.checksum })
+        Set(attachmentStorage.values.map { $0.record.checksum })
     }
 
     public func attachments(forEntry entryID: UUID) throws -> [AttachmentRecord] {
-        attachmentStorage.values.map(\.0).filter { $0.entryID == entryID }
+        attachmentStorage.values.map(\.record).filter { $0.entryID == entryID }
     }
 
     public func attachments(
         inStates states: Set<AttachmentTransferState>
-    ) throws -> [(AttachmentRecord, Data?)] {
-        attachmentStorage.values.filter { states.contains($0.0.state) }
+    ) throws -> [StoredAttachment] {
+        attachmentStorage.values.filter { states.contains($0.record.state) }
     }
 
     @discardableResult
@@ -343,8 +340,8 @@ public final class InMemoryJournalRepository:
         id: UUID, state: AttachmentTransferState, updatedAt: Date
     ) throws -> Bool {
         guard var entry = attachmentStorage[id] else { return false }
-        entry.0.state = state
-        entry.0.updatedAt = updatedAt
+        entry.record.state = state
+        entry.record.updatedAt = updatedAt
         attachmentStorage[id] = entry
         try persist()
         return true
@@ -360,7 +357,7 @@ public final class InMemoryJournalRepository:
             attachmentStorage[id] = removed
             throw error
         }
-        return removed.0.checksum
+        return removed.record.checksum
     }
 
     public func performRestoreTransaction(
@@ -396,9 +393,9 @@ public final class InMemoryJournalRepository:
                 $0.id.uuidString < $1.id.uuidString
             },
             rules: rules.values.sorted { $0.id.uuidString < $1.id.uuidString },
-            attachments: attachmentStorage.values.map {
-                StoredAttachmentSnapshot(record: $0.0, binary: $0.1)
-            }.sorted { $0.record.id.uuidString < $1.record.id.uuidString },
+            attachments: attachmentStorage.values.sorted {
+                $0.record.id.uuidString < $1.record.id.uuidString
+            },
             restoreEpochs: restoreEpochs.sorted { $0.id.uuidString < $1.id.uuidString }
         )
         let data = try JSONEncoder().encode(snapshot)

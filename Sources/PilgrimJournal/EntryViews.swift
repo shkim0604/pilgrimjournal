@@ -1795,13 +1795,13 @@ private struct AttachmentEditorSection: View {
 private struct AttachmentDownloadStatusView: View {
     @EnvironmentObject private var model: AppModel
     let attachment: AttachmentRecord
-    @State private var timedOut = false
+    @State private var hasTimedOut = false
 
     private static let timeout: Duration = .seconds(25)
 
     var body: some View {
         Group {
-            if timedOut {
+            if hasTimedOut {
                 VStack(alignment: .trailing, spacing: 2) {
                     Text("iCloud에서 받아오지 못했습니다")
                         .font(.caption2)
@@ -1822,12 +1822,12 @@ private struct AttachmentDownloadStatusView: View {
             }
         }
         .task(id: attachment.updatedAt) {
-            timedOut = false
+            hasTimedOut = false
             while !Task.isCancelled {
                 try? await Task.sleep(for: Self.timeout)
                 guard !Task.isCancelled else { return }
                 if model.isCloudImportInProgress { continue }
-                timedOut = true
+                hasTimedOut = true
                 return
             }
         }
