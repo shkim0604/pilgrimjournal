@@ -1,14 +1,18 @@
 # 개인정보 처리 경계
 
 - 기록은 기기 로컬 저장소와 사용자의 CloudKit 개인 데이터베이스에만 저장한다.
+- 노트북 이름 목록(삭제한 이름 포함)은 기기 간 공유를 위해 iCloud 키-값 저장소에도
+  둔다. 기록 본문은 여기에 넣지 않는다.
 - public/shared CloudKit database, 광고, 분석 SDK와 자체 기록 서버를 사용하지 않는다.
 - CloudKit 동기화 데이터는 사용자의 iCloud 용량을 사용한다.
 - 개인 Day One ZIP과 원문은 source control, test snapshot, test log에 넣지 않는다.
 - 실제 샘플 검증 출력은 export version, 항목 수와 구조 경고 수로 제한한다.
 - 검색 인덱스와 전체 Day One source snapshot은 기기 로컬 데이터다.
 - 이메일·비밀번호 회원가입 없이 `Sign in with Apple`로 앱 접근을 인증한다.
-  이름·이메일 scope는 요청하지 않고 Apple의 opaque 사용자 식별자와 마지막 승인
-  상태만 기기별 `ThisDeviceOnly` Keychain에 저장한다.
+  이름 scope는 요청하지 않는다. 현재 계정 표시를 위해 email scope를 요청하며,
+  Apple이 준 이메일(가림 처리된 주소일 수 있음)은 opaque 사용자 식별자·마지막
+  승인 상태와 함께 기기별 `ThisDeviceOnly` Keychain에만 저장하고 CloudKit에는
+  올리지 않는다.
 - Apple 로그인은 앱 접근용이며 동기화 계정을 대체하지 않는다. 기록 동기화는
   기기에 로그인된 시스템 iCloud 계정의 private database를 사용하고, 인증을
   완료한 사용자는 iCloud를 사용할 수 없어도 local-only로 계속 동작한다.
