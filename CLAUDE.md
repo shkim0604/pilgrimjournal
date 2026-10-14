@@ -31,6 +31,8 @@ The Xcode project is stricter than `swift build` (it enforces member import visi
 xcodebuild -project PilgrimJournal/PilgrimJournal.xcodeproj -scheme PilgrimJournalApp -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build
 ```
 
+CI (`.github/workflows/check.yml`) runs `scripts/check.sh` and both unsigned Xcode builds on every PR and push to `main`, pinned to Xcode 26.2 on the `macos-26` runner. When bumping the local Xcode, bump `DEVELOPER_DIR` there too.
+
 Running the actual app (Simulator, Sign in with Apple, CloudKit entitlements, real-device verification) requires the full Xcode project at `PilgrimJournal/PilgrimJournal.xcodeproj` with a Developer Team signing identity. `CODE_SIGNING_ALLOWED=NO` builds only validate UI/compilation, not auth or sync.
 
 CloudKit debug tooling (schema deploy, data wipe, login-gate bypass) is documented in [docs/development.md](docs/development.md) under "CloudKit 운영 도구" — these run via env vars on a directly-invoked debug binary (not `open`, which drops env vars).
