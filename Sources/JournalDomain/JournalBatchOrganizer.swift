@@ -6,8 +6,6 @@ public struct JournalBatchOrganizationResult: Sendable {
     public init(updatedEntries: [JournalEntryRecord]) {
         self.updatedEntries = updatedEntries
     }
-
-    public var updatedCount: Int { updatedEntries.count }
 }
 
 public enum JournalBatchOrganizationError: LocalizedError, Equatable, Sendable {

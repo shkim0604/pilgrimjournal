@@ -5,7 +5,6 @@ import JournalBackup
 import JournalData
 import JournalDomain
 import JournalSearch
-import SwiftUI
 import UniformTypeIdentifiers
 
 enum DayOneImportActivity: Equatable {

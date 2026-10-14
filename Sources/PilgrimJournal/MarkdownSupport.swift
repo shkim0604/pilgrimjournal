@@ -288,19 +288,6 @@ enum MarkdownCommandProcessor {
         var selectionUTF16Range: NSRange? = nil
     }
 
-    static func expandTrailingCommand(
-        in text: String,
-        today: Date = .now,
-        timeZone: TimeZone = .current
-    ) -> String {
-        expandCommand(
-            in: text,
-            cursorUTF16Offset: text.utf16.count,
-            today: today,
-            timeZone: timeZone
-        ).text
-    }
-
     static func expandCommand(
         in text: String,
         cursorUTF16Offset: Int,
@@ -2037,6 +2024,13 @@ enum MarkdownChecklistDecoration {
         /// The single character between the brackets — what a toggle rewrites.
         var stateRange: NSRange
         var checked: Bool
+
+        /// The character a toggle writes into `stateRange`.
+        ///
+        /// The saved characters are the only source of truth for the state — the
+        /// checkbox is painted from them — so toggling is a text edit, which also
+        /// means it lands in the undo stack and syncs like any other edit.
+        var toggledState: String { checked ? " " : "x" }
     }
 
     private static let regex = try! NSRegularExpression(
@@ -2067,18 +2061,6 @@ enum MarkdownChecklistDecoration {
             y: origin.y + markerBounds.midY - boxSize / 2,
             width: boxSize,
             height: boxSize
-        )
-    }
-
-    /// Flips one item between `[ ]` and `[x]`.
-    ///
-    /// The saved characters are the only source of truth for the state — the
-    /// checkbox is painted from them — so toggling is a text edit, which also
-    /// means it lands in the undo stack and syncs like any other edit.
-    static func togglingItem(_ match: Match, in text: String) -> String {
-        (text as NSString).replacingCharacters(
-            in: match.stateRange,
-            with: match.checked ? " " : "x"
         )
     }
 }
@@ -2488,7 +2470,6 @@ private final class MarkdownNSTextView: NSTextView {
             let rect = MarkdownChecklistDecoration.boxRect(
                 origin: origin, markerBounds: marker
             )
-            let boxSize = MarkdownChecklistDecoration.boxSize
             if checklistMatch.checked {
                 EditorPalette.label.setFill()
                 NSBezierPath(roundedRect: rect, xRadius: 4, yRadius: 4).fill()
@@ -2851,7 +2832,7 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
                 // does — is far too much work for flipping a checkbox, and the
                 // delay was plainly visible on a long entry. Nothing else about
                 // the document changes, so nothing else needs recomputing.
-                let replacement = match.checked ? " " : "x"
+                let replacement = match.toggledState
                 guard
                     textView.shouldChangeText(
                         in: match.stateRange, replacementString: replacement
@@ -3882,10 +3863,6 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
             return nil
         }
 
-        /// Pure hit test — which attachment (if any) has its resize handle
-        /// under `point`, and what its current display size is. Used both by
-        /// the gesture delegate's `shouldReceive` (no side effects allowed
-        /// there) and by `beginAttachmentResize`.
         /// Brings the caret into view.
         ///
         /// `scrollRangeToVisible` does nothing now that the text view no
@@ -3939,7 +3916,7 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
         /// the same length, so the caret needs no adjusting.
         func toggleChecklistItem(at point: CGPoint) -> Bool {
             guard let match = checklistTarget(at: point) else { return false }
-            setChecklistState(match.checked ? " " : "x", at: match.stateRange)
+            setChecklistState(match.toggledState, at: match.stateRange)
             return true
         }
 
@@ -3964,6 +3941,10 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
             textView.setNeedsDisplay()
         }
 
+        /// Pure hit test — which attachment (if any) has its resize handle
+        /// under `point`, and what its current display size is. Used both by
+        /// the gesture delegate's `shouldReceive` (no side effects allowed
+        /// there) and by `beginAttachmentResize`.
         func attachmentResizeTarget(at point: CGPoint) -> (id: UUID, size: CGSize)? {
             guard let textView else { return nil }
             let origin = CGPoint(

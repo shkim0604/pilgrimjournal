@@ -955,7 +955,7 @@ final class JournalDataTests: XCTestCase {
             at: Date(timeIntervalSince1970: 30)
         )
 
-        XCTAssertEqual(result.updatedCount, 2)
+        XCTAssertEqual(result.updatedEntries.count, 2)
         for id in [first.id, second.id] {
             let updated = try XCTUnwrap(repository.entry(id: id))
             XCTAssertEqual(updated.kind, .diary)

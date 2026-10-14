@@ -2,6 +2,8 @@
 
 import PackageDescription
 
+let swiftDataDefine = SwiftSetting.define("PILGRIM_SWIFTDATA", .when(platforms: [.iOS, .macOS]))
+
 let package = Package(
     name: "PilgrimJournal",
     defaultLocalization: "ko",
@@ -24,7 +26,7 @@ let package = Package(
             name: "JournalData",
             dependencies: ["JournalDomain"],
             swiftSettings: [
-                .define("PILGRIM_SWIFTDATA", .when(platforms: [.iOS, .macOS])),
+                swiftDataDefine,
             ],
             linkerSettings: [
                 .linkedFramework("CloudKit"),
@@ -57,7 +59,7 @@ let package = Package(
             ],
             swiftSettings: [
                 .define("DEBUG", .when(configuration: .debug)),
-                .define("PILGRIM_SWIFTDATA", .when(platforms: [.iOS, .macOS])),
+                swiftDataDefine,
             ],
             linkerSettings: [
                 .linkedFramework("AuthenticationServices"),
@@ -81,7 +83,7 @@ let package = Package(
             name: "JournalDataTests",
             dependencies: ["JournalData", "JournalDomain"],
             swiftSettings: [
-                .define("PILGRIM_SWIFTDATA", .when(platforms: [.iOS, .macOS])),
+                swiftDataDefine,
             ]
         ),
         .testTarget(
