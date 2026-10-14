@@ -123,9 +123,10 @@
 				};
 			};
 			buildConfigurationList = 9F42FD0D3013C28600385B48 /* Build configuration list for PBXProject "PilgrimJournal" */;
-			developmentRegion = en;
+			developmentRegion = ko;
 			hasScannedForEncodings = 0;
 			knownRegions = (
+				ko,
 				en,
 				Base,
 			);
