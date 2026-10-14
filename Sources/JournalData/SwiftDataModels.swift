@@ -4,114 +4,114 @@ import JournalDomain
 import SwiftData
 
 @Model
-public final class JournalEntryEntity {
-    public var stableID: UUID = UUID()
-    public var kindRaw: String = JournalKind.diary.rawValue
-    public var title: String = ""
-    public var body: String = ""
-    public var occurredAt: Date = Date()
-    public var originalTimeZone: String?
-    public var tagsData: Data?
-    public var isStarred: Bool = false
-    public var isPinned: Bool = false
-    public var detailsData: Data?
-    public var sourceUUID: String?
-    public var sourceMetadata: Data?
-    public var currentRevisionID: UUID = UUID()
-    public var updatedAt: Date = Date()
-    public var modifiedByDeviceID: String = ""
-    public var deletedAt: Date?
+final class JournalEntryEntity {
+    var stableID: UUID = UUID()
+    var kindRaw: String = JournalKind.diary.rawValue
+    var title: String = ""
+    var body: String = ""
+    var occurredAt: Date = Date()
+    var originalTimeZone: String?
+    var tagsData: Data?
+    var isStarred: Bool = false
+    var isPinned: Bool = false
+    var detailsData: Data?
+    var sourceUUID: String?
+    var sourceMetadata: Data?
+    var currentRevisionID: UUID = UUID()
+    var updatedAt: Date = Date()
+    var modifiedByDeviceID: String = ""
+    var deletedAt: Date?
 
-    public init() {}
+    init() {}
 }
 
 @Model
-public final class EntryRevisionEntity {
-    public var stableID: UUID = UUID()
-    public var entryID: UUID = UUID()
-    public var parentRevisionID: UUID?
-    public var snapshotData: Data?
-    public var createdAt: Date = Date()
-    public var deviceID: String = ""
-    public var isRestore: Bool = false
+final class EntryRevisionEntity {
+    var stableID: UUID = UUID()
+    var entryID: UUID = UUID()
+    var parentRevisionID: UUID?
+    var snapshotData: Data?
+    var createdAt: Date = Date()
+    var deviceID: String = ""
+    var isRestore: Bool = false
 
-    public init() {}
+    init() {}
 }
 
 @Model
-public final class AttachmentEntity {
-    public var stableID: UUID = UUID()
-    public var entryID: UUID = UUID()
-    public var originalName: String = ""
-    public var mimeType: String = "application/octet-stream"
-    public var checksum: String = ""
-    public var byteCount: Int64 = 0
-    public var stateRaw: String = AttachmentTransferState.local.rawValue
-    public var updatedAt: Date = Date()
-    public var deletedAt: Date?
+final class AttachmentEntity {
+    var stableID: UUID = UUID()
+    var entryID: UUID = UUID()
+    var originalName: String = ""
+    var mimeType: String = "application/octet-stream"
+    var checksum: String = ""
+    var byteCount: Int64 = 0
+    var stateRaw: String = AttachmentTransferState.local.rawValue
+    var updatedAt: Date = Date()
+    var deletedAt: Date?
     @Attribute(.externalStorage) public var binary: Data?
 
-    public init() {}
+    init() {}
 }
 
 @Model
-public final class ClassificationRuleEntity {
-    public var stableID: UUID = UUID()
-    public var sourceRaw: String = ClassificationSource.tag.rawValue
-    public var value: String = ""
-    public var targetKindRaw: String = JournalKind.diary.rawValue
-    public var priority: Int = 0
-    public var updatedAt: Date = Date()
+final class ClassificationRuleEntity {
+    var stableID: UUID = UUID()
+    var sourceRaw: String = ClassificationSource.tag.rawValue
+    var value: String = ""
+    var targetKindRaw: String = JournalKind.diary.rawValue
+    var priority: Int = 0
+    var updatedAt: Date = Date()
 
-    public init() {}
+    init() {}
 }
 
 @Model
-public final class RestoreEpochEntity {
-    public var stableID: UUID = UUID()
-    public var createdAt: Date = Date()
-    public var modeRaw: String = RestoreMode.merge.rawValue
-    public var completedAt: Date?
+final class RestoreEpochEntity {
+    var stableID: UUID = UUID()
+    var createdAt: Date = Date()
+    var modeRaw: String = RestoreMode.merge.rawValue
+    var completedAt: Date?
 
-    public init() {}
+    init() {}
 }
 
 @Model
-public final class ImportJobEntity {
-    public var stableID: UUID = UUID()
-    public var archiveFingerprint: String = ""
-    public var archiveDisplayName: String = ""
-    public var startedAt: Date = Date()
-    public var finishedAt: Date?
-    public var statusRaw: String = ImportJobStatus.analyzing.rawValue
-    public var totalCount: Int = 0
-    public var successCount: Int = 0
-    public var skippedCount: Int = 0
-    public var failureCount: Int = 0
+final class ImportJobEntity {
+    var stableID: UUID = UUID()
+    var archiveFingerprint: String = ""
+    var archiveDisplayName: String = ""
+    var startedAt: Date = Date()
+    var finishedAt: Date?
+    var statusRaw: String = ImportJobStatus.analyzing.rawValue
+    var totalCount: Int = 0
+    var successCount: Int = 0
+    var skippedCount: Int = 0
+    var failureCount: Int = 0
 
-    public init() {}
+    init() {}
 }
 
 @Model
-public final class ImportItemEntity {
-    public var stableID: UUID = UUID()
-    public var jobID: UUID = UUID()
-    public var sourceUUID: String = ""
-    public var entryID: UUID?
-    public var statusRaw: String = ImportItemStatus.pending.rawValue
-    public var message: String?
+final class ImportItemEntity {
+    var stableID: UUID = UUID()
+    var jobID: UUID = UUID()
+    var sourceUUID: String = ""
+    var entryID: UUID?
+    var statusRaw: String = ImportItemStatus.pending.rawValue
+    var message: String?
 
-    public init() {}
+    init() {}
 }
 
 @Model
-public final class SourceSnapshotEntity {
-    public var stableID: UUID = UUID()
-    public var jobID: UUID = UUID()
-    public var sourceUUID: String = ""
+final class SourceSnapshotEntity {
+    var stableID: UUID = UUID()
+    var jobID: UUID = UUID()
+    var sourceUUID: String = ""
     @Attribute(.externalStorage) public var rawJSON: Data?
 
-    public init() {}
+    init() {}
 }
 
 #endif

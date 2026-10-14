@@ -1,6 +1,6 @@
 #if canImport(XCTest) && PILGRIM_SWIFTDATA
 import Foundation
-import JournalData
+@testable import JournalData
 import JournalDomain
 import SwiftData
 import XCTest
