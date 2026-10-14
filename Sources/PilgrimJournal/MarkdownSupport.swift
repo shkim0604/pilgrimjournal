@@ -2245,7 +2245,48 @@ private enum MarkdownSeparatorDecoration {
 }
 
 @MainActor
-private final class MarkdownNSTextView: NSTextView {
+/// Keeps the text view exactly as wide as the visible area, so lines wrap at
+/// the editor's edge.
+///
+/// The editor is magnified to apply the text-size setting, which makes the
+/// visible width the frame width divided by the zoom. AppKit's autoresizing
+/// only passes frame-size *changes* on to the text view, so after the first
+/// sizing from zero, or after a zoom change, the text view kept a stale width:
+/// wider than the visible area (text ran off the right edge and did not wrap
+/// when the window shrank) or narrower (a gap on the right).
+final class MarkdownEditorScrollView: NSScrollView {
+    override var magnification: CGFloat {
+        didSet { fitDocumentWidthToVisibleArea() }
+    }
+
+    override func setMagnification(_ magnification: CGFloat, centeredAt point: NSPoint) {
+        super.setMagnification(magnification, centeredAt: point)
+        fitDocumentWidthToVisibleArea()
+    }
+
+    override func tile() {
+        super.tile()
+        fitDocumentWidthToVisibleArea()
+    }
+
+    private func fitDocumentWidthToVisibleArea() {
+        guard let documentView else { return }
+        // While the text view was too wide, the clip view could scroll
+        // sideways; there is nothing to the right once widths match.
+        if abs(contentView.bounds.origin.x) > 0.5 {
+            contentView.scroll(to: NSPoint(x: 0, y: contentView.bounds.origin.y))
+            reflectScrolledClipView(contentView)
+        }
+        let visibleWidth = contentView.bounds.width
+        guard visibleWidth > 0, abs(documentView.frame.width - visibleWidth) > 0.5 else { return }
+        documentView.setFrameSize(NSSize(width: visibleWidth, height: documentView.frame.height))
+        // The correction happens inside layout, after the old, wider lines
+        // were drawn; without this the stale, clipped lines stay on screen.
+        documentView.needsDisplay = true
+    }
+}
+
+final class MarkdownNSTextView: NSTextView {
     /// Returns whether the direction was actually applied to a list line;
     /// `false` means the current line isn't a list item, so the caller
     /// should fall through to the normal Tab/Shift+Tab behavior.
@@ -2280,6 +2321,21 @@ private final class MarkdownNSTextView: NSTextView {
     /// resize) so images sized as a fraction of it can be recomputed.
     var containerWidthChanged: ((CGFloat) -> Void)?
     private var lastKnownContainerWidth: CGFloat = 0
+
+    /// Pins the width to the visible area so lines wrap at the editor's edge.
+    ///
+    /// SwiftUI hosts the editor with Auto Layout, and the layout engine sizes
+    /// this view to the clip view's frame. With the text-size magnification
+    /// the visible width is that frame divided by the zoom, so without this
+    /// lines ran off the right edge (and the clip view scrolled sideways).
+    /// Every resize path, the layout engine's included, ends here.
+    override func setFrameSize(_ newSize: NSSize) {
+        var size = newSize
+        if let visibleWidth = enclosingScrollView?.contentView.bounds.width, visibleWidth > 0 {
+            size.width = visibleWidth
+        }
+        super.setFrameSize(size)
+    }
 
     override func layout() {
         super.layout()
@@ -2671,8 +2727,12 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
         Coordinator(parent: self)
     }
 
-    func makeNSView(context: Context) -> NSScrollView {
-        let scrollView = NSScrollView()
+    /// The scroll view and text view with every setting that affects layout,
+    /// so tests exercise exactly what the editor runs.
+    static func makeEditorViews(
+        textScale: Double
+    ) -> (MarkdownEditorScrollView, MarkdownNSTextView) {
+        let scrollView = MarkdownEditorScrollView()
         scrollView.hasVerticalScroller = true
         scrollView.drawsBackground = false
         scrollView.borderType = .noBorder
@@ -2682,6 +2742,21 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
         scrollView.magnification = CGFloat(textScale)
 
         let textView = MarkdownNSTextView()
+        textView.isRichText = true
+        textView.importsGraphics = false
+        textView.allowsUndo = true
+        textView.drawsBackground = false
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.autoresizingMask = [.width]
+        textView.textContainerInset = NSSize(width: 2, height: 8)
+        textView.textContainer?.widthTracksTextView = true
+        scrollView.documentView = textView
+        return (scrollView, textView)
+    }
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let (scrollView, textView) = Self.makeEditorViews(textScale: textScale)
         textView.identifier = MacMarkdownEditorFocus.identifier
         context.coordinator.textView = textView
         textView.delegate = context.coordinator
@@ -2712,15 +2787,6 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
         textView.containerWidthChanged = { [weak coordinator = context.coordinator] width in
             coordinator?.recomputeAttachmentImageSizes(containerWidth: width)
         }
-        textView.isRichText = true
-        textView.importsGraphics = false
-        textView.allowsUndo = true
-        textView.drawsBackground = false
-        textView.isVerticallyResizable = true
-        textView.isHorizontallyResizable = false
-        textView.autoresizingMask = [.width]
-        textView.textContainerInset = NSSize(width: 2, height: 8)
-        textView.textContainer?.widthTracksTextView = true
         textView.string = text
         if let storage = textView.textStorage {
             LiveMarkdownStyler.apply(
@@ -2730,7 +2796,6 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
             )
         }
         textView.typingAttributes = LiveMarkdownStyler.baseAttributes
-        scrollView.documentView = textView
 
         if autoFocus {
             DispatchQueue.main.async {
