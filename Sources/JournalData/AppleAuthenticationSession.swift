@@ -91,7 +91,8 @@ public actor AppleAuthenticationSessionService {
         state.boundUserIdentifier = state.boundUserIdentifier ?? identifier
         state.currentUserIdentifier = identifier
         if let email = email?.trimmingCharacters(in: .whitespacesAndNewlines),
-           !email.isEmpty {
+            !email.isEmpty
+        {
             state.accountEmail = email
         }
         state.lastAuthorizedAt = date
@@ -111,7 +112,8 @@ public actor AppleAuthenticationSessionService {
     private func loadState() throws -> StoredState? {
         guard let data = try store.load() else { return nil }
         guard let state = try? JSONDecoder().decode(StoredState.self, from: data),
-              state.version == 1 else {
+            state.version == 1
+        else {
             throw AppleAuthenticationSessionError.malformedState
         }
         return state

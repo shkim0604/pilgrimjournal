@@ -206,17 +206,19 @@ do {
 
     let root: [String: Any] = [
         "metadata": ["version": "1.0"],
-        "entries": [[
-            "uuid": "00000000-0000-0000-0000-000000000001",
-            "text": "익명 검증 본문",
-            "richText": #"{"contents":[{"text":"서식 본문"}]}"#,
-            "creationDate": "2026-07-23T01:10:59Z",
-            "modifiedDate": "2026-07-23T01:11:59Z",
-            "timeZone": "Asia/Seoul",
-            "starred": true,
-            "isPinned": true,
-            "template": ["uuid": "template-prayer", "title": "기도"],
-        ]],
+        "entries": [
+            [
+                "uuid": "00000000-0000-0000-0000-000000000001",
+                "text": "익명 검증 본문",
+                "richText": #"{"contents":[{"text":"서식 본문"}]}"#,
+                "creationDate": "2026-07-23T01:10:59Z",
+                "modifiedDate": "2026-07-23T01:11:59Z",
+                "timeZone": "Asia/Seoul",
+                "starred": true,
+                "isPinned": true,
+                "template": ["uuid": "template-prayer", "title": "기도"],
+            ]
+        ],
     ]
     let anonymousJSON = try JSONSerialization.data(withJSONObject: root)
     let dayOneURL = temporary.appending(path: "anonymous-day-one.zip")
@@ -229,7 +231,7 @@ do {
         archiveURL: dayOneURL,
         rules: [rule]
     )
-    try expect(preview.JSONDisplayName == "일기.json", "URL 인코딩 파일명 처리가 실패했습니다.")
+    try expect(preview.jsonDisplayName == "일기.json", "URL 인코딩 파일명 처리가 실패했습니다.")
     try expect(preview.items.count == 1, "Day One 항목 수가 맞지 않습니다.")
     try expect(preview.items[0].draft.body == "익명 검증 본문", "text 우선 처리가 실패했습니다.")
     try expect(preview.items[0].draft.kind == .prayer, "가져오기 분류가 실패했습니다.")
@@ -247,11 +249,14 @@ do {
             repository: repository,
             deviceID: "Mac"
         )
-        return (first.succeeded, second.skipped, (try? repository.list(
-            kind: nil,
-            includeDeleted: true,
-            limit: 100
-        ).count) ?? -1)
+        return (
+            first.succeeded, second.skipped,
+            (try? repository.list(
+                kind: nil,
+                includeDeleted: true,
+                limit: 100
+            ).count) ?? -1
+        )
     }.value
     try expect(importCounts == (1, 1, 1), "Day One 재실행 중복 방지가 실패했습니다.")
 
@@ -375,16 +380,18 @@ do {
     )
 
     if let sampleIndex = CommandLine.arguments.firstIndex(of: "--day-one"),
-       CommandLine.arguments.indices.contains(sampleIndex + 1) {
+        CommandLine.arguments.indices.contains(sampleIndex + 1)
+    {
         let privateURL = URL(fileURLWithPath: CommandLine.arguments[sampleIndex + 1])
         let privatePreview = try DayOneArchiveAnalyzer().analyze(archiveURL: privateURL)
         print(
             "개인 샘플 구조 검증 완료: version=\(privatePreview.exportVersion), "
-            + "entries=\(privatePreview.items.count), warnings=\(privatePreview.warnings.count)"
+                + "entries=\(privatePreview.items.count), warnings=\(privatePreview.warnings.count)"
         )
     }
 
-    print("JournalChecks 통과: domain, revision, app lock, Day One, attachment, search, backup/restore")
+    print(
+        "JournalChecks 통과: domain, revision, app lock, Day One, attachment, search, backup/restore")
 } catch {
     FileHandle.standardError.write(
         Data("JournalChecks 실패: \(error.localizedDescription)\n".utf8)

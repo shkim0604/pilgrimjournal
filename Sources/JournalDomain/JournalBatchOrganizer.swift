@@ -61,11 +61,12 @@ public struct JournalBatchOrganizer {
 
         var updated: [JournalEntryRecord] = []
         for draft in drafts {
-            updated.append(try repository.save(
-                draft,
-                deviceID: deviceID,
-                at: date
-            ))
+            updated.append(
+                try repository.save(
+                    draft,
+                    deviceID: deviceID,
+                    at: date
+                ))
         }
         return JournalBatchOrganizationResult(updatedEntries: updated)
     }

@@ -89,9 +89,11 @@ final class AttachmentImageCache {
             kCGImageSourceThumbnailMaxPixelSize: attachmentImageMaxPixelSize,
             kCGImageSourceCreateThumbnailWithTransform: true,
         ]
-        guard let cgImage = CGImageSourceCreateThumbnailAtIndex(
-            source, 0, options as CFDictionary
-        ) else { return nil }
+        guard
+            let cgImage = CGImageSourceCreateThumbnailAtIndex(
+                source, 0, options as CFDictionary
+            )
+        else { return nil }
         #if os(macOS)
         let image = CachedPlatformImage(
             cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height)

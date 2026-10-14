@@ -37,7 +37,8 @@ final class AppLockCoordinator: ObservableObject {
         guard configuration.isEnabled else { return }
         isPrivacyShieldVisible = true
         if configuration.timeout == .immediately,
-           !(systemAuthenticationGraceUntil.map { $0 > date } ?? false) {
+            !(systemAuthenticationGraceUntil.map { $0 > date } ?? false)
+        {
             isLocked = true
         }
         if backgroundedAt == nil { backgroundedAt = date }
@@ -62,10 +63,11 @@ final class AppLockCoordinator: ObservableObject {
             return
         }
         if let backgroundedAt,
-           configuration.timeout.shouldLock(
-               backgroundedAt: backgroundedAt,
-               activeAt: date
-           ) {
+            configuration.timeout.shouldLock(
+                backgroundedAt: backgroundedAt,
+                activeAt: date
+            )
+        {
             isLocked = true
         }
         self.backgroundedAt = nil

@@ -82,11 +82,12 @@ public struct CloudAccountMonitor: Sendable {
         fileManager: FileManager = .default
     ) async -> JournalStorageLocation {
         guard await accountStatusIsAvailable(),
-              let token = fileManager.ubiquityIdentityToken,
-              let tokenData = try? NSKeyedArchiver.archivedData(
-                  withRootObject: token,
-                  requiringSecureCoding: true
-              ) else {
+            let token = fileManager.ubiquityIdentityToken,
+            let tokenData = try? NSKeyedArchiver.archivedData(
+                withRootObject: token,
+                requiringSecureCoding: true
+            )
+        else {
             return .localOnly
         }
         return .iCloud(

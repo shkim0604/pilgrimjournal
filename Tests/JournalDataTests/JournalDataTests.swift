@@ -401,19 +401,20 @@ final class JournalDataTests: XCTestCase {
         )
         let addedID = UUID()
 
-        XCTAssertThrowsError(try repository.performRestoreTransaction {
-            try repository.moveToTrash(
-                entryID: original.id,
-                deviceID: "restore",
-                at: Date(timeIntervalSince1970: 2)
-            )
-            _ = try repository.save(
-                JournalEntryDraft(id: addedID, kind: .memo, title: "복원 중 추가"),
-                deviceID: "restore",
-                at: Date(timeIntervalSince1970: 2)
-            )
-            throw ExpectedFailure.stop
-        })
+        XCTAssertThrowsError(
+            try repository.performRestoreTransaction {
+                try repository.moveToTrash(
+                    entryID: original.id,
+                    deviceID: "restore",
+                    at: Date(timeIntervalSince1970: 2)
+                )
+                _ = try repository.save(
+                    JournalEntryDraft(id: addedID, kind: .memo, title: "복원 중 추가"),
+                    deviceID: "restore",
+                    at: Date(timeIntervalSince1970: 2)
+                )
+                throw ExpectedFailure.stop
+            })
 
         XCTAssertFalse(try XCTUnwrap(repository.entry(id: original.id)).isDeleted)
         XCTAssertNil(try repository.entry(id: addedID))
@@ -775,7 +776,7 @@ final class JournalDataTests: XCTestCase {
             object: context,
             userInfo: [
                 ModelContext.NotificationKey.insertedIdentifiers:
-                    Set([entry.persistentModelID]),
+                    Set([entry.persistentModelID])
             ]
         )
         let change = try XCTUnwrap(
@@ -792,7 +793,7 @@ final class JournalDataTests: XCTestCase {
             object: context,
             userInfo: [
                 ModelContext.NotificationKey.insertedIdentifiers:
-                    Set([snapshot.persistentModelID]),
+                    Set([snapshot.persistentModelID])
             ]
         )
         XCTAssertNil(JournalStoreChangeExtractor.extract(from: snapshotNotification))
@@ -817,7 +818,7 @@ final class JournalDataTests: XCTestCase {
             name: ModelContext.didSave,
             object: context,
             userInfo: [
-                ModelContext.NotificationKey.deletedIdentifiers: Set([entryIdentifier]),
+                ModelContext.NotificationKey.deletedIdentifiers: Set([entryIdentifier])
             ]
         )
         let change = try XCTUnwrap(
@@ -835,7 +836,7 @@ final class JournalDataTests: XCTestCase {
             name: ModelContext.didSave,
             object: context,
             userInfo: [
-                ModelContext.NotificationKey.deletedIdentifiers: Set([snapshotIdentifier]),
+                ModelContext.NotificationKey.deletedIdentifiers: Set([snapshotIdentifier])
             ]
         )
         XCTAssertNil(JournalStoreChangeExtractor.extract(from: localDeletionNotification))
@@ -1116,9 +1117,10 @@ final class JournalDataTests: XCTestCase {
         XCTAssertEqual(migrated.body, "수정된 본문")
         XCTAssertEqual(migrated.deletedAt, Date(timeIntervalSince1970: 30))
         XCTAssertTrue(
-            originalRevisionIDs.isSubset(of: Set(
-                try destination.revisions(entryID: editedRecord.id).map(\.id)
-            ))
+            originalRevisionIDs.isSubset(
+                of: Set(
+                    try destination.revisions(entryID: editedRecord.id).map(\.id)
+                ))
         )
         XCTAssertEqual(try destination.classificationRules(), [rule])
         let migratedAttachment = try XCTUnwrap(

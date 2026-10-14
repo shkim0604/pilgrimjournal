@@ -15,14 +15,14 @@ final class AppModelNavigationTests: XCTestCase {
             code: CKError.invalidArguments.rawValue,
             userInfo: [
                 NSLocalizedDescriptionKey:
-                    "Cannot create new type CD_JournalEntryEntity in production schema",
+                    "Cannot create new type CD_JournalEntryEntity in production schema"
             ]
         )
         let error = NSError(
             domain: CKErrorDomain,
             code: CKError.partialFailure.rawValue,
             userInfo: [
-                CKPartialErrorsByItemIDKey: ["record": nested],
+                CKPartialErrorsByItemIDKey: ["record": nested]
             ]
         )
 
@@ -58,20 +58,22 @@ final class AppModelNavigationTests: XCTestCase {
         )
         let completedAt = Date(timeIntervalSince1970: 123)
 
-        model.handleCloudSyncStoreEvent(CloudSyncStoreEvent(
-            operation: .exporting,
-            completedAt: nil,
-            succeeded: false,
-            errorDescription: nil
-        ))
+        model.handleCloudSyncStoreEvent(
+            CloudSyncStoreEvent(
+                operation: .exporting,
+                completedAt: nil,
+                succeeded: false,
+                errorDescription: nil
+            ))
         XCTAssertEqual(model.syncState, .pending)
 
-        model.handleCloudSyncStoreEvent(CloudSyncStoreEvent(
-            operation: .exporting,
-            completedAt: completedAt,
-            succeeded: true,
-            errorDescription: nil
-        ))
+        model.handleCloudSyncStoreEvent(
+            CloudSyncStoreEvent(
+                operation: .exporting,
+                completedAt: completedAt,
+                succeeded: true,
+                errorDescription: nil
+            ))
         XCTAssertEqual(model.syncState, .synced(completedAt))
 
         let remoteRecord = try repository.save(
@@ -79,20 +81,22 @@ final class AppModelNavigationTests: XCTestCase {
             deviceID: "remote-device",
             at: completedAt
         )
-        model.handleCloudSyncStoreEvent(CloudSyncStoreEvent(
-            operation: .importing,
-            completedAt: completedAt,
-            succeeded: true,
-            errorDescription: nil
-        ))
+        model.handleCloudSyncStoreEvent(
+            CloudSyncStoreEvent(
+                operation: .importing,
+                completedAt: completedAt,
+                succeeded: true,
+                errorDescription: nil
+            ))
         XCTAssertEqual(model.entries.map(\.id), [remoteRecord.id])
 
-        model.handleCloudSyncStoreEvent(CloudSyncStoreEvent(
-            operation: .exporting,
-            completedAt: completedAt,
-            succeeded: false,
-            errorDescription: "네트워크 오류"
-        ))
+        model.handleCloudSyncStoreEvent(
+            CloudSyncStoreEvent(
+                operation: .exporting,
+                completedAt: completedAt,
+                succeeded: false,
+                errorDescription: "네트워크 오류"
+            ))
         XCTAssertEqual(
             model.syncState,
             .failed(message: "네트워크 오류", retryable: true)
@@ -144,12 +148,13 @@ final class AppModelNavigationTests: XCTestCase {
             )
         )
         let completedAt = Date(timeIntervalSince1970: 500)
-        model.handleCloudSyncStoreEvent(CloudSyncStoreEvent(
-            operation: .exporting,
-            completedAt: completedAt,
-            succeeded: true,
-            errorDescription: nil
-        ))
+        model.handleCloudSyncStoreEvent(
+            CloudSyncStoreEvent(
+                operation: .exporting,
+                completedAt: completedAt,
+                succeeded: true,
+                errorDescription: nil
+            ))
         XCTAssertEqual(model.syncState, .synced(completedAt))
 
         // A healthy account reports no problem, so the completed sync stands.
@@ -183,7 +188,7 @@ final class AppModelNavigationTests: XCTestCase {
             archiveURL: staged,
             archiveFingerprint: "fixture",
             exportVersion: "1.0",
-            JSONDisplayName: "journal.json",
+            jsonDisplayName: "journal.json",
             items: [],
             duplicateSourceUUIDs: [],
             optionalFieldCounts: [:],
@@ -840,18 +845,20 @@ final class AppModelNavigationTests: XCTestCase {
             cloudAccountMonitor: nil
         )
 
-        let created = try XCTUnwrap(model.saveAndReturnRecord(
-            JournalEntryDraft(kind: .diary, body: "첫 입력"),
-            closeEditor: false,
-            selectSavedEntry: false
-        ))
+        let created = try XCTUnwrap(
+            model.saveAndReturnRecord(
+                JournalEntryDraft(kind: .diary, body: "첫 입력"),
+                closeEditor: false,
+                selectSavedEntry: false
+            ))
         var update = created.draft
         update.body = "이어 쓴 입력"
-        let updated = try XCTUnwrap(model.saveAndReturnRecord(
-            update,
-            closeEditor: false,
-            selectSavedEntry: false
-        ))
+        let updated = try XCTUnwrap(
+            model.saveAndReturnRecord(
+                update,
+                closeEditor: false,
+                selectSavedEntry: false
+            ))
 
         XCTAssertEqual(updated.id, created.id)
         XCTAssertEqual(
@@ -880,19 +887,21 @@ final class AppModelNavigationTests: XCTestCase {
             paths: paths,
             cloudAccountMonitor: nil
         )
-        let record = try XCTUnwrap(model.saveAndReturnRecord(
-            JournalEntryDraft(kind: .diary, body: "저장된 본문"),
-            closeEditor: false,
-            selectSavedEntry: false
-        ))
+        let record = try XCTUnwrap(
+            model.saveAndReturnRecord(
+                JournalEntryDraft(kind: .diary, body: "저장된 본문"),
+                closeEditor: false,
+                selectSavedEntry: false
+            ))
         var empty = record.draft
         empty.body = " \n"
         model.autosaveOnEditorExit(empty)
         XCTAssertEqual(model.errorMessage, JournalError.emptyContent.localizedDescription)
         XCTAssertEqual(try repository.entry(id: record.id)?.body, record.body)
-        XCTAssertNil(model.saveAndReturnRecord(
-            empty, closeEditor: false, selectSavedEntry: false
-        ))
+        XCTAssertNil(
+            model.saveAndReturnRecord(
+                empty, closeEditor: false, selectSavedEntry: false
+            ))
     }
 
     @MainActor
@@ -914,11 +923,12 @@ final class AppModelNavigationTests: XCTestCase {
             paths: paths,
             cloudAccountMonitor: nil
         )
-        let entry = try XCTUnwrap(model.saveAndReturnRecord(
-            JournalEntryDraft(kind: .memo, title: "첨부 기록"),
-            closeEditor: false,
-            selectSavedEntry: false
-        ))
+        let entry = try XCTUnwrap(
+            model.saveAndReturnRecord(
+                JournalEntryDraft(kind: .memo, title: "첨부 기록"),
+                closeEditor: false,
+                selectSavedEntry: false
+            ))
         let sourceURL = root.appending(path: "sample.txt")
         let sourceData = Data("첨부 본문".utf8)
         try sourceData.write(to: sourceURL)
@@ -1041,24 +1051,26 @@ final class AppModelNavigationTests: XCTestCase {
             )
         )
 
-        model.handleCloudSyncStoreEvent(CloudSyncStoreEvent(
-            operation: .exporting,
-            completedAt: .now,
-            succeeded: false,
-            errorDescription: "iCloud 저장 공간이 부족합니다.",
-            errorRetryable: true
-        ))
+        model.handleCloudSyncStoreEvent(
+            CloudSyncStoreEvent(
+                operation: .exporting,
+                completedAt: .now,
+                succeeded: false,
+                errorDescription: "iCloud 저장 공간이 부족합니다.",
+                errorRetryable: true
+            ))
         XCTAssertEqual(model.attachments(for: entry.id).first?.state, .failed)
         XCTAssertEqual(try repository.entry(id: entry.id)?.body, "첨부와 무관하게 보이는 본문")
 
         model.retryAttachmentTransfer(attachment.id)
         XCTAssertEqual(model.attachments(for: entry.id).first?.state, .pending)
-        model.handleCloudSyncStoreEvent(CloudSyncStoreEvent(
-            operation: .exporting,
-            completedAt: .now,
-            succeeded: true,
-            errorDescription: nil
-        ))
+        model.handleCloudSyncStoreEvent(
+            CloudSyncStoreEvent(
+                operation: .exporting,
+                completedAt: .now,
+                succeeded: true,
+                errorDescription: nil
+            ))
         XCTAssertEqual(model.attachments(for: entry.id).first?.state, .uploaded)
     }
 
@@ -1101,21 +1113,23 @@ final class AppModelNavigationTests: XCTestCase {
         // The export operation's start-of-work notification (endDate/completedAt
         // still nil) used to be discarded entirely — this is the fix that makes
         // "대기 중" and "전송 중" distinguishable.
-        model.handleCloudSyncStoreEvent(CloudSyncStoreEvent(
-            operation: .exporting,
-            completedAt: nil,
-            succeeded: false,
-            errorDescription: nil
-        ))
+        model.handleCloudSyncStoreEvent(
+            CloudSyncStoreEvent(
+                operation: .exporting,
+                completedAt: nil,
+                succeeded: false,
+                errorDescription: nil
+            ))
         XCTAssertEqual(model.attachments(for: entry.id).first?.state, .uploading)
         XCTAssertFalse(model.isCloudImportInProgress)
 
-        model.handleCloudSyncStoreEvent(CloudSyncStoreEvent(
-            operation: .exporting,
-            completedAt: .now,
-            succeeded: true,
-            errorDescription: nil
-        ))
+        model.handleCloudSyncStoreEvent(
+            CloudSyncStoreEvent(
+                operation: .exporting,
+                completedAt: .now,
+                succeeded: true,
+                errorDescription: nil
+            ))
         XCTAssertEqual(model.attachments(for: entry.id).first?.state, .uploaded)
     }
 
@@ -1158,12 +1172,13 @@ final class AppModelNavigationTests: XCTestCase {
         // No start-of-export event observed (e.g. app was backgrounded) — the
         // completion event alone must still carry a .pending attachment to
         // .uploaded, not just .uploading, or it would be stranded forever.
-        model.handleCloudSyncStoreEvent(CloudSyncStoreEvent(
-            operation: .exporting,
-            completedAt: .now,
-            succeeded: true,
-            errorDescription: nil
-        ))
+        model.handleCloudSyncStoreEvent(
+            CloudSyncStoreEvent(
+                operation: .exporting,
+                completedAt: .now,
+                succeeded: true,
+                errorDescription: nil
+            ))
         XCTAssertEqual(model.attachments(for: entry.id).first?.state, .uploaded)
     }
 
@@ -1203,23 +1218,25 @@ final class AppModelNavigationTests: XCTestCase {
             )
         )
 
-        model.handleCloudSyncStoreEvent(CloudSyncStoreEvent(
-            operation: .exporting,
-            completedAt: nil,
-            succeeded: false,
-            errorDescription: nil
-        ))
+        model.handleCloudSyncStoreEvent(
+            CloudSyncStoreEvent(
+                operation: .exporting,
+                completedAt: nil,
+                succeeded: false,
+                errorDescription: nil
+            ))
         XCTAssertEqual(model.attachments(for: entry.id).first?.state, .uploading)
 
         // A failure that arrives while an attachment is mid-upload must still
         // reach .failed, not strand it in .uploading with no retry button.
-        model.handleCloudSyncStoreEvent(CloudSyncStoreEvent(
-            operation: .exporting,
-            completedAt: .now,
-            succeeded: false,
-            errorDescription: "iCloud 저장 공간이 부족합니다.",
-            errorRetryable: true
-        ))
+        model.handleCloudSyncStoreEvent(
+            CloudSyncStoreEvent(
+                operation: .exporting,
+                completedAt: .now,
+                succeeded: false,
+                errorDescription: "iCloud 저장 공간이 부족합니다.",
+                errorRetryable: true
+            ))
         XCTAssertEqual(model.attachments(for: entry.id).first?.state, .failed)
     }
 
@@ -1245,20 +1262,22 @@ final class AppModelNavigationTests: XCTestCase {
         )
 
         XCTAssertFalse(model.isCloudImportInProgress)
-        model.handleCloudSyncStoreEvent(CloudSyncStoreEvent(
-            operation: .importing,
-            completedAt: nil,
-            succeeded: false,
-            errorDescription: nil
-        ))
+        model.handleCloudSyncStoreEvent(
+            CloudSyncStoreEvent(
+                operation: .importing,
+                completedAt: nil,
+                succeeded: false,
+                errorDescription: nil
+            ))
         XCTAssertTrue(model.isCloudImportInProgress)
 
-        model.handleCloudSyncStoreEvent(CloudSyncStoreEvent(
-            operation: .importing,
-            completedAt: .now,
-            succeeded: true,
-            errorDescription: nil
-        ))
+        model.handleCloudSyncStoreEvent(
+            CloudSyncStoreEvent(
+                operation: .importing,
+                completedAt: .now,
+                succeeded: true,
+                errorDescription: nil
+            ))
         XCTAssertFalse(model.isCloudImportInProgress)
     }
 
@@ -1313,13 +1332,14 @@ final class AppModelNavigationTests: XCTestCase {
         model.requestAttachmentDownload(remote.id)
         XCTAssertEqual(model.attachments(for: entry.id).first?.state, .downloading)
 
-        model.handleCloudSyncStoreEvent(CloudSyncStoreEvent(
-            operation: .importing,
-            completedAt: .now,
-            succeeded: false,
-            errorDescription: "네트워크 오류",
-            errorRetryable: true
-        ))
+        model.handleCloudSyncStoreEvent(
+            CloudSyncStoreEvent(
+                operation: .importing,
+                completedAt: .now,
+                succeeded: false,
+                errorDescription: "네트워크 오류",
+                errorRetryable: true
+            ))
         XCTAssertEqual(model.attachments(for: entry.id).first?.state, .failed)
     }
 
@@ -1468,11 +1488,12 @@ final class AppModelNavigationTests: XCTestCase {
             ["임시"]
         )
 
-        XCTAssertNotNil(model.saveAndReturnRecord(
-            draft,
-            closeEditor: false,
-            selectSavedEntry: false
-        ))
+        XCTAssertNotNil(
+            model.saveAndReturnRecord(
+                draft,
+                closeEditor: false,
+                selectSavedEntry: false
+            ))
         XCTAssertNil(try repository.entry(id: entry.id)?.notebookName)
     }
 
@@ -1632,10 +1653,12 @@ final class AppModelNavigationTests: XCTestCase {
 
         model.selectKind(.prayer)
 
-        XCTAssertEqual(model.entries.map(\.id), [
-            newestPrayer.id,
-            olderPrayer.id,
-        ])
+        XCTAssertEqual(
+            model.entries.map(\.id),
+            [
+                newestPrayer.id,
+                olderPrayer.id,
+            ])
         XCTAssertEqual(model.selectedEntryID, newestPrayer.id)
         XCTAssertEqual(model.selectedEntry, newestPrayer)
     }

@@ -32,7 +32,8 @@ public enum JournalStoreChangeExtractor {
 
     public static func extract(from notification: Notification) -> JournalStoreChange? {
         guard notification.name == ModelContext.didSave,
-              let context = notification.object as? ModelContext else {
+            let context = notification.object as? ModelContext
+        else {
             return nil
         }
 
@@ -50,7 +51,8 @@ public enum JournalStoreChangeExtractor {
         // context, so keep mapping them to the entry they belong to for a
         // targeted refresh.
         for identifier in identifierSet(for: .insertedIdentifiers)
-            .union(identifierSet(for: .updatedIdentifiers)) {
+            .union(identifierSet(for: .updatedIdentifiers))
+        {
             switch context.model(for: identifier) {
             case let entry as JournalEntryEntity:
                 sawCanonicalChange = true

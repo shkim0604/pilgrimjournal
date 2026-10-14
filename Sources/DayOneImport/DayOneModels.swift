@@ -46,7 +46,7 @@ public struct DayOneImportPreview: Sendable {
     public var archiveURL: URL
     public var archiveFingerprint: String
     public var exportVersion: String
-    public var JSONDisplayName: String
+    public var jsonDisplayName: String
     public var items: [DayOnePreviewItem]
     public var duplicateSourceUUIDs: Set<String>
     public var optionalFieldCounts: [String: Int]
@@ -57,7 +57,7 @@ public struct DayOneImportPreview: Sendable {
         archiveURL: URL,
         archiveFingerprint: String,
         exportVersion: String,
-        JSONDisplayName: String,
+        jsonDisplayName: String,
         items: [DayOnePreviewItem],
         duplicateSourceUUIDs: Set<String>,
         optionalFieldCounts: [String: Int],
@@ -67,7 +67,7 @@ public struct DayOneImportPreview: Sendable {
         self.archiveURL = archiveURL
         self.archiveFingerprint = archiveFingerprint
         self.exportVersion = exportVersion
-        self.JSONDisplayName = JSONDisplayName
+        self.jsonDisplayName = jsonDisplayName
         self.items = items
         self.duplicateSourceUUIDs = duplicateSourceUUIDs
         self.optionalFieldCounts = optionalFieldCounts
@@ -77,10 +77,11 @@ public struct DayOneImportPreview: Sendable {
 
     public var dateRange: ClosedRange<Date>? {
         guard let minimum = items.map(\.draft.occurredAt).min(),
-              let maximum = items.map(\.draft.occurredAt).max() else {
+            let maximum = items.map(\.draft.occurredAt).max()
+        else {
             return nil
         }
-        return minimum ... maximum
+        return minimum...maximum
     }
 
     public var unclassifiedCount: Int {

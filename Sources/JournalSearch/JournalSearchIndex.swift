@@ -56,12 +56,14 @@ public final class JournalSearchIndex: @unchecked Sendable {
             at: url.deletingLastPathComponent(),
             withIntermediateDirectories: true
         )
-        guard sqlite3_open_v2(
-            path,
-            &database,
-            SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX,
-            nil
-        ) == SQLITE_OK else {
+        guard
+            sqlite3_open_v2(
+                path,
+                &database,
+                SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX,
+                nil
+            ) == SQLITE_OK
+        else {
             throw JournalSearchError.sqlite("데이터베이스를 열 수 없습니다.")
         }
         try execute("PRAGMA journal_mode=WAL")
@@ -192,20 +194,21 @@ public final class JournalSearchIndex: @unchecked Sendable {
             if let start = query.startDate {
                 conditions.append(
                     "COALESCE((SELECT local_day FROM journal_search_meta "
-                    + "WHERE journal_search_meta.id = journal_fts.id), "
-                    + "date(CAST(occurred_at AS REAL), 'unixepoch')) >= ?"
+                        + "WHERE journal_search_meta.id = journal_fts.id), "
+                        + "date(CAST(occurred_at AS REAL), 'unixepoch')) >= ?"
                 )
                 bindings.append(.text(Self.queryDay(start)))
             }
             if let end = query.endDate {
                 conditions.append(
                     "COALESCE((SELECT local_day FROM journal_search_meta "
-                    + "WHERE journal_search_meta.id = journal_fts.id), "
-                    + "date(CAST(occurred_at AS REAL), 'unixepoch')) <= ?"
+                        + "WHERE journal_search_meta.id = journal_fts.id), "
+                        + "date(CAST(occurred_at AS REAL), 'unixepoch')) <= ?"
                 )
                 bindings.append(.text(Self.queryDay(end)))
             }
-            let whereClause = conditions.isEmpty
+            let whereClause =
+                conditions.isEmpty
                 ? ""
                 : "WHERE " + conditions.joined(separator: " AND ")
             bindings.append(.integer(Int64(max(1, query.limit))))
@@ -232,13 +235,15 @@ public final class JournalSearchIndex: @unchecked Sendable {
         try withLock {
             guard let database else { throw JournalSearchError.sqlite("연결이 닫혔습니다.") }
             var statement: OpaquePointer?
-            guard sqlite3_prepare_v2(
-                database,
-                "SELECT id FROM journal_search_meta",
-                -1,
-                &statement,
-                nil
-            ) == SQLITE_OK else {
+            guard
+                sqlite3_prepare_v2(
+                    database,
+                    "SELECT id FROM journal_search_meta",
+                    -1,
+                    &statement,
+                    nil
+                ) == SQLITE_OK
+            else {
                 throw sqliteError()
             }
             defer { sqlite3_finalize(statement) }
@@ -248,7 +253,8 @@ public final class JournalSearchIndex: @unchecked Sendable {
                 if status == SQLITE_DONE { break }
                 guard status == SQLITE_ROW else { throw sqliteError() }
                 if let value = sqlite3_column_text(statement, 0),
-                   let identifier = UUID(uuidString: String(cString: value)) {
+                    let identifier = UUID(uuidString: String(cString: value))
+                {
                     identifiers.insert(identifier)
                 }
             }
@@ -314,7 +320,8 @@ public final class JournalSearchIndex: @unchecked Sendable {
     private static func originalLocalDay(for entry: JournalEntryRecord) -> String {
         var calendar = Calendar(identifier: .gregorian)
         if let identifier = entry.originalTimeZone,
-           let timeZone = TimeZone(identifier: identifier) {
+            let timeZone = TimeZone(identifier: identifier)
+        {
             calendar.timeZone = timeZone
         } else {
             calendar.timeZone = .current
@@ -362,21 +369,23 @@ public final class JournalSearchIndex: @unchecked Sendable {
             if status == SQLITE_DONE { break }
             guard status == SQLITE_ROW else { throw sqliteError() }
             guard let idText = sqlite3_column_text(statement, 0),
-                  let id = UUID(uuidString: String(cString: idText)),
-                  let kindText = sqlite3_column_text(statement, 3),
-                  let kind = JournalKind(rawValue: String(cString: kindText)) else {
+                let id = UUID(uuidString: String(cString: idText)),
+                let kindText = sqlite3_column_text(statement, 3),
+                let kind = JournalKind(rawValue: String(cString: kindText))
+            else {
                 continue
             }
             let title = sqlite3_column_text(statement, 1).map(String.init(cString:)) ?? ""
             let body = sqlite3_column_text(statement, 2).map(String.init(cString:)) ?? ""
             let excerpt = body.count > 160 ? String(body.prefix(160)) + "…" : body
-            values.append(JournalSearchHit(
-                id: id,
-                title: title,
-                excerpt: excerpt,
-                kind: kind,
-                occurredAt: Date(timeIntervalSince1970: sqlite3_column_double(statement, 4))
-            ))
+            values.append(
+                JournalSearchHit(
+                    id: id,
+                    title: title,
+                    excerpt: excerpt,
+                    kind: kind,
+                    occurredAt: Date(timeIntervalSince1970: sqlite3_column_double(statement, 4))
+                ))
         }
         return values
     }
@@ -406,7 +415,7 @@ public final class JournalSearchIndex: @unchecked Sendable {
             let status: Int32
             switch value {
             case let .text(text):
-                status = sqlite3_bind_text(statement, index, text, -1, SQLITE_TRANSIENT)
+                status = sqlite3_bind_text(statement, index, text, -1, sqliteTransient)
             case let .double(double):
                 status = sqlite3_bind_double(statement, index, double)
             case let .integer(integer):
@@ -417,7 +426,8 @@ public final class JournalSearchIndex: @unchecked Sendable {
     }
 
     private func sqliteError() -> JournalSearchError {
-        let message = database.flatMap(sqlite3_errmsg).map(String.init(cString:))
+        let message =
+            database.flatMap(sqlite3_errmsg).map(String.init(cString:))
             ?? "알 수 없는 SQLite 오류"
         return .sqlite(message)
     }
@@ -435,7 +445,7 @@ private enum Binding {
     case integer(Int64)
 }
 
-private let SQLITE_TRANSIENT = unsafeBitCast(
+private let sqliteTransient = unsafeBitCast(
     -1,
     to: sqlite3_destructor_type.self
 )

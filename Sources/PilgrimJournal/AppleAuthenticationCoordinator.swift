@@ -58,7 +58,8 @@ final class AppleAuthenticationCoordinator: ObservableObject {
         bypassForVisualTesting: Bool = false
     ) {
         self.service = service
-        self.credentialChecker = credentialChecker
+        self.credentialChecker =
+            credentialChecker
             ?? SystemAppleCredentialStateChecker()
         self.cloudIdentityChecker = cloudIdentityChecker
         #if DEBUG
@@ -142,7 +143,8 @@ final class AppleAuthenticationCoordinator: ObservableObject {
 
     func handleSignInFailure(_ error: Error) {
         if let authorizationError = error as? ASAuthorizationError,
-           authorizationError.code == .canceled {
+            authorizationError.code == .canceled
+        {
             errorMessage = nil
             return
         }

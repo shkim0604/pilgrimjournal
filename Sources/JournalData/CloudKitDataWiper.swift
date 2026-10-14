@@ -26,7 +26,8 @@ public enum CloudKitDataWiper {
         let database = CKContainer(identifier: containerIdentifier)
             .privateCloudDatabase
         let zones = try await database.allRecordZones()
-        let targets = zones
+        let targets =
+            zones
             .map(\.zoneID)
             .filter { $0.zoneName.hasPrefix(mirroringZonePrefix) }
         guard !targets.isEmpty else { return [] }

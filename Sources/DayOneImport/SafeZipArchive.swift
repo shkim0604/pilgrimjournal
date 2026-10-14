@@ -122,7 +122,7 @@ public final class SafeZipArchive: @unchecked Sendable {
             throw JournalError.unsupportedArchive("ZIP 중앙 디렉터리를 찾을 수 없습니다.")
         }
         let eocdOffset = tailOffset + UInt64(eocdIndex)
-        let eocd = tail.subdata(in: eocdIndex ..< min(tail.count, eocdIndex + 22))
+        let eocd = tail.subdata(in: eocdIndex..<min(tail.count, eocdIndex + 22))
         guard eocd.count >= 22 else {
             throw JournalError.unsupportedArchive("ZIP 종료 record가 손상되었습니다.")
         }
@@ -132,7 +132,8 @@ public final class SafeZipArchive: @unchecked Sendable {
         var centralOffset = UInt64(eocd.uint32LE(at: 16))
         if totalEntries == UInt64(UInt16.max)
             || centralSize == UInt64(UInt32.max)
-            || centralOffset == UInt64(UInt32.max) {
+            || centralOffset == UInt64(UInt32.max)
+        {
             guard eocdOffset >= 20 else {
                 throw JournalError.unsupportedArchive("ZIP64 locator가 없습니다.")
             }
@@ -162,7 +163,7 @@ public final class SafeZipArchive: @unchecked Sendable {
         var offset = centralOffset
         var totalUncompressed: UInt64 = 0
 
-        for _ in 0 ..< totalEntries {
+        for _ in 0..<totalEntries {
             let fixed = try handle.readExactly(at: offset, count: 46)
             guard fixed.uint32LE(at: 0) == 0x02014B50 else {
                 throw JournalError.unsupportedArchive("ZIP entry header가 손상되었습니다.")
@@ -185,7 +186,7 @@ public final class SafeZipArchive: @unchecked Sendable {
             )
             let nameData = variable.prefix(nameLength)
             let extraData = variable.subdata(
-                in: nameLength ..< (nameLength + extraLength)
+                in: nameLength..<(nameLength + extraLength)
             )
 
             var compressed = UInt64(compressed32)
@@ -193,7 +194,8 @@ public final class SafeZipArchive: @unchecked Sendable {
             var localOffset = UInt64(localOffset32)
             if compressed32 == UInt32.max
                 || uncompressed32 == UInt32.max
-                || localOffset32 == UInt32.max {
+                || localOffset32 == UInt32.max
+            {
                 let values = try zip64Values(
                     extraData,
                     needsUncompressed: uncompressed32 == UInt32.max,
@@ -229,16 +231,17 @@ public final class SafeZipArchive: @unchecked Sendable {
                 }
             }
 
-            entries.append(ZipEntry(
-                rawName: rawName,
-                displayName: displayName,
-                compressionMethod: method,
-                compressedSize: compressed,
-                uncompressedSize: uncompressed,
-                crc32: checksum,
-                localHeaderOffset: localOffset,
-                isDirectory: displayName.hasSuffix("/")
-            ))
+            entries.append(
+                ZipEntry(
+                    rawName: rawName,
+                    displayName: displayName,
+                    compressionMethod: method,
+                    compressedSize: compressed,
+                    uncompressedSize: uncompressed,
+                    crc32: checksum,
+                    localHeaderOffset: localOffset,
+                    isDirectory: displayName.hasSuffix("/")
+                ))
             offset += UInt64(46 + nameLength + extraLength + commentLength)
         }
         return entries
@@ -278,9 +281,10 @@ public final class SafeZipArchive: @unchecked Sendable {
 
     private static func validatePath(_ path: String) throws {
         guard !path.isEmpty,
-              !path.hasPrefix("/"),
-              !path.hasPrefix("\\"),
-              !path.contains("\0") else {
+            !path.hasPrefix("/"),
+            !path.hasPrefix("\\"),
+            !path.contains("\0")
+        else {
             throw JournalError.unsafeArchive("절대 경로나 빈 경로가 포함되어 있습니다.")
         }
         let normalized = path.replacingOccurrences(of: "\\", with: "/")

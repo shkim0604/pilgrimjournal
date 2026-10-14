@@ -33,20 +33,22 @@ public struct DayOneImportExecutor {
                         repository: repository
                     )
                     result.skipped += 1
-                    result.outcomes.append(DayOneImportOutcome(
-                        sourceUUID: item.sourceUUID,
-                        entryID: nil,
-                        status: .skipped,
-                        kind: item.draft.kind,
-                        title: item.draft.title,
-                        message: "이미 가져온 기록",
-                        warnings: item.warnings + attachmentWarnings
-                    ))
-                    onEvent(.skipped(
-                        sourceUUID: item.sourceUUID,
-                        reason: "이미 가져온 기록",
-                        rawJSON: item.rawJSON
-                    ))
+                    result.outcomes.append(
+                        DayOneImportOutcome(
+                            sourceUUID: item.sourceUUID,
+                            entryID: nil,
+                            status: .skipped,
+                            kind: item.draft.kind,
+                            title: item.draft.title,
+                            message: "이미 가져온 기록",
+                            warnings: item.warnings + attachmentWarnings
+                        ))
+                    onEvent(
+                        .skipped(
+                            sourceUUID: item.sourceUUID,
+                            reason: "이미 가져온 기록",
+                            rawJSON: item.rawJSON
+                        ))
                 } else {
                     var draft = item.draft
                     draft.id = item.stableEntryID
@@ -64,38 +66,42 @@ public struct DayOneImportExecutor {
                     let itemWarnings = item.warnings + attachmentWarnings
                     result.succeeded += 1
                     result.warnings.append(contentsOf: itemWarnings)
-                    result.outcomes.append(DayOneImportOutcome(
-                        sourceUUID: item.sourceUUID,
-                        entryID: record.id,
-                        status: .imported,
-                        kind: item.draft.kind,
-                        title: item.draft.title,
-                        warnings: itemWarnings
-                    ))
-                    onEvent(.imported(
-                        sourceUUID: item.sourceUUID,
-                        entryID: record.id,
-                        rawJSON: item.rawJSON
-                    ))
+                    result.outcomes.append(
+                        DayOneImportOutcome(
+                            sourceUUID: item.sourceUUID,
+                            entryID: record.id,
+                            status: .imported,
+                            kind: item.draft.kind,
+                            title: item.draft.title,
+                            warnings: itemWarnings
+                        ))
+                    onEvent(
+                        .imported(
+                            sourceUUID: item.sourceUUID,
+                            entryID: record.id,
+                            rawJSON: item.rawJSON
+                        ))
                 }
             } catch {
                 result.failed += 1
                 let reason = error.localizedDescription
                 result.failures.append("\(item.sourceUUID): \(reason)")
-                result.outcomes.append(DayOneImportOutcome(
-                    sourceUUID: item.sourceUUID,
-                    entryID: nil,
-                    status: .failed,
-                    kind: item.draft.kind,
-                    title: item.draft.title,
-                    message: reason,
-                    warnings: item.warnings
-                ))
-                onEvent(.failed(
-                    sourceUUID: item.sourceUUID,
-                    reason: reason,
-                    rawJSON: item.rawJSON
-                ))
+                result.outcomes.append(
+                    DayOneImportOutcome(
+                        sourceUUID: item.sourceUUID,
+                        entryID: nil,
+                        status: .failed,
+                        kind: item.draft.kind,
+                        title: item.draft.title,
+                        message: reason,
+                        warnings: item.warnings
+                    ))
+                onEvent(
+                    .failed(
+                        sourceUUID: item.sourceUUID,
+                        reason: reason,
+                        rawJSON: item.rawJSON
+                    ))
             }
             onProgress(index + 1, preview.items.count)
             if (index + 1).isMultiple(of: safeBatchSize) {
@@ -133,10 +139,12 @@ public struct DayOneImportExecutor {
                 .map(\.checksum) ?? []
         )
         for reference in item.attachments {
-            guard let zipEntry = matchingEntry(
-                reference.filename,
-                in: archive.entries
-            ) else {
+            guard
+                let zipEntry = matchingEntry(
+                    reference.filename,
+                    in: archive.entries
+                )
+            else {
                 let warning = "첨부 파일을 찾지 못했습니다: \(reference.filename)"
                 if !item.warnings.contains(warning) {
                     warnings.append(warning)
@@ -162,7 +170,7 @@ public struct DayOneImportExecutor {
             } catch {
                 warnings.append(
                     "첨부 파일 \(reference.filename)을(를) 가져오지 못했습니다: "
-                    + error.localizedDescription
+                        + error.localizedDescription
                 )
             }
         }
@@ -192,7 +200,8 @@ public struct DayOneImportExecutor {
 
     private func mimeType(for reference: DayOneAttachmentReference) -> String {
         switch URL(fileURLWithPath: reference.filename)
-            .pathExtension.lowercased() {
+            .pathExtension.lowercased()
+        {
         case "jpg", "jpeg": "image/jpeg"
         case "png": "image/png"
         case "heic", "heif": "image/heic"

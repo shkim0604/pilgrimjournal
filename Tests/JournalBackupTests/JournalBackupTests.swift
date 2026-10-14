@@ -32,15 +32,17 @@ final class JournalBackupTests: XCTestCase {
             entries: [entry],
             revisions: [revision],
             rules: [],
-            attachments: [BackupAttachment(
-                record: attachmentRecord,
-                binary: Data("note".utf8)
-            )],
+            attachments: [
+                BackupAttachment(
+                    record: attachmentRecord,
+                    binary: Data("note".utf8)
+                )
+            ],
             sourceSnapshots: [
                 BackupSourceSnapshot(
                     sourceUUID: "source",
                     rawJSON: Data(#"{"uuid":"source"}"#.utf8)
-                ),
+                )
             ]
         )
 
@@ -94,11 +96,12 @@ final class JournalBackupTests: XCTestCase {
         let writer = try StoredZipWriter(url: destination)
         try writer.add(
             name: "manifest.json",
-            data: encoder.encode(BackupManifest(
-                formatVersion: 999,
-                files: [:],
-                includesSourceSnapshots: false
-            ))
+            data: encoder.encode(
+                BackupManifest(
+                    formatVersion: 999,
+                    files: [:],
+                    includesSourceSnapshots: false
+                ))
         )
         try writer.finish()
 
@@ -112,7 +115,8 @@ final class JournalBackupTests: XCTestCase {
     func testSnapshotExclusionAndAtomicCompletion() throws {
         let destination = FileManager.default.temporaryDirectory
             .appending(path: "\(UUID().uuidString).journalbackup")
-        let partial = destination
+        let partial =
+            destination
             .deletingLastPathComponent()
             .appending(path: ".\(destination.lastPathComponent).partial")
         defer {
@@ -256,13 +260,14 @@ final class JournalBackupTests: XCTestCase {
             tombstoneIDs: [current.id]
         )
 
-        XCTAssertThrowsError(try JournalRestoreExecutor().execute(
-            contents: contents,
-            plan: failingPlan,
-            repository: repository,
-            deviceID: "Mac",
-            at: Date(timeIntervalSince1970: 4)
-        ))
+        XCTAssertThrowsError(
+            try JournalRestoreExecutor().execute(
+                contents: contents,
+                plan: failingPlan,
+                repository: repository,
+                deviceID: "Mac",
+                at: Date(timeIntervalSince1970: 4)
+            ))
         XCTAssertFalse(try XCTUnwrap(repository.entry(id: current.id)).isDeleted)
         XCTAssertNil(try repository.entry(id: valid.id))
         XCTAssertTrue(repository.allRestoreEpochs().isEmpty)
@@ -347,9 +352,10 @@ final class JournalBackupTests: XCTestCase {
         )
         XCTAssertEqual(mergeResult.conflicts, 1)
         XCTAssertEqual(try repository.entry(id: entryID)?.title, "현재의 새 내용")
-        XCTAssertTrue(try repository.revisions(entryID: entryID).contains {
-            $0.id == backupRevision.id
-        })
+        XCTAssertTrue(
+            try repository.revisions(entryID: entryID).contains {
+                $0.id == backupRevision.id
+            })
 
         let replacePlan = service.plan(
             contents: contents,

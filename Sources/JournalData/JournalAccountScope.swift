@@ -142,9 +142,10 @@ public struct JournalAccountScopeRegistry: Sendable {
     }
 
     public func hasPreparedScope(_ scope: JournalAccountScope) -> Bool {
-        FileManager.default.fileExists(atPath: root.appending(
-            path: scope.relativeDirectory + "/scope.json"
-        ).path)
+        FileManager.default.fileExists(
+            atPath: root.appending(
+                path: scope.relativeDirectory + "/scope.json"
+            ).path)
     }
 
     public func shouldMigrateLegacyData(
@@ -158,10 +159,11 @@ public struct JournalAccountScopeRegistry: Sendable {
         from source: JournalAccountScope,
         to destination: JournalAccountScope
     ) -> Bool {
-        FileManager.default.fileExists(atPath: migrationReceiptURL(
-            from: source,
-            to: destination
-        ).path)
+        FileManager.default.fileExists(
+            atPath: migrationReceiptURL(
+                from: source,
+                to: destination
+            ).path)
     }
 
     public func markMigrationCompleted(

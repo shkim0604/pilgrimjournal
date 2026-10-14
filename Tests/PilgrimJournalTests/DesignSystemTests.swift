@@ -5,11 +5,11 @@ import XCTest
 final class DesignSystemTests: XCTestCase {
     func testEntrySummaryRemovesMarkdownMarkersAndKeepsReadableText() {
         let markdown = """
-        # **아침 묵상**
-        * 첫 번째 기도
-        > 기억할 문장
-        [관련 링크](https://example.com)
-        """
+            # **아침 묵상**
+            * 첫 번째 기도
+            > 기억할 문장
+            [관련 링크](https://example.com)
+            """
 
         let summary = EntryListSummaryFormatter.summary(from: markdown)
 
@@ -24,10 +24,10 @@ final class DesignSystemTests: XCTestCase {
         )
 
         let dayOneMarkdown = """
-        문장입니다\\.
-        - [x] ~~완료~~
-        ==중요==
-        """
+            문장입니다\\.
+            - [x] ~~완료~~
+            ==중요==
+            """
         XCTAssertEqual(
             EntryListSummaryFormatter.summary(from: dayOneMarkdown),
             "문장입니다. 완료 중요"

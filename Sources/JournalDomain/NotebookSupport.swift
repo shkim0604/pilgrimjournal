@@ -41,7 +41,8 @@ public enum NotebookTagCodec {
         guard tag.hasPrefix(prefix) else { return nil }
         let payload = String(tag.dropFirst(prefix.count))
         guard let data = Data(base64Encoded: payload),
-              let name = String(data: data, encoding: .utf8) else {
+            let name = String(data: data, encoding: .utf8)
+        else {
             return nil
         }
         return normalizedName(name)

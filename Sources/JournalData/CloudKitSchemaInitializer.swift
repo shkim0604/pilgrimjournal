@@ -42,9 +42,11 @@ public enum CloudKitSchemaInitializer {
     public static func initializeDevelopmentSchema(
         cloudKitContainerIdentifier: String
     ) throws -> [String] {
-        guard let model = NSManagedObjectModel.makeManagedObjectModel(
-            for: PilgrimJournalSchemaV1.canonicalModels
-        ) else {
+        guard
+            let model = NSManagedObjectModel.makeManagedObjectModel(
+                for: PilgrimJournalSchemaV1.canonicalModels
+            )
+        else {
             throw Failure.managedObjectModelUnavailable
         }
 

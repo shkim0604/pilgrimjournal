@@ -348,21 +348,23 @@ public actor AppLockService {
         let blockCount = (keyLength + hashLength - 1) / hashLength
         var derived = Data()
 
-        for block in 1 ... blockCount {
+        for block in 1...blockCount {
             var blockNumber = UInt32(block).bigEndian
             var initial = salt
             withUnsafeBytes(of: &blockNumber) { initial.append(contentsOf: $0) }
-            var previous = Data(HMAC<SHA256>.authenticationCode(
-                for: initial,
-                using: key
-            ))
+            var previous = Data(
+                HMAC<SHA256>.authenticationCode(
+                    for: initial,
+                    using: key
+                ))
             var accumulator = Array(previous)
             if iterations > 1 {
-                for _ in 2 ... iterations {
-                    previous = Data(HMAC<SHA256>.authenticationCode(
-                        for: previous,
-                        using: key
-                    ))
+                for _ in 2...iterations {
+                    previous = Data(
+                        HMAC<SHA256>.authenticationCode(
+                            for: previous,
+                            using: key
+                        ))
                     for index in accumulator.indices {
                         accumulator[index] ^= previous[index]
                     }

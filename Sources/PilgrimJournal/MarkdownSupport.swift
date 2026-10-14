@@ -26,7 +26,7 @@ private typealias PlatformImage = UIImage
 #endif
 
 private enum EditorPalette {
-#if os(macOS)
+    #if os(macOS)
     static let label = PlatformColor.labelColor
     static let secondaryLabel = PlatformColor.secondaryLabelColor
     static let tertiaryLabel = PlatformColor.tertiaryLabelColor
@@ -99,7 +99,7 @@ private enum EditorPalette {
             : PlatformColor(calibratedRed: 0.459, green: 0.510, blue: 0.482, alpha: 1)
     }
     static let quoteBar = PlatformColor.controlAccentColor.withAlphaComponent(0.7)
-#else
+    #else
     static let label = PlatformColor.label
     static let secondaryLabel = PlatformColor.secondaryLabel
     static let tertiaryLabel = PlatformColor.tertiaryLabel
@@ -142,7 +142,7 @@ private enum EditorPalette {
             : PlatformColor(red: 0.459, green: 0.510, blue: 0.482, alpha: 1)
     }
     static let quoteBar = PlatformColor.tintColor.withAlphaComponent(0.7)
-#endif
+    #endif
 }
 
 enum MarkdownSlashCommand: String, CaseIterable, Identifiable {
@@ -315,7 +315,8 @@ enum MarkdownCommandProcessor {
             options: .backwards,
             range: searchRange
         )
-        let lineStart = previousNewline.location == NSNotFound
+        let lineStart =
+            previousNewline.location == NSNotFound
             ? 0
             : NSMaxRange(previousNewline)
         let lineRange = NSRange(
@@ -359,7 +360,8 @@ enum MarkdownCommandProcessor {
         // the last newline finds the last line directly, in time
         // proportional to that line's length (typically short — the cursor
         // is on it), not the whole document.
-        let line = text.range(of: "\n", options: .backwards).map { text[$0.upperBound...] }
+        let line =
+            text.range(of: "\n", options: .backwards).map { text[$0.upperBound...] }
             ?? text[...]
         guard line.hasPrefix("/"), !line.contains(" ") else { return nil }
         return String(line.dropFirst()).lowercased()
@@ -377,7 +379,8 @@ enum MarkdownCommandProcessor {
             options: .backwards,
             range: NSRange(location: 0, length: source.length)
         )
-        let lineStart = previousNewline.location == NSNotFound
+        let lineStart =
+            previousNewline.location == NSNotFound
             ? 0
             : NSMaxRange(previousNewline)
         let range = NSRange(location: lineStart, length: source.length - lineStart)
@@ -399,19 +402,21 @@ enum MarkdownCommandProcessor {
         let safeSelection = NSRange(location: safeLocation, length: safeLength)
         let selected = source.substring(with: safeSelection)
 
-        let surroundingMarker: String? = switch format {
-        case .bold: "**"
-        case .italic: "*"
-        case .strikethrough: "~~"
-        case .highlight: "=="
-        case .code: "`"
-        case .heading, .bullet, .quote, .link: nil
-        }
+        let surroundingMarker: String? =
+            switch format {
+            case .bold: "**"
+            case .italic: "*"
+            case .strikethrough: "~~"
+            case .highlight: "=="
+            case .code: "`"
+            case .heading, .bullet, .quote, .link: nil
+            }
         if let marker = surroundingMarker {
             let markerLength = marker.utf16.count
             if safeLength >= markerLength * 2,
-               selected.hasPrefix(marker),
-               selected.hasSuffix(marker) {
+                selected.hasPrefix(marker),
+                selected.hasSuffix(marker)
+            {
                 return ExpansionResult(
                     text: text,
                     cursorUTF16Offset: NSMaxRange(safeSelection),
@@ -427,9 +432,10 @@ enum MarkdownCommandProcessor {
                 length: markerLength
             )
             if leadingRange.location >= 0,
-               NSMaxRange(trailingRange) <= source.length,
-               source.substring(with: leadingRange) == marker,
-               source.substring(with: trailingRange) == marker {
+                NSMaxRange(trailingRange) <= source.length,
+                source.substring(with: leadingRange) == marker,
+                source.substring(with: trailingRange) == marker
+            {
                 return ExpansionResult(
                     text: text,
                     cursorUTF16Offset: NSMaxRange(safeSelection),
@@ -462,13 +468,15 @@ enum MarkdownCommandProcessor {
         case .heading, .bullet, .quote:
             let lineRange = source.lineRange(for: safeSelection)
             let lines = source.substring(with: lineRange)
-            let prefix = switch format {
-            case .heading: "## "
-            case .bullet: "* "
-            case .quote: "> "
-            default: ""
-            }
-            replacement = lines
+            let prefix =
+                switch format {
+                case .heading: "## "
+                case .bullet: "* "
+                case .quote: "> "
+                default: ""
+                }
+            replacement =
+                lines
                 .split(separator: "\n", omittingEmptySubsequences: false)
                 .map { line in
                     let value = String(line)
@@ -485,14 +493,15 @@ enum MarkdownCommandProcessor {
                 )
             )
         }
-        let preservedSelection: NSRange = switch format {
-        case .bold, .strikethrough, .highlight:
-            NSRange(location: safeLocation + 2, length: safeLength)
-        case .italic, .code, .link:
-            NSRange(location: safeLocation + 1, length: safeLength)
-        case .heading, .bullet, .quote:
-            safeSelection
-        }
+        let preservedSelection: NSRange =
+            switch format {
+            case .bold, .strikethrough, .highlight:
+                NSRange(location: safeLocation + 2, length: safeLength)
+            case .italic, .code, .link:
+                NSRange(location: safeLocation + 1, length: safeLength)
+            case .heading, .bullet, .quote:
+                safeSelection
+            }
         return ExpansionResult(
             text: source.replacingCharacters(in: safeSelection, with: replacement),
             cursorUTF16Offset: cursor,
@@ -519,10 +528,12 @@ enum MarkdownCommandProcessor {
         let after = source.substring(from: NSMaxRange(safeSelection))
         let leadingNewline = before.isEmpty || before.hasSuffix("\n") ? "" : "\n"
         let trailingNewline = after.isEmpty || after.hasPrefix("\n") ? "" : "\n"
-        let sizeSuffix = displaySize.map {
-            " =\(Int($0.width.rounded()))x\(Int($0.height.rounded()))"
-        } ?? ""
-        let insertion = "\(leadingNewline)![](attachment:\(id.uuidString)\(sizeSuffix))\(trailingNewline)"
+        let sizeSuffix =
+            displaySize.map {
+                " =\(Int($0.width.rounded()))x\(Int($0.height.rounded()))"
+            } ?? ""
+        let insertion =
+            "\(leadingNewline)![](attachment:\(id.uuidString)\(sizeSuffix))\(trailingNewline)"
         let expanded = source.replacingCharacters(in: safeSelection, with: insertion)
         let cursor = safeSelection.location + insertion.utf16.count
         return ExpansionResult(text: expanded, cursorUTF16Offset: cursor)
@@ -664,10 +675,11 @@ enum MarkdownCommandProcessor {
             max(0, selection.length),
             source.length - safeLocation
         )
-        let lineRange = source.lineRange(for: NSRange(
-            location: safeLocation,
-            length: safeLength
-        ))
+        let lineRange = source.lineRange(
+            for: NSRange(
+                location: safeLocation,
+                length: safeLength
+            ))
         let lines = source.substring(with: lineRange)
             .split(separator: "\n", omittingEmptySubsequences: false)
         var itemIndex = 0
@@ -704,7 +716,7 @@ enum MarkdownCommandProcessor {
         let source = text as NSString
         let cursor = min(max(0, cursorUTF16Offset), source.length)
         guard cursor > 0,
-              source.substring(with: NSRange(location: cursor - 1, length: 1)) == "\n"
+            source.substring(with: NSRange(location: cursor - 1, length: 1)) == "\n"
         else { return ExpansionResult(text: text, cursorUTF16Offset: cursor) }
         let beforeNewline = NSRange(location: 0, length: cursor - 1)
         let priorNewline = source.range(
@@ -712,13 +724,15 @@ enum MarkdownCommandProcessor {
             options: .backwards,
             range: beforeNewline
         )
-        let lineStart = priorNewline.location == NSNotFound
+        let lineStart =
+            priorNewline.location == NSNotFound
             ? 0
             : NSMaxRange(priorNewline)
-        let previousLine = source.substring(with: NSRange(
-            location: lineStart,
-            length: cursor - lineStart - 1
-        ))
+        let previousLine = source.substring(
+            with: NSRange(
+                location: lineStart,
+                length: cursor - lineStart - 1
+            ))
         guard let item = listItem(from: previousLine) else {
             return ExpansionResult(text: text, cursorUTF16Offset: cursor)
         }
@@ -777,14 +791,16 @@ enum MarkdownCommandProcessor {
             options: .backwards,
             range: beforeCursor
         )
-        let lineStart = priorNewline.location == NSNotFound
+        let lineStart =
+            priorNewline.location == NSNotFound
             ? 0
             : NSMaxRange(priorNewline)
         guard lineStart < cursor else { return nil }
-        let prefix = source.substring(with: NSRange(
-            location: lineStart,
-            length: cursor - lineStart
-        ))
+        let prefix = source.substring(
+            with: NSRange(
+                location: lineStart,
+                length: cursor - lineStart
+            ))
         // Matching with an empty `content` group means `prefix` is exactly
         // the marker (whatever comes after the cursor on this line, if
         // anything, is untouched by the removal below).
@@ -878,18 +894,20 @@ enum MarkdownDocumentParser {
 
         func flushParagraph() {
             guard !paragraphLines.isEmpty else { return }
-            blocks.append(MarkdownBlock(
-                kind: .paragraph,
-                content: paragraphLines.joined(separator: "\n")
-            ))
+            blocks.append(
+                MarkdownBlock(
+                    kind: .paragraph,
+                    content: paragraphLines.joined(separator: "\n")
+                ))
             paragraphLines.removeAll()
         }
 
         func flushCode() {
-            blocks.append(MarkdownBlock(
-                kind: .code(codeLanguage),
-                content: codeLines.joined(separator: "\n")
-            ))
+            blocks.append(
+                MarkdownBlock(
+                    kind: .code(codeLanguage),
+                    content: codeLines.joined(separator: "\n")
+                ))
             codeLines.removeAll()
             codeLanguage = nil
         }
@@ -924,35 +942,41 @@ enum MarkdownDocumentParser {
                 blocks.append(MarkdownBlock(kind: .divider, content: ""))
             } else if let heading = heading(from: contentLine) {
                 flushParagraph()
-                blocks.append(MarkdownBlock(
-                    kind: .heading(heading.level),
-                    content: heading.content
-                ))
+                blocks.append(
+                    MarkdownBlock(
+                        kind: .heading(heading.level),
+                        content: heading.content
+                    ))
             } else if let checklist = checklistItem(from: contentLine) {
                 flushParagraph()
-                blocks.append(MarkdownBlock(
-                    kind: .checklist(checklist.checked, indentation),
-                    content: checklist.content
-                ))
+                blocks.append(
+                    MarkdownBlock(
+                        kind: .checklist(checklist.checked, indentation),
+                        content: checklist.content
+                    ))
             } else if contentLine.hasPrefix("- ")
-                        || contentLine.hasPrefix("* ") {
+                || contentLine.hasPrefix("* ")
+            {
                 flushParagraph()
-                blocks.append(MarkdownBlock(
-                    kind: .bullet(indentation),
-                    content: String(contentLine.dropFirst(2))
-                ))
+                blocks.append(
+                    MarkdownBlock(
+                        kind: .bullet(indentation),
+                        content: String(contentLine.dropFirst(2))
+                    ))
             } else if contentLine.hasPrefix("> ") {
                 flushParagraph()
-                blocks.append(MarkdownBlock(
-                    kind: .quote,
-                    content: String(contentLine.dropFirst(2))
-                ))
+                blocks.append(
+                    MarkdownBlock(
+                        kind: .quote,
+                        content: String(contentLine.dropFirst(2))
+                    ))
             } else if let numbered = numberedListItem(from: contentLine) {
                 flushParagraph()
-                blocks.append(MarkdownBlock(
-                    kind: .numbered(numbered.marker, indentation),
-                    content: numbered.content
-                ))
+                blocks.append(
+                    MarkdownBlock(
+                        kind: .numbered(numbered.marker, indentation),
+                        content: numbered.content
+                    ))
             } else if let attachmentID = attachmentImageID(from: contentLine) {
                 flushParagraph()
                 blocks.append(MarkdownBlock(kind: .image(attachmentID), content: ""))
@@ -980,7 +1004,8 @@ enum MarkdownDocumentParser {
     ) -> (level: Int, content: String)? {
         let hashes = line.prefix(while: { $0 == "#" })
         guard (1...6).contains(hashes.count),
-              line.dropFirst(hashes.count).hasPrefix(" ") else {
+            line.dropFirst(hashes.count).hasPrefix(" ")
+        else {
             return nil
         }
         return (hashes.count, String(line.dropFirst(hashes.count + 1)))
@@ -990,11 +1015,13 @@ enum MarkdownDocumentParser {
         from line: String
     ) -> (checked: Bool, content: String)? {
         guard line.hasPrefix("- [") || line.hasPrefix("* ["),
-              line.count >= 6 else { return nil }
+            line.count >= 6
+        else { return nil }
         let source = line as NSString
         let marker = source.substring(with: NSRange(location: 2, length: 3))
         guard ["[ ]", "[x]", "[X]"].contains(marker),
-              source.substring(with: NSRange(location: 5, length: 1)) == " " else {
+            source.substring(with: NSRange(location: 5, length: 1)) == " "
+        else {
             return nil
         }
         return (marker.lowercased() == "[x]", source.substring(from: 6))
@@ -1015,7 +1042,8 @@ enum MarkdownDocumentParser {
         from line: String
     ) -> (marker: String, content: String)? {
         guard let period = line.firstIndex(of: "."),
-              period != line.startIndex else { return nil }
+            period != line.startIndex
+        else { return nil }
         let number = line[..<period]
         guard number.allSatisfy(\.isNumber) else { return nil }
         let afterPeriod = line.index(after: period)
@@ -1107,12 +1135,12 @@ struct MarkdownBodyEditor: View {
                 attachmentImage: attachmentImage,
                 attachmentRevision: attachmentRevision
             )
-                .frame(
-                    maxWidth: .infinity,
-                    minHeight: minHeight,
-                    maxHeight: .infinity
-                )
-                .accessibilityLabel("Markdown 본문")
+            .frame(
+                maxWidth: .infinity,
+                minHeight: minHeight,
+                maxHeight: .infinity
+            )
+            .accessibilityLabel("Markdown 본문")
 
             Color.clear
                 .frame(width: 0, height: 0)
@@ -1122,7 +1150,7 @@ struct MarkdownBodyEditor: View {
                     )
                 ) { notification in
                     guard let rawValue = notification.object as? String,
-                          let command = MarkdownKeyboardCommand(rawValue: rawValue)
+                        let command = MarkdownKeyboardCommand(rawValue: rawValue)
                     else { return }
                     #if os(macOS)
                     guard MacMarkdownEditorFocus.isFocused else { return }
@@ -1147,7 +1175,8 @@ struct MarkdownBodyEditor: View {
             selection: selection
         )
         text = result.text
-        selection = result.selectionUTF16Range
+        selection =
+            result.selectionUTF16Range
             ?? NSRange(location: result.cursorUTF16Offset, length: 0)
     }
 
@@ -1158,7 +1187,8 @@ struct MarkdownBodyEditor: View {
             selection: selection
         )
         text = result.text
-        selection = result.selectionUTF16Range
+        selection =
+            result.selectionUTF16Range
             ?? NSRange(location: result.cursorUTF16Offset, length: 0)
     }
 
@@ -1178,7 +1208,8 @@ struct MarkdownBodyEditor: View {
                     .padding(.top, 6)
                 ForEach(matches) { command in
                     Button {
-                        let result = MarkdownCommandProcessor
+                        let result =
+                            MarkdownCommandProcessor
                             .replacingTrailingSlashCommand(command, in: text)
                         text = result.text
                         selection = NSRange(
@@ -1204,10 +1235,12 @@ struct MarkdownBodyEditor: View {
             }
             .foregroundStyle(JournalTheme.ink)
             .background(JournalTheme.surfaceMuted)
-            .clipShape(RoundedRectangle(
-                cornerRadius: JournalTheme.Radius.medium,
-                style: .continuous
-            ))
+            .clipShape(
+                RoundedRectangle(
+                    cornerRadius: JournalTheme.Radius.medium,
+                    style: .continuous
+                )
+            )
             .overlay {
                 RoundedRectangle(cornerRadius: JournalTheme.Radius.medium)
                     .stroke(JournalTheme.separator, lineWidth: 1)
@@ -1268,7 +1301,8 @@ private enum CodeSyntaxHighlighter {
         let normalizedLanguage = language?.lowercased() ?? ""
         let commentPatterns: [String]
         if ["python", "py", "shell", "sh", "bash", "zsh", "ruby", "rb"]
-            .contains(normalizedLanguage) {
+            .contains(normalizedLanguage)
+        {
             commentPatterns = [#"(?m)#.*$"#]
         } else if ["json"].contains(normalizedLanguage) {
             commentPatterns = []
@@ -1277,9 +1311,11 @@ private enum CodeSyntaxHighlighter {
         }
         for pattern in commentPatterns {
             for match in matches(pattern, in: value.string, range: range) {
-                guard !stringRanges.contains(where: {
-                    NSIntersectionRange($0, match.range).length > 0
-                }) else { continue }
+                guard
+                    !stringRanges.contains(where: {
+                        NSIntersectionRange($0, match.range).length > 0
+                    })
+                else { continue }
                 value.addAttribute(
                     .foregroundColor,
                     value: EditorPalette.codeComment,
@@ -1368,18 +1404,20 @@ enum LiveMarkdownStyler {
             fadeMarkers(in: match, groups: [0], excluding: [1], storage: storage)
         }
         applyRegex(#"`([^`\n]+)`"#, to: storage) { match in
-            storage.addAttributes([
-                .font: monospacedFont,
-                .backgroundColor: EditorPalette.secondaryLabel
-                    .withAlphaComponent(0.12),
-            ], range: match.range(at: 1))
+            storage.addAttributes(
+                [
+                    .font: monospacedFont,
+                    .backgroundColor: EditorPalette.secondaryLabel
+                        .withAlphaComponent(0.12),
+                ], range: match.range(at: 1))
             fadeMarkers(in: match, groups: [0], excluding: [1], storage: storage)
         }
         applyRegex(#"\[([^\]\n]+)\]\(([^)\n]+)\)"#, to: storage) { match in
-            storage.addAttributes([
-                .foregroundColor: EditorPalette.link,
-                .underlineStyle: NSUnderlineStyle.single.rawValue,
-            ], range: match.range(at: 1))
+            storage.addAttributes(
+                [
+                    .foregroundColor: EditorPalette.link,
+                    .underlineStyle: NSUnderlineStyle.single.rawValue,
+                ], range: match.range(at: 1))
             fadeMarkers(in: match, groups: [0], excluding: [1], storage: storage)
         }
 
@@ -1394,24 +1432,26 @@ enum LiveMarkdownStyler {
             )
             let font = headingFont(level: marker.count)
             storage.addAttribute(.font, value: font, range: contentRange)
-            storage.addAttributes([
-                .font: hiddenMarkerFont,
-                .foregroundColor: PlatformColor.clear,
-            ], range: hiddenPrefixRange)
+            storage.addAttributes(
+                [
+                    .font: hiddenMarkerFont,
+                    .foregroundColor: PlatformColor.clear,
+                ], range: hiddenPrefixRange)
         }
         applyRegex(#"(?m)^([ \t]*)([\-*]) (.*)$"#, to: storage) { match in
-            storage.addAttributes([
-                .foregroundColor: PlatformColor.clear,
-                .font: bodyFont,
-                // The marker glyph is invisible but still occupies its own
-                // width; the drawn dot replaces it. This kern widens the
-                // gap between the dot and the following content — without
-                // it, only a single space's width separates them.
-                // `bulletParagraphStyle`'s headIndent measures using this
-                // exact same value, so the gap and the wrap-alignment never
-                // drift apart.
-                .kern: bulletMarkerKern,
-            ], range: match.range(at: 2))
+            storage.addAttributes(
+                [
+                    .foregroundColor: PlatformColor.clear,
+                    .font: bodyFont,
+                    // The marker glyph is invisible but still occupies its own
+                    // width; the drawn dot replaces it. This kern widens the
+                    // gap between the dot and the following content — without
+                    // it, only a single space's width separates them.
+                    // `bulletParagraphStyle`'s headIndent measures using this
+                    // exact same value, so the gap and the wrap-alignment never
+                    // drift apart.
+                    .kern: bulletMarkerKern,
+                ], range: match.range(at: 2))
             storage.addAttribute(
                 .paragraphStyle,
                 value: bulletParagraphStyle(
@@ -1447,15 +1487,17 @@ enum LiveMarkdownStyler {
             // a bare attribute on the existing "-" character is a no-op;
             // AppKit/UIKit's glyph generator ignores it for ordinary
             // characters, so it silently fell back to showing "-".
-            storage.addAttributes([
-                .foregroundColor: PlatformColor.clear,
-                .font: bodyFont,
-                .kern: bulletMarkerKern,
-            ], range: match.range(at: 2))
-            storage.addAttributes([
-                .font: hiddenMarkerFont,
-                .foregroundColor: PlatformColor.clear,
-            ], range: match.range(at: 3))
+            storage.addAttributes(
+                [
+                    .foregroundColor: PlatformColor.clear,
+                    .font: bodyFont,
+                    .kern: bulletMarkerKern,
+                ], range: match.range(at: 2))
+            storage.addAttributes(
+                [
+                    .font: hiddenMarkerFont,
+                    .foregroundColor: PlatformColor.clear,
+                ], range: match.range(at: 3))
             storage.addAttribute(
                 .paragraphStyle,
                 value: bulletParagraphStyle(
@@ -1467,10 +1509,11 @@ enum LiveMarkdownStyler {
                 range: match.range
             )
             if checked {
-                storage.addAttributes([
-                    .foregroundColor: EditorPalette.secondaryLabel,
-                    .strikethroughStyle: NSUnderlineStyle.single.rawValue,
-                ], range: match.range(at: 5))
+                storage.addAttributes(
+                    [
+                        .foregroundColor: EditorPalette.secondaryLabel,
+                        .strikethroughStyle: NSUnderlineStyle.single.rawValue,
+                    ], range: match.range(at: 5))
             }
         }
         for imageMatch in MarkdownAttachmentImageDecoration.matches(in: storage.string) {
@@ -1479,10 +1522,11 @@ enum LiveMarkdownStyler {
             // instead. Never an NSTextAttachment (see the checklist comment
             // above): the saved characters must stay exactly
             // `![](attachment:id ...)`.
-            storage.addAttributes([
-                .foregroundColor: PlatformColor.clear,
-                .font: hiddenMarkerFont,
-            ], range: imageMatch.markerRange)
+            storage.addAttributes(
+                [
+                    .foregroundColor: PlatformColor.clear,
+                    .font: hiddenMarkerFont,
+                ], range: imageMatch.markerRange)
             storage.addAttribute(
                 .paragraphStyle,
                 value: attachmentImageParagraphStyle(
@@ -1495,35 +1539,40 @@ enum LiveMarkdownStyler {
         }
         applyRegex(#"(?m)^(>) (.*)$"#, to: storage) { match in
             #if os(macOS)
-            storage.addAttributes([
-                .font: hiddenMarkerFont,
-                .foregroundColor: PlatformColor.clear,
-            ], range: match.range(at: 1))
+            storage.addAttributes(
+                [
+                    .font: hiddenMarkerFont,
+                    .foregroundColor: PlatformColor.clear,
+                ], range: match.range(at: 1))
             #else
-            storage.addAttributes([
-                .font: bodyFont,
-                .foregroundColor: EditorPalette.quoteBar,
-            ], range: match.range(at: 1))
+            storage.addAttributes(
+                [
+                    .font: bodyFont,
+                    .foregroundColor: EditorPalette.quoteBar,
+                ], range: match.range(at: 1))
             #endif
-            storage.addAttributes([
-                .foregroundColor: EditorPalette.secondaryLabel,
-                .paragraphStyle: quoteParagraphStyle(),
-            ], range: match.range)
+            storage.addAttributes(
+                [
+                    .foregroundColor: EditorPalette.secondaryLabel,
+                    .paragraphStyle: quoteParagraphStyle(),
+                ], range: match.range)
         }
         applyRegex(#"(?m)^(---|\*\*\*|___)$"#, to: storage) { match in
-            storage.addAttributes([
-                .font: hiddenMarkerFont,
-                .foregroundColor: PlatformColor.clear,
-                .paragraphStyle: separatorParagraphStyle,
-            ], range: match.range)
+            storage.addAttributes(
+                [
+                    .font: hiddenMarkerFont,
+                    .foregroundColor: PlatformColor.clear,
+                    .paragraphStyle: separatorParagraphStyle,
+                ], range: match.range)
         }
         applyRegex(#"(?s)(```[^\n]*\n?)(.*?)(\n?```)"#, to: storage) { match in
-            storage.addAttributes([
-                .font: monospacedFont,
-                .foregroundColor: EditorPalette.codeForeground,
-                .backgroundColor: EditorPalette.codeBackground,
-                .paragraphStyle: codeParagraphStyle(),
-            ], range: match.range)
+            storage.addAttributes(
+                [
+                    .font: monospacedFont,
+                    .foregroundColor: EditorPalette.codeForeground,
+                    .backgroundColor: EditorPalette.codeBackground,
+                    .paragraphStyle: codeParagraphStyle(),
+                ], range: match.range)
             let opening = (storage.string as NSString).substring(
                 with: match.range(at: 1)
             )
@@ -1535,10 +1584,11 @@ enum LiveMarkdownStyler {
                 language: language.isEmpty ? nil : language
             )
             [match.range(at: 1), match.range(at: 3)].forEach { markerRange in
-                storage.addAttributes([
-                    .font: hiddenMarkerFont,
-                    .foregroundColor: PlatformColor.clear,
-                ], range: markerRange)
+                storage.addAttributes(
+                    [
+                        .font: hiddenMarkerFont,
+                        .foregroundColor: PlatformColor.clear,
+                    ], range: markerRange)
             }
         }
         styleEscapedMarkers(in: storage, revealing: selection)
@@ -1554,7 +1604,8 @@ enum LiveMarkdownStyler {
             let isActive: Bool
             if let selection {
                 if selection.length == 0 {
-                    isActive = selection.location >= tokenRange.location
+                    isActive =
+                        selection.location >= tokenRange.location
                         && selection.location <= NSMaxRange(tokenRange)
                 } else {
                     isActive = NSIntersectionRange(selection, tokenRange).length > 0
@@ -1589,11 +1640,12 @@ enum LiveMarkdownStyler {
     ) {
         applyRegex(pattern, to: storage) { match in
             let contentRange = match.range(at: 1)
-            let currentFont = storage.attribute(
-                .font,
-                at: contentRange.location,
-                effectiveRange: nil
-            ) as? PlatformFont ?? bodyFont
+            let currentFont =
+                storage.attribute(
+                    .font,
+                    at: contentRange.location,
+                    effectiveRange: nil
+                ) as? PlatformFont ?? bodyFont
             storage.addAttribute(
                 .font,
                 value: font(currentFont, adding: trait),
@@ -1640,17 +1692,19 @@ enum LiveMarkdownStyler {
         guard intersection.length > 0 else { return [range] }
         var results: [NSRange] = []
         if intersection.location > range.location {
-            results.append(NSRange(
-                location: range.location,
-                length: intersection.location - range.location
-            ))
+            results.append(
+                NSRange(
+                    location: range.location,
+                    length: intersection.location - range.location
+                ))
         }
         let intersectionEnd = NSMaxRange(intersection)
         if intersectionEnd < NSMaxRange(range) {
-            results.append(NSRange(
-                location: intersectionEnd,
-                length: NSMaxRange(range) - intersectionEnd
-            ))
+            results.append(
+                NSRange(
+                    location: intersectionEnd,
+                    length: NSMaxRange(range) - intersectionEnd
+                ))
         }
         return results
     }
@@ -1889,7 +1943,9 @@ enum LiveMarkdownStyler {
         let maxWidth = max(containerWidth, 40)
         let rawWidth = storedWidth ?? maxWidth
         let rawHeight = storedHeight ?? (rawWidth * 0.6)
-        guard rawWidth > 0, rawHeight > 0 else { return CGSize(width: maxWidth, height: maxWidth * 0.6) }
+        guard rawWidth > 0, rawHeight > 0 else {
+            return CGSize(width: maxWidth, height: maxWidth * 0.6)
+        }
         guard rawWidth > maxWidth else { return CGSize(width: rawWidth, height: rawHeight) }
         let scale = maxWidth / rawWidth
         return CGSize(width: maxWidth, height: rawHeight * scale)
@@ -1912,9 +1968,11 @@ enum LiveMarkdownStyler {
     ) -> [NSAttributedString.Key: Any] {
         var attributes = baseAttributes
         let range = NSRange(location: 0, length: (linePrefix as NSString).length)
-        guard let match = headingPrefixRegex.firstMatch(
-            in: linePrefix, range: range
-        ) else { return attributes }
+        guard
+            let match = headingPrefixRegex.firstMatch(
+                in: linePrefix, range: range
+            )
+        else { return attributes }
         attributes[.font] = headingFont(level: match.range(at: 1).length)
         return attributes
     }
@@ -2052,10 +2110,12 @@ enum MarkdownAttachmentImageDecoration {
             else { return nil }
             let widthRange = result.range(at: 2)
             let heightRange = result.range(at: 3)
-            let storedWidth = widthRange.location != NSNotFound
+            let storedWidth =
+                widthRange.location != NSNotFound
                 ? CGFloat(Int(source.substring(with: widthRange)) ?? 0)
                 : nil
-            let storedHeight = heightRange.location != NSNotFound
+            let storedHeight =
+                heightRange.location != NSNotFound
                 ? CGFloat(Int(source.substring(with: heightRange)) ?? 0)
                 : nil
             return Match(
@@ -2081,12 +2141,15 @@ enum MarkdownAttachmentImageDecoration {
         in text: String,
         cursorUTF16Offset: Int
     ) -> InsertionRelocation? {
-        guard let match = matches(in: text).first(where: {
-            cursorUTF16Offset >= $0.markerRange.location
-                && cursorUTF16Offset <= NSMaxRange($0.markerRange)
-        }) else { return nil }
+        guard
+            let match = matches(in: text).first(where: {
+                cursorUTF16Offset >= $0.markerRange.location
+                    && cursorUTF16Offset <= NSMaxRange($0.markerRange)
+            })
+        else { return nil }
         let atStart = cursorUTF16Offset == match.markerRange.location
-        let newlineOffset = atStart
+        let newlineOffset =
+            atStart
             ? match.markerRange.location
             : NSMaxRange(match.markerRange)
         return InsertionRelocation(
@@ -2194,7 +2257,8 @@ private final class MarkdownNSTextView: NSTextView {
     override func layout() {
         super.layout()
         guard let width = textContainer?.size.width,
-              abs(width - lastKnownContainerWidth) > 1 else { return }
+            abs(width - lastKnownContainerWidth) > 1
+        else { return }
         lastKnownContainerWidth = width
         containerWidthChanged?(width)
     }
@@ -2221,8 +2285,9 @@ private final class MarkdownNSTextView: NSTextView {
         _ item: NSValidatedUserInterfaceItem
     ) -> Bool {
         if item.action == #selector(paste(_:)),
-           isEditable,
-           Self.pasteboardHoldsImage(.general) {
+            isEditable,
+            Self.pasteboardHoldsImage(.general)
+        {
             return true
         }
         return super.validateUserInterfaceItem(item)
@@ -2234,9 +2299,11 @@ private final class MarkdownNSTextView: NSTextView {
     private static func pasteboardHoldsImage(_ pasteboard: NSPasteboard) -> Bool {
         if pasteboard.data(forType: .png) != nil { return true }
         if pasteboard.data(forType: .tiff) != nil { return true }
-        guard let url = pasteboard.readObjects(
-            forClasses: [NSURL.self], options: nil
-        )?.first as? URL else { return false }
+        guard
+            let url = pasteboard.readObjects(
+                forClasses: [NSURL.self], options: nil
+            )?.first as? URL
+        else { return false }
         return UTType(filenameExtension: url.pathExtension)?
             .conforms(to: .image) ?? false
     }
@@ -2272,11 +2339,13 @@ private final class MarkdownNSTextView: NSTextView {
     private func moveInsertionOffImageLine() {
         let selection = selectedRange()
         guard selection.length == 0,
-              let relocation = MarkdownAttachmentImageDecoration
-                  .insertionRelocation(
-                      in: string,
-                      cursorUTF16Offset: selection.location
-                  ) else { return }
+            let relocation =
+                MarkdownAttachmentImageDecoration
+                .insertionRelocation(
+                    in: string,
+                    cursorUTF16Offset: selection.location
+                )
+        else { return }
         let insertionPoint = NSRange(
             location: relocation.newlineOffset, length: 0
         )
@@ -2307,7 +2376,8 @@ private final class MarkdownNSTextView: NSTextView {
         // once Korean text is involved (system UI font → Apple SD Gothic Neo),
         // so comparing fonts would report a difference on every Korean
         // keystroke and rewrite the attributes needlessly mid-composition.
-        let sizeDiffers = currentFont?.pointSize
+        let sizeDiffers =
+            currentFont?.pointSize
             != (desired[.font] as? NSFont)?.pointSize
         guard isHidden || sizeDiffers else { return }
         typingAttributes = desired
@@ -2360,10 +2430,11 @@ private final class MarkdownNSTextView: NSTextView {
             let line = NSBezierPath()
             line.lineWidth = 1
             line.move(to: NSPoint(x: origin.x + 4, y: origin.y + fragment.midY))
-            line.line(to: NSPoint(
-                x: origin.x + textContainer.size.width - 4,
-                y: origin.y + fragment.midY
-            ))
+            line.line(
+                to: NSPoint(
+                    x: origin.x + textContainer.size.width - 4,
+                    y: origin.y + fragment.midY
+                ))
             line.stroke()
         }
         for bulletMatch in MarkdownBulletDecoration.matches(in: string) {
@@ -2425,24 +2496,28 @@ private final class MarkdownNSTextView: NSTextView {
                 check.lineWidth = 1.6
                 check.lineCapStyle = .round
                 check.lineJoinStyle = .round
-                check.move(to: NSPoint(
-                    x: rect.minX + rect.width * 0.22,
-                    y: rect.minY + rect.height * 0.52
-                ))
-                check.line(to: NSPoint(
-                    x: rect.minX + rect.width * 0.42,
-                    y: rect.minY + rect.height * 0.72
-                ))
-                check.line(to: NSPoint(
-                    x: rect.minX + rect.width * 0.80,
-                    y: rect.minY + rect.height * 0.28
-                ))
+                check.move(
+                    to: NSPoint(
+                        x: rect.minX + rect.width * 0.22,
+                        y: rect.minY + rect.height * 0.52
+                    ))
+                check.line(
+                    to: NSPoint(
+                        x: rect.minX + rect.width * 0.42,
+                        y: rect.minY + rect.height * 0.72
+                    ))
+                check.line(
+                    to: NSPoint(
+                        x: rect.minX + rect.width * 0.80,
+                        y: rect.minY + rect.height * 0.28
+                    ))
                 // The box fill is EditorPalette.label (adapts light/dark),
                 // so the checkmark needs the opposite of whatever that
                 // resolved to, not a fixed color.
-                let isDark = effectiveAppearance.bestMatch(
-                    from: [.darkAqua, .aqua]
-                ) == .darkAqua
+                let isDark =
+                    effectiveAppearance.bestMatch(
+                        from: [.darkAqua, .aqua]
+                    ) == .darkAqua
                 (isDark ? PlatformColor.black : PlatformColor.white).setStroke()
                 check.stroke()
             } else {
@@ -2469,7 +2544,8 @@ private final class MarkdownNSTextView: NSTextView {
                 forGlyphAt: glyphRange.location,
                 effectiveRange: nil
             )
-            let displaySize = attachmentResizePreview
+            let displaySize =
+                attachmentResizePreview
                 .flatMap { $0.id == imageMatch.attachmentID ? $0.size : nil }
                 ?? LiveMarkdownStyler.attachmentImageDisplaySize(
                     storedWidth: imageMatch.storedWidth,
@@ -2489,7 +2565,8 @@ private final class MarkdownNSTextView: NSTextView {
                 // counter-flip around the target rect sidesteps that
                 // ambiguity entirely instead of depending on it.
                 if let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil),
-                   let context = NSGraphicsContext.current?.cgContext {
+                    let context = NSGraphicsContext.current?.cgContext
+                {
                     context.saveGState()
                     context.translateBy(x: 0, y: imageRect.minY + imageRect.maxY)
                     context.scaleBy(x: 1, y: -1)
@@ -2509,7 +2586,8 @@ private final class MarkdownNSTextView: NSTextView {
                 ).stroke()
             }
             let lineRange = (string as NSString).lineRange(for: imageMatch.markerRange)
-            let cursorOnThisLine = cursorLocation >= lineRange.location
+            let cursorOnThisLine =
+                cursorLocation >= lineRange.location
                 && cursorLocation <= NSMaxRange(lineRange)
             if cursorOnThisLine {
                 let handle = MarkdownAttachmentImageDecoration.handleRect(for: imageRect)
@@ -2638,13 +2716,16 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
         context.coordinator.parent = self
         context.coordinator.attachmentRevisionDidChange(to: attachmentRevision)
         guard let textView = scrollView.documentView as? NSTextView,
-              !context.coordinator.isUpdating else { return }
+            !context.coordinator.isUpdating
+        else { return }
         if abs(scrollView.magnification - CGFloat(textScale)) > 0.001 {
             scrollView.setMagnification(CGFloat(textScale), centeredAt: .zero)
         }
-        guard MarkdownInputReconciliation.canMutateTextStorage(
-            isComposing: textView.hasMarkedText()
-        ) else { return }
+        guard
+            MarkdownInputReconciliation.canMutateTextStorage(
+                isComposing: textView.hasMarkedText()
+            )
+        else { return }
         if MarkdownInputReconciliation.shouldApplyExternalText(
             incoming: text,
             current: textView.string,
@@ -2723,7 +2804,7 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
                 return shared
             }
             guard !loadingAttachmentIDs.contains(id), !missingAttachmentIDs.contains(id),
-                  let provider = parent.attachmentImage
+                let provider = parent.attachmentImage
             else { return nil }
             loadingAttachmentIDs.insert(id)
             Task { @MainActor [weak self] in
@@ -2731,9 +2812,10 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
                 // Decodes downsampled (never at the source's full
                 // resolution) — see AttachmentImageCache's doc comment.
                 guard let self, let data = await provider(id),
-                      let image = await AttachmentImageCache.shared.loadAndCache(
-                          id: id, data: data
-                      ) else {
+                    let image = await AttachmentImageCache.shared.loadAndCache(
+                        id: id, data: data
+                    )
+                else {
                     self?.missingAttachmentIDs.insert(id)
                     return
                 }
@@ -2749,7 +2831,8 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
         /// request to move the insertion point.
         func toggleChecklistItem(at point: NSPoint) -> Bool {
             guard let textView, let layoutManager = textView.layoutManager,
-                  let textContainer = textView.textContainer else { return false }
+                let textContainer = textView.textContainer
+            else { return false }
             let origin = textView.textContainerOrigin
             for match in MarkdownChecklistDecoration.matches(in: textView.string) {
                 let glyphRange = layoutManager.glyphRange(
@@ -2769,9 +2852,11 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
                 // delay was plainly visible on a long entry. Nothing else about
                 // the document changes, so nothing else needs recomputing.
                 let replacement = match.checked ? " " : "x"
-                guard textView.shouldChangeText(
-                    in: match.stateRange, replacementString: replacement
-                ) else { return true }
+                guard
+                    textView.shouldChangeText(
+                        in: match.stateRange, replacementString: replacement
+                    )
+                else { return true }
                 textView.textStorage?.replaceCharacters(
                     in: match.stateRange, with: replacement
                 )
@@ -2786,7 +2871,8 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
 
         func beginAttachmentResize(at point: NSPoint) -> Bool {
             guard let textView, let layoutManager = textView.layoutManager,
-                  let textContainer = textView.textContainer else { return false }
+                let textContainer = textView.textContainer
+            else { return false }
             let origin = textView.textContainerOrigin
             for match in MarkdownAttachmentImageDecoration.matches(in: textView.string) {
                 let glyphRange = layoutManager.glyphRange(
@@ -2820,11 +2906,14 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
         /// reentrancy risk running this on every mouse-moved event.
         func continueAttachmentResize(to point: NSPoint) {
             guard let id = resizingAttachmentID, let textView,
-                  let storage = textView.textStorage,
-                  let textContainer = textView.textContainer else { return }
+                let storage = textView.textStorage,
+                let textContainer = textView.textContainer
+            else { return }
             let size = draggedSize(to: point, containerWidth: textContainer.size.width)
-            guard let match = MarkdownAttachmentImageDecoration.matches(in: textView.string)
-                .first(where: { $0.attachmentID == id }) else { return }
+            guard
+                let match = MarkdownAttachmentImageDecoration.matches(in: textView.string)
+                    .first(where: { $0.attachmentID == id })
+            else { return }
             let style = LiveMarkdownStyler.attachmentImageParagraphStyle(
                 storedWidth: size.width, storedHeight: size.height,
                 containerWidth: textContainer.size.width
@@ -2858,13 +2947,17 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
                 (textView as? MarkdownNSTextView)?.attachmentResizePreview = nil
             }
             guard let id = resizingAttachmentID, let textView,
-                  let textContainer = textView.textContainer else { return }
+                let textContainer = textView.textContainer
+            else { return }
             let size = draggedSize(to: point, containerWidth: textContainer.size.width)
-            guard let match = MarkdownAttachmentImageDecoration.matches(in: textView.string)
-                .first(where: { $0.attachmentID == id }) else { return }
+            guard
+                let match = MarkdownAttachmentImageDecoration.matches(in: textView.string)
+                    .first(where: { $0.attachmentID == id })
+            else { return }
             let replaced = (textView.string as NSString).replacingCharacters(
                 in: match.markerRange,
-                with: "![](attachment:\(id.uuidString) =\(Int(size.width.rounded()))x\(Int(size.height.rounded())))"
+                with:
+                    "![](attachment:\(id.uuidString) =\(Int(size.width.rounded()))x\(Int(size.height.rounded())))"
             )
             let cursor = NSRange(location: match.markerRange.location, length: 0)
             replaceExternalText(replaced, selection: cursor, registersUndo: true)
@@ -2874,7 +2967,8 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
         /// resize, height follows the original aspect ratio.
         private func draggedSize(to point: NSPoint, containerWidth: CGFloat) -> CGSize {
             let aspect = resizeStartSize.height / max(resizeStartSize.width, 1)
-            let width = max(40, min(containerWidth, resizeStartSize.width + (point.x - resizeStartPoint.x)))
+            let width = max(
+                40, min(containerWidth, resizeStartSize.width + (point.x - resizeStartPoint.x)))
             return CGSize(width: width, height: width * aspect)
         }
 
@@ -2925,7 +3019,8 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
 
         func textDidChange(_ notification: Notification) {
             guard !isUpdating,
-                  let textView = notification.object as? NSTextView else {
+                let textView = notification.object as? NSTextView
+            else {
                 return
             }
             let currentSelection = textView.selectedRange()
@@ -2965,10 +3060,12 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
             // Return) could visibly stall/jank the scroll position. Commands
             // and syntax delimiters style immediately; other committed edits
             // always schedule a deferred pass, including deletion.
-            if transformedText || MarkdownInputReconciliation.shouldStyleImmediately(
-                after: textView.string,
-                cursorUTF16Offset: NSMaxRange(preservedSelection)
-            ) {
+            if transformedText
+                || MarkdownInputReconciliation.shouldStyleImmediately(
+                    after: textView.string,
+                    cursorUTF16Offset: NSMaxRange(preservedSelection)
+                )
+            {
                 // Apply syntax on the completing keystroke, without requiring
                 // an extra space or Return to make the formatting visible.
                 stylingTask?.cancel()
@@ -2985,7 +3082,8 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
 
         func textDidEndEditing(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView,
-                  !textView.hasMarkedText(), !isUpdating else { return }
+                !textView.hasMarkedText(), !isUpdating
+            else { return }
             stylingTask?.cancel()
             isUpdating = true
             applyStyling(to: textView)
@@ -2994,7 +3092,8 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
 
         func textViewDidChangeSelection(_ notification: Notification) {
             guard !isUpdating,
-                  let textView = notification.object as? NSTextView else {
+                let textView = notification.object as? NSTextView
+            else {
                 return
             }
             let selection = textView.selectedRange()
@@ -3027,10 +3126,11 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
             guard result.text != textView.string else { return false }
             replaceExternalText(
                 result.text,
-                selection: result.selectionUTF16Range ?? NSRange(
-                    location: result.cursorUTF16Offset,
-                    length: 0
-                ),
+                selection: result.selectionUTF16Range
+                    ?? NSRange(
+                        location: result.cursorUTF16Offset,
+                        length: 0
+                    ),
                 registersUndo: true
             )
             return true
@@ -3041,16 +3141,18 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
             guard let textView, !textView.hasMarkedText() else { return false }
             let selection = textView.selectedRange()
             guard selection.length == 0,
-                  let result = MarkdownCommandProcessor.removingListMarkerBeforeCursor(
-                      in: textView.string,
-                      cursorUTF16Offset: selection.location
-                  ) else { return false }
+                let result = MarkdownCommandProcessor.removingListMarkerBeforeCursor(
+                    in: textView.string,
+                    cursorUTF16Offset: selection.location
+                )
+            else { return false }
             replaceExternalText(
                 result.text,
-                selection: result.selectionUTF16Range ?? NSRange(
-                    location: result.cursorUTF16Offset,
-                    length: 0
-                ),
+                selection: result.selectionUTF16Range
+                    ?? NSRange(
+                        location: result.cursorUTF16Offset,
+                        length: 0
+                    ),
                 registersUndo: true
             )
             return true
@@ -3069,11 +3171,13 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
             guard let image = Self.pasteboardImageData(from: .general) else { return false }
             let selection = textView.selectedRange()
             Task { @MainActor [weak self] in
-                guard let self, let attachmentID = await self.parent.storeImageAttachment?(
-                    image.data,
-                    image.filename,
-                    image.mimeType
-                ), let textView = self.textView else { return }
+                guard let self,
+                    let attachmentID = await self.parent.storeImageAttachment?(
+                        image.data,
+                        image.filename,
+                        image.mimeType
+                    ), let textView = self.textView
+                else { return }
                 let displaySize = NSImage(data: image.data).map {
                     LiveMarkdownStyler.attachmentImageDisplaySize(
                         storedWidth: $0.size.width,
@@ -3103,8 +3207,9 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
                 return (data, "pasted.png", "image/png")
             }
             if let tiffData = pasteboard.data(forType: .tiff),
-               let bitmap = NSBitmapImageRep(data: tiffData),
-               let pngData = bitmap.representation(using: .png, properties: [:]) {
+                let bitmap = NSBitmapImageRep(data: tiffData),
+                let pngData = bitmap.representation(using: .png, properties: [:])
+            {
                 return (pngData, "pasted.png", "image/png")
             }
             // Copying a file (Finder "복사", or a browser's "이미지 복사" that
@@ -3116,10 +3221,14 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
             if let url = pasteboard.readObjects(
                 forClasses: [NSURL.self], options: nil
             )?.first as? URL,
-               let contentType = UTType(filenameExtension: url.pathExtension),
-               contentType.conforms(to: .image),
-               let data = try? Data(contentsOf: url) {
-                return (data, url.lastPathComponent, contentType.preferredMIMEType ?? "application/octet-stream")
+                let contentType = UTType(filenameExtension: url.pathExtension),
+                contentType.conforms(to: .image),
+                let data = try? Data(contentsOf: url)
+            {
+                return (
+                    data, url.lastPathComponent,
+                    contentType.preferredMIMEType ?? "application/octet-stream"
+                )
             }
             return nil
         }
@@ -3133,10 +3242,11 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
                     return
                 }
                 guard !Task.isCancelled,
-                      let self,
-                      let textView,
-                      !textView.hasMarkedText(),
-                      !self.isUpdating else { return }
+                    let self,
+                    let textView,
+                    !textView.hasMarkedText(),
+                    !self.isUpdating
+                else { return }
                 self.isUpdating = true
                 self.applyStyling(to: textView)
                 self.isUpdating = false
@@ -3316,11 +3426,13 @@ private final class MarkdownUITextView: UITextView, UIGestureRecognizerDelegate 
     private func moveInsertionOffImageLine() {
         let selection = selectedRange
         guard selection.length == 0,
-              let relocation = MarkdownAttachmentImageDecoration
-                  .insertionRelocation(
-                      in: text,
-                      cursorUTF16Offset: selection.location
-                  ) else { return }
+            let relocation =
+                MarkdownAttachmentImageDecoration
+                .insertionRelocation(
+                    in: text,
+                    cursorUTF16Offset: selection.location
+                )
+        else { return }
         selectedRange = NSRange(location: relocation.newlineOffset, length: 0)
         // `super`, not `self`: this must not recurse back through the guard.
         super.insertText("\n")
@@ -3347,7 +3459,8 @@ private final class MarkdownUITextView: UITextView, UIGestureRecognizerDelegate 
         )
         // Point size, not font equality — see the macOS view: the concrete
         // face gets substituted for Korean text.
-        let sizeDiffers = currentFont?.pointSize
+        let sizeDiffers =
+            currentFont?.pointSize
             != (desired[.font] as? UIFont)?.pointSize
         guard isHidden || sizeDiffers else { return }
         typingAttributes = desired
@@ -3413,10 +3526,11 @@ private final class MarkdownUITextView: UITextView, UIGestureRecognizerDelegate 
             let path = UIBezierPath()
             path.lineWidth = 1 / UIScreen.main.scale
             path.move(to: CGPoint(x: origin.x + 4, y: origin.y + fragment.midY))
-            path.addLine(to: CGPoint(
-                x: origin.x + textContainer.size.width - 4,
-                y: origin.y + fragment.midY
-            ))
+            path.addLine(
+                to: CGPoint(
+                    x: origin.x + textContainer.size.width - 4,
+                    y: origin.y + fragment.midY
+                ))
             path.stroke()
         }
         for bulletMatch in MarkdownBulletDecoration.matches(in: text) {
@@ -3477,18 +3591,21 @@ private final class MarkdownUITextView: UITextView, UIGestureRecognizerDelegate 
                 check.lineWidth = 1.6
                 check.lineCapStyle = .round
                 check.lineJoinStyle = .round
-                check.move(to: CGPoint(
-                    x: box.minX + box.width * 0.22,
-                    y: box.minY + box.height * 0.52
-                ))
-                check.addLine(to: CGPoint(
-                    x: box.minX + box.width * 0.42,
-                    y: box.minY + box.height * 0.72
-                ))
-                check.addLine(to: CGPoint(
-                    x: box.minX + box.width * 0.80,
-                    y: box.minY + box.height * 0.28
-                ))
+                check.move(
+                    to: CGPoint(
+                        x: box.minX + box.width * 0.22,
+                        y: box.minY + box.height * 0.52
+                    ))
+                check.addLine(
+                    to: CGPoint(
+                        x: box.minX + box.width * 0.42,
+                        y: box.minY + box.height * 0.72
+                    ))
+                check.addLine(
+                    to: CGPoint(
+                        x: box.minX + box.width * 0.80,
+                        y: box.minY + box.height * 0.28
+                    ))
                 // The box fill is EditorPalette.label (adapts light/dark),
                 // so the checkmark needs the opposite of whatever that
                 // resolved to, not a fixed color.
@@ -3519,7 +3636,8 @@ private final class MarkdownUITextView: UITextView, UIGestureRecognizerDelegate 
                 forGlyphAt: glyphRange.location,
                 effectiveRange: nil
             )
-            let displaySize = attachmentResizePreview
+            let displaySize =
+                attachmentResizePreview
                 .flatMap { $0.id == imageMatch.attachmentID ? $0.size : nil }
                 ?? LiveMarkdownStyler.attachmentImageDisplaySize(
                     storedWidth: imageMatch.storedWidth,
@@ -3541,7 +3659,8 @@ private final class MarkdownUITextView: UITextView, UIGestureRecognizerDelegate 
                 ).stroke()
             }
             let lineRange = (text as NSString).lineRange(for: imageMatch.markerRange)
-            let cursorOnThisLine = cursorLocation >= lineRange.location
+            let cursorOnThisLine =
+                cursorLocation >= lineRange.location
                 && cursorLocation <= NSMaxRange(lineRange)
             if cursorOnThisLine {
                 let handle = MarkdownAttachmentImageDecoration.handleRect(for: imageRect)
@@ -3585,7 +3704,8 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
         textView.attachmentImage = { [weak coordinator = context.coordinator] id in
             coordinator?.cachedAttachmentImage(for: id)
         }
-        textView.isPointOnAttachmentResizeHandle = { [weak coordinator = context.coordinator] point in
+        textView.isPointOnAttachmentResizeHandle = {
+            [weak coordinator = context.coordinator] point in
             coordinator?.attachmentResizeTarget(at: point) != nil
         }
         textView.isPointOnChecklistBox = { [weak coordinator = context.coordinator] point in
@@ -3662,9 +3782,11 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
         context.coordinator.parent = self
         context.coordinator.attachmentRevisionDidChange(to: attachmentRevision)
         guard !context.coordinator.isUpdating else { return }
-        guard MarkdownInputReconciliation.canMutateTextStorage(
-            isComposing: textView.markedTextRange != nil
-        ) else { return }
+        guard
+            MarkdownInputReconciliation.canMutateTextStorage(
+                isComposing: textView.markedTextRange != nil
+            )
+        else { return }
         if MarkdownInputReconciliation.shouldApplyExternalText(
             incoming: text,
             current: textView.text,
@@ -3739,7 +3861,7 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
                 return shared
             }
             guard !loadingAttachmentIDs.contains(id), !missingAttachmentIDs.contains(id),
-                  let provider = parent.attachmentImage
+                let provider = parent.attachmentImage
             else { return nil }
             loadingAttachmentIDs.insert(id)
             Task { @MainActor [weak self] in
@@ -3747,9 +3869,10 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
                 // Decodes downsampled (never at the source's full
                 // resolution) — see AttachmentImageCache's doc comment.
                 guard let self, let data = await provider(id),
-                      let image = await AttachmentImageCache.shared.loadAndCache(
-                          id: id, data: data
-                      ) else {
+                    let image = await AttachmentImageCache.shared.loadAndCache(
+                        id: id, data: data
+                    )
+                else {
                     self?.missingAttachmentIDs.insert(id)
                     return
                 }
@@ -3778,7 +3901,8 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
             guard let scrollView = view as? UIScrollView else { return }
             let caret = textView.caretRect(for: position)
             guard !caret.isNull, caret.origin.y.isFinite,
-                  caret.size.height.isFinite else { return }
+                caret.size.height.isFinite
+            else { return }
             // A little margin so the caret doesn't sit flush against the edge.
             scrollView.scrollRectToVisible(
                 scrollView.convert(caret, from: textView).insetBy(dx: 0, dy: -24),
@@ -3884,8 +4008,10 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
         func continueAttachmentResize(to point: CGPoint) {
             guard let id = resizingAttachmentID, let textView else { return }
             let size = draggedSize(to: point, containerWidth: textView.textContainer.size.width)
-            guard let match = MarkdownAttachmentImageDecoration.matches(in: textView.text)
-                .first(where: { $0.attachmentID == id }) else { return }
+            guard
+                let match = MarkdownAttachmentImageDecoration.matches(in: textView.text)
+                    .first(where: { $0.attachmentID == id })
+            else { return }
             let style = LiveMarkdownStyler.attachmentImageParagraphStyle(
                 storedWidth: size.width, storedHeight: size.height,
                 containerWidth: textView.textContainer.size.width
@@ -3923,11 +4049,14 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
             }
             guard let id = resizingAttachmentID, let textView else { return }
             let size = draggedSize(to: point, containerWidth: textView.textContainer.size.width)
-            guard let match = MarkdownAttachmentImageDecoration.matches(in: textView.text)
-                .first(where: { $0.attachmentID == id }) else { return }
+            guard
+                let match = MarkdownAttachmentImageDecoration.matches(in: textView.text)
+                    .first(where: { $0.attachmentID == id })
+            else { return }
             let replaced = (textView.text as NSString).replacingCharacters(
                 in: match.markerRange,
-                with: "![](attachment:\(id.uuidString) =\(Int(size.width.rounded()))x\(Int(size.height.rounded())))"
+                with:
+                    "![](attachment:\(id.uuidString) =\(Int(size.width.rounded()))x\(Int(size.height.rounded())))"
             )
             let cursor = NSRange(location: match.markerRange.location, length: 0)
             replaceExternalText(replaced, selection: cursor, registersUndo: true)
@@ -3937,7 +4066,8 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
         /// resize, height follows the original aspect ratio.
         private func draggedSize(to point: CGPoint, containerWidth: CGFloat) -> CGSize {
             let aspect = resizeStartSize.height / max(resizeStartSize.width, 1)
-            let width = max(40, min(containerWidth, resizeStartSize.width + (point.x - resizeStartPoint.x)))
+            let width = max(
+                40, min(containerWidth, resizeStartSize.width + (point.x - resizeStartPoint.x)))
             return CGSize(width: width, height: width * aspect)
         }
 
@@ -4018,10 +4148,12 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
             publish(continued.text)
             let preservedSelection = textView.selectedRange
             parent.selection = preservedSelection
-            if transformedText || MarkdownInputReconciliation.shouldStyleImmediately(
-                after: textView.text,
-                cursorUTF16Offset: NSMaxRange(preservedSelection)
-            ) {
+            if transformedText
+                || MarkdownInputReconciliation.shouldStyleImmediately(
+                    after: textView.text,
+                    cursorUTF16Offset: NSMaxRange(preservedSelection)
+                )
+            {
                 // See the macOS coordinator: delimiters style immediately.
                 stylingTask?.cancel()
                 applyStyling(to: textView)
@@ -4075,10 +4207,11 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
             guard result.text != textView.text else { return }
             replaceExternalText(
                 result.text,
-                selection: result.selectionUTF16Range ?? NSRange(
-                    location: result.cursorUTF16Offset,
-                    length: 0
-                ),
+                selection: result.selectionUTF16Range
+                    ?? NSRange(
+                        location: result.cursorUTF16Offset,
+                        length: 0
+                    ),
                 registersUndo: true
             )
         }
@@ -4088,16 +4221,18 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
             guard let textView, textView.markedTextRange == nil else { return false }
             let selection = textView.selectedRange
             guard selection.length == 0,
-                  let result = MarkdownCommandProcessor.removingListMarkerBeforeCursor(
-                      in: textView.text,
-                      cursorUTF16Offset: selection.location
-                  ) else { return false }
+                let result = MarkdownCommandProcessor.removingListMarkerBeforeCursor(
+                    in: textView.text,
+                    cursorUTF16Offset: selection.location
+                )
+            else { return false }
             replaceExternalText(
                 result.text,
-                selection: result.selectionUTF16Range ?? NSRange(
-                    location: result.cursorUTF16Offset,
-                    length: 0
-                ),
+                selection: result.selectionUTF16Range
+                    ?? NSRange(
+                        location: result.cursorUTF16Offset,
+                        length: 0
+                    ),
                 registersUndo: true
             )
             return true
@@ -4116,11 +4251,13 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
             guard let image = Self.pasteboardImageData(from: .general) else { return false }
             let selection = textView.selectedRange
             Task { @MainActor [weak self] in
-                guard let self, let attachmentID = await self.parent.storeImageAttachment?(
-                    image.data,
-                    image.filename,
-                    image.mimeType
-                ), let textView = self.textView else { return }
+                guard let self,
+                    let attachmentID = await self.parent.storeImageAttachment?(
+                        image.data,
+                        image.filename,
+                        image.mimeType
+                    ), let textView = self.textView
+                else { return }
                 let displaySize = UIImage(data: image.data).map {
                     LiveMarkdownStyler.attachmentImageDisplaySize(
                         storedWidth: $0.size.width,
@@ -4161,10 +4298,11 @@ private struct LiveMarkdownTextEditor: UIViewRepresentable {
                     return
                 }
                 guard !Task.isCancelled,
-                      let self,
-                      let textView,
-                      textView.markedTextRange == nil,
-                      !self.isUpdating else { return }
+                    let self,
+                    let textView,
+                    textView.markedTextRange == nil,
+                    !self.isUpdating
+                else { return }
                 self.isUpdating = true
                 self.applyStyling(to: textView)
                 self.isUpdating = false
@@ -4264,13 +4402,15 @@ enum MarkdownInputReconciliation {
             options: .backwards,
             range: NSRange(location: 0, length: cursor)
         )
-        let lineStart = previousNewline.location == NSNotFound
+        let lineStart =
+            previousNewline.location == NSNotFound
             ? 0
             : NSMaxRange(previousNewline)
-        return source.substring(with: NSRange(
-            location: lineStart,
-            length: cursor - lineStart
-        ))
+        return source.substring(
+            with: NSRange(
+                location: lineStart,
+                length: cursor - lineStart
+            ))
     }
 
     /// Whether the text view's current typing attributes would render the
@@ -4338,11 +4478,13 @@ enum MarkdownInputReconciliation {
         }
         let source = text as NSString
         guard cursorUTF16Offset > 0,
-              cursorUTF16Offset <= source.length else { return false }
-        let lastCharacter = source.substring(with: NSRange(
-            location: cursorUTF16Offset - 1,
-            length: 1
-        ))
+            cursorUTF16Offset <= source.length
+        else { return false }
+        let lastCharacter = source.substring(
+            with: NSRange(
+                location: cursorUTF16Offset - 1,
+                length: 1
+            ))
         return ["*", "_", "~", "=", "`", ")", "]"].contains(lastCharacter)
     }
 }
@@ -4412,10 +4554,11 @@ struct MarkdownPreviewView: View {
             .padding(.horizontal, 12)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(JournalTheme.brandPrimary.opacity(0.055))
-            .clipShape(RoundedRectangle(
-                cornerRadius: JournalTheme.Radius.small,
-                style: .continuous
-            ))
+            .clipShape(
+                RoundedRectangle(
+                    cornerRadius: JournalTheme.Radius.small,
+                    style: .continuous
+                ))
         case let .code(language):
             ScrollView(.horizontal) {
                 Text(highlightedCode(block.content, language: language))
@@ -4427,10 +4570,12 @@ struct MarkdownPreviewView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(codeBlockBackground)
-            .clipShape(RoundedRectangle(
-                cornerRadius: JournalTheme.Radius.small,
-                style: .continuous
-            ))
+            .clipShape(
+                RoundedRectangle(
+                    cornerRadius: JournalTheme.Radius.small,
+                    style: .continuous
+                )
+            )
             .overlay {
                 RoundedRectangle(
                     cornerRadius: JournalTheme.Radius.small,
@@ -4459,10 +4604,14 @@ struct MarkdownPreviewView: View {
         var cursor = 0
         for match in matches {
             if match.range.location > cursor {
-                result = result + markdownText(sourceString.substring(with: NSRange(
-                    location: cursor,
-                    length: match.range.location - cursor
-                )))
+                result =
+                    result
+                    + markdownText(
+                        sourceString.substring(
+                            with: NSRange(
+                                location: cursor,
+                                length: match.range.location - cursor
+                            )))
             }
             var highlighted = inlineAttributedString(
                 sourceString.substring(with: match.range(at: 1))
@@ -4577,10 +4726,11 @@ private struct AttachmentImageView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(maxWidth: .infinity)
-                    .clipShape(RoundedRectangle(
-                        cornerRadius: JournalTheme.Radius.small,
-                        style: .continuous
-                    ))
+                    .clipShape(
+                        RoundedRectangle(
+                            cornerRadius: JournalTheme.Radius.small,
+                            style: .continuous
+                        ))
             } else {
                 HStack(spacing: 8) {
                     Image(systemName: "photo")
@@ -4595,10 +4745,11 @@ private struct AttachmentImageView: View {
                 .padding(12)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(JournalTheme.brandPrimary.opacity(0.055))
-                .clipShape(RoundedRectangle(
-                    cornerRadius: JournalTheme.Radius.small,
-                    style: .continuous
-                ))
+                .clipShape(
+                    RoundedRectangle(
+                        cornerRadius: JournalTheme.Radius.small,
+                        style: .continuous
+                    ))
             }
         }
         .task(id: "\(attachmentID)#\(model.attachmentRevision)") {
@@ -4608,9 +4759,11 @@ private struct AttachmentImageView: View {
                 return
             }
             hasLocalBinary = true
-            guard let decoded = await AttachmentImageCache.shared.loadAndCache(
-                id: attachmentID, data: data
-            ) else { return }
+            guard
+                let decoded = await AttachmentImageCache.shared.loadAndCache(
+                    id: attachmentID, data: data
+                )
+            else { return }
             guard !Task.isCancelled else { return }
             #if os(macOS)
             image = Image(nsImage: decoded)

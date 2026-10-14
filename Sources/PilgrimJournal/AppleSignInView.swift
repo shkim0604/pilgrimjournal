@@ -39,11 +39,13 @@ struct AppleSignInView: View {
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 420)
             } else {
-                Text("Apple 로그인은 일기 화면 접근에만 사용합니다. Apple이 제공한 이메일은 현재 계정 표시를 위해 기기 Keychain에 저장합니다.")
-                    .font(.callout)
-                    .foregroundStyle(JournalTheme.inkSecondary)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: 440)
+                Text(
+                    "Apple 로그인은 일기 화면 접근에만 사용합니다. Apple이 제공한 이메일은 현재 계정 표시를 위해 기기 Keychain에 저장합니다."
+                )
+                .font(.callout)
+                .foregroundStyle(JournalTheme.inkSecondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 440)
             }
 
             if authentication.state == .blockedCloudAccountMismatch {
@@ -62,8 +64,10 @@ struct AppleSignInView: View {
                 } onCompletion: { result in
                     switch result {
                     case let .success(authorization):
-                        guard let credential = authorization.credential
-                            as? ASAuthorizationAppleIDCredential else {
+                        guard
+                            let credential = authorization.credential
+                                as? ASAuthorizationAppleIDCredential
+                        else {
                             authentication.errorMessage = "Apple 로그인 정보를 확인할 수 없습니다."
                             return
                         }

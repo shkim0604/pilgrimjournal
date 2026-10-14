@@ -63,7 +63,8 @@ public final class SwiftDataJournalRepository:
             if let cursor {
                 if entity.occurredAt > cursor.occurredAt { return nil }
                 if entity.occurredAt == cursor.occurredAt,
-                   entity.stableID.uuidString <= cursor.entryID.uuidString {
+                    entity.stableID.uuidString <= cursor.entryID.uuidString
+                {
                     return nil
                 }
             }
@@ -71,9 +72,11 @@ public final class SwiftDataJournalRepository:
         }
         let values = Array(candidates.prefix(pageSize))
         let hasMore = candidates.count > values.count
-        let nextCursor = hasMore ? values.last.map {
-            JournalTimelineCursor(occurredAt: $0.occurredAt, entryID: $0.id)
-        } : nil
+        let nextCursor =
+            hasMore
+            ? values.last.map {
+                JournalTimelineCursor(occurredAt: $0.occurredAt, entryID: $0.id)
+            } : nil
         return JournalTimelinePage(entries: values, nextCursor: nextCursor)
     }
 
@@ -103,12 +106,14 @@ public final class SwiftDataJournalRepository:
     ) throws -> JournalEntryRecord {
         let validated = try draft.validated(manual: draft.sourceUUID == nil)
         if let sourceUUID = validated.sourceUUID,
-           let duplicate = try entry(sourceUUID: sourceUUID),
-           duplicate.id != validated.id {
+            let duplicate = try entry(sourceUUID: sourceUUID),
+            duplicate.id != validated.id
+        {
             throw JournalError.duplicateSource(sourceUUID)
         }
 
-        let entryID = validated.id
+        let entryID =
+            validated.id
             ?? validated.sourceUUID.map(StableIdentifier.fromDayOne)
             ?? UUID()
         let entity = try findEntry(id: entryID) ?? JournalEntryEntity()
@@ -162,8 +167,9 @@ public final class SwiftDataJournalRepository:
         at date: Date = .now
     ) throws -> JournalEntryRecord {
         guard let revision = try findRevision(id: revisionID),
-              revision.entryID == entryID,
-              let snapshotData = revision.snapshotData else {
+            revision.entryID == entryID,
+            let snapshotData = revision.snapshotData
+        else {
             throw JournalError.revisionNotFound
         }
         var draft = try decoder.decode(JournalEntryDraft.self, from: snapshotData)
@@ -305,7 +311,8 @@ public final class SwiftDataJournalRepository:
         let winner = existingEntities.compactMap(mapRule).reduce(rule) {
             resolver.winner($0, $1)
         }
-        let targets = existingEntities.isEmpty
+        let targets =
+            existingEntities.isEmpty
             ? [ClassificationRuleEntity()]
             : existingEntities
         for entity in targets {
@@ -555,7 +562,8 @@ public final class SwiftDataJournalRepository:
         _ entity: ClassificationRuleEntity
     ) -> ClassificationRuleRecord? {
         guard let source = ClassificationSource(rawValue: entity.sourceRaw),
-              let target = JournalKind(rawValue: entity.targetKindRaw) else {
+            let target = JournalKind(rawValue: entity.targetKindRaw)
+        else {
             return nil
         }
         return ClassificationRuleRecord(
@@ -571,9 +579,10 @@ public final class SwiftDataJournalRepository:
     private func map(_ entity: JournalEntryEntity) throws -> JournalEntryRecord {
         let kind = JournalKind(rawValue: entity.kindRaw) ?? .unclassified
         let tags = try entity.tagsData.map { try decoder.decode([String].self, from: $0) } ?? []
-        let details = try entity.detailsData.map {
-            try decoder.decode(EntryDetails.self, from: $0)
-        } ?? EntryDetails()
+        let details =
+            try entity.detailsData.map {
+                try decoder.decode(EntryDetails.self, from: $0)
+            } ?? EntryDetails()
         return JournalEntryRecord(
             id: entity.stableID,
             kind: kind,

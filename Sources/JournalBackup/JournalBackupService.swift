@@ -23,7 +23,8 @@ public struct JournalBackupService {
         attachments: [BackupAttachment],
         sourceSnapshots: [BackupSourceSnapshot] = []
     ) throws {
-        let partial = destination
+        let partial =
+            destination
             .deletingLastPathComponent()
             .appending(path: ".\(destination.lastPathComponent).partial")
         try? FileManager.default.removeItem(at: partial)
@@ -146,7 +147,8 @@ public struct JournalBackupService {
                 }
             }
         }
-        let tombstones = mode == .replace
+        let tombstones =
+            mode == .replace
             ? currentEntries.filter { !backupIDs.contains($0.id) }.map(\.id)
             : []
         return RestorePlan(

@@ -4,6 +4,7 @@ import Foundation
 import JournalData
 import JournalDomain
 import JournalSearch
+
 #if PILGRIM_SWIFTDATA
 import SwiftData
 #endif
@@ -60,7 +61,8 @@ final class JournalSessionController: ObservableObject {
         isLoading = true
         defer { isLoading = false }
         do {
-            let storageLocation = isVisualTesting
+            let storageLocation =
+                isVisualTesting
                 ? JournalStorageLocation.localOnly
                 : await storageLocationProvider()
             let desiredScope = JournalAccountScope(
@@ -83,10 +85,11 @@ final class JournalSessionController: ObservableObject {
                     storageLocation: .localOnly
                 )
                 if registry.hasPreparedScope(localScope),
-                   !registry.hasCompletedMigration(
-                       from: localScope,
-                       to: desiredScope
-                   ) {
+                    !registry.hasCompletedMigration(
+                        from: localScope,
+                        to: desiredScope
+                    )
+                {
                     let localModel = try makeAppModel(for: localScope)
                     let localCount = try localModel.repository.list(
                         kind: nil,
@@ -132,8 +135,9 @@ final class JournalSessionController: ObservableObject {
     @discardableResult
     func confirmPendingMigration() -> JournalScopeMigrationResult? {
         guard let pendingMigration,
-              activeScope == pendingMigration.source,
-              let sourceModel = appModel else {
+            activeScope == pendingMigration.source,
+            let sourceModel = appModel
+        else {
             return nil
         }
         do {
@@ -169,10 +173,11 @@ final class JournalSessionController: ObservableObject {
     ) throws -> AppModel {
         let paths: JournalPaths
         if isVisualTesting {
-            paths = JournalPaths(root: rootURL.appending(
-                path: scope.relativeDirectory,
-                directoryHint: .isDirectory
-            ))
+            paths = JournalPaths(
+                root: rootURL.appending(
+                    path: scope.relativeDirectory,
+                    directoryHint: .isDirectory
+                ))
             try paths.prepare()
         } else {
             paths = try registry.prepareScope(scope)
@@ -203,7 +208,8 @@ final class JournalSessionController: ObservableObject {
         importStore = InMemoryImportStore()
         #endif
 
-        let defaultsName = "PilgrimJournal.\(scope.appleUserHash).\(scope.storageLocation.directoryName)"
+        let defaultsName =
+            "PilgrimJournal.\(scope.appleUserHash).\(scope.storageLocation.directoryName)"
         let defaults = UserDefaults(suiteName: defaultsName) ?? .standard
         let usesICloud: Bool
         if case .iCloud = scope.storageLocation {
@@ -233,14 +239,17 @@ final class JournalSessionController: ObservableObject {
         scope: JournalAccountScope
     ) throws {
         guard !isVisualTesting,
-              try registry.shouldMigrateLegacyData(for: scope) else {
+            try registry.shouldMigrateLegacyData(for: scope)
+        else {
             return
         }
         let legacyDirectory = rootURL.deletingLastPathComponent()
         let legacyCanonicalURL = legacyDirectory.appending(path: "Canonical.store")
         let legacyJSONURL = rootURL.appending(path: "journal-local.json")
-        guard FileManager.default.fileExists(atPath: legacyCanonicalURL.path)
-                || FileManager.default.fileExists(atPath: legacyJSONURL.path) else {
+        guard
+            FileManager.default.fileExists(atPath: legacyCanonicalURL.path)
+                || FileManager.default.fileExists(atPath: legacyJSONURL.path)
+        else {
             try registry.claimLegacyData(for: scope)
             return
         }
@@ -282,10 +291,12 @@ final class JournalSessionController: ObservableObject {
         from sourceModel: AppModel,
         to destinationModel: AppModel
     ) throws -> JournalScopeMigrationResult {
-        guard let source = sourceModel.repository
+        guard
+            let source = sourceModel.repository
                 as? any BackupRestoreRepository & AttachmentRepository,
-              let destination = destinationModel.repository
-                as? any BackupRestoreRepository & AttachmentRepository else {
+            let destination = destinationModel.repository
+                as? any BackupRestoreRepository & AttachmentRepository
+        else {
             throw JournalAccountScopeError.invalidScopeManifest
         }
         let result = try JournalScopeMigrationService().migrate(

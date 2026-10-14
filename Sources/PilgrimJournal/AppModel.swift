@@ -1,6 +1,6 @@
+import Combine
 import DayOneImport
 import Foundation
-import Combine
 import JournalBackup
 import JournalData
 import JournalDomain
@@ -274,7 +274,8 @@ final class AppModel: ObservableObject {
     func refresh() {
         mergeNotebookCatalogFromCloud()
         do {
-            let needsSearchIndex = !searchText
+            let needsSearchIndex =
+                !searchText
                 .trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 || !searchTags.isEmpty
                 || searchStartDate != nil
@@ -286,20 +287,21 @@ final class AppModel: ObservableObject {
                     limit: 500
                 )
             } else {
-                let hits = try searchIndex.search(JournalSearchQuery(
-                    text: searchText,
-                    kind: selectedKind,
-                    tags: searchTags,
-                    startDate: searchStartDate.map {
-                        Calendar.current.startOfDay(for: $0)
-                    },
-                    endDate: searchEndDate.flatMap {
-                        Calendar.current.date(
-                            byAdding: DateComponents(day: 1, second: -1),
-                            to: Calendar.current.startOfDay(for: $0)
-                        )
-                    }
-                ))
+                let hits = try searchIndex.search(
+                    JournalSearchQuery(
+                        text: searchText,
+                        kind: selectedKind,
+                        tags: searchTags,
+                        startDate: searchStartDate.map {
+                            Calendar.current.startOfDay(for: $0)
+                        },
+                        endDate: searchEndDate.flatMap {
+                            Calendar.current.date(
+                                byAdding: DateComponents(day: 1, second: -1),
+                                to: Calendar.current.startOfDay(for: $0)
+                            )
+                        }
+                    ))
                 entries = try hits.compactMap { try repository.entry(id: $0.id) }
             }
             refreshNotebookCatalog(from: entries)
@@ -399,9 +401,11 @@ final class AppModel: ObservableObject {
 
     @discardableResult
     func deleteNotebook(named name: String) -> Bool {
-        guard let notebook = notebooks.first(where: {
-            $0.caseInsensitiveCompare(name) == .orderedSame
-        }) else { return false }
+        guard
+            let notebook = notebooks.first(where: {
+                $0.caseInsensitiveCompare(name) == .orderedSame
+            })
+        else { return false }
 
         do {
             var cursor: JournalTimelineCursor?
@@ -412,8 +416,10 @@ final class AppModel: ObservableObject {
                     after: cursor,
                     limit: 500
                 )
-                for entry in page.entries where entry.notebookName?
-                    .caseInsensitiveCompare(notebook) == .orderedSame {
+                for entry in page.entries
+                where entry.notebookName?
+                    .caseInsensitiveCompare(notebook) == .orderedSame
+                {
                     var draft = entry.draft
                     draft.notebookName = nil
                     let updated = try repository.save(
@@ -433,11 +439,13 @@ final class AppModel: ObservableObject {
                 deletedNotebookNames.append(notebook)
             }
             if selectedNotebookName?.caseInsensitiveCompare(notebook)
-                == .orderedSame {
+                == .orderedSame
+            {
                 selectedNotebookName = nil
             }
             if newEntryNotebookName?.caseInsensitiveCompare(notebook)
-                == .orderedSame {
+                == .orderedSame
+            {
                 newEntryNotebookName = nil
             }
             persistNotebookCatalog()
@@ -542,13 +550,15 @@ final class AppModel: ObservableObject {
 
     func availableTags() -> [String] {
         do {
-            return Array(Set(
-                try repository.list(
-                    kind: nil,
-                    includeDeleted: false,
-                    limit: 100_000
-                ).flatMap(\.visibleTags)
-            )).sorted()
+            return Array(
+                Set(
+                    try repository.list(
+                        kind: nil,
+                        includeDeleted: false,
+                        limit: 100_000
+                    ).flatMap(\.visibleTags)
+                )
+            ).sorted()
         } catch {
             errorMessage = error.localizedDescription
             return []
@@ -621,9 +631,10 @@ final class AppModel: ObservableObject {
         do {
             var outgoing = draft
             if let notebook = outgoing.notebookName,
-               !notebooks.contains(where: {
-                   $0.caseInsensitiveCompare(notebook) == .orderedSame
-               }) {
+                !notebooks.contains(where: {
+                    $0.caseInsensitiveCompare(notebook) == .orderedSame
+                })
+            {
                 outgoing.notebookName = nil
             }
             let record = try repository.save(
@@ -649,7 +660,8 @@ final class AppModel: ObservableObject {
     }
 
     func autosaveOnEditorExit(_ draft: JournalEntryDraft) {
-        let hasContent = !draft.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let hasContent =
+            !draft.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             || !draft.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         guard hasContent || draft.id != nil else { return }
         if let id = draft.id {
@@ -707,7 +719,8 @@ final class AppModel: ObservableObject {
                 try searchIndex.remove(id: entryID)
             }
             if let selectedEntryID,
-               movedEntryIDs.contains(selectedEntryID) {
+                movedEntryIDs.contains(selectedEntryID)
+            {
                 self.selectedEntryID = nil
                 editingEntry = nil
                 isPresentingEditor = false
@@ -862,7 +875,8 @@ final class AppModel: ObservableObject {
     /// transaction that could still fail.
     private func releaseAttachmentFiles(_ checksums: Set<String>) {
         guard !checksums.isEmpty,
-              let attachmentRepository = repository as? any AttachmentRepository else { return }
+            let attachmentRepository = repository as? any AttachmentRepository
+        else { return }
         do {
             let store = try AttachmentFileStore(root: paths.attachments)
             // Recomputed from the repository, over ALL remaining rows
@@ -923,7 +937,8 @@ final class AppModel: ObservableObject {
 
     func attachments(for entryID: UUID?) -> [AttachmentRecord] {
         guard let entryID,
-              let attachmentRepository = repository as? any AttachmentRepository else {
+            let attachmentRepository = repository as? any AttachmentRepository
+        else {
             return []
         }
         do {
@@ -951,13 +966,15 @@ final class AppModel: ObservableObject {
     /// another device, whose CAS file was never written locally.
     func hasLocalBinary(for attachmentID: UUID) -> Bool {
         guard let attachmentRepository = repository as? any AttachmentRepository,
-              let checksum = try? attachmentRepository.attachmentChecksum(id: attachmentID),
-              let fileStore = attachmentFileStore else {
+            let checksum = try? attachmentRepository.attachmentChecksum(id: attachmentID),
+            let fileStore = attachmentFileStore
+        else {
             return false
         }
         if fileStore.hasData(checksum: checksum) { return true }
         guard let stored = try? attachmentRepository.attachment(id: attachmentID),
-              let binary = stored.1 else { return false }
+            let binary = stored.1
+        else { return false }
         try? fileStore.hydrate(checksum: checksum, data: binary)
         return true
     }
@@ -973,8 +990,9 @@ final class AppModel: ObservableObject {
             return nil
         }
         if let checksum = try? attachmentRepository.attachmentChecksum(id: attachmentID),
-           let fileStore = attachmentFileStore,
-           let cached = try? fileStore.data(checksum: checksum) {
+            let fileStore = attachmentFileStore,
+            let cached = try? fileStore.data(checksum: checksum)
+        {
             return cached
         }
         guard let stored = try? attachmentRepository.attachment(id: attachmentID)
@@ -992,13 +1010,15 @@ final class AppModel: ObservableObject {
     /// a URL-based viewer.
     func temporaryPreviewURL(for attachmentID: UUID) -> URL? {
         guard let attachmentRepository = repository as? any AttachmentRepository,
-              let stored = try? attachmentRepository.attachment(id: attachmentID),
-              let data = attachmentData(for: attachmentID) else { return nil }
+            let stored = try? attachmentRepository.attachment(id: attachmentID),
+            let data = attachmentData(for: attachmentID)
+        else { return nil }
         let record = stored.0
         let directory = FileManager.default.temporaryDirectory
             .appending(path: "AttachmentPreview", directoryHint: .isDirectory)
             .appending(path: attachmentID.uuidString, directoryHint: .isDirectory)
-        let filename = record.originalName.isEmpty
+        let filename =
+            record.originalName.isEmpty
             ? attachmentID.uuidString
             : record.originalName
         let url = directory.appending(path: filename)
@@ -1108,7 +1128,8 @@ final class AppModel: ObservableObject {
             // never rewrites that binary back to disk.
             guard let stored = try attachmentRepository.attachment(id: attachmentID)
             else { return }
-            let newState: AttachmentTransferState = stored.1 != nil
+            let newState: AttachmentTransferState =
+                stored.1 != nil
                 ? (cloudAccountMonitor == nil ? .local : .uploaded)
                 : .downloading
             try attachmentRepository.updateAttachmentState(
@@ -1214,7 +1235,8 @@ final class AppModel: ObservableObject {
             return false
         }
         guard let notebook = createNotebook(named: name),
-              let preview = importPreview else { return false }
+            let preview = importPreview
+        else { return false }
         importPreview = preview.assigningNotebook(notebook, to: sourceUUIDs)
         return true
     }
@@ -1317,8 +1339,10 @@ final class AppModel: ObservableObject {
     }
 
     private func cleanupStagedArchive(_ archiveURL: URL) {
-        guard archiveURL.deletingLastPathComponent().standardizedFileURL
-            == paths.importStaging.standardizedFileURL else { return }
+        guard
+            archiveURL.deletingLastPathComponent().standardizedFileURL
+                == paths.importStaging.standardizedFileURL
+        else { return }
         try? FileManager.default.removeItem(at: archiveURL)
     }
 
@@ -1425,7 +1449,8 @@ final class AppModel: ObservableObject {
                     backupTitle: conflict.backup.title
                 )
             }
-            dataOperationDescription = mode == .replace
+            dataOperationDescription =
+                mode == .replace
                 ? "교체 복원 적용 중"
                 : "병합 복원 적용 중"
             await Task.yield()
@@ -1585,12 +1610,15 @@ final class AppModel: ObservableObject {
     private func refreshNotebookCatalog(from records: [JournalEntryRecord]) {
         let discovered = records.compactMap(\.notebookName)
         var merged = notebooks
-        for name in discovered where !Self.containsNotebook(
+        for name in discovered
+        where !Self.containsNotebook(
             name,
             in: deletedNotebookNames
-        ) && !merged.contains(where: {
-            $0.caseInsensitiveCompare(name) == .orderedSame
-        }) {
+        )
+            && !merged.contains(where: {
+                $0.caseInsensitiveCompare(name) == .orderedSame
+            })
+        {
             merged.append(name)
         }
         merged.sort { $0.localizedStandardCompare($1) == .orderedAscending }
@@ -1627,8 +1655,10 @@ final class AppModel: ObservableObject {
             notebookCloudStore.array(forKey: Self.notebookDefaultsKey)
                 as? [String] ?? []
         ).filter { !Self.containsNotebook($0, in: deletedNotebookNames) }
-        guard merged != notebooks
-                || previousDeletedNotebookNames != deletedNotebookNames else {
+        guard
+            merged != notebooks
+                || previousDeletedNotebookNames != deletedNotebookNames
+        else {
             return
         }
         notebooks = merged
@@ -1641,9 +1671,10 @@ final class AppModel: ObservableObject {
         var result: [String] = []
         for name in collections.joined() {
             guard let normalized = NotebookTagCodec.normalizedName(name),
-                  !result.contains(where: {
-                      $0.caseInsensitiveCompare(normalized) == .orderedSame
-                  }) else { continue }
+                !result.contains(where: {
+                    $0.caseInsensitiveCompare(normalized) == .orderedSame
+                })
+            else { continue }
             result.append(normalized)
         }
         return result.sorted {

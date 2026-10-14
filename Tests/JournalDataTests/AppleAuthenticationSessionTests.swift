@@ -66,7 +66,8 @@ final class AppleAuthenticationSessionTests: XCTestCase {
 }
 
 private final class AuthenticationFailingSecureValueStore: SecureValueStore,
-    @unchecked Sendable {
+    @unchecked Sendable
+{
     private let lock = NSLock()
     private var shouldFailAuthentication = true
     private var deleted = false

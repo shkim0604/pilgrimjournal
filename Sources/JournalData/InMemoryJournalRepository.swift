@@ -41,9 +41,10 @@ public final class InMemoryJournalRepository:
         entries = Dictionary(uniqueKeysWithValues: snapshot.entries.map { ($0.id, $0) })
         revisionStorage = Dictionary(grouping: snapshot.revisions, by: \.entryID)
         rules = Dictionary(uniqueKeysWithValues: snapshot.rules.map { ($0.id, $0) })
-        attachmentStorage = Dictionary(uniqueKeysWithValues: snapshot.attachments.map {
-            ($0.record.id, ($0.record, $0.binary))
-        })
+        attachmentStorage = Dictionary(
+            uniqueKeysWithValues: snapshot.attachments.map {
+                ($0.record.id, ($0.record, $0.binary))
+            })
         restoreEpochs = snapshot.restoreEpochs
     }
 
@@ -90,9 +91,11 @@ public final class InMemoryJournalRepository:
             }
         let values = Array(candidates.prefix(pageSize))
         let hasMore = candidates.count > values.count
-        let nextCursor = hasMore ? values.last.map {
-            JournalTimelineCursor(occurredAt: $0.occurredAt, entryID: $0.id)
-        } : nil
+        let nextCursor =
+            hasMore
+            ? values.last.map {
+                JournalTimelineCursor(occurredAt: $0.occurredAt, entryID: $0.id)
+            } : nil
         return JournalTimelinePage(entries: values, nextCursor: nextCursor)
     }
 
@@ -111,11 +114,13 @@ public final class InMemoryJournalRepository:
     ) throws -> JournalEntryRecord {
         let validated = try draft.validated(manual: draft.sourceUUID == nil)
         if let sourceUUID = validated.sourceUUID,
-           let duplicate = try entry(sourceUUID: sourceUUID),
-           duplicate.id != validated.id {
+            let duplicate = try entry(sourceUUID: sourceUUID),
+            duplicate.id != validated.id
+        {
             throw JournalError.duplicateSource(sourceUUID)
         }
-        let entryID = validated.id
+        let entryID =
+            validated.id
             ?? validated.sourceUUID.map(StableIdentifier.fromDayOne)
             ?? UUID()
         let previous = entries[entryID]
@@ -167,7 +172,8 @@ public final class InMemoryJournalRepository:
         draft.id = entryID
         let restored = try save(draft, deviceID: deviceID, at: date)
         guard var storedRevisions = revisionStorage[entryID],
-              var latest = storedRevisions.last else {
+            var latest = storedRevisions.last
+        else {
             throw JournalError.revisionNotFound
         }
         latest.isRestore = true
@@ -281,9 +287,11 @@ public final class InMemoryJournalRepository:
     }
 
     public func importRevision(_ revision: EntryRevisionRecord) throws {
-        guard !(revisionStorage[revision.entryID] ?? []).contains(where: {
-            $0.id == revision.id
-        }) else { return }
+        guard
+            !(revisionStorage[revision.entryID] ?? []).contains(where: {
+                $0.id == revision.id
+            })
+        else { return }
         revisionStorage[revision.entryID, default: []].append(revision)
         try persist()
     }

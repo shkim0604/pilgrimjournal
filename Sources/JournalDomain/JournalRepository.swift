@@ -62,9 +62,11 @@ public protocol JournalRepository: AnyObject {
     ) throws -> JournalTimelinePage
     func entry(id: UUID) throws -> JournalEntryRecord?
     func entry(sourceUUID: String) throws -> JournalEntryRecord?
-    func save(_ draft: JournalEntryDraft, deviceID: String, at date: Date) throws -> JournalEntryRecord
+    func save(_ draft: JournalEntryDraft, deviceID: String, at date: Date) throws
+        -> JournalEntryRecord
     func revisions(entryID: UUID) throws -> [EntryRevisionRecord]
-    func restore(entryID: UUID, revisionID: UUID, deviceID: String, at date: Date) throws -> JournalEntryRecord
+    func restore(entryID: UUID, revisionID: UUID, deviceID: String, at date: Date) throws
+        -> JournalEntryRecord
     func moveToTrash(entryID: UUID, deviceID: String, at date: Date) throws
     func restoreFromTrash(entryID: UUID, deviceID: String, at date: Date) throws
     /// Permanently removes the given entries — and their revisions and

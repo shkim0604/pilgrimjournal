@@ -50,7 +50,7 @@ final class DayOneImportTests: XCTestCase {
             archiveURL: URL(fileURLWithPath: "/tmp/fixture.zip"),
             archiveFingerprint: "fixture",
             exportVersion: "1.0",
-            JSONDisplayName: "fixture.json",
+            jsonDisplayName: "fixture.json",
             items: [first, second, unselected],
             duplicateSourceUUIDs: [],
             optionalFieldCounts: [:],
@@ -81,19 +81,21 @@ final class DayOneImportTests: XCTestCase {
         let richText = String(decoding: richTextData, as: UTF8.self)
         let root: [String: Any] = [
             "metadata": ["version": "1.0"],
-            "entries": [[
-                "uuid": "00000000-0000-0000-0000-000000000001",
-                "text": "일반 본문",
-                "richText": richText,
-                "creationDate": "2026-07-23T01:10:59Z",
-                "modifiedDate": "2026-07-23T01:11:59Z",
-                "timeZone": "Asia/Seoul",
-                "starred": true,
-                "isPinned": true,
-                "location": ["country": "대한민국"],
-                "weather": ["temperatureCelsius": 25],
-                "template": ["uuid": "template-prayer", "title": "기도"],
-            ]],
+            "entries": [
+                [
+                    "uuid": "00000000-0000-0000-0000-000000000001",
+                    "text": "일반 본문",
+                    "richText": richText,
+                    "creationDate": "2026-07-23T01:10:59Z",
+                    "modifiedDate": "2026-07-23T01:11:59Z",
+                    "timeZone": "Asia/Seoul",
+                    "starred": true,
+                    "isPinned": true,
+                    "location": ["country": "대한민국"],
+                    "weather": ["temperatureCelsius": 25],
+                    "template": ["uuid": "template-prayer", "title": "기도"],
+                ]
+            ],
         ]
         let json = try JSONSerialization.data(withJSONObject: root)
         try TestZipFactory.make(
@@ -113,7 +115,7 @@ final class DayOneImportTests: XCTestCase {
         )
 
         XCTAssertEqual(preview.exportVersion, "1.0")
-        XCTAssertEqual(preview.JSONDisplayName, "일기.json")
+        XCTAssertEqual(preview.jsonDisplayName, "일기.json")
         XCTAssertEqual(preview.items.count, 1)
         XCTAssertEqual(preview.items[0].draft.body, "일반 본문")
         XCTAssertEqual(preview.items[0].draft.kind, .prayer)
@@ -129,18 +131,22 @@ final class DayOneImportTests: XCTestCase {
         let richText = #"{"contents":[{"text":"첫 줄"},{"text":"둘째 줄"}]}"#
         let root: [String: Any] = [
             "metadata": ["version": "1.0"],
-            "entries": [[
-                "uuid": "source-without-standard-uuid",
-                "richText": richText,
-                "creationDate": "2026-07-23T01:10:59Z",
-            ]],
+            "entries": [
+                [
+                    "uuid": "source-without-standard-uuid",
+                    "richText": richText,
+                    "creationDate": "2026-07-23T01:10:59Z",
+                ]
+            ],
         ]
         try TestZipFactory.make(
-            items: [.init(
-                name: "export.json",
-                data: try JSONSerialization.data(withJSONObject: root),
-                deflated: false
-            )],
+            items: [
+                .init(
+                    name: "export.json",
+                    data: try JSONSerialization.data(withJSONObject: root),
+                    deflated: false
+                )
+            ],
             at: url
         )
         let preview = try DayOneArchiveAnalyzer().analyze(archiveURL: url)
@@ -165,18 +171,22 @@ final class DayOneImportTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: url) }
         let root: [String: Any] = [
             "metadata": ["version": "1.0"],
-            "entries": [[
-                "uuid": "known-source",
-                "text": "본문",
-                "creationDate": "2026-07-23T01:10:59Z",
-            ]],
+            "entries": [
+                [
+                    "uuid": "known-source",
+                    "text": "본문",
+                    "creationDate": "2026-07-23T01:10:59Z",
+                ]
+            ],
         ]
         try TestZipFactory.make(
-            items: [.init(
-                name: "journal.json",
-                data: try JSONSerialization.data(withJSONObject: root),
-                deflated: true
-            )],
+            items: [
+                .init(
+                    name: "journal.json",
+                    data: try JSONSerialization.data(withJSONObject: root),
+                    deflated: true
+                )
+            ],
             at: url
         )
         let preview = try DayOneArchiveAnalyzer().analyze(
@@ -192,18 +202,20 @@ final class DayOneImportTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: url) }
         let root: [String: Any] = [
             "metadata": ["version": "1.0"],
-            "entries": [[
-                "uuid": "with-attachments",
-                "text": "첨부 테스트",
-                "creationDate": "2026-07-23T01:10:59Z",
-                "timeZone": "Asia/Seoul",
-                "tags": ["사진"],
-                "weather": ["temperatureCelsius": 25],
-                "photos": [
-                    ["filename": "present.jpg"],
-                    ["filename": "missing.jpg"],
-                ],
-            ]],
+            "entries": [
+                [
+                    "uuid": "with-attachments",
+                    "text": "첨부 테스트",
+                    "creationDate": "2026-07-23T01:10:59Z",
+                    "timeZone": "Asia/Seoul",
+                    "tags": ["사진"],
+                    "weather": ["temperatureCelsius": 25],
+                    "photos": [
+                        ["filename": "present.jpg"],
+                        ["filename": "missing.jpg"],
+                    ],
+                ]
+            ],
         ]
         try TestZipFactory.make(
             items: [
@@ -242,19 +254,23 @@ final class DayOneImportTests: XCTestCase {
         let sourceUUID = "conflicting-source"
         let root: [String: Any] = [
             "metadata": ["version": "1.0"],
-            "entries": [[
-                "uuid": sourceUUID,
-                "text": "분류 충돌",
-                "creationDate": "2026-07-23T01:10:59Z",
-                "tags": ["공통"],
-            ]],
+            "entries": [
+                [
+                    "uuid": sourceUUID,
+                    "text": "분류 충돌",
+                    "creationDate": "2026-07-23T01:10:59Z",
+                    "tags": ["공통"],
+                ]
+            ],
         ]
         try TestZipFactory.make(
-            items: [.init(
-                name: "journal.json",
-                data: try JSONSerialization.data(withJSONObject: root),
-                deflated: true
-            )],
+            items: [
+                .init(
+                    name: "journal.json",
+                    data: try JSONSerialization.data(withJSONObject: root),
+                    deflated: true
+                )
+            ],
             at: url
         )
         let rules = [
@@ -326,22 +342,26 @@ final class DayOneImportTests: XCTestCase {
         XCTAssertThrowsError(try DayOneArchiveAnalyzer().analyze(archiveURL: invalidURL))
 
         try TestZipFactory.make(
-            items: [.init(
-                name: "encrypted.json",
-                data: Data("{}".utf8),
-                deflated: false,
-                encrypted: true
-            )],
+            items: [
+                .init(
+                    name: "encrypted.json",
+                    data: Data("{}".utf8),
+                    deflated: false,
+                    encrypted: true
+                )
+            ],
             at: encryptedURL
         )
         XCTAssertThrowsError(try SafeZipArchive(url: encryptedURL))
 
         try TestZipFactory.make(
-            items: [.init(
-                name: "large.json",
-                data: Data(repeating: 0x41, count: 128),
-                deflated: false
-            )],
+            items: [
+                .init(
+                    name: "large.json",
+                    data: Data(repeating: 0x41, count: 128),
+                    deflated: false
+                )
+            ],
             at: oversizedURL
         )
         XCTAssertThrowsError(
@@ -369,11 +389,13 @@ final class DayOneImportTests: XCTestCase {
             .appending(path: "\(UUID().uuidString).zip")
         defer { try? FileManager.default.removeItem(at: url) }
         try TestZipFactory.make(
-            items: [.init(
-                name: "wrong.json",
-                data: Data(#"{"metadata":{"version":"9.9"},"entries":[]}"#.utf8),
-                deflated: true
-            )],
+            items: [
+                .init(
+                    name: "wrong.json",
+                    data: Data(#"{"metadata":{"version":"9.9"},"entries":[]}"#.utf8),
+                    deflated: true
+                )
+            ],
             at: url
         )
 
@@ -439,7 +461,7 @@ final class DayOneImportTests: XCTestCase {
             archiveURL: URL(fileURLWithPath: "/tmp/anonymous.zip"),
             archiveFingerprint: "anonymous",
             exportVersion: "1.0",
-            JSONDisplayName: "journal.json",
+            jsonDisplayName: "journal.json",
             items: items,
             duplicateSourceUUIDs: ["duplicate-source"],
             optionalFieldCounts: [:],
@@ -502,13 +524,13 @@ final class DayOneImportTests: XCTestCase {
                 ),
                 attachments: [],
                 warnings: []
-            ),
+            )
         ]
         let preview = DayOneImportPreview(
             archiveURL: URL(fileURLWithPath: "/tmp/anonymous.zip"),
             archiveFingerprint: "anonymous",
             exportVersion: "1.0",
-            JSONDisplayName: "journal.json",
+            jsonDisplayName: "journal.json",
             items: items,
             duplicateSourceUUIDs: [],
             optionalFieldCounts: [:],
@@ -559,13 +581,13 @@ final class DayOneImportTests: XCTestCase {
                 ),
                 attachments: [],
                 warnings: []
-            ),
+            )
         ]
         let preview = DayOneImportPreview(
             archiveURL: URL(fileURLWithPath: "/tmp/anonymous.zip"),
             archiveFingerprint: "anonymous",
             exportVersion: "1.0",
-            JSONDisplayName: "journal.json",
+            jsonDisplayName: "journal.json",
             items: items,
             duplicateSourceUUIDs: ["trashed-not-purged"],
             optionalFieldCounts: [:],
@@ -627,9 +649,11 @@ final class DayOneImportTests: XCTestCase {
         )
         var archiveData = try Data(contentsOf: url)
         let headerOffset = Int(videoEntry.localHeaderOffset)
-        let nameLength = Int(archiveData[headerOffset + 26])
+        let nameLength =
+            Int(archiveData[headerOffset + 26])
             | (Int(archiveData[headerOffset + 27]) << 8)
-        let extraLength = Int(archiveData[headerOffset + 28])
+        let extraLength =
+            Int(archiveData[headerOffset + 28])
             | (Int(archiveData[headerOffset + 29]) << 8)
         let payloadOffset = headerOffset + 30 + nameLength + extraLength
         archiveData[payloadOffset] ^= 0xFF
@@ -734,11 +758,13 @@ final class DayOneImportTests: XCTestCase {
             "entries": entries,
         ])
         try TestZipFactory.make(
-            items: [TestZipFactory.Item(
-                name: "large.json",
-                data: rawJSON,
-                deflated: true
-            )],
+            items: [
+                TestZipFactory.Item(
+                    name: "large.json",
+                    data: rawJSON,
+                    deflated: true
+                )
+            ],
             at: url
         )
 

@@ -11,16 +11,15 @@ enum TestZipFactory {
 
     static func make(items: [Item], at url: URL) throws {
         var output = Data()
-        var central: [
-            (
+        var central:
+            [(
                 name: Data,
                 crc: UInt32,
                 method: UInt16,
                 compressed: Data,
                 offset: UInt32,
                 encrypted: Bool
-            )
-        ] = []
+            )] = []
 
         for item in items {
             let name = Data(item.name.utf8)
@@ -42,14 +41,15 @@ enum TestZipFactory {
             output.appendLE(UInt16(0))
             output.append(name)
             output.append(compressed)
-            central.append((
-                name,
-                checksum,
-                item.deflated ? 8 : 0,
-                compressed,
-                offset,
-                item.encrypted
-            ))
+            central.append(
+                (
+                    name,
+                    checksum,
+                    item.deflated ? 8 : 0,
+                    compressed,
+                    offset,
+                    item.encrypted
+                ))
         }
 
         let centralOffset = UInt32(output.count)
@@ -63,9 +63,10 @@ enum TestZipFactory {
             output.appendLE(UInt16(0))
             output.appendLE(record.crc)
             output.appendLE(UInt32(record.compressed.count))
-            let original = try XCTUnwrap(items.first(where: {
-                Data($0.name.utf8) == record.name
-            }))
+            let original = try requireValue(
+                items.first(where: {
+                    Data($0.name.utf8) == record.name
+                }))
             output.appendLE(UInt32(original.data.count))
             output.appendLE(UInt16(record.name.count))
             output.appendLE(UInt16(0))
@@ -134,16 +135,18 @@ enum TestZipFactory {
 
     private static func deflateRaw(_ input: Data) throws -> Data {
         var stream = z_stream()
-        guard deflateInit2_(
-            &stream,
-            Z_DEFAULT_COMPRESSION,
-            Z_DEFLATED,
-            -MAX_WBITS,
-            8,
-            Z_DEFAULT_STRATEGY,
-            ZLIB_VERSION,
-            Int32(MemoryLayout<z_stream>.size)
-        ) == Z_OK else {
+        guard
+            deflateInit2_(
+                &stream,
+                Z_DEFAULT_COMPRESSION,
+                Z_DEFLATED,
+                -MAX_WBITS,
+                8,
+                Z_DEFAULT_STRATEGY,
+                ZLIB_VERSION,
+                Int32(MemoryLayout<z_stream>.size)
+            ) == Z_OK
+        else {
             throw NSError(domain: "TestZip", code: 1)
         }
         defer { deflateEnd(&stream) }
@@ -174,7 +177,7 @@ private extension Data {
     }
 }
 
-private func XCTUnwrap<T>(_ value: T?) throws -> T {
+private func requireValue<T>(_ value: T?) throws -> T {
     guard let value else { throw NSError(domain: "TestZip", code: 3) }
     return value
 }
