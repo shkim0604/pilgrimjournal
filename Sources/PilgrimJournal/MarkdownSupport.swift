@@ -3777,6 +3777,7 @@ struct LiveMarkdownTextEditor: UIViewRepresentable {
             right: 0
         )
         textView.text = text
+        context.coordinator.adoptInitialText(text)
         LiveMarkdownStyler.apply(
             to: textView.textStorage,
             revealing: selection,
@@ -3854,6 +3855,22 @@ struct LiveMarkdownTextEditor: UIViewRepresentable {
             )
             parent.text = newText
         }
+
+        /// The text the view opens with counts as already seen. SwiftUI's
+        /// first update after a keystroke can still carry the body from
+        /// before it — harmless for every later keystroke, whose previous
+        /// value was published, but the opening text never was. Its late echo
+        /// was taken for an external change and wiped out whatever had just
+        /// been typed. Nothing on iOS sets the body back to the opening text
+        /// while the editor is open (revision restore is macOS-only), so this
+        /// can't swallow a real external change.
+        func adoptInitialText(_ text: String) {
+            MarkdownInputReconciliation.recordPublishedText(
+                text,
+                in: &publishedHistory
+            )
+        }
+
         private var stylingTask: Task<Void, Never>?
         private var imageCache: [UUID: PlatformImage] = [:]
         private var loadingAttachmentIDs: Set<UUID> = []
