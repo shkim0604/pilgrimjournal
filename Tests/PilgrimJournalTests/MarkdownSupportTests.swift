@@ -688,34 +688,34 @@ final class MarkdownSupportTests: XCTestCase {
 
     func testExpandedSlashCommandsUseStableMarkdown() {
         XCTAssertEqual(
-            MarkdownCommandProcessor.expandTrailingCommand(in: "/h6 "),
+            expandedAtEnd(in: "/h6 "),
             "###### "
         )
         XCTAssertEqual(
-            MarkdownCommandProcessor.expandTrailingCommand(in: "/checklist "),
+            expandedAtEnd(in: "/checklist "),
             "- [ ] "
         )
         XCTAssertEqual(
-            MarkdownCommandProcessor.expandTrailingCommand(in: "/quote "),
+            expandedAtEnd(in: "/quote "),
             "> "
         )
     }
 
     func testHeadingSlashCommandsExpandAtStartOfLine() {
         XCTAssertEqual(
-            MarkdownCommandProcessor.expandTrailingCommand(in: "/h1 "),
+            expandedAtEnd(in: "/h1 "),
             "# "
         )
         XCTAssertEqual(
-            MarkdownCommandProcessor.expandTrailingCommand(in: "본문\n/h2 "),
+            expandedAtEnd(in: "본문\n/h2 "),
             "본문\n## "
         )
         XCTAssertEqual(
-            MarkdownCommandProcessor.expandTrailingCommand(in: "/h3 "),
+            expandedAtEnd(in: "/h3 "),
             "### "
         )
         XCTAssertEqual(
-            MarkdownCommandProcessor.expandTrailingCommand(in: "본문 /h1 "),
+            expandedAtEnd(in: "본문 /h1 "),
             "본문 /h1 "
         )
     }
@@ -733,7 +733,7 @@ final class MarkdownSupportTests: XCTestCase {
             ))!
 
         XCTAssertEqual(
-            MarkdownCommandProcessor.expandTrailingCommand(
+            expandedAtEnd(
                 in: "/today ",
                 today: today,
                 timeZone: utc
@@ -741,7 +741,7 @@ final class MarkdownSupportTests: XCTestCase {
             "2026-07-27"
         )
         XCTAssertEqual(
-            MarkdownCommandProcessor.expandTrailingCommand(in: "/line "),
+            expandedAtEnd(in: "/line "),
             "---\n"
         )
         XCTAssertEqual(
@@ -1073,11 +1073,11 @@ final class MarkdownSupportTests: XCTestCase {
         XCTAssertEqual(matches.map(\.checked), [false, true, false])
 
         XCTAssertEqual(
-            MarkdownChecklistDecoration.togglingItem(matches[0], in: text),
+            toggled(matches[0], in: text),
             "- [x] 첫째\n- [x] 둘째\n- [ ] 셋째"
         )
         XCTAssertEqual(
-            MarkdownChecklistDecoration.togglingItem(matches[1], in: text),
+            toggled(matches[1], in: text),
             "- [ ] 첫째\n- [ ] 둘째\n- [ ] 셋째"
         )
     }
@@ -1087,11 +1087,11 @@ final class MarkdownSupportTests: XCTestCase {
         let match = try XCTUnwrap(
             MarkdownChecklistDecoration.matches(in: text).first
         )
-        let unchecked = MarkdownChecklistDecoration.togglingItem(match, in: text)
+        let unchecked = toggled(match, in: text)
 
         XCTAssertEqual(unchecked, "  * [ ] 들여쓴 항목")
         XCTAssertEqual(
-            MarkdownChecklistDecoration.togglingItem(
+            toggled(
                 try XCTUnwrap(MarkdownChecklistDecoration.matches(in: unchecked).first),
                 in: unchecked
             ),
@@ -1219,5 +1219,24 @@ final class MarkdownSupportTests: XCTestCase {
         }
     }
     #endif
+}
+
+/// Flips one checklist item the way both live editors do: one character, in place.
+private func toggled(_ match: MarkdownChecklistDecoration.Match, in text: String) -> String {
+    (text as NSString).replacingCharacters(in: match.stateRange, with: match.toggledState)
+}
+
+/// Expands a slash command typed at the very end of `text`.
+private func expandedAtEnd(
+    in text: String,
+    today: Date = .now,
+    timeZone: TimeZone = .current
+) -> String {
+    MarkdownCommandProcessor.expandCommand(
+        in: text,
+        cursorUTF16Offset: text.utf16.count,
+        today: today,
+        timeZone: timeZone
+    ).text
 }
 #endif

@@ -747,6 +747,7 @@ struct EntryDetailView: View {
     }
 }
 
+#if os(iOS)
 struct EntryEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var model: AppModel
@@ -838,9 +839,7 @@ struct EntryEditorView: View {
                 }
             }
             .navigationTitle(draft.id == nil ? "새 기록" : "기록 편집")
-            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
-            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("완료") {
@@ -851,7 +850,6 @@ struct EntryEditorView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     StatusPill(state: saveState)
                 }
-                #if os(iOS)
                 ToolbarItemGroup(placement: .keyboard) {
                     Button {
                         appendCommand(.h2)
@@ -881,12 +879,8 @@ struct EntryEditorView: View {
                     Spacer()
                     Button("키보드 닫기") { dismissKeyboard() }
                 }
-                #endif
             }
         }
-        #if os(macOS)
-        .frame(minWidth: 420, minHeight: 520)
-        #endif
         .interactiveDismissDisabled(saveState != .saved)
         .sheet(isPresented: $isShowingMetadata) {
             mobileMetadataSheet
@@ -998,18 +992,14 @@ struct EntryEditorView: View {
             .scrollContentBackground(.hidden)
             .background(JournalTheme.canvas)
             .navigationTitle("기록 정보")
-            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
-            #endif
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("완료") { isShowingMetadata = false }
                 }
             }
         }
-        #if os(iOS)
         .presentationDetents([.medium, .large])
-        #endif
     }
 
     private var mobileTagsEditor: some View {
@@ -1325,7 +1315,6 @@ struct EntryEditorView: View {
         draft.body = MarkdownCommandProcessor.applying(command, to: draft.body)
     }
 
-    #if os(iOS)
     private func postMarkdownCommand(_ command: MarkdownKeyboardCommand) {
         NotificationCenter.default.post(
             name: .applyMarkdownKeyboardCommand,
@@ -1341,7 +1330,6 @@ struct EntryEditorView: View {
             for: nil
         )
     }
-    #endif
 
     private func applyPendingKind() {
         guard let pendingKind else { return }
@@ -1351,7 +1339,6 @@ struct EntryEditorView: View {
     }
 }
 
-#if os(iOS)
 private struct CameraCaptureView: UIViewControllerRepresentable {
     var onCapture: (UIImage) -> Void
     var onCancel: () -> Void

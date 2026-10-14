@@ -12,7 +12,6 @@ private typealias JournalPlatformColor = UIColor
 
 enum JournalTheme {
     enum Spacing {
-        static let xSmall: CGFloat = 4
         static let small: CGFloat = 8
         static let medium: CGFloat = 12
         static let regular: CGFloat = 16
@@ -38,7 +37,6 @@ enum JournalTheme {
         lightHex: 0x2F5D50,
         darkHex: 0x7EBAA5
     )
-    static let brandDeep = Color(lightHex: 0x173C36, darkHex: 0x0E2420)
     static let accentWarm = Color(lightHex: 0xD9A24A, darkHex: 0xF0BD68)
     static let canvas = Color(lightHex: 0xF6F3EC, darkHex: 0x111714)
     static let paper = Color(lightHex: 0xFBF8F1, darkHex: 0x18211D)
@@ -408,17 +406,15 @@ private struct DesignSystemPreviewGallery: View {
     }
 }
 
-struct DesignSystemPreviewGallery_Previews: PreviewProvider {
-    static var previews: some View {
-        Group {
-            DesignSystemPreviewGallery()
-                .preferredColorScheme(.light)
-                .previewDisplayName("Quiet Morning · Light")
-            DesignSystemPreviewGallery()
-                .preferredColorScheme(.dark)
-                .previewDisplayName("Quiet Morning · Dark")
-        }
+#Preview("Quiet Morning · Light") {
+    DesignSystemPreviewGallery()
+        .preferredColorScheme(.light)
         .frame(width: 680, height: 360)
-    }
+}
+
+#Preview("Quiet Morning · Dark") {
+    DesignSystemPreviewGallery()
+        .preferredColorScheme(.dark)
+        .frame(width: 680, height: 360)
 }
 #endif
