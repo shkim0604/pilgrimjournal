@@ -1,0 +1,55 @@
+name: Check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Same Xcode build as local development (26.2, 17C52), so the toolchain,
+  # swift-format and SDKs match what scripts/check.sh is run with locally.
+  DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
+
+jobs:
+  gate:
+    name: Lint, build, test
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+          swift format --version
+      - name: scripts/check.sh
+        run: ./scripts/check.sh
+
+  xcode:
+    # The Xcode project enforces member import visibility, which `swift build`
+    # does not, so an import that is only "transitively" visible fails here.
+    name: Xcode build (${{ matrix.platform }})
+    runs-on: macos-26
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [iOS, macOS]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build unsigned
+        run: |
+          xcodebuild \
+            -project PilgrimJournal/PilgrimJournal.xcodeproj \
+            -scheme PilgrimJournalApp \
+            -destination 'generic/platform=${{ matrix.platform }}' \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            build
