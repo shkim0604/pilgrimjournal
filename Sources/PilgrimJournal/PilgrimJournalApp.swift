@@ -177,26 +177,19 @@ struct PilgrimJournalApp: App {
                     || Self.developerSignInBypassUser != nil
             )
         )
-        let session: JournalSessionController
-        do {
-            let root =
-                Self.isVisualTesting
-                ? FileManager.default.temporaryDirectory.appending(
-                    path: "PilgrimJournal-VisualTesting-\(UUID().uuidString)",
-                    directoryHint: .isDirectory
-                )
-                : try JournalPaths.applicationRoot()
-            session = JournalSessionController(
-                rootURL: root,
-                cloudKitContainerIdentifier: cloudKitEnabled
-                    ? requestedCloudIdentifier
-                    : nil,
-                isVisualTesting: Self.isVisualTesting
-            )
-        } catch {
-            session = JournalSessionController(startupFailure: error)
-        }
-        _journalSession = StateObject(wrappedValue: session)
+        let isVisualTesting = Self.isVisualTesting
+        let visualTestingRoot = FileManager.default.temporaryDirectory.appending(
+            path: "PilgrimJournal-VisualTesting-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        _journalSession = StateObject(
+            wrappedValue: JournalSessionController(
+                rootURLProvider: {
+                    isVisualTesting ? visualTestingRoot : try JournalPaths.applicationRoot()
+                },
+                cloudKitContainerIdentifier: cloudKitEnabled ? requestedCloudIdentifier : nil,
+                isVisualTesting: isVisualTesting
+            ))
     }
 
     var body: some Scene {

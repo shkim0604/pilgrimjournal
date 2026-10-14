@@ -1,4 +1,5 @@
 #if canImport(XCTest)
+import JournalData
 @testable import PilgrimJournal
 import XCTest
 
@@ -29,6 +30,24 @@ final class BlockedSignInGuidanceTests: XCTestCase {
         XCTAssertTrue(guidance.offersCloudRecheck)
         XCTAssertTrue(guidance.steps.contains { $0.contains("iCloud") && $0.contains("다시 확인") })
         XCTAssertTrue(guidance.steps.contains { $0.contains("삭제되지 않") })
+    }
+
+    // Only the message the guidance already says is hidden; anything else,
+    // such as a failed iCloud re-check, must still reach the user.
+    func testOnlyTheRestatedErrorIsHidden() throws {
+        let differentUser = try XCTUnwrap(BlockedSignInGuidance(state: .blockedDifferentUser))
+        XCTAssertFalse(
+            differentUser.shouldShow(
+                errorMessage: AppleAuthenticationSessionError.differentUser.localizedDescription
+            ))
+        XCTAssertTrue(differentUser.shouldShow(errorMessage: "Apple 로그인에 실패했습니다."))
+
+        let mismatch = try XCTUnwrap(BlockedSignInGuidance(state: .blockedCloudAccountMismatch))
+        XCTAssertFalse(
+            mismatch.shouldShow(
+                errorMessage: AppleAuthenticationCoordinator.cloudAccountMismatchMessage
+            ))
+        XCTAssertTrue(mismatch.shouldShow(errorMessage: "iCloud 상태를 확인하지 못했습니다."))
     }
 }
 #endif

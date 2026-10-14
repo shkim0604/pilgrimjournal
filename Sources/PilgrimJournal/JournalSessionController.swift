@@ -22,14 +22,14 @@ final class JournalSessionController: ObservableObject {
     @Published private(set) var isLoading = false
     @Published var errorMessage: String?
 
-    private let rootURL: URL
+    private var rootURL: URL
     private let cloudKitContainerIdentifier: String?
     private let isVisualTesting: Bool
     private let storageLocationProvider: () async -> JournalStorageLocation
-    private let registry: JournalAccountScopeRegistry
-    /// Set when the app could not even locate its storage folder; every
-    /// `activate` then reports it instead of opening a store.
-    private var startupFailure: (any Error)?
+    private var registry: JournalAccountScopeRegistry
+    /// Set while the storage folder could not be located. `activate` retries
+    /// it, so the error screen's retry can recover from a transient failure.
+    private var unresolvedRootProvider: (() throws -> URL)?
 
     init(
         rootURL: URL,
@@ -55,14 +55,29 @@ final class JournalSessionController: ObservableObject {
         }
     }
 
-    /// A controller that never opens a store and shows `error` on the session
-    /// error screen, for when the storage root itself cannot be resolved.
-    convenience init(startupFailure error: any Error) {
-        self.init(
-            rootURL: FileManager.default.temporaryDirectory,
-            cloudKitContainerIdentifier: nil
-        )
-        startupFailure = error
+    /// Resolves the storage root now and, if that fails, again on every
+    /// `activate` until it succeeds; until then `activate` reports the error
+    /// on the session error screen instead of opening a store.
+    convenience init(
+        rootURLProvider: @escaping () throws -> URL,
+        cloudKitContainerIdentifier: String?,
+        isVisualTesting: Bool = false
+    ) {
+        do {
+            self.init(
+                rootURL: try rootURLProvider(),
+                cloudKitContainerIdentifier: cloudKitContainerIdentifier,
+                isVisualTesting: isVisualTesting
+            )
+        } catch {
+            // Placeholder only: nothing reads it before the root resolves.
+            self.init(
+                rootURL: FileManager.default.temporaryDirectory,
+                cloudKitContainerIdentifier: cloudKitContainerIdentifier,
+                isVisualTesting: isVisualTesting
+            )
+            unresolvedRootProvider = rootURLProvider
+        }
     }
 
     func activate(
@@ -70,9 +85,16 @@ final class JournalSessionController: ObservableObject {
         forceRefresh: Bool = false
     ) async {
         guard !isLoading else { return }
-        if let startupFailure {
-            errorMessage = "기록 저장 위치를 준비하지 못했습니다. \(startupFailure.localizedDescription)"
-            return
+        if let provider = unresolvedRootProvider {
+            do {
+                let root = try provider()
+                rootURL = root
+                registry = JournalAccountScopeRegistry(root: root)
+                unresolvedRootProvider = nil
+            } catch {
+                errorMessage = "기록 저장 위치를 준비하지 못했습니다. \(error.localizedDescription)"
+                return
+            }
         }
         isLoading = true
         defer { isLoading = false }
