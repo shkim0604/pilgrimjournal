@@ -1,4 +1,5 @@
 import AuthenticationServices
+import JournalData
 import SwiftUI
 
 struct AppleSignInView: View {
@@ -89,8 +90,9 @@ struct AppleSignInView: View {
                 .accessibilityHint("Apple 계정으로 Pilgrim Journal에 로그인합니다.")
             }
 
-            // In a blocked state the error only repeats the guidance above.
-            if guidance == nil, let errorMessage = authentication.errorMessage {
+            if let errorMessage = authentication.errorMessage,
+                guidance?.shouldShow(errorMessage: errorMessage) ?? true
+            {
                 Text(errorMessage)
                     .font(.caption)
                     .foregroundStyle(.red)
@@ -139,6 +141,8 @@ struct BlockedSignInGuidance: Equatable {
     /// Whether "check iCloud again" can help, i.e. the fix happens outside
     /// the app (switching the device's iCloud account).
     var offersCloudRecheck: Bool
+    /// The coordinator's error text for this state, which `title` already says.
+    private var restatedError: String
 
     init?(state: AppleAuthenticationCoordinator.State) {
         switch state {
@@ -150,6 +154,7 @@ struct BlockedSignInGuidance: Equatable {
                 "다른 계정의 기록은 보호를 위해 열거나 합치지 않습니다. 기록은 삭제되지 않았습니다.",
             ]
             offersCloudRecheck = false
+            restatedError = AppleAuthenticationSessionError.differentUser.localizedDescription
         case .blockedCloudAccountMismatch:
             title = "현재 iCloud는 다른 Apple 계정에 연결되어 있습니다."
             systemImage = "icloud.slash"
@@ -159,8 +164,15 @@ struct BlockedSignInGuidance: Equatable {
                 "어느 쪽 기록도 삭제되지 않았습니다.",
             ]
             offersCloudRecheck = true
+            restatedError = AppleAuthenticationCoordinator.cloudAccountMismatchMessage
         case .checking, .signedOut, .authenticated, .failed:
             return nil
         }
+    }
+
+    /// Hides only the error that repeats this guidance, so a different
+    /// failure (say, the iCloud re-check failing) is still shown.
+    func shouldShow(errorMessage: String) -> Bool {
+        errorMessage != restatedError
     }
 }

@@ -41,6 +41,9 @@ final class AppleAuthenticationCoordinator: ObservableObject {
         case failed(String)
     }
 
+    nonisolated static let cloudAccountMismatchMessage =
+        "현재 iCloud 저장 공간은 다른 Apple 로그인 사용자에게 연결되어 있습니다."
+
     @Published private(set) var state: State = .checking
     @Published var errorMessage: String?
     @Published private(set) var accountDisplayName: String?
@@ -261,7 +264,7 @@ final class AppleAuthenticationCoordinator: ObservableObject {
             errorMessage = nil
         case .mismatch:
             state = .blockedCloudAccountMismatch
-            errorMessage = "현재 iCloud 저장 공간은 다른 Apple 로그인 사용자에게 연결되어 있습니다."
+            errorMessage = Self.cloudAccountMismatchMessage
         case let .unavailable(reason):
             state = .authenticated(offline: offline)
             errorMessage = "iCloud 연결을 확인하지 못해 이 기기에서만 사용합니다: \(reason)"

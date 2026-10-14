@@ -7,20 +7,52 @@ import XCTest
 
 @MainActor
 final class JournalSessionControllerTests: XCTestCase {
-    func testStartupFailureIsReportedInsteadOfOpeningAStore() async {
-        let cause = NSError(
-            domain: "test",
-            code: 1,
-            userInfo: [NSLocalizedDescriptionKey: "Application Support 없음"]
+    func testUnresolvableRootIsReportedInsteadOfOpeningAStore() async {
+        let controller = JournalSessionController(
+            rootURLProvider: {
+                throw NSError(
+                    domain: "test",
+                    code: 1,
+                    userInfo: [NSLocalizedDescriptionKey: "Application Support 없음"]
+                )
+            },
+            cloudKitContainerIdentifier: nil
         )
-        let controller = JournalSessionController(startupFailure: cause)
 
         await controller.activate(appleUserIdentifier: "apple-user")
 
         XCTAssertNil(controller.appModel)
         XCTAssertNil(controller.activeScope)
-        let message = try? XCTUnwrap(controller.errorMessage)
-        XCTAssertTrue(message?.contains("Application Support 없음") == true)
+        XCTAssertTrue(controller.errorMessage?.contains("Application Support 없음") == true)
+    }
+
+    // The error screen's retry calls activate again; a root that resolves on
+    // the second try must open the journal.
+    func testRetryResolvesTheRootAgainAfterAFailure() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(
+            path: "journal-retry-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+        var attempts = 0
+        let controller = JournalSessionController(
+            rootURLProvider: {
+                attempts += 1
+                // Fails at launch (init) and on the first activate, then recovers.
+                if attempts <= 2 { throw CocoaError(.fileNoSuchFile) }
+                return root
+            },
+            cloudKitContainerIdentifier: nil
+        )
+
+        await controller.activate(appleUserIdentifier: "apple-user")
+        XCTAssertNil(controller.appModel)
+        XCTAssertNotNil(controller.errorMessage)
+
+        await controller.activate(appleUserIdentifier: "apple-user")
+        XCTAssertNotNil(controller.appModel)
+        XCTAssertNil(controller.errorMessage)
+        XCTAssertEqual(attempts, 3)
     }
 
     func testLocalRecordsRequireConfirmationBeforeMovingToICloud() async throws {
