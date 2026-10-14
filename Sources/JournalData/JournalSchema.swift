@@ -1,10 +1,10 @@
 #if PILGRIM_SWIFTDATA
 import SwiftData
 
-public enum PilgrimJournalSchemaV1: VersionedSchema {
-    public static let versionIdentifier = Schema.Version(1, 0, 0)
+enum PilgrimJournalSchemaV1: VersionedSchema {
+    static let versionIdentifier = Schema.Version(1, 0, 0)
 
-    public static let models: [any PersistentModel.Type] = [
+    static let models: [any PersistentModel.Type] = [
         JournalEntryEntity.self,
         EntryRevisionEntity.self,
         AttachmentEntity.self,
@@ -15,7 +15,7 @@ public enum PilgrimJournalSchemaV1: VersionedSchema {
         SourceSnapshotEntity.self,
     ]
 
-    public static let canonicalModels: [any PersistentModel.Type] = [
+    static let canonicalModels: [any PersistentModel.Type] = [
         JournalEntryEntity.self,
         EntryRevisionEntity.self,
         AttachmentEntity.self,
@@ -23,18 +23,18 @@ public enum PilgrimJournalSchemaV1: VersionedSchema {
         RestoreEpochEntity.self,
     ]
 
-    public static let localModels: [any PersistentModel.Type] = [
+    static let localModels: [any PersistentModel.Type] = [
         ImportJobEntity.self,
         ImportItemEntity.self,
         SourceSnapshotEntity.self,
     ]
 }
 
-public enum PilgrimJournalMigrationPlan: SchemaMigrationPlan {
-    public static let schemas: [any VersionedSchema.Type] = [
+enum PilgrimJournalMigrationPlan: SchemaMigrationPlan {
+    static let schemas: [any VersionedSchema.Type] = [
         PilgrimJournalSchemaV1.self
     ]
 
-    public static let stages: [MigrationStage] = []
+    static let stages: [MigrationStage] = []
 }
 #endif

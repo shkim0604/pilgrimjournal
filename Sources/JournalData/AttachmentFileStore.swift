@@ -64,14 +64,6 @@ public final class AttachmentFileStore: @unchecked Sendable {
         }
     }
 
-    /// The CAS file's location for `checksum` — a pure path computation, no
-    /// I/O. Lets callers (e.g. an image decoder) open the file directly
-    /// (`CGImageSourceCreateWithURL`) without going through `data(checksum:)`
-    /// and materializing a `Data` copy first.
-    public func url(checksum: String) -> URL {
-        fileURL(checksum: checksum)
-    }
-
     /// Whether `checksum`'s file exists on disk — path computation +
     /// `fileExists` only, never reads the file's contents. Safe to call from
     /// a hot path (e.g. once per attachment row per render) where

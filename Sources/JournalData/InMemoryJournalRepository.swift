@@ -300,7 +300,7 @@ public final class InMemoryJournalRepository:
         }
     }
 
-    public func allRestoreEpochs() -> [RestoreEpochRecord] {
+    package func allRestoreEpochs() -> [RestoreEpochRecord] {
         restoreEpochs
     }
 

@@ -15,14 +15,14 @@ enum EditorTextScale {
 }
 #if os(macOS)
 import AppKit
-private typealias PlatformFont = NSFont
-private typealias PlatformColor = NSColor
-private typealias PlatformImage = NSImage
+typealias PlatformFont = NSFont
+typealias PlatformColor = NSColor
+typealias PlatformImage = NSImage
 #elseif os(iOS)
 import UIKit
-private typealias PlatformFont = UIFont
-private typealias PlatformColor = UIColor
-private typealias PlatformImage = UIImage
+typealias PlatformFont = UIFont
+typealias PlatformColor = UIColor
+typealias PlatformImage = UIImage
 #endif
 
 private enum EditorPalette {
@@ -3657,7 +3657,7 @@ private final class MarkdownUITextView: UITextView, UIGestureRecognizerDelegate 
     }
 }
 
-private struct LiveMarkdownTextEditor: UIViewRepresentable {
+struct LiveMarkdownTextEditor: UIViewRepresentable {
     @Binding var text: String
     @Binding var selection: NSRange
     var autoFocus: Bool
