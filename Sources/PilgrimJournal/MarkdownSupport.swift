@@ -25,6 +25,80 @@ typealias PlatformColor = UIColor
 typealias PlatformImage = UIImage
 #endif
 
+extension NSRegularExpression {
+    /// Compiles a pattern written as a literal in this module. An invalid
+    /// literal is a programming error, caught by `testEveryEditorPatternCompiles`.
+    convenience init(literal pattern: String) {
+        try! self.init(pattern: pattern)
+    }
+}
+
+/// Every Markdown pattern the editor, preview and code highlighter use,
+/// compiled once. Styling reruns on every pause in typing, so compiling the
+/// same literals on each pass was wasted work.
+enum MarkdownPatterns {
+    static let boldAsterisks = NSRegularExpression(literal: #"(?<!\\)\*\*([^*\n]+)(?<!\\)\*\*"#)
+    static let boldUnderscores = NSRegularExpression(literal: #"(?<!\\)__([^_\n]+)(?<!\\)__"#)
+    static let italicAsterisk = NSRegularExpression(
+        literal: #"(?<![\\*])\*([^*\n]+)(?<!\\)\*(?!\*)"#)
+    static let italicUnderscore = NSRegularExpression(
+        literal: #"(?<![\\_])_([^_\n]+)(?<!\\)_(?!_)"#)
+    static let strikethrough = NSRegularExpression(literal: #"(?<!\\)~~([^~\n]+)(?<!\\)~~"#)
+    static let highlight = NSRegularExpression(literal: #"(?<!\\)==([^=\n]+)(?<!\\)=="#)
+    static let inlineCode = NSRegularExpression(literal: #"`([^`\n]+)`"#)
+    static let link = NSRegularExpression(literal: #"\[([^\]\n]+)\]\(([^)\n]+)\)"#)
+    static let heading = NSRegularExpression(literal: #"(?m)^(#{1,6})[ \t]+(.*)$"#)
+    static let bulletItem = NSRegularExpression(literal: #"(?m)^([ \t]*)([\-*]) (.*)$"#)
+    static let orderedItem = NSRegularExpression(literal: #"(?m)^(\d+\.) (.*)$"#)
+    static let checklistItem = NSRegularExpression(
+        literal: #"(?m)^([ \t]*)([-*]) (\[([ xX])\]) (.*)$"#)
+    static let quote = NSRegularExpression(literal: #"(?m)^(>) (.*)$"#)
+    static let horizontalRule = NSRegularExpression(literal: #"(?m)^(---|\*\*\*|___)$"#)
+    static let codeFence = NSRegularExpression(literal: #"(?s)(```[^\n]*\n?)(.*?)(\n?```)"#)
+    static let listLine = NSRegularExpression(
+        literal: #"^([ \t]*)(?:(\*|-)|(\d+)\.)(?: (\[[ xX]\]))? (.*)$"#)
+    static let escapedPunctuation = NSRegularExpression(
+        literal: #"\\([\u0021-\u002F\u003A-\u0040\u005B-\u0060\u007B-\u007E])"#)
+
+    static let codeKeyword = NSRegularExpression(
+        literal:
+            #"\b(?:actor|and|any|as|async|await|break|case|catch|class|const|continue|def|default|do|else|enum|extension|false|final|for|from|func|function|guard|if|import|in|is|let|new|nil|not|null|or|private|protocol|public|return|self|some|static|struct|switch|this|throw|throws|true|try|typealias|var|where|while)\b"#
+    )
+    static let codeNumber = NSRegularExpression(literal: #"\b(?:0x[0-9A-Fa-f]+|\d+(?:\.\d+)?)\b"#)
+    static let codeString = NSRegularExpression(literal: #"\"(?:\\.|[^\"\\])*\"|'(?:\\.|[^'\\])*'"#)
+    static let hashComment = NSRegularExpression(literal: #"(?m)#.*$"#)
+    static let lineComment = NSRegularExpression(literal: #"(?m)//.*$"#)
+    static let blockComment = NSRegularExpression(literal: #"(?s)/\*.*?\*/"#)
+
+    static var all: [NSRegularExpression] {
+        [
+            boldAsterisks,
+            boldUnderscores,
+            italicAsterisk,
+            italicUnderscore,
+            strikethrough,
+            highlight,
+            inlineCode,
+            link,
+            heading,
+            bulletItem,
+            orderedItem,
+            checklistItem,
+            quote,
+            horizontalRule,
+            codeFence,
+            listLine,
+            escapedPunctuation,
+            codeKeyword,
+            codeNumber,
+            codeString,
+            hashComment,
+            lineComment,
+            blockComment,
+        ]
+    }
+}
+
 private enum EditorPalette {
     #if os(macOS)
     static let label = PlatformColor.labelColor
@@ -814,13 +888,9 @@ enum MarkdownCommandProcessor {
         isChecklist: Bool,
         content: String
     )? {
-        let pattern = #"^([ \t]*)(?:(\*|-)|(\d+)\.)(?: (\[[ xX]\]))? (.*)$"#
-        guard let regex = try? NSRegularExpression(pattern: pattern) else {
-            return nil
-        }
         let source = line as NSString
         let range = NSRange(location: 0, length: source.length)
-        guard let match = regex.firstMatch(in: line, range: range) else {
+        guard let match = MarkdownPatterns.listLine.firstMatch(in: line, range: range) else {
             return nil
         }
         func value(at index: Int) -> String? {
@@ -1239,13 +1309,9 @@ struct MarkdownBodyEditor: View {
 }
 
 enum MarkdownEscaping {
-    private static let pattern =
-        #"\\([\u0021-\u002F\u003A-\u0040\u005B-\u0060\u007B-\u007E])"#
+    private static var regex: NSRegularExpression { MarkdownPatterns.escapedPunctuation }
 
     static func markerRanges(in markdown: String) -> [NSRange] {
-        guard let regex = try? NSRegularExpression(pattern: pattern) else {
-            return []
-        }
         let range = NSRange(markdown.startIndex..., in: markdown)
         return regex.matches(in: markdown, range: range).map {
             NSRange(location: $0.range.location, length: 1)
@@ -1253,9 +1319,6 @@ enum MarkdownEscaping {
     }
 
     static func unescaped(_ markdown: String) -> String {
-        guard let regex = try? NSRegularExpression(pattern: pattern) else {
-            return markdown
-        }
         let range = NSRange(markdown.startIndex..., in: markdown)
         return regex.stringByReplacingMatches(
             in: markdown,
@@ -1266,35 +1329,31 @@ enum MarkdownEscaping {
 }
 
 private enum CodeSyntaxHighlighter {
-    private static let keywordPattern =
-        #"\b(?:actor|and|any|as|async|await|break|case|catch|class|const|continue|def|default|do|else|enum|extension|false|final|for|from|func|function|guard|if|import|in|is|let|new|nil|not|null|or|private|protocol|public|return|self|some|static|struct|switch|this|throw|throws|true|try|typealias|var|where|while)\b"#
-    private static let numberPattern = #"\b(?:0x[0-9A-Fa-f]+|\d+(?:\.\d+)?)\b"#
-    private static let stringPattern = #"\"(?:\\.|[^\"\\])*\"|'(?:\\.|[^'\\])*'"#
-
     static func apply(
         to value: NSMutableAttributedString,
         range: NSRange,
         language: String?
     ) {
-        color(keywordPattern, with: EditorPalette.codeKeyword, in: value, range: range)
-        color(numberPattern, with: EditorPalette.codeNumber, in: value, range: range)
+        color(
+            MarkdownPatterns.codeKeyword, with: EditorPalette.codeKeyword, in: value, range: range)
+        color(MarkdownPatterns.codeNumber, with: EditorPalette.codeNumber, in: value, range: range)
 
-        let stringRanges = matches(stringPattern, in: value.string, range: range)
+        let stringRanges = matches(MarkdownPatterns.codeString, in: value.string, range: range)
             .map(\.range)
         stringRanges.forEach {
             value.addAttribute(.foregroundColor, value: EditorPalette.codeString, range: $0)
         }
 
         let normalizedLanguage = language?.lowercased() ?? ""
-        let commentPatterns: [String]
+        let commentPatterns: [NSRegularExpression]
         if ["python", "py", "shell", "sh", "bash", "zsh", "ruby", "rb"]
             .contains(normalizedLanguage)
         {
-            commentPatterns = [#"(?m)#.*$"#]
+            commentPatterns = [MarkdownPatterns.hashComment]
         } else if ["json"].contains(normalizedLanguage) {
             commentPatterns = []
         } else {
-            commentPatterns = [#"(?m)//.*$"#, #"(?s)/\*.*?\*/"#]
+            commentPatterns = [MarkdownPatterns.lineComment, MarkdownPatterns.blockComment]
         }
         for pattern in commentPatterns {
             for match in matches(pattern, in: value.string, range: range) {
@@ -1313,25 +1372,22 @@ private enum CodeSyntaxHighlighter {
     }
 
     private static func color(
-        _ pattern: String,
+        _ regex: NSRegularExpression,
         with color: PlatformColor,
         in value: NSMutableAttributedString,
         range: NSRange
     ) {
-        matches(pattern, in: value.string, range: range).forEach {
+        matches(regex, in: value.string, range: range).forEach {
             value.addAttribute(.foregroundColor, value: color, range: $0.range)
         }
     }
 
     private static func matches(
-        _ pattern: String,
+        _ regex: NSRegularExpression,
         in source: String,
         range: NSRange
     ) -> [NSTextCheckingResult] {
-        guard let regex = try? NSRegularExpression(pattern: pattern) else {
-            return []
-        }
-        return regex.matches(in: source, range: range)
+        regex.matches(in: source, range: range)
     }
 }
 
@@ -1355,26 +1411,26 @@ enum LiveMarkdownStyler {
         storage.setAttributes(baseAttributes, range: fullRange)
 
         applyInlineStyle(
-            pattern: #"(?<!\\)\*\*([^*\n]+)(?<!\\)\*\*"#,
+            regex: MarkdownPatterns.boldAsterisks,
             trait: .bold,
             storage: storage
         )
         applyInlineStyle(
-            pattern: #"(?<!\\)__([^_\n]+)(?<!\\)__"#,
+            regex: MarkdownPatterns.boldUnderscores,
             trait: .bold,
             storage: storage
         )
         applyInlineStyle(
-            pattern: #"(?<![\\*])\*([^*\n]+)(?<!\\)\*(?!\*)"#,
+            regex: MarkdownPatterns.italicAsterisk,
             trait: .italic,
             storage: storage
         )
         applyInlineStyle(
-            pattern: #"(?<![\\_])_([^_\n]+)(?<!\\)_(?!_)"#,
+            regex: MarkdownPatterns.italicUnderscore,
             trait: .italic,
             storage: storage
         )
-        applyRegex(#"(?<!\\)~~([^~\n]+)(?<!\\)~~"#, to: storage) { match in
+        applyRegex(MarkdownPatterns.strikethrough, to: storage) { match in
             storage.addAttribute(
                 .strikethroughStyle,
                 value: NSUnderlineStyle.single.rawValue,
@@ -1382,7 +1438,7 @@ enum LiveMarkdownStyler {
             )
             fadeMarkers(in: match, groups: [0], excluding: [1], storage: storage)
         }
-        applyRegex(#"(?<!\\)==([^=\n]+)(?<!\\)=="#, to: storage) { match in
+        applyRegex(MarkdownPatterns.highlight, to: storage) { match in
             storage.addAttribute(
                 .backgroundColor,
                 value: EditorPalette.highlight,
@@ -1390,7 +1446,7 @@ enum LiveMarkdownStyler {
             )
             fadeMarkers(in: match, groups: [0], excluding: [1], storage: storage)
         }
-        applyRegex(#"`([^`\n]+)`"#, to: storage) { match in
+        applyRegex(MarkdownPatterns.inlineCode, to: storage) { match in
             storage.addAttributes(
                 [
                     .font: monospacedFont,
@@ -1399,7 +1455,7 @@ enum LiveMarkdownStyler {
                 ], range: match.range(at: 1))
             fadeMarkers(in: match, groups: [0], excluding: [1], storage: storage)
         }
-        applyRegex(#"\[([^\]\n]+)\]\(([^)\n]+)\)"#, to: storage) { match in
+        applyRegex(MarkdownPatterns.link, to: storage) { match in
             storage.addAttributes(
                 [
                     .foregroundColor: EditorPalette.link,
@@ -1408,7 +1464,7 @@ enum LiveMarkdownStyler {
             fadeMarkers(in: match, groups: [0], excluding: [1], storage: storage)
         }
 
-        applyRegex(#"(?m)^(#{1,6})[ \t]+(.*)$"#, to: storage) { match in
+        applyRegex(MarkdownPatterns.heading, to: storage) { match in
             let marker = (storage.string as NSString).substring(
                 with: match.range(at: 1)
             )
@@ -1425,7 +1481,7 @@ enum LiveMarkdownStyler {
                     .foregroundColor: PlatformColor.clear,
                 ], range: hiddenPrefixRange)
         }
-        applyRegex(#"(?m)^([ \t]*)([\-*]) (.*)$"#, to: storage) { match in
+        applyRegex(MarkdownPatterns.bulletItem, to: storage) { match in
             storage.addAttributes(
                 [
                     .foregroundColor: PlatformColor.clear,
@@ -1450,17 +1506,14 @@ enum LiveMarkdownStyler {
                 range: match.range
             )
         }
-        applyRegex(#"(?m)^(\d+\.) (.*)$"#, to: storage) { match in
+        applyRegex(MarkdownPatterns.orderedItem, to: storage) { match in
             storage.addAttribute(
                 .foregroundColor,
                 value: EditorPalette.secondaryLabel,
                 range: match.range(at: 1)
             )
         }
-        applyRegex(
-            #"(?m)^([ \t]*)([-*]) (\[([ xX])\]) (.*)$"#,
-            to: storage
-        ) { match in
+        applyRegex(MarkdownPatterns.checklistItem, to: storage) { match in
             let state = (storage.string as NSString).substring(
                 with: match.range(at: 4)
             )
@@ -1524,7 +1577,7 @@ enum LiveMarkdownStyler {
                 range: imageMatch.markerRange
             )
         }
-        applyRegex(#"(?m)^(>) (.*)$"#, to: storage) { match in
+        applyRegex(MarkdownPatterns.quote, to: storage) { match in
             #if os(macOS)
             storage.addAttributes(
                 [
@@ -1544,7 +1597,7 @@ enum LiveMarkdownStyler {
                     .paragraphStyle: quoteParagraphStyle(),
                 ], range: match.range)
         }
-        applyRegex(#"(?m)^(---|\*\*\*|___)$"#, to: storage) { match in
+        applyRegex(MarkdownPatterns.horizontalRule, to: storage) { match in
             storage.addAttributes(
                 [
                     .font: hiddenMarkerFont,
@@ -1552,7 +1605,7 @@ enum LiveMarkdownStyler {
                     .paragraphStyle: separatorParagraphStyle,
                 ], range: match.range)
         }
-        applyRegex(#"(?s)(```[^\n]*\n?)(.*?)(\n?```)"#, to: storage) { match in
+        applyRegex(MarkdownPatterns.codeFence, to: storage) { match in
             storage.addAttributes(
                 [
                     .font: monospacedFont,
@@ -1621,11 +1674,11 @@ enum LiveMarkdownStyler {
     }
 
     private static func applyInlineStyle(
-        pattern: String,
+        regex: NSRegularExpression,
         trait: FontTrait,
         storage: NSTextStorage
     ) {
-        applyRegex(pattern, to: storage) { match in
+        applyRegex(regex, to: storage) { match in
             let contentRange = match.range(at: 1)
             let currentFont =
                 storage.attribute(
@@ -1696,32 +1749,11 @@ enum LiveMarkdownStyler {
         return results
     }
 
-    // `apply()` calls `applyRegex`/`applyInlineStyle` with the same ~15
-    // pattern strings every time it runs (debounced, but still 15
-    // `NSRegularExpression` compiles per call before this cache existed).
-    // Keyed by pattern text so call sites don't need to change. Lock-guarded
-    // rather than `@MainActor`-isolating the whole enum — every real caller
-    // already runs on the main actor, but `LiveMarkdownStyler` also exposes
-    // plain pure functions used directly from tests, and isolating those
-    // too would be unrelated scope creep.
-    private static let compiledRegexCacheLock = NSLock()
-    nonisolated(unsafe) private static var compiledRegexCache: [String: NSRegularExpression] = [:]
-
-    private static func cachedRegex(_ pattern: String) -> NSRegularExpression? {
-        compiledRegexCacheLock.lock()
-        defer { compiledRegexCacheLock.unlock() }
-        if let cached = compiledRegexCache[pattern] { return cached }
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
-        compiledRegexCache[pattern] = regex
-        return regex
-    }
-
     private static func applyRegex(
-        _ pattern: String,
+        _ regex: NSRegularExpression,
         to storage: NSTextStorage,
         body: (NSTextCheckingResult) -> Void
     ) {
-        guard let regex = cachedRegex(pattern) else { return }
         let range = NSRange(location: 0, length: storage.length)
         regex.matches(in: storage.string, range: range).forEach(body)
     }
@@ -4583,13 +4615,9 @@ struct MarkdownPreviewView: View {
     }
 
     private func inlineText(_ source: String) -> Text {
-        let pattern = #"(?<!\\)==([^=\n]+)(?<!\\)=="#
-        guard let regex = try? NSRegularExpression(pattern: pattern) else {
-            return markdownText(source)
-        }
         let sourceString = source as NSString
         let fullRange = NSRange(location: 0, length: sourceString.length)
-        let matches = regex.matches(in: source, range: fullRange)
+        let matches = MarkdownPatterns.highlight.matches(in: source, range: fullRange)
         guard !matches.isEmpty else { return markdownText(source) }
 
         var result = Text("")
