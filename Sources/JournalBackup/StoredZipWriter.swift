@@ -29,8 +29,9 @@ final class StoredZipWriter {
             throw JournalError.invalidBackup("이미 완료된 ZIP입니다.")
         }
         guard let nameData = name.data(using: .utf8), !nameData.isEmpty,
-              data.count <= Int(UInt32.max),
-              offset <= UInt64(UInt32.max) else {
+            data.count <= Int(UInt32.max),
+            offset <= UInt64(UInt32.max)
+        else {
             throw JournalError.invalidBackup("ZIP64가 필요한 백업 크기입니다.")
         }
         let checksum = dataCRC(data)
@@ -49,19 +50,21 @@ final class StoredZipWriter {
         try handle.write(contentsOf: header)
         try handle.write(contentsOf: nameData)
         try handle.write(contentsOf: data)
-        centralRecords.append(CentralRecord(
-            name: nameData,
-            checksum: checksum,
-            size: UInt32(data.count),
-            localOffset: UInt32(offset)
-        ))
+        centralRecords.append(
+            CentralRecord(
+                name: nameData,
+                checksum: checksum,
+                size: UInt32(data.count),
+                localOffset: UInt32(offset)
+            ))
         offset += UInt64(header.count + nameData.count + data.count)
     }
 
     func finish() throws {
         guard !isFinished else { return }
         guard centralRecords.count <= Int(UInt16.max),
-              offset <= UInt64(UInt32.max) else {
+            offset <= UInt64(UInt32.max)
+        else {
             throw JournalError.invalidBackup("ZIP64가 필요한 백업입니다.")
         }
         let centralOffset = UInt32(offset)

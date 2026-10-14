@@ -57,11 +57,12 @@ public struct JournalTagManager {
             draft.tags = draft.tags.compactMap { tag in
                 normalize(tag) == normalizedOld ? normalizedNew : tag
             }
-            updated.append(try repository.save(
-                draft,
-                deviceID: deviceID,
-                at: date
-            ))
+            updated.append(
+                try repository.save(
+                    draft,
+                    deviceID: deviceID,
+                    at: date
+                ))
         }
         return updated
     }

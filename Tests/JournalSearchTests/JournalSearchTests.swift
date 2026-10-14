@@ -142,13 +142,14 @@ final class JournalSearchTests: XCTestCase {
         let queryDate = Calendar.current.date(
             from: DateComponents(year: 2026, month: 1, day: 2)
         )!
-        let filtered = try index.search(JournalSearchQuery(
-            text: "은혜",
-            kind: .bibleStudy,
-            tags: ["말씀"],
-            startDate: queryDate,
-            endDate: queryDate
-        ))
+        let filtered = try index.search(
+            JournalSearchQuery(
+                text: "은혜",
+                kind: .bibleStudy,
+                tags: ["말씀"],
+                startDate: queryDate,
+                endDate: queryDate
+            ))
 
         XCTAssertEqual(filtered.map(\.id), [matching.id])
         XCTAssertEqual(

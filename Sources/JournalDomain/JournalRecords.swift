@@ -46,9 +46,12 @@ public struct JournalEntryDraft: Codable, Equatable, Sendable {
         var copy = self
         copy.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
         copy.body = body.trimmingCharacters(in: .whitespacesAndNewlines)
-        copy.tags = Array(Set(tags.map {
-            $0.trimmingCharacters(in: .whitespacesAndNewlines)
-        }.filter { !$0.isEmpty })).sorted()
+        copy.tags = Array(
+            Set(
+                tags.map {
+                    $0.trimmingCharacters(in: .whitespacesAndNewlines)
+                }.filter { !$0.isEmpty })
+        ).sorted()
         if manual && !kind.canCreateManually { throw JournalError.invalidManualKind }
         if copy.title.isEmpty && copy.body.isEmpty { throw JournalError.emptyContent }
         copy.details = try details.validated(for: kind)

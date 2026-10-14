@@ -32,7 +32,7 @@ public enum PilgrimJournalSchemaV1: VersionedSchema {
 
 public enum PilgrimJournalMigrationPlan: SchemaMigrationPlan {
     public static let schemas: [any VersionedSchema.Type] = [
-        PilgrimJournalSchemaV1.self,
+        PilgrimJournalSchemaV1.self
     ]
 
     public static let stages: [MigrationStage] = []

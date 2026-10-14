@@ -1,12 +1,13 @@
 import AuthenticationServices
-import DayOneImport
 import CloudKit
 import Combine
+import DayOneImport
 import JournalBackup
 import JournalData
 import JournalDomain
 import JournalSearch
 import SwiftUI
+
 #if PILGRIM_SWIFTDATA
 import CoreData
 import SwiftData
@@ -61,11 +62,14 @@ struct PilgrimJournalApp: App {
         containerIdentifier: String
     ) {
         #if DEBUG && PILGRIM_SWIFTDATA
-        guard ProcessInfo.processInfo.environment[
-            "PILGRIM_DEPLOY_CLOUDKIT_SCHEMA"
-        ] == "1" else { return }
+        guard
+            ProcessInfo.processInfo.environment[
+                "PILGRIM_DEPLOY_CLOUDKIT_SCHEMA"
+            ] == "1"
+        else { return }
         do {
-            let types = try CloudKitSchemaInitializer
+            let types =
+                try CloudKitSchemaInitializer
                 .initializeDevelopmentSchema(
                     cloudKitContainerIdentifier: containerIdentifier
                 )
@@ -94,13 +98,16 @@ struct PilgrimJournalApp: App {
         containerIdentifier: String
     ) {
         #if DEBUG
-        guard ProcessInfo.processInfo.environment[
-            "PILGRIM_WIPE_JOURNAL_DATA"
-        ] == "1" else { return }
+        guard
+            ProcessInfo.processInfo.environment[
+                "PILGRIM_WIPE_JOURNAL_DATA"
+            ] == "1"
+        else { return }
         let identifier = containerIdentifier
-        let alsoWipesLocal = ProcessInfo.processInfo.environment[
-            "PILGRIM_WIPE_LOCAL_DATA"
-        ] == "1"
+        let alsoWipesLocal =
+            ProcessInfo.processInfo.environment[
+                "PILGRIM_WIPE_LOCAL_DATA"
+            ] == "1"
         Task.detached {
             do {
                 let zones = try await CloudKitDataWiper.wipePrivateData(
@@ -127,20 +134,23 @@ struct PilgrimJournalApp: App {
     }
 
     init() {
-        let requestedCloudIdentifier = ProcessInfo.processInfo.environment[
-            "PILGRIM_CLOUDKIT_CONTAINER"
-        ] ?? Self.cloudKitContainerIdentifier
+        let requestedCloudIdentifier =
+            ProcessInfo.processInfo.environment[
+                "PILGRIM_CLOUDKIT_CONTAINER"
+            ] ?? Self.cloudKitContainerIdentifier
         Self.deployDevelopmentSchemaIfRequested(
             containerIdentifier: requestedCloudIdentifier
         )
         Self.wipeJournalDataIfRequested(
             containerIdentifier: requestedCloudIdentifier
         )
-        let cloudKitEnabled = !Self.isVisualTesting
+        let cloudKitEnabled =
+            !Self.isVisualTesting
             && CloudKitEntitlement.includes(
                 containerIdentifier: requestedCloudIdentifier
             )
-        let appLock = Self.isVisualTesting
+        let appLock =
+            Self.isVisualTesting
             ? AppLockCoordinator(
                 service: AppLockService(store: InMemorySecureValueStore())
             )
@@ -170,19 +180,21 @@ struct PilgrimJournalApp: App {
             )
         )
         do {
-            let root = Self.isVisualTesting
+            let root =
+                Self.isVisualTesting
                 ? FileManager.default.temporaryDirectory.appending(
                     path: "PilgrimJournal-VisualTesting-\(UUID().uuidString)",
                     directoryHint: .isDirectory
                 )
                 : try JournalPaths.applicationRoot()
-            _journalSession = StateObject(wrappedValue: JournalSessionController(
-                rootURL: root,
-                cloudKitContainerIdentifier: cloudKitEnabled
-                    ? requestedCloudIdentifier
-                    : nil,
-                isVisualTesting: Self.isVisualTesting
-            ))
+            _journalSession = StateObject(
+                wrappedValue: JournalSessionController(
+                    rootURL: root,
+                    cloudKitContainerIdentifier: cloudKitEnabled
+                        ? requestedCloudIdentifier
+                        : nil,
+                    isVisualTesting: Self.isVisualTesting
+                ))
         } catch {
             fatalError("Pilgrim Journal 초기화 실패: \(error.localizedDescription)")
         }
@@ -210,11 +222,12 @@ struct PilgrimJournalApp: App {
                         AppleAuthenticationCheckingView()
                     }
                 case .signedOut, .blockedDifferentUser,
-                     .blockedCloudAccountMismatch, .failed:
+                    .blockedCloudAccountMismatch, .failed:
                     AppleSignInView()
                 }
                 if authentication.canAccessJournal,
-                   appLock.isPrivacyShieldVisible {
+                    appLock.isPrivacyShieldVisible
+                {
                     PrivacyShieldView()
                 }
             }
@@ -252,7 +265,8 @@ struct PilgrimJournalApp: App {
                 Task {
                     await authentication.refreshCloudIdentityBinding()
                     guard authentication.canAccessJournal,
-                          let identifier = authentication.currentUserIdentifier else {
+                        let identifier = authentication.currentUserIdentifier
+                    else {
                         journalSession.deactivate()
                         return
                     }
@@ -328,20 +342,20 @@ struct PilgrimJournalApp: App {
         .commands {
             CommandGroup(replacing: .newItem) {
                 Button("새 기록") { journalSession.appModel?.beginNewEntry() }
-                    .keyboardShortcut("n", modifiers: [.command])
-                    .disabled(!authentication.canAccessJournal)
+                .keyboardShortcut("n", modifiers: [.command])
+                .disabled(!authentication.canAccessJournal)
             }
             CommandGroup(after: .newItem) {
                 Button("Day One 가져오기…") {
                     journalSession.appModel?.isPresentingImporter = true
                 }
-                    .keyboardShortcut("i", modifiers: [.command, .shift])
-                    .disabled(!authentication.canAccessJournal)
+                .keyboardShortcut("i", modifiers: [.command, .shift])
+                .disabled(!authentication.canAccessJournal)
             }
             CommandGroup(replacing: .appSettings) {
                 Button("설정…") { journalSession.appModel?.showSettings() }
-                    .keyboardShortcut(",", modifiers: [.command])
-                    .disabled(!authentication.canAccessJournal)
+                .keyboardShortcut(",", modifiers: [.command])
+                .disabled(!authentication.canAccessJournal)
             }
             CommandGroup(after: .saveItem) {
                 Button("지금 저장") {
@@ -373,22 +387,22 @@ struct PilgrimJournalApp: App {
             }
             CommandMenu("보기") {
                 Button("확대") { adjustEditorTextScale(by: 0.1) }
-                    .keyboardShortcut("+", modifiers: [.command])
+                .keyboardShortcut("+", modifiers: [.command])
                 Button("축소") { adjustEditorTextScale(by: -0.1) }
-                    .keyboardShortcut("-", modifiers: [.command])
+                .keyboardShortcut("-", modifiers: [.command])
                 Button("기본 크기") {
                     editorTextScale = EditorTextScale.defaultValue
                 }
-                    .keyboardShortcut("0", modifiers: [.command])
+                .keyboardShortcut("0", modifiers: [.command])
             }
             CommandMenu("기록") {
                 Button("검색") { post(.focusJournalSearch) }
-                    .keyboardShortcut("f", modifiers: [.command])
+                .keyboardShortcut("f", modifiers: [.command])
                 Divider()
                 Button("이전 기록") { post(.navigateToPreviousJournalEntry) }
-                    .keyboardShortcut(.leftArrow, modifiers: [.command, .option])
+                .keyboardShortcut(.leftArrow, modifiers: [.command, .option])
                 Button("다음 기록") { post(.navigateToNextJournalEntry) }
-                    .keyboardShortcut(.rightArrow, modifiers: [.command, .option])
+                .keyboardShortcut(.rightArrow, modifiers: [.command, .option])
             }
             CommandMenu("Markdown") {
                 markdownCommand("굵게", command: .bold, key: "b")
@@ -494,23 +508,26 @@ struct PilgrimJournalApp: App {
     #if DEBUG
     private func seedVisualTestingContentIfNeeded() {
         guard let appModel = journalSession.appModel else { return }
-        guard (try? appModel.repository.list(
-            kind: nil,
-            includeDeleted: false,
-            limit: 1
-        ).isEmpty) == true else { return }
+        guard
+            (try? appModel.repository.list(
+                kind: nil,
+                includeDeleted: false,
+                limit: 1
+            ).isEmpty) == true
+        else { return }
 
         let calendar = Calendar(identifier: .gregorian)
-        let baseDate = calendar.date(
-            from: DateComponents(
-                timeZone: TimeZone(identifier: "Asia/Seoul"),
-                year: 2026,
-                month: 8,
-                day: 9,
-                hour: 7,
-                minute: 30
-            )
-        ) ?? .now
+        let baseDate =
+            calendar.date(
+                from: DateComponents(
+                    timeZone: TimeZone(identifier: "Asia/Seoul"),
+                    year: 2026,
+                    month: 8,
+                    day: 9,
+                    hour: 7,
+                    minute: 30
+                )
+            ) ?? .now
         let fixtures: [(JournalKind, String, String, String, [String], EntryDetails)] = [
             (
                 .prayer,
@@ -650,19 +667,22 @@ private struct OfflineCloudIdentityChecker: CloudIdentityBindingChecking {
 private func cloudSyncStoreEvent(
     from notification: Notification
 ) -> CloudSyncStoreEvent? {
-    guard notification.name
+    guard
+        notification.name
             == NSPersistentCloudKitContainer.eventChangedNotification,
-          let event = notification.userInfo?[
+        let event = notification.userInfo?[
             NSPersistentCloudKitContainer.eventNotificationUserInfoKey
-          ] as? NSPersistentCloudKitContainer.Event else {
+        ] as? NSPersistentCloudKitContainer.Event
+    else {
         return nil
     }
-    let operation: CloudSyncStoreOperation = switch event.type {
-    case .setup: .setup
-    case .import: .importing
-    case .export: .exporting
-    @unknown default: .setup
-    }
+    let operation: CloudSyncStoreOperation =
+        switch event.type {
+        case .setup: .setup
+        case .import: .importing
+        case .export: .exporting
+        @unknown default: .setup
+        }
     let errorPresentation = cloudSyncErrorPresentation(for: event.error)
     return CloudSyncStoreEvent(
         operation: operation,
@@ -684,21 +704,27 @@ func cloudSyncErrorPresentation(
     guard let error else { return nil }
     let errors = flattenedCloudErrors(error as NSError)
 
-    if errors.contains(where: { cloudDiagnosticText($0).localizedCaseInsensitiveContains(
-        "cannot create new type"
-    ) }) {
+    if errors.contains(where: {
+        cloudDiagnosticText($0).localizedCaseInsensitiveContains(
+            "cannot create new type"
+        )
+    }) {
         return CloudSyncErrorPresentation(
             message: "CloudKit 프로덕션 스키마가 아직 배포되지 않았습니다.",
             retryable: false
         )
     }
-    if errors.contains(where: { $0.domain == CKErrorDomain && $0.code == CKError.notAuthenticated.rawValue }) {
+    if errors.contains(where: {
+        $0.domain == CKErrorDomain && $0.code == CKError.notAuthenticated.rawValue
+    }) {
         return CloudSyncErrorPresentation(
             message: "iCloud에 로그인한 뒤 동기화를 다시 시도하세요.",
             retryable: true
         )
     }
-    if errors.contains(where: { $0.domain == CKErrorDomain && $0.code == CKError.quotaExceeded.rawValue }) {
+    if errors.contains(where: {
+        $0.domain == CKErrorDomain && $0.code == CKError.quotaExceeded.rawValue
+    }) {
         return CloudSyncErrorPresentation(
             message: "iCloud 저장 공간이 부족해 동기화할 수 없습니다.",
             retryable: false
@@ -719,7 +745,9 @@ func cloudSyncErrorPresentation(
             retryable: true
         )
     }
-    if errors.contains(where: { $0.domain == CKErrorDomain && $0.code == CKError.partialFailure.rawValue }) {
+    if errors.contains(where: {
+        $0.domain == CKErrorDomain && $0.code == CKError.partialFailure.rawValue
+    }) {
         let detail = errors.dropFirst().first.map { cloudDiagnosticText($0) }
         return CloudSyncErrorPresentation(
             message: detail.map { "일부 기록 동기화에 실패했습니다: \($0)" }
@@ -740,7 +768,8 @@ private func flattenedCloudErrors(
     guard depth < 8 else { return [error] }
     var result = [error]
     if let partial = error.userInfo[CKPartialErrorsByItemIDKey]
-        as? [AnyHashable: NSError] {
+        as? [AnyHashable: NSError]
+    {
         for nested in partial.values {
             result.append(contentsOf: flattenedCloudErrors(nested, depth: depth + 1))
         }

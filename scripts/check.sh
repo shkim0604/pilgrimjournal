@@ -1,6 +1,7 @@
 #!/bin/sh
 set -eu
 
+swift format lint --strict --recursive Sources Tests scripts/make_anonymous_dayone_export.swift
 swift build
 swift test
 swift run JournalChecks "$@"

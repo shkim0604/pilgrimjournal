@@ -127,11 +127,13 @@ private struct ClassificationRuleEditorView: View {
     @State private var rule: ClassificationRuleRecord
 
     init(rule: ClassificationRuleRecord?) {
-        _rule = State(initialValue: rule ?? ClassificationRuleRecord(
-            source: .tag,
-            value: "",
-            targetKind: .diary
-        ))
+        _rule = State(
+            initialValue: rule
+                ?? ClassificationRuleRecord(
+                    source: .tag,
+                    value: "",
+                    targetKind: .diary
+                ))
     }
 
     var body: some View {
@@ -147,7 +149,7 @@ private struct ClassificationRuleEditorView: View {
                     Text(kind.localizedName).tag(kind)
                 }
             }
-            Stepper("우선순위 \(rule.priority)", value: $rule.priority, in: -100 ... 100)
+            Stepper("우선순위 \(rule.priority)", value: $rule.priority, in: -100...100)
             Text("여러 규칙이 일치하면 우선순위가 가장 높은 규칙을 사용합니다. 같은 우선순위에서 대상 유형이 다르면 미분류로 남깁니다.")
                 .font(.caption)
                 .foregroundStyle(.secondary)

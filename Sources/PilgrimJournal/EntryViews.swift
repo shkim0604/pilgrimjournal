@@ -79,10 +79,12 @@ struct InlineEntryEditorView: View {
                     VStack(alignment: .leading, spacing: JournalTheme.Spacing.regular) {
                         TextField("제목", text: $draft.title)
                             .textFieldStyle(.plain)
-                            .font(.system(
-                                size: 32 * editorTextScale,
-                                weight: .bold
-                            ))
+                            .font(
+                                .system(
+                                    size: 32 * editorTextScale,
+                                    weight: .bold
+                                )
+                            )
                             .foregroundStyle(JournalTheme.ink)
                             .focused($focusedField, equals: .title)
                             .accessibilityLabel("제목")
@@ -357,15 +359,18 @@ struct InlineEntryEditorView: View {
         guard let pendingKind else { return labels }
         let details = draft.details
         if pendingKind != .prayer,
-           details.prayerStatus != nil || details.answeredAt != nil {
+            details.prayerStatus != nil || details.answeredAt != nil
+        {
             labels.append("기도 상태·응답일")
         }
         if pendingKind != .bibleStudy,
-           !(details.scriptureReference ?? "").isEmpty {
+            !(details.scriptureReference ?? "").isEmpty
+        {
             labels.append("성경 구절")
         }
         if pendingKind != .reading,
-           !(details.bookTitle ?? "").isEmpty || !(details.bookAuthor ?? "").isEmpty {
+            !(details.bookTitle ?? "").isEmpty || !(details.bookAuthor ?? "").isEmpty
+        {
             labels.append("책 제목·저자")
         }
         if pendingKind != .diary, !(details.mood ?? "").isEmpty {
@@ -390,7 +395,8 @@ struct InlineEntryEditorView: View {
 
     private static func parseTags(_ text: String) -> [String] {
         var result: [String] = []
-        let candidates = text
+        let candidates =
+            text
             .split(separator: ",")
             .map { String($0).trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
@@ -407,7 +413,7 @@ struct InlineEntryEditorView: View {
     private static func mergingTag(_ tag: String, into tags: [String]) -> [String] {
         let trimmed = tag.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty,
-              !tags.contains(where: { $0.caseInsensitiveCompare(trimmed) == .orderedSame })
+            !tags.contains(where: { $0.caseInsensitiveCompare(trimmed) == .orderedSame })
         else { return tags }
         return tags + [trimmed]
     }
@@ -453,18 +459,18 @@ struct InlineEntryEditorView: View {
                             set: { commitTagInput($0) }
                         )
                     )
-                        .textFieldStyle(.plain)
-                        .focused($focusedField, equals: .tags)
-                        .onSubmit { commitCurrentTagInputDraft() }
-                        // Fixed, not minWidth: a TextField's intrinsic
-                        // width otherwise grows with its text content, so
-                        // every keystroke changed this HStack's total
-                        // width — inside a horizontal ScrollView, that
-                        // forces a content-size relayout on every
-                        // keystroke, which can interrupt an in-progress
-                        // IME composition (Korean input showing as
-                        // uncombined jamo instead of composed syllables).
-                        .frame(width: 190)
+                    .textFieldStyle(.plain)
+                    .focused($focusedField, equals: .tags)
+                    .onSubmit { commitCurrentTagInputDraft() }
+                    // Fixed, not minWidth: a TextField's intrinsic
+                    // width otherwise grows with its text content, so
+                    // every keystroke changed this HStack's total
+                    // width — inside a horizontal ScrollView, that
+                    // forces a content-size relayout on every
+                    // keystroke, which can interrupt an in-progress
+                    // IME composition (Korean input showing as
+                    // uncombined jamo instead of composed syllables).
+                    .frame(width: 190)
                 }
             }
         }
@@ -491,7 +497,8 @@ struct InlineEntryEditorView: View {
     }
 
     private func removeTag(_ tag: String) {
-        tagsText = committedTags
+        tagsText =
+            committedTags
             .filter { $0.caseInsensitiveCompare(tag) != .orderedSame }
             .joined(separator: ", ")
     }
@@ -515,7 +522,8 @@ struct InlineEntryEditorView: View {
         // the body just to answer a yes/no question; `contains(where:)`
         // short-circuits at the first non-whitespace character instead (the
         // common case, since content is usually near the start).
-        let hasContent = draft.title.contains { !$0.isWhitespace }
+        let hasContent =
+            draft.title.contains { !$0.isWhitespace }
             || draft.body.contains { !$0.isWhitespace }
         guard hasContent || persistedEntryID != nil || draft.id != nil else {
             autosaveTask?.cancel()
@@ -558,7 +566,8 @@ struct InlineEntryEditorView: View {
         // the body just to answer a yes/no question; `contains(where:)`
         // short-circuits at the first non-whitespace character instead (the
         // common case, since content is usually near the start).
-        let hasContent = draft.title.contains { !$0.isWhitespace }
+        let hasContent =
+            draft.title.contains { !$0.isWhitespace }
             || draft.body.contains { !$0.isWhitespace }
         guard force || hasContent || persistedEntryID != nil || draft.id != nil else {
             autosaveTask?.cancel()
@@ -573,11 +582,13 @@ struct InlineEntryEditorView: View {
             in: draft.tags,
             with: parsedTags
         )
-        guard let record = model.saveAndReturnRecord(
-            outgoing,
-            closeEditor: false,
-            selectSavedEntry: false
-        ) else {
+        guard
+            let record = model.saveAndReturnRecord(
+                outgoing,
+                closeEditor: false,
+                selectSavedEntry: false
+            )
+        else {
             saveState = .failed(model.errorMessage ?? "기록을 저장할 수 없습니다.")
             return
         }
@@ -607,7 +618,8 @@ struct InlineEntryEditorView: View {
     /// the open editor keeps showing the pre-restore draft.
     private func resyncDraftFromRepository() {
         guard let id = persistedEntryID ?? entry?.id,
-              let latest = try? model.repository.entry(id: id) else { return }
+            let latest = try? model.repository.entry(id: id)
+        else { return }
         autosaveTask?.cancel()
         let initial = latest.draft
         draft = initial
@@ -841,19 +853,29 @@ struct EntryEditorView: View {
                 }
                 #if os(iOS)
                 ToolbarItemGroup(placement: .keyboard) {
-                    Button { appendCommand(.h2) } label: {
+                    Button {
+                        appendCommand(.h2)
+                    } label: {
                         Label("제목", systemImage: "textformat.size")
                     }
-                    Button { appendCommand(.bullet) } label: {
+                    Button {
+                        appendCommand(.bullet)
+                    } label: {
                         Label("불릿", systemImage: "list.bullet")
                     }
-                    Button { postMarkdownCommand(.outdentList) } label: {
+                    Button {
+                        postMarkdownCommand(.outdentList)
+                    } label: {
                         Label("내어쓰기", systemImage: "decrease.indent")
                     }
-                    Button { postMarkdownCommand(.indentList) } label: {
+                    Button {
+                        postMarkdownCommand(.indentList)
+                    } label: {
                         Label("하위 불릿", systemImage: "increase.indent")
                     }
-                    Button { appendCommand(.today) } label: {
+                    Button {
+                        appendCommand(.today)
+                    } label: {
                         Label("오늘", systemImage: "calendar")
                     }
                     Spacer()
@@ -1007,10 +1029,10 @@ struct EntryEditorView: View {
                             set: { commitTagInput($0) }
                         )
                     )
-                        .textFieldStyle(.plain)
-                        .onSubmit { commitCurrentTagInputDraft() }
-                        // See the matching comment on the macOS tagsEditor.
-                        .frame(width: 140)
+                    .textFieldStyle(.plain)
+                    .onSubmit { commitCurrentTagInputDraft() }
+                    // See the matching comment on the macOS tagsEditor.
+                    .frame(width: 140)
                 }
             }
         }
@@ -1115,15 +1137,18 @@ struct EntryEditorView: View {
         guard let pendingKind else { return labels }
         let details = draft.details
         if pendingKind != .prayer,
-           details.prayerStatus != nil || details.answeredAt != nil {
+            details.prayerStatus != nil || details.answeredAt != nil
+        {
             labels.append("기도 상태·응답일")
         }
         if pendingKind != .bibleStudy,
-           !(details.scriptureReference ?? "").isEmpty {
+            !(details.scriptureReference ?? "").isEmpty
+        {
             labels.append("성경 구절")
         }
         if pendingKind != .reading,
-           !(details.bookTitle ?? "").isEmpty || !(details.bookAuthor ?? "").isEmpty {
+            !(details.bookTitle ?? "").isEmpty || !(details.bookAuthor ?? "").isEmpty
+        {
             labels.append("책 제목·저자")
         }
         if pendingKind != .diary, !(details.mood ?? "").isEmpty {
@@ -1154,7 +1179,8 @@ struct EntryEditorView: View {
 
     private static func parseTags(_ text: String) -> [String] {
         var result: [String] = []
-        let candidates = text
+        let candidates =
+            text
             .split(separator: ",")
             .map({ String($0).trimmingCharacters(in: .whitespaces) })
             .filter({ !$0.isEmpty })
@@ -1171,7 +1197,7 @@ struct EntryEditorView: View {
     private static func mergingTag(_ tag: String, into tags: [String]) -> [String] {
         let trimmed = tag.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty,
-              !tags.contains(where: { $0.caseInsensitiveCompare(trimmed) == .orderedSame })
+            !tags.contains(where: { $0.caseInsensitiveCompare(trimmed) == .orderedSame })
         else { return tags }
         return tags + [trimmed]
     }
@@ -1201,7 +1227,8 @@ struct EntryEditorView: View {
     }
 
     private func removeTag(_ tag: String) {
-        tagsText = committedTags
+        tagsText =
+            committedTags
             .filter { $0.caseInsensitiveCompare(tag) != .orderedSame }
             .joined(separator: ", ")
     }
@@ -1212,7 +1239,8 @@ struct EntryEditorView: View {
         // the body just to answer a yes/no question; `contains(where:)`
         // short-circuits at the first non-whitespace character instead (the
         // common case, since content is usually near the start).
-        let hasContent = draft.title.contains { !$0.isWhitespace }
+        let hasContent =
+            draft.title.contains { !$0.isWhitespace }
             || draft.body.contains { !$0.isWhitespace }
         guard hasContent || persistedEntryID != nil || draft.id != nil else {
             autosaveTask?.cancel()
@@ -1253,7 +1281,8 @@ struct EntryEditorView: View {
         // the body just to answer a yes/no question; `contains(where:)`
         // short-circuits at the first non-whitespace character instead (the
         // common case, since content is usually near the start).
-        let hasContent = draft.title.contains { !$0.isWhitespace }
+        let hasContent =
+            draft.title.contains { !$0.isWhitespace }
             || draft.body.contains { !$0.isWhitespace }
         guard force || hasContent || persistedEntryID != nil || draft.id != nil else {
             autosaveTask?.cancel()
@@ -1268,11 +1297,13 @@ struct EntryEditorView: View {
             in: draft.tags,
             with: parsedTags
         )
-        guard let record = model.saveAndReturnRecord(
-            outgoing,
-            closeEditor: false,
-            selectSavedEntry: false
-        ) else {
+        guard
+            let record = model.saveAndReturnRecord(
+                outgoing,
+                closeEditor: false,
+                selectSavedEntry: false
+            )
+        else {
             saveState = .failed(model.errorMessage ?? "기록을 저장할 수 없습니다.")
             return false
         }
@@ -1338,7 +1369,9 @@ private struct CameraCaptureView: UIViewControllerRepresentable {
         Coordinator(onCapture: onCapture, onCancel: onCancel)
     }
 
-    final class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+    final class Coordinator: NSObject, UIImagePickerControllerDelegate,
+        UINavigationControllerDelegate
+    {
         let onCapture: (UIImage) -> Void
         let onCancel: () -> Void
 
@@ -1520,7 +1553,8 @@ private struct AttachmentEditorSection: View {
             defaultFilename: exportFilename
         ) { result in
             if case let .failure(error) = result,
-               (error as NSError).code != NSUserCancelledError {
+                (error as NSError).code != NSUserCancelledError
+            {
                 model.errorMessage = error.localizedDescription
             }
             exportDocument = nil
@@ -1612,9 +1646,10 @@ private struct AttachmentEditorSection: View {
         Task {
             let uploadData: Data
             if data.count > Self.compressionSizeThreshold {
-                uploadData = await Task.detached(priority: .userInitiated) {
-                    Self.compressedForUpload(data)
-                }.value ?? data
+                uploadData =
+                    await Task.detached(priority: .userInitiated) {
+                        Self.compressedForUpload(data)
+                    }.value ?? data
             } else {
                 uploadData = data
             }
@@ -1636,7 +1671,8 @@ private struct AttachmentEditorSection: View {
         #if os(iOS)
         guard let image = UIImage(data: data) else { return nil }
         let longestSide = max(image.size.width, image.size.height)
-        let scale = longestSide > compressionMaxDimension
+        let scale =
+            longestSide > compressionMaxDimension
             ? compressionMaxDimension / longestSide
             : 1
         let targetSize = CGSize(
@@ -1651,7 +1687,8 @@ private struct AttachmentEditorSection: View {
         #elseif os(macOS)
         guard let image = NSImage(data: data) else { return nil }
         let longestSide = max(image.size.width, image.size.height)
-        let scale = longestSide > compressionMaxDimension
+        let scale =
+            longestSide > compressionMaxDimension
             ? compressionMaxDimension / longestSide
             : 1
         let targetSize = NSSize(
@@ -1668,7 +1705,8 @@ private struct AttachmentEditorSection: View {
         )
         resized.unlockFocus()
         guard let tiffData = resized.tiffRepresentation,
-              let bitmap = NSBitmapImageRep(data: tiffData) else { return nil }
+            let bitmap = NSBitmapImageRep(data: tiffData)
+        else { return nil }
         return bitmap.representation(
             using: .jpeg,
             properties: [.compressionFactor: compressionQuality]
@@ -1690,7 +1728,8 @@ private struct AttachmentEditorSection: View {
         exportDocument = AttachmentDocument(data: data)
         exportContentType = UTType(mimeType: attachment.mimeType) ?? .data
         let name = attachment.originalName.isEmpty ? "첨부파일" : attachment.originalName
-        exportFilename = (name as NSString).deletingPathExtension.isEmpty
+        exportFilename =
+            (name as NSString).deletingPathExtension.isEmpty
             ? name
             : (name as NSString).deletingPathExtension
         isExporting = true
@@ -1709,14 +1748,15 @@ private struct AttachmentEditorSection: View {
             fromByteCount: attachment.byteCount,
             countStyle: .file
         )
-        let state = switch attachment.state {
-        case .local: "이 기기에 저장됨"
-        case .pending: "iCloud 업로드 대기"
-        case .uploading: "iCloud 업로드 중"
-        case .uploaded: "iCloud에 저장됨"
-        case .downloading: "다운로드 중"
-        case .failed: "전송 실패 · 다시 시도 필요"
-        }
+        let state =
+            switch attachment.state {
+            case .local: "이 기기에 저장됨"
+            case .pending: "iCloud 업로드 대기"
+            case .uploading: "iCloud 업로드 중"
+            case .uploaded: "iCloud에 저장됨"
+            case .downloading: "다운로드 중"
+            case .failed: "전송 실패 · 다시 시도 필요"
+            }
         return "\(size) · \(state)"
     }
 

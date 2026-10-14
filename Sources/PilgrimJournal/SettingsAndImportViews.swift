@@ -36,15 +36,19 @@ struct SettingsView: View {
             Section("동기화") {
                 LabeledContent("상태", value: syncDescription)
                 LabeledContent("저장 위치", value: storageLocationDescription)
-                Text("기록과 첨부는 현재 시스템 iCloud의 개인 데이터베이스에 저장됩니다. 이 저장 공간은 최초 연결한 Apple 로그인 사용자에게 귀속되며 다른 사용자는 차단됩니다.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Text(
+                    "기록과 첨부는 현재 시스템 iCloud의 개인 데이터베이스에 저장됩니다. 이 저장 공간은 최초 연결한 Apple 로그인 사용자에게 귀속되며 다른 사용자는 차단됩니다."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
             if let migration = journalSession.pendingMigration {
                 Section("iCloud로 데이터 이전") {
-                    Text("이 기기에만 저장된 기록 \(migration.entryCount)개가 있습니다. 현재 iCloud 계정의 별도 저장소로 복사한 뒤, 완료된 저장소로 전환할 수 있습니다.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Text(
+                        "이 기기에만 저장된 기록 \(migration.entryCount)개가 있습니다. 현재 iCloud 계정의 별도 저장소로 복사한 뒤, 완료된 저장소로 전환할 수 있습니다."
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                     Button {
                         journalSession.confirmPendingMigration()
                     } label: {
@@ -111,9 +115,11 @@ struct SettingsView: View {
                     "Day One 원본 snapshot 포함",
                     isOn: $model.includeSourceSnapshotsInBackup
                 )
-                Text("원본 snapshot에는 Day One의 전체 메타데이터가 들어갈 수 있습니다. 필요할 때만 포함하고 백업 파일을 민감한 데이터로 다루세요.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Text(
+                    "원본 snapshot에는 Day One의 전체 메타데이터가 들어갈 수 있습니다. 필요할 때만 포함하고 백업 파일을 민감한 데이터로 다루세요."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
                 Button("전체 백업 내보내기…") {
                     Task { await model.prepareBackup() }
                 }
@@ -142,7 +148,7 @@ struct SettingsView: View {
                 if let result = model.lastRestoreResult {
                     Text(
                         "최근 복원: \(result.restored)개 반영, "
-                        + "\(result.tombstoned)개 휴지통, 충돌 \(result.conflicts)개"
+                            + "\(result.tombstoned)개 휴지통, 충돌 \(result.conflicts)개"
                     )
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -151,12 +157,16 @@ struct SettingsView: View {
                     DisclosureGroup("충돌 기록 \(model.lastRestoreConflicts.count)개") {
                         ForEach(model.lastRestoreConflicts) { conflict in
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(conflict.currentTitle.isEmpty ? "제목 없음" : conflict.currentTitle)
-                                    .font(.caption.weight(.semibold))
+                                Text(
+                                    conflict.currentTitle.isEmpty ? "제목 없음" : conflict.currentTitle
+                                )
+                                .font(.caption.weight(.semibold))
                                 if conflict.currentTitle != conflict.backupTitle {
-                                    Text("백업: \(conflict.backupTitle.isEmpty ? "제목 없음" : conflict.backupTitle)")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+                                    Text(
+                                        "백업: \(conflict.backupTitle.isEmpty ? "제목 없음" : conflict.backupTitle)"
+                                    )
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
                                 }
                             }
                         }
@@ -208,9 +218,11 @@ struct SettingsView: View {
                 NavigationLink("데이터 및 개인정보") {
                     PrivacyInformationView(syncState: model.syncState)
                 }
-                Text("Apple 로그인은 앱 접근과 iCloud 저장 공간 귀속 확인에 사용합니다. Apple이 제공한 이메일은 계정 표시를 위해 기기 Keychain에 저장하며, 기록 동기화는 시스템 iCloud를 사용합니다. 앱 잠금은 추가 화면 보호 기능입니다.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Text(
+                    "Apple 로그인은 앱 접근과 iCloud 저장 공간 귀속 확인에 사용합니다. Apple이 제공한 이메일은 계정 표시를 위해 기기 Keychain에 저장하며, 기록 동기화는 시스템 iCloud를 사용합니다. 앱 잠금은 추가 화면 보호 기능입니다."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
@@ -234,7 +246,8 @@ struct SettingsView: View {
             isPresented: $model.isExportingBackup,
             document: model.backupDocument,
             contentType: .pilgrimJournalBackup,
-            defaultFilename: "PilgrimJournal-\(Date.now.formatted(.iso8601.year().month().day())).journalbackup"
+            defaultFilename:
+                "PilgrimJournal-\(Date.now.formatted(.iso8601.year().month().day())).journalbackup"
         ) { result in
             switch result {
             case let .success(url):
@@ -335,7 +348,8 @@ struct DayOneImportView: View {
                             .controlSize(.large)
                     }
                 } else if let preview = model.importPreview,
-                          let result = model.importResult {
+                    let result = model.importResult
+                {
                     resultView(preview: preview, result: result)
                 } else if let preview = model.importPreview {
                     previewView(preview)
@@ -389,15 +403,15 @@ struct DayOneImportView: View {
         VStack(spacing: 0) {
             HStack(alignment: .top, spacing: 24) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(preview.JSONDisplayName)
+                    Text(preview.jsonDisplayName)
                         .font(.title2.bold())
                     Text("Day One export \(preview.exportVersion)")
                         .foregroundStyle(.secondary)
                     if let range = preview.dateRange {
                         Text(
                             "\(range.lowerBound.formatted(date: .abbreviated, time: .omitted))"
-                            + " – "
-                            + "\(range.upperBound.formatted(date: .abbreviated, time: .omitted))"
+                                + " – "
+                                + "\(range.upperBound.formatted(date: .abbreviated, time: .omitted))"
                         )
                         .font(.callout)
                     }
@@ -443,9 +457,10 @@ struct DayOneImportView: View {
                 }
 
                 Button("선택 항목에 지정") {
-                    let sourceUUIDs = Set(preview.items.compactMap { item in
-                        selectedImportItemIDs.contains(item.id) ? item.sourceUUID : nil
-                    })
+                    let sourceUUIDs = Set(
+                        preview.items.compactMap { item in
+                            selectedImportItemIDs.contains(item.id) ? item.sourceUUID : nil
+                        })
                     _ = model.assignDayOneImportNotebook(
                         named: importNotebookName,
                         to: sourceUUIDs
@@ -478,10 +493,11 @@ struct DayOneImportView: View {
                 .width(42)
 
                 TableColumn("날짜") { item in
-                    Text(item.draft.occurredAt.formatted(
-                        date: .numeric,
-                        time: .omitted
-                    ))
+                    Text(
+                        item.draft.occurredAt.formatted(
+                            date: .numeric,
+                            time: .omitted
+                        ))
                 }
                 .width(min: 90, ideal: 110)
 
@@ -595,11 +611,13 @@ struct DayOneImportView: View {
     ) -> some View {
         VStack(spacing: 0) {
             HStack(spacing: 14) {
-                Image(systemName: result.failed == 0
-                    ? "checkmark.circle.fill"
-                    : "exclamationmark.triangle.fill")
-                    .font(.system(size: 30))
-                    .foregroundStyle(result.failed == 0 ? .green : .orange)
+                Image(
+                    systemName: result.failed == 0
+                        ? "checkmark.circle.fill"
+                        : "exclamationmark.triangle.fill"
+                )
+                .font(.system(size: 30))
+                .foregroundStyle(result.failed == 0 ? .green : .orange)
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Mac 가져오기 완료")
                         .font(.title2.bold())

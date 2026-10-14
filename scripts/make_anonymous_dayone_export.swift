@@ -16,13 +16,13 @@ import zlib
 // A minimal valid 1x1 white JPEG so the attachment actually previews instead
 // of showing a broken-image placeholder.
 let onePixelJPEGBase64 = """
-/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0a\
-HBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIy\
-MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIA\
-AhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAn/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEB\
-AQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX\
-/9k=
-"""
+    /9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0a\
+    HBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIy\
+    MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIA\
+    AhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAn/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEB\
+    AQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX\
+    /9k=
+    """
 
 struct SyntheticEntry {
     var uuid: String
@@ -125,10 +125,12 @@ struct ZipItem {
 
 func deflateRaw(_ input: Data) throws -> Data {
     var stream = z_stream()
-    guard deflateInit2_(
-        &stream, Z_DEFAULT_COMPRESSION, Z_DEFLATED, -MAX_WBITS, 8,
-        Z_DEFAULT_STRATEGY, ZLIB_VERSION, Int32(MemoryLayout<z_stream>.size)
-    ) == Z_OK else {
+    guard
+        deflateInit2_(
+            &stream, Z_DEFAULT_COMPRESSION, Z_DEFLATED, -MAX_WBITS, 8,
+            Z_DEFAULT_STRATEGY, ZLIB_VERSION, Int32(MemoryLayout<z_stream>.size)
+        ) == Z_OK
+    else {
         throw NSError(domain: "MakeAnonymousDayOneExport", code: 1)
     }
     defer { deflateEnd(&stream) }
@@ -160,7 +162,11 @@ extension Data {
 
 func makeZip(items: [ZipItem], at url: URL) throws {
     var output = Data()
-    var central: [(name: Data, crc: UInt32, method: UInt16, compressed: Data, offset: UInt32, originalSize: Int)] = []
+    var central:
+        [(
+            name: Data, crc: UInt32, method: UInt16, compressed: Data, offset: UInt32,
+            originalSize: Int
+        )] = []
 
     for item in items {
         let name = Data(item.name.utf8)
@@ -220,7 +226,8 @@ func makeZip(items: [ZipItem], at url: URL) throws {
 
 // MARK: - Entry point
 
-let outputPath = CommandLine.arguments.count > 1
+let outputPath =
+    CommandLine.arguments.count > 1
     ? CommandLine.arguments[1]
     : "anonymous-dayone-export.zip"
 let outputURL = URL(fileURLWithPath: outputPath)

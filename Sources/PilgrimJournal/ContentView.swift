@@ -1,5 +1,6 @@
 import JournalDomain
 import SwiftUI
+
 #if os(macOS)
 import AppKit
 #endif
@@ -19,11 +20,12 @@ struct ContentView: View {
         let visualScreen = ProcessInfo.processInfo.environment[
             "PILGRIM_VISUAL_TEST_SCREEN"
         ]
-        let initialColumn: NavigationSplitViewColumn = switch visualScreen {
-        case "timeline", "search-empty": .content
-        case "detail": .detail
-        default: .sidebar
-        }
+        let initialColumn: NavigationSplitViewColumn =
+            switch visualScreen {
+            case "timeline", "search-empty": .content
+            case "detail": .detail
+            default: .sidebar
+            }
         _preferredCompactColumn = State(initialValue: initialColumn)
         #else
         _preferredCompactColumn = State(initialValue: .sidebar)
@@ -37,10 +39,10 @@ struct ContentView: View {
         ) {
             JournalSidebar(preferredCompactColumn: $preferredCompactColumn)
                 #if os(macOS)
-                // While focused, the system panel toggle would only fight
-                // `FocusModeLayoutPolicy`; the toolbar's own "집중 모드 종료"
-                // button is the way out.
-                .toolbar(removing: isFocusMode ? .sidebarToggle : nil)
+            // While focused, the system panel toggle would only fight
+            // `FocusModeLayoutPolicy`; the toolbar's own "집중 모드 종료"
+            // button is the way out.
+            .toolbar(removing: isFocusMode ? .sidebarToggle : nil)
                 #endif
         } content: {
             Group {
@@ -249,10 +251,12 @@ struct ContentView: View {
         // `.doubleColumn` (see `FocusModeLayoutPolicy`) SwiftUI no longer
         // writes back at all; this is the safety net if a later macOS does.
         .onChange(of: columnVisibility) { _, newValue in
-            guard FocusModeLayoutPolicy.shouldReassert(
-                isFocusMode: isFocusMode,
-                visibility: newValue
-            ) else { return }
+            guard
+                FocusModeLayoutPolicy.shouldReassert(
+                    isFocusMode: isFocusMode,
+                    visibility: newValue
+                )
+            else { return }
             DispatchQueue.main.async {
                 guard isFocusMode else { return }
                 applyFocusLayout(animated: false)
@@ -486,7 +490,8 @@ private enum MacNavigationSplitFocus {
     /// hard-to-reproduce AppKit crash.
     static func setTimelineHidden(_ hidden: Bool) {
         guard let keyWindow = NSApp.keyWindow,
-              let contentView = keyWindow.contentView else { return }
+            let contentView = keyWindow.contentView
+        else { return }
         splitViews(below: contentView)
             .filter {
                 $0.window === keyWindow
@@ -496,7 +501,8 @@ private enum MacNavigationSplitFocus {
             .forEach { splitView in
                 let timeline = splitView.arrangedSubviews[1]
                 guard timeline.window === keyWindow,
-                      timeline.isHidden != hidden else { return }
+                    timeline.isHidden != hidden
+                else { return }
                 timeline.isHidden = hidden
                 splitView.needsLayout = true
                 splitView.layoutSubtreeIfNeeded()
@@ -524,8 +530,8 @@ private enum MacSearchFocus {
 
     static func focus() {
         guard let window = NSApp.keyWindow,
-              let contentView = window.contentView,
-              let searchField = firstSearchField(in: contentView)
+            let contentView = window.contentView,
+            let searchField = firstSearchField(in: contentView)
         else { return }
         window.makeFirstResponder(searchField)
         searchField.selectText(nil)
@@ -750,14 +756,16 @@ private struct EntryRow: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(EntryListSummaryFormatter.title(
-                        explicitTitle: entry.title,
-                        body: entry.body,
-                        fallback: entry.kind.localizedName
-                    ))
-                        .font(.headline)
-                        .foregroundStyle(JournalTheme.ink)
-                        .lineLimit(1)
+                    Text(
+                        EntryListSummaryFormatter.title(
+                            explicitTitle: entry.title,
+                            body: entry.body,
+                            fallback: entry.kind.localizedName
+                        )
+                    )
+                    .font(.headline)
+                    .foregroundStyle(JournalTheme.ink)
+                    .lineLimit(1)
                     Spacer(minLength: 4)
                     if entry.isPinned {
                         Image(systemName: "pin.fill")

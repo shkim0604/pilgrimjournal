@@ -23,8 +23,9 @@ public struct DayOneArchiveAnalyzer {
             guard candidate.uncompressedSize <= 256 * 1_024 * 1_024 else { continue }
             let data = try archive.data(for: candidate)
             guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  root["metadata"] is [String: Any],
-                  root["entries"] is [[String: Any]] else {
+                root["metadata"] is [String: Any],
+                root["entries"] is [[String: Any]]
+            else {
                 continue
             }
             selected = (candidate, root, data)
@@ -83,22 +84,23 @@ public struct DayOneArchiveAnalyzer {
                 itemWarnings.append("첨부 파일을 찾지 못했습니다: \(attachment.filename)")
             }
             countOptionalFields(in: rawEntry, into: &optionalFieldCounts)
-            previewItems.append(DayOnePreviewItem(
-                stableEntryID: StableIdentifier.fromDayOne(sourceUUID: sourceUUID),
-                sourceUUID: sourceUUID,
-                draft: draft,
-                rawJSON: rawJSON,
-                classification: classification,
-                attachments: mapped.attachments,
-                warnings: itemWarnings
-            ))
+            previewItems.append(
+                DayOnePreviewItem(
+                    stableEntryID: StableIdentifier.fromDayOne(sourceUUID: sourceUUID),
+                    sourceUUID: sourceUUID,
+                    draft: draft,
+                    rawJSON: rawJSON,
+                    classification: classification,
+                    attachments: mapped.attachments,
+                    warnings: itemWarnings
+                ))
         }
 
         return DayOneImportPreview(
             archiveURL: archiveURL,
             archiveFingerprint: try fingerprint(of: archiveURL),
             exportVersion: version,
-            JSONDisplayName: selected.entry.displayName,
+            jsonDisplayName: selected.entry.displayName,
             items: previewItems,
             duplicateSourceUUIDs: duplicates,
             optionalFieldCounts: optionalFieldCounts,
@@ -162,7 +164,8 @@ public struct DayOneArchiveAnalyzer {
                 warnings.append("richText를 parse하지 못해 text를 사용했습니다.")
             }
         } else if let richText,
-                  let object = try? JSONSerialization.jsonObject(with: Data(richText.utf8)) {
+            let object = try? JSONSerialization.jsonObject(with: Data(richText.utf8))
+        {
             body = collectText(from: object)
             if body.isEmpty { warnings.append("richText에서 본문을 찾지 못했습니다.") }
         } else {
@@ -210,7 +213,8 @@ public struct DayOneArchiveAnalyzer {
         ["photos", "videos", "audios"].flatMap { key -> [DayOneAttachmentReference] in
             guard let values = raw[key] as? [[String: Any]] else { return [] }
             return values.compactMap { value in
-                let filename = value["filename"] as? String
+                let filename =
+                    value["filename"] as? String
                     ?? value["identifier"] as? String
                 guard let filename else { return nil }
                 return DayOneAttachmentReference(

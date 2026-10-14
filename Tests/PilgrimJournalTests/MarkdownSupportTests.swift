@@ -24,7 +24,8 @@ final class MarkdownSupportTests: XCTestCase {
         coordinator.textView = view
         coordinator.textDidChange(Notification(name: NSText.didChangeNotification, object: view))
 
-        let font = try XCTUnwrap(view.textStorage?.attribute(.font, at: 2, effectiveRange: nil) as? NSFont)
+        let font = try XCTUnwrap(
+            view.textStorage?.attribute(.font, at: 2, effectiveRange: nil) as? NSFont)
         XCTAssertTrue(NSFontManager.shared.traits(of: font).contains(.boldFontMask))
         XCTAssertEqual(view.string, "**굵게**")
         XCTAssertEqual(view.selectedRange().location, view.string.utf16.count)
@@ -48,7 +49,8 @@ final class MarkdownSupportTests: XCTestCase {
         coordinator.textDidChange(Notification(name: NSText.didChangeNotification, object: view))
         try await Task.sleep(for: .milliseconds(500))
 
-        let font = try XCTUnwrap(view.textStorage?.attribute(.font, at: 2, effectiveRange: nil) as? NSFont)
+        let font = try XCTUnwrap(
+            view.textStorage?.attribute(.font, at: 2, effectiveRange: nil) as? NSFont)
         XCTAssertFalse(NSFontManager.shared.traits(of: font).contains(.boldFontMask))
         XCTAssertEqual(view.string, "**bold")
         XCTAssertEqual(view.selectedRange().location, 6)
@@ -147,30 +149,36 @@ final class MarkdownSupportTests: XCTestCase {
     }
 
     func testInlineMarkdownStylesWithoutTrailingWhitespace() {
-        for text in ["**굵게**", "_기울임_", "~~취소~~", "==강조==",
-                     "`code`", "[링크](https://example.com)", "```"] {
-            XCTAssertTrue(MarkdownInputReconciliation.shouldStyleImmediately(
-                after: text, cursorUTF16Offset: text.utf16.count
-            ), text)
+        for text in [
+            "**굵게**", "_기울임_", "~~취소~~", "==강조==",
+            "`code`", "[링크](https://example.com)", "```",
+        ] {
+            XCTAssertTrue(
+                MarkdownInputReconciliation.shouldStyleImmediately(
+                    after: text, cursorUTF16Offset: text.utf16.count
+                ), text)
         }
     }
 
     func testOrdinaryTypingUsesDeferredStyling() {
         for text in ["한글", "English", "본문 ", "문장\n", "😀", ""] {
-            XCTAssertFalse(MarkdownInputReconciliation.shouldStyleImmediately(
-                after: text, cursorUTF16Offset: text.utf16.count
-            ), text)
+            XCTAssertFalse(
+                MarkdownInputReconciliation.shouldStyleImmediately(
+                    after: text, cursorUTF16Offset: text.utf16.count
+                ), text)
         }
     }
 
     func testImmediateStylingUsesCaretInsteadOfDocumentEnd() {
         let prefix = "😀 **굵게**"
-        XCTAssertTrue(MarkdownInputReconciliation.shouldStyleImmediately(
-            after: prefix + " 뒤 문장", cursorUTF16Offset: prefix.utf16.count
-        ))
-        XCTAssertFalse(MarkdownInputReconciliation.shouldStyleImmediately(
-            after: "text", cursorUTF16Offset: 99
-        ))
+        XCTAssertTrue(
+            MarkdownInputReconciliation.shouldStyleImmediately(
+                after: prefix + " 뒤 문장", cursorUTF16Offset: prefix.utf16.count
+            ))
+        XCTAssertFalse(
+            MarkdownInputReconciliation.shouldStyleImmediately(
+                after: "text", cursorUTF16Offset: 99
+            ))
     }
 
     func testDayOneEscapesArePresentationOnlyAndKeepStoredMarkdown() {
@@ -225,11 +233,12 @@ final class MarkdownSupportTests: XCTestCase {
 
         LiveMarkdownStyler.apply(to: storage)
 
-        let bulletStyle = storage.attribute(
-            .paragraphStyle,
-            at: source.range(of: "항목").location,
-            effectiveRange: nil
-        ) as? NSParagraphStyle
+        let bulletStyle =
+            storage.attribute(
+                .paragraphStyle,
+                at: source.range(of: "항목").location,
+                effectiveRange: nil
+            ) as? NSParagraphStyle
         XCTAssertLessThan(
             try! XCTUnwrap(bulletStyle).firstLineHeadIndent,
             try! XCTUnwrap(bulletStyle).headIndent
@@ -246,53 +255,61 @@ final class MarkdownSupportTests: XCTestCase {
             MarkdownBulletDecoration.matches(in: markdown).map(\.markerRange),
             [source.range(of: "*")]
         )
-        let quoteStyle = storage.attribute(
-            .paragraphStyle,
-            at: source.range(of: "인용").location,
-            effectiveRange: nil
-        ) as? NSParagraphStyle
+        let quoteStyle =
+            storage.attribute(
+                .paragraphStyle,
+                at: source.range(of: "인용").location,
+                effectiveRange: nil
+            ) as? NSParagraphStyle
         XCTAssertFalse(try! XCTUnwrap(quoteStyle).textBlocks.isEmpty)
         let codeLocation = source.range(of: "let value").location
-        let codeStyle = storage.attribute(
-            .paragraphStyle,
-            at: codeLocation,
-            effectiveRange: nil
-        ) as? NSParagraphStyle
+        let codeStyle =
+            storage.attribute(
+                .paragraphStyle,
+                at: codeLocation,
+                effectiveRange: nil
+            ) as? NSParagraphStyle
         XCTAssertFalse(try! XCTUnwrap(codeStyle).textBlocks.isEmpty)
-        XCTAssertNotNil(storage.attribute(
-            .backgroundColor,
-            at: codeLocation,
-            effectiveRange: nil
-        ))
-        let keywordColor = storage.attribute(
-            .foregroundColor,
-            at: source.range(of: "let").location,
-            effectiveRange: nil
-        ) as? NSColor
-        let identifierColor = storage.attribute(
-            .foregroundColor,
-            at: source.range(of: "value").location,
-            effectiveRange: nil
-        ) as? NSColor
-        let stringColor = storage.attribute(
-            .foregroundColor,
-            at: source.range(of: "hello").location,
-            effectiveRange: nil
-        ) as? NSColor
-        let commentColor = storage.attribute(
-            .foregroundColor,
-            at: source.range(of: "note").location,
-            effectiveRange: nil
-        ) as? NSColor
+        XCTAssertNotNil(
+            storage.attribute(
+                .backgroundColor,
+                at: codeLocation,
+                effectiveRange: nil
+            ))
+        let keywordColor =
+            storage.attribute(
+                .foregroundColor,
+                at: source.range(of: "let").location,
+                effectiveRange: nil
+            ) as? NSColor
+        let identifierColor =
+            storage.attribute(
+                .foregroundColor,
+                at: source.range(of: "value").location,
+                effectiveRange: nil
+            ) as? NSColor
+        let stringColor =
+            storage.attribute(
+                .foregroundColor,
+                at: source.range(of: "hello").location,
+                effectiveRange: nil
+            ) as? NSColor
+        let commentColor =
+            storage.attribute(
+                .foregroundColor,
+                at: source.range(of: "note").location,
+                effectiveRange: nil
+            ) as? NSColor
         XCTAssertNotEqual(keywordColor, identifierColor)
         XCTAssertNotEqual(stringColor, identifierColor)
         XCTAssertNotEqual(commentColor, identifierColor)
         let separatorLocation = source.range(of: "---").location
-        let separatorStyle = storage.attribute(
-            .paragraphStyle,
-            at: separatorLocation,
-            effectiveRange: nil
-        ) as? NSParagraphStyle
+        let separatorStyle =
+            storage.attribute(
+                .paragraphStyle,
+                at: separatorLocation,
+                effectiveRange: nil
+            ) as? NSParagraphStyle
         XCTAssertEqual(separatorStyle?.minimumLineHeight, 20)
         XCTAssertEqual(
             storage.attribute(
@@ -322,16 +339,18 @@ final class MarkdownSupportTests: XCTestCase {
 
         LiveMarkdownStyler.apply(to: storage)
 
-        let topStyle = try! XCTUnwrap(storage.attribute(
-            .paragraphStyle,
-            at: source.range(of: "상위").location,
-            effectiveRange: nil
-        ) as? NSParagraphStyle)
-        let nestedStyle = try! XCTUnwrap(storage.attribute(
-            .paragraphStyle,
-            at: source.range(of: "하위").location,
-            effectiveRange: nil
-        ) as? NSParagraphStyle)
+        let topStyle = try! XCTUnwrap(
+            storage.attribute(
+                .paragraphStyle,
+                at: source.range(of: "상위").location,
+                effectiveRange: nil
+            ) as? NSParagraphStyle)
+        let nestedStyle = try! XCTUnwrap(
+            storage.attribute(
+                .paragraphStyle,
+                at: source.range(of: "하위").location,
+                effectiveRange: nil
+            ) as? NSParagraphStyle)
 
         // A wrapped continuation line under the nested bullet must indent
         // further than one under the top-level bullet, or it lands back at
@@ -352,9 +371,10 @@ final class MarkdownSupportTests: XCTestCase {
         for markdown in ["* 최상위 항목", "  * 중첩 항목", "    * 더 중첩된 항목"] {
             let storage = NSTextStorage(string: markdown)
             LiveMarkdownStyler.apply(to: storage)
-            let style = try! XCTUnwrap(storage.attribute(
-                .paragraphStyle, at: 0, effectiveRange: nil
-            ) as? NSParagraphStyle)
+            let style = try! XCTUnwrap(
+                storage.attribute(
+                    .paragraphStyle, at: 0, effectiveRange: nil
+                ) as? NSParagraphStyle)
 
             // The wrapped line must land at or after the first line's own
             // margin (never to its left — text would look mis-nested)...
@@ -387,11 +407,12 @@ final class MarkdownSupportTests: XCTestCase {
             ) as? NSColor,
             .clear
         )
-        XCTAssertNil(storage.attribute(
-            .attachment,
-            at: 0,
-            effectiveRange: nil
-        ))
+        XCTAssertNil(
+            storage.attribute(
+                .attachment,
+                at: 0,
+                effectiveRange: nil
+            ))
         XCTAssertEqual(
             storage.attribute(
                 .foregroundColor,
@@ -401,11 +422,12 @@ final class MarkdownSupportTests: XCTestCase {
             .clear
         )
         let uncheckedContentLocation = source.range(of: "할 일").location
-        XCTAssertNil(storage.attribute(
-            .strikethroughStyle,
-            at: uncheckedContentLocation,
-            effectiveRange: nil
-        ))
+        XCTAssertNil(
+            storage.attribute(
+                .strikethroughStyle,
+                at: uncheckedContentLocation,
+                effectiveRange: nil
+            ))
         let checkedContentLocation = source.range(of: "완료된 일").location
         XCTAssertEqual(
             storage.attribute(
@@ -614,19 +636,21 @@ final class MarkdownSupportTests: XCTestCase {
     func testBackspaceInMiddleOfContentDoesNotRemoveMarker() {
         let source = "- 할 일"
         let midContent = 4
-        XCTAssertNil(MarkdownCommandProcessor.removingListMarkerBeforeCursor(
-            in: source,
-            cursorUTF16Offset: midContent
-        ))
+        XCTAssertNil(
+            MarkdownCommandProcessor.removingListMarkerBeforeCursor(
+                in: source,
+                cursorUTF16Offset: midContent
+            ))
 
         // A second line's marker must not be affected by a cursor sitting
         // in the middle of a first, unrelated line.
         let multiline = "본문\n- 목록"
         let firstLineOffset = 1
-        XCTAssertNil(MarkdownCommandProcessor.removingListMarkerBeforeCursor(
-            in: multiline,
-            cursorUTF16Offset: firstLineOffset
-        ))
+        XCTAssertNil(
+            MarkdownCommandProcessor.removingListMarkerBeforeCursor(
+                in: multiline,
+                cursorUTF16Offset: firstLineOffset
+            ))
     }
 
     func testTabIndentsAndShiftTabOutdentsListItems() {
@@ -700,12 +724,13 @@ final class MarkdownSupportTests: XCTestCase {
         let utc = TimeZone(secondsFromGMT: 0)!
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = utc
-        let today = calendar.date(from: DateComponents(
-            year: 2026,
-            month: 7,
-            day: 27,
-            hour: 12
-        ))!
+        let today = calendar.date(
+            from: DateComponents(
+                year: 2026,
+                month: 7,
+                day: 27,
+                hour: 12
+            ))!
 
         XCTAssertEqual(
             MarkdownCommandProcessor.expandTrailingCommand(
@@ -1010,13 +1035,15 @@ final class MarkdownSupportTests: XCTestCase {
             let marker = String(repeating: "#", count: level) + " "
             let storage = NSTextStorage(string: marker + "제목")
             LiveMarkdownStyler.apply(to: storage)
-            let styled = (storage.attributes(
-                at: (marker as NSString).length, effectiveRange: nil
-            )[.font] as? NSFont)?.pointSize
+            let styled =
+                (storage.attributes(
+                    at: (marker as NSString).length, effectiveRange: nil
+                )[.font] as? NSFont)?.pointSize
 
-            let typed = (LiveMarkdownStyler.typingAttributes(
-                forLinePrefix: marker
-            )[.font] as? NSFont)?.pointSize
+            let typed =
+                (LiveMarkdownStyler.typingAttributes(
+                    forLinePrefix: marker
+                )[.font] as? NSFont)?.pointSize
 
             XCTAssertEqual(typed, styled, "level \(level) types at the wrong size")
         }
@@ -1110,14 +1137,14 @@ final class MarkdownSupportTests: XCTestCase {
 
     func testIncompleteOrOrdinaryTextDoesNotStyleEagerly() {
         for (text, cursor) in [
-            ("#", 1),            // no space yet
-            ("#제목", 4),         // no space at all — not a heading
-            ("# 제목", 5),        // heading already styled; keep the debounce
+            ("#", 1), // no space yet
+            ("#제목", 4), // no space at all — not a heading
+            ("# 제목", 5), // heading already styled; keep the debounce
             ("-", 1),
             ("--", 2),
             ("본문 ", 4),
             ("", 0),
-            ("####### ", 8),     // seven hashes is not a heading
+            ("####### ", 8), // seven hashes is not a heading
         ] {
             XCTAssertFalse(
                 MarkdownInputReconciliation.completesBlockMarker(

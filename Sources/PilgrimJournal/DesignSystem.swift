@@ -1,6 +1,7 @@
 import Foundation
 import JournalDomain
 import SwiftUI
+
 #if os(macOS)
 import AppKit
 private typealias JournalPlatformColor = NSColor
@@ -62,18 +63,20 @@ enum JournalTheme {
 extension Color {
     fileprivate init(lightHex: UInt32, darkHex: UInt32) {
         #if os(macOS)
-        self.init(nsColor: NSColor(name: nil) { appearance in
-            let best = appearance.bestMatch(from: [.darkAqua, .aqua])
-            return JournalPlatformColor(
-                hex: best == .darkAqua ? darkHex : lightHex
-            )
-        })
+        self.init(
+            nsColor: NSColor(name: nil) { appearance in
+                let best = appearance.bestMatch(from: [.darkAqua, .aqua])
+                return JournalPlatformColor(
+                    hex: best == .darkAqua ? darkHex : lightHex
+                )
+            })
         #else
-        self.init(uiColor: UIColor { traits in
-            JournalPlatformColor(
-                hex: traits.userInterfaceStyle == .dark ? darkHex : lightHex
-            )
-        })
+        self.init(
+            uiColor: UIColor { traits in
+                JournalPlatformColor(
+                    hex: traits.userInterfaceStyle == .dark ? darkHex : lightHex
+                )
+            })
         #endif
     }
 }
@@ -327,7 +330,8 @@ enum EntryListSummaryFormatter {
         let cleanedTitle = summary(from: explicitTitle)
         if !cleanedTitle.isEmpty { return cleanedTitle }
 
-        let firstBodyLine = body
+        let firstBodyLine =
+            body
             .split(separator: "\n", omittingEmptySubsequences: true)
             .map(String.init)
             .first(where: { !$0.trimmingCharacters(in: .whitespaces).isEmpty })
@@ -336,7 +340,8 @@ enum EntryListSummaryFormatter {
     }
 
     static func summary(from markdown: String) -> String {
-        let lines = markdown
+        let lines =
+            markdown
             .split(separator: "\n", omittingEmptySubsequences: false)
             .map(String.init)
             .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
