@@ -96,7 +96,7 @@ let package = Package(
         ),
         .testTarget(
             name: "JournalBackupTests",
-            dependencies: ["JournalBackup", "JournalData", "JournalDomain"]
+            dependencies: ["DayOneImport", "JournalBackup", "JournalData", "JournalDomain"]
         ),
         .testTarget(
             name: "PilgrimJournalTests",

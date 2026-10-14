@@ -260,6 +260,6 @@ public struct DayOneArchiveAnalyzer {
         while let data = try handle.read(upToCount: 1_048_576), !data.isEmpty {
             hash.update(data: data)
         }
-        return hash.finalize().map { String(format: "%02x", $0) }.joined()
+        return ContentHash.hex(hash.finalize())
     }
 }

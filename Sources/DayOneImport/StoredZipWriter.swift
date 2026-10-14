@@ -1,8 +1,8 @@
 import Foundation
 import JournalDomain
-import zlib
 
-final class StoredZipWriter {
+/// Writes an uncompressed (method 0) ZIP one entry at a time, streaming to disk.
+public final class StoredZipWriter {
     private struct CentralRecord {
         var name: Data
         var checksum: UInt32
@@ -15,7 +15,7 @@ final class StoredZipWriter {
     private var offset: UInt64 = 0
     private var isFinished = false
 
-    init(url: URL) throws {
+    public init(url: URL) throws {
         FileManager.default.createFile(atPath: url.path, contents: nil)
         handle = try FileHandle(forWritingTo: url)
     }
@@ -24,7 +24,7 @@ final class StoredZipWriter {
         try? handle.close()
     }
 
-    func add(name: String, data: Data) throws {
+    public func add(name: String, data: Data) throws {
         guard !isFinished else {
             throw JournalError.invalidBackup("이미 완료된 ZIP입니다.")
         }
@@ -34,7 +34,7 @@ final class StoredZipWriter {
         else {
             throw JournalError.invalidBackup("ZIP64가 필요한 백업 크기입니다.")
         }
-        let checksum = dataCRC(data)
+        let checksum = ZipChecksum.crc32(data)
         var header = Data()
         header.appendLE(UInt32(0x04034B50))
         header.appendLE(UInt16(20))
@@ -60,7 +60,7 @@ final class StoredZipWriter {
         offset += UInt64(header.count + nameData.count + data.count)
     }
 
-    func finish() throws {
+    public func finish() throws {
         guard !isFinished else { return }
         guard centralRecords.count <= Int(UInt16.max),
             offset <= UInt64(UInt32.max)
@@ -108,18 +108,5 @@ final class StoredZipWriter {
         try handle.synchronize()
         try handle.close()
         isFinished = true
-    }
-}
-
-private func dataCRC(_ data: Data) -> UInt32 {
-    data.withUnsafeBytes { bytes in
-        UInt32(crc32(0, bytes.bindMemory(to: Bytef.self).baseAddress, uInt(bytes.count)))
-    }
-}
-
-private extension Data {
-    mutating func appendLE<T: FixedWidthInteger>(_ value: T) {
-        var little = value.littleEndian
-        Swift.withUnsafeBytes(of: &little) { append(contentsOf: $0) }
     }
 }

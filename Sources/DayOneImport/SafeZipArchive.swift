@@ -94,7 +94,7 @@ public final class SafeZipArchive: @unchecked Sendable {
         guard UInt64(result.count) == entry.uncompressedSize else {
             throw JournalError.unsupportedArchive("압축 해제 크기가 ZIP metadata와 다릅니다.")
         }
-        guard crc(of: result) == entry.crc32 else {
+        guard ZipChecksum.crc32(result) == entry.crc32 else {
             throw JournalError.unsupportedArchive("파일 checksum이 일치하지 않습니다.")
         }
         return result
@@ -337,12 +337,6 @@ private func inflateRaw(
         throw JournalError.unsupportedArchive("deflate 데이터가 손상되었습니다.")
     }
     return output
-}
-
-private func crc(of data: Data) -> UInt32 {
-    data.withUnsafeBytes { bytes in
-        UInt32(crc32(0, bytes.bindMemory(to: Bytef.self).baseAddress, uInt(bytes.count)))
-    }
 }
 
 private extension FileHandle {

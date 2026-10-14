@@ -1,5 +1,5 @@
-import CryptoKit
 import Foundation
+import JournalDomain
 
 public enum JournalStorageLocation: Codable, Equatable, Sendable {
     case localOnly
@@ -31,7 +31,7 @@ public struct JournalAccountScope: Codable, Equatable, Sendable {
         appleUserIdentifier: String,
         storageLocation: JournalStorageLocation
     ) {
-        appleUserHash = Self.hash(
+        appleUserHash = ContentHash.sha256Hex(
             "PilgrimJournal.AppleUser.v1\u{1F}\(appleUserIdentifier)"
         )
         self.storageLocation = storageLocation
@@ -42,16 +42,10 @@ public struct JournalAccountScope: Codable, Equatable, Sendable {
     }
 
     public static func iCloudAccountHash(identityTokenData: Data) -> String {
-        hash(
+        ContentHash.sha256Hex(
             "PilgrimJournal.iCloudAccount.v1\u{1F}"
                 + identityTokenData.base64EncodedString()
         )
-    }
-
-    private static func hash(_ value: String) -> String {
-        SHA256.hash(data: Data(value.utf8))
-            .map { String(format: "%02x", $0) }
-            .joined()
     }
 }
 

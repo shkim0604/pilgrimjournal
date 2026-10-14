@@ -1,4 +1,3 @@
-import CryptoKit
 import Foundation
 import JournalDomain
 
@@ -153,9 +152,7 @@ public struct DayOneImportExecutor {
             }
             do {
                 let data = try archive.data(for: zipEntry)
-                let checksum = SHA256.hash(data: data)
-                    .map { String(format: "%02x", $0) }
-                    .joined()
+                let checksum = ContentHash.sha256Hex(data)
                 guard !existingChecksums.contains(checksum) else { continue }
                 let record = AttachmentRecord(
                     entryID: entryID,
