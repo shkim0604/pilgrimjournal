@@ -4,6 +4,14 @@ import JournalDomain
 import XCTest
 
 final class JournalDomainTests: XCTestCase {
+    func testInvalidManualKindMessageNamesEveryCreatableKind() throws {
+        let message = try XCTUnwrap(JournalError.invalidManualKind.errorDescription)
+        for kind in JournalKind.allCases where kind.canCreateManually {
+            XCTAssertTrue(message.contains(kind.localizedName), "missing \(kind)")
+        }
+        XCTAssertFalse(message.contains(JournalKind.unclassified.localizedName))
+    }
+
     func testManualEntryRequiresConcreteKind() throws {
         let draft = JournalEntryDraft(kind: .unclassified, body: "본문")
         XCTAssertThrowsError(try draft.validated(manual: true)) { error in

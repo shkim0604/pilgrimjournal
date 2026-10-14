@@ -9,9 +9,18 @@ extension Notification.Name {
 }
 
 enum EditorTextScale {
+    /// `@AppStorage` key shared by the menu, the editor and the app scene.
+    static let storageKey = "editor-text-scale"
     static let defaultValue = 1.15
     static let minimum = 0.7
     static let maximum = 1.6
+}
+
+enum EditorTiming {
+    /// Pause in typing before a draft is saved.
+    static let autosaveDelay: Duration = .milliseconds(650)
+    /// Pause in typing before the whole document is restyled.
+    static let stylingDebounce: Duration = .milliseconds(250)
 }
 #if os(macOS)
 import AppKit
@@ -96,6 +105,17 @@ enum MarkdownPatterns {
             lineComment,
             blockComment,
         ]
+    }
+}
+
+/// List nesting depth from a line's leading whitespace: two spaces or one
+/// tab per level, matching what the editor's Tab key inserts.
+enum MarkdownIndentation {
+    static func level(of indentation: some StringProtocol) -> Int {
+        let spaces = indentation.reduce(into: 0) { count, character in
+            count += character == "\t" ? 2 : 1
+        }
+        return spaces / 2
     }
 }
 
@@ -1049,11 +1069,7 @@ enum MarkdownDocumentParser {
     }
 
     private static func indentationLevel(in line: String) -> Int {
-        let prefix = line.prefix(while: { $0 == " " || $0 == "\t" })
-        let spaces = prefix.reduce(into: 0) { count, character in
-            count += character == "\t" ? 2 : 1
-        }
-        return spaces / 2
+        MarkdownIndentation.level(of: line.prefix(while: { $0 == " " || $0 == "\t" }))
     }
 
     private static func heading(
@@ -1084,15 +1100,13 @@ enum MarkdownDocumentParser {
         return (marker.lowercased() == "[x]", source.substring(from: 6))
     }
 
+    /// Same rule as the live editor, so the preview never shows an image the
+    /// editor would leave as text, or the other way round.
     private static func attachmentImageID(from line: String) -> UUID? {
-        let prefix = "![](attachment:"
-        guard line.hasPrefix(prefix), line.hasSuffix(")") else { return nil }
-        let inner = line.dropFirst(prefix.count).dropLast()
-        // Tolerates an optional trailing " =WIDTHxHEIGHT" size suffix (used
-        // by the live editor's inline resize) — a UUID's canonical form
-        // never contains a space, so splitting on the first one is safe.
-        let idString = inner.split(separator: " ", maxSplits: 1).first ?? inner
-        return UUID(uuidString: String(idString))
+        guard let match = MarkdownAttachmentImageDecoration.matches(in: line).first,
+            match.markerRange.length == (line as NSString).length
+        else { return nil }
+        return match.attachmentID
     }
 
     private static func numberedListItem(
@@ -1123,7 +1137,7 @@ struct MarkdownBodyEditor: View {
     /// previously failed to load, without needing to reopen the entry.
     var attachmentRevision = 0
     @State private var selection = NSRange(location: 0, length: 0)
-    @AppStorage("editor-text-scale") private var editorTextScale =
+    @AppStorage(EditorTextScale.storageKey) private var editorTextScale =
         EditorTextScale.defaultValue
 
     var body: some View {
@@ -1869,11 +1883,7 @@ enum LiveMarkdownStyler {
     }
 
     private static func indentationLevel(of range: NSRange, in text: String) -> Int {
-        let indentText = (text as NSString).substring(with: range)
-        let spaces = indentText.reduce(into: 0) { count, character in
-            count += character == "\t" ? 2 : 1
-        }
-        return spaces / 2
+        MarkdownIndentation.level(of: (text as NSString).substring(with: range))
     }
 
     private static func quoteParagraphStyle() -> NSParagraphStyle {
@@ -2039,13 +2049,11 @@ enum MarkdownBulletDecoration {
         let source = text as NSString
         let range = NSRange(location: 0, length: source.length)
         return regex.matches(in: text, range: range).map { result in
-            let indentText = source.substring(with: result.range(at: 1))
-            let spaces = indentText.reduce(into: 0) { count, character in
-                count += character == "\t" ? 2 : 1
-            }
-            return Match(
+            Match(
                 markerRange: result.range(at: 2),
-                indentationLevel: spaces / 2
+                indentationLevel: MarkdownIndentation.level(
+                    of: source.substring(with: result.range(at: 1))
+                )
             )
         }
     }
@@ -2669,8 +2677,8 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
         scrollView.drawsBackground = false
         scrollView.borderType = .noBorder
         scrollView.allowsMagnification = true
-        scrollView.minMagnification = 0.7
-        scrollView.maxMagnification = 1.6
+        scrollView.minMagnification = EditorTextScale.minimum
+        scrollView.maxMagnification = EditorTextScale.maximum
         scrollView.magnification = CGFloat(textScale)
 
         let textView = MarkdownNSTextView()
@@ -3259,7 +3267,7 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
             stylingTask?.cancel()
             stylingTask = Task { @MainActor [weak self, weak textView] in
                 do {
-                    try await Task.sleep(for: .milliseconds(250))
+                    try await Task.sleep(for: EditorTiming.stylingDebounce)
                 } catch {
                     return
                 }
@@ -4317,7 +4325,7 @@ struct LiveMarkdownTextEditor: UIViewRepresentable {
             stylingTask?.cancel()
             stylingTask = Task { @MainActor [weak self, weak textView] in
                 do {
-                    try await Task.sleep(for: .milliseconds(250))
+                    try await Task.sleep(for: EditorTiming.stylingDebounce)
                 } catch {
                     return
                 }
