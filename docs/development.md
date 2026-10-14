@@ -153,8 +153,8 @@ replace 모드로 복원한다.
        -exportOptionsPlist PilgrimJournal/AppStoreExportOptions.plist \
        -exportPath "$BUILD_ROOT/export-$platform" \
        -allowProvisioningUpdates \
-       -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_3238RJ28P3.p8 \
-       -authenticationKeyID 3238RJ28P3 \
+       -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_<KEYID>.p8 \
+       -authenticationKeyID <KEYID> \
        -authenticationKeyIssuerID "$ASC_ISSUER_ID"
    done
    ```

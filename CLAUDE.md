@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Pilgrim Journal — a local-first journal app for Apple platforms (iOS 17+, macOS 14+) that imports Day One entries and organizes them into four kinds: prayer notes (기도노트), Bible study (성경공부), reading notes (독서노트), and diary (일기). Sign in with Apple (no name/email collected) gates app access; sync uses the device's system iCloud account via CloudKit private database — these are deliberately separate concerns (see Privacy below).
+Pilgrim Journal — a local-first journal app for Apple platforms (iOS 17+, macOS 14+) that imports Day One entries and organizes them into kinds: prayer notes (기도노트), Bible study (성경공부), reading notes (독서노트), diary (일기) and memo (메모); imported entries no rule matches stay unclassified (미분류). Sign in with Apple gates app access (no name requested; the email scope is requested only to show the signed-in account and is kept in the device Keychain, never in CloudKit); sync uses the device's system iCloud account via CloudKit private database — these are deliberately separate concerns (see Privacy below).
 
 ## Commands
 
@@ -23,7 +23,13 @@ swift test --filter JournalDomainTests
 swift test --filter JournalDomainTests.SomeTestCase/testSomeName
 ```
 
-`./scripts/check.sh` is the full local gate: builds, runs `swift test`, runs `JournalChecks`, and fails if any `.zip` file or Day One-looking export is present in the repo (personal data must never be committed — see Privacy).
+`./scripts/check.sh` is the full local gate: `swift format lint --strict` (config in `.swift-format`; fix with `swift format format -i --recursive Sources Tests`), build, `swift test`, `JournalChecks`, then a scan that fails if any `.zip` file or Day One-looking export is present in the repo (personal data must never be committed — see Privacy).
+
+The Xcode project is stricter than `swift build` (it enforces member import visibility), so after changing imports also build it unsigned:
+
+```sh
+xcodebuild -project PilgrimJournal/PilgrimJournal.xcodeproj -scheme PilgrimJournalApp -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build
+```
 
 Running the actual app (Simulator, Sign in with Apple, CloudKit entitlements, real-device verification) requires the full Xcode project at `PilgrimJournal/PilgrimJournal.xcodeproj` with a Developer Team signing identity. `CODE_SIGNING_ALLOWED=NO` builds only validate UI/compilation, not auth or sync.
 
@@ -36,8 +42,8 @@ Release archiving must happen outside the `~/Documents` iCloud-synced path (exte
 The app is split into a domain-first Swift Package with adapter targets, so platform concerns (SwiftData, CloudKit, UIKit) stay swappable behind protocols:
 
 - **JournalDomain** — pure domain types and logic, no platform dependencies. `JournalRepository`/`BackupRestoreRepository`/`AttachmentRepository` protocols define the storage contract; `RevisionResolver`, `ClassificationEngine`, `ClassificationRuleResolver` are deterministic conflict-resolution logic shared by every adapter (last-write-wins by timestamp, then deviceID, then UUID as tiebreakers — see `JournalRepository.swift`).
-- **JournalData** — the SwiftData + CloudKit adapter (current storage implementation). `JournalContainerFactory` builds a `ModelContainer` with two configurations: a `Canonical` store (CloudKit-synced) and a `LocalAuxiliary` store (device-only, never synced — used for search index state, import audit, etc.). Also owns `AppLockSecurity` (Keychain-backed passcode/biometric gate), `CloudIdentityBinding`/`CloudAccountMonitor` (binds a private CloudKit database to one Apple Sign-In identity via a one-way hash, blocking the UI if a different Apple user opens the same iCloud storage), and `CloudKitSchemaInitializer` (see known-issues below for why this exists).
-- **DayOneImport** — parses and safely extracts Day One `.zip` exports (`SafeZipArchive`, `DayOneArchiveAnalyzer`) into domain drafts.
+- **JournalData** — the SwiftData + CloudKit adapter (current storage implementation). `JournalContainerFactory` builds a `ModelContainer` with two configurations: a `Canonical` store (CloudKit-synced) and a `LocalAuxiliary` store (device-only, never synced — used for search index state, import audit, etc.). Also owns `AppLockService` (Keychain-backed passcode/biometric gate, in `AppLockSecurity.swift`), `CloudIdentityBindingService`/`CloudAccountMonitor` (binds a private CloudKit database to one Apple Sign-In identity via a one-way hash, blocking the UI if a different Apple user opens the same iCloud storage), and `CloudKitSchemaInitializer` (see known-issues below for why this exists).
+- **DayOneImport** — parses and safely extracts Day One `.zip` exports (`SafeZipArchive`, `DayOneArchiveAnalyzer`) into domain drafts. Also holds the shared ZIP primitives (`StoredZipWriter`, `ZipChecksum`) that backups and `JournalChecks` write with.
 - **JournalSearch** — local SQLite/FTS5 search index (trigram tokenizer where available, `unicode61` fallback, `LIKE` fallback for ≤2-char queries). Fully derived data: never included in CloudKit sync or backups, rebuilt from the canonical store on integrity mismatch. Details in [docs/search.md](docs/search.md).
 - **JournalBackup** — export/import of full local backups (depends on both JournalDomain and DayOneImport).
 - **PilgrimJournal** — the SwiftUI app executable, composing all the above. `AppModel` is the central `@MainActor` `ObservableObject` driving the UI; `AppLockCoordinator`/`AppleAuthenticationCoordinator` gate access before the journal UI mounts.
@@ -65,4 +71,4 @@ Two living checklists track work outside of git history; update them as part of 
 
 ## Privacy constraints on this repo
 
-Personal Day One `.zip` exports and real export content must never be committed, included in test fixtures, or logged — tests use anonymized fixtures that only reproduce structure. `scripts/check.sh` enforces this with a pre-flight scan; do not bypass it when adding import-related tests or fixtures.
+Personal Day One `.zip` exports and real export content must never be committed, included in test fixtures, or logged — tests use anonymized fixtures that only reproduce structure. `scripts/check.sh` enforces this with a scan after the tests; do not bypass it when adding import-related tests or fixtures.

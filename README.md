@@ -1,13 +1,13 @@
 # Pilgrim Journal
 
-Day One 기록을 가져와 기도노트, 성경공부, 독서노트, 일기로 관리하는
+Day One 기록을 가져와 기도노트, 성경공부, 독서노트, 일기, 메모로 관리하는
 Apple 플랫폼용 로컬 우선 일기장입니다.
 
 ## 대상
 
 - iPhone: iOS 17 이상
 - Mac: macOS 14 이상
-- 로그인: 이름·이메일을 수집하지 않는 Sign in with Apple
+- 로그인: Sign in with Apple. 이름은 요청하지 않고, 계정 표시용 이메일만 기기 Keychain에 저장
 - 데이터 동기화: 로그인과 별도로 시스템 iCloud의 CloudKit 개인 DB 사용
 - 보안: 기기별 선택적 앱 잠금과 Face ID·Touch ID
 
