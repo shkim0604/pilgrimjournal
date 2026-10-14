@@ -83,14 +83,26 @@ public protocol JournalRepository: AnyObject {
     func deleteClassificationRule(id: UUID) throws
 }
 
+/// An attachment row with its binary, which is `nil` while the binary has not
+/// been downloaded to this device.
+public struct StoredAttachment: Codable, Equatable, Sendable {
+    public var record: AttachmentRecord
+    public var binary: Data?
+
+    public init(record: AttachmentRecord, binary: Data?) {
+        self.record = record
+        self.binary = binary
+    }
+}
+
 @MainActor
 public protocol AttachmentRepository: AnyObject {
-    func allAttachments() throws -> [(AttachmentRecord, Data?)]
+    func allAttachments() throws -> [StoredAttachment]
     /// A single attachment by id, without scanning or materializing every
     /// other attachment's binary in storage — unlike `allAttachments()`,
     /// safe to call from a hot path (e.g. the live editor's inline image
     /// rendering) that only ever needs one specific attachment.
-    func attachment(id: UUID) throws -> (AttachmentRecord, Data?)?
+    func attachment(id: UUID) throws -> StoredAttachment?
     /// Just the checksum for one attachment, without touching `binary` —
     /// unlike `attachment(id:)`, which always faults the blob even when the
     /// caller only needs to know which CAS file to look for. Used to check
@@ -116,7 +128,7 @@ public protocol AttachmentRepository: AnyObject {
     /// still avoids faulting the vast majority of blobs in storage.
     func attachments(
         inStates states: Set<AttachmentTransferState>
-    ) throws -> [(AttachmentRecord, Data?)]
+    ) throws -> [StoredAttachment]
     /// Updates only the transfer state (and `updatedAt`) of one attachment
     /// row, leaving `binary` untouched. Returns whether a row with `id`
     /// existed. Use this instead of `saveAttachment(_:binary:)` for state

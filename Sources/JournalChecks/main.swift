@@ -121,7 +121,7 @@ do {
 
     let persistenceURL = temporary.appending(path: "repository.json")
     let persistedID = try await MainActor.run {
-        let repository = try InMemoryJournalRepository(storageURL: persistenceURL)
+        let repository = try InMemoryJournalRepository(persistingTo: persistenceURL)
         return try repository.save(
             JournalEntryDraft(kind: .reading, title: "재실행 검증", body: "로컬 영속화"),
             deviceID: "Mac",
@@ -129,7 +129,7 @@ do {
         ).id
     }
     let persistedTitle = try await MainActor.run {
-        let reopened = try InMemoryJournalRepository(storageURL: persistenceURL)
+        let reopened = try InMemoryJournalRepository(persistingTo: persistenceURL)
         return try reopened.entry(id: persistedID)?.title
     }
     try expect(persistedTitle == "재실행 검증", "로컬 저장소 재실행 복구가 실패했습니다.")

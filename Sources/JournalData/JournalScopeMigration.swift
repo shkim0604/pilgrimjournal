@@ -70,7 +70,7 @@ public struct JournalScopeMigrationService {
                 result.migratedRules += 1
             }
             for attachment in sourceAttachments {
-                try destination.saveAttachment(attachment.0, binary: attachment.1)
+                try destination.saveAttachment(attachment.record, binary: attachment.binary)
                 result.migratedAttachments += 1
             }
         }

@@ -631,10 +631,10 @@ final class DayOneImportTests: XCTestCase {
             repository.entry(sourceUUID: "fixture-with-media")
         )
         let media = try repository.allAttachments().filter {
-            $0.0.entryID == mediaEntry.id
+            $0.record.entryID == mediaEntry.id
         }
-        XCTAssertEqual(Set(media.map(\.0.mimeType)), ["image/jpeg", "video/quicktime"])
-        XCTAssertTrue(media.allSatisfy { $0.0.state == .pending })
+        XCTAssertEqual(Set(media.map(\.record.mimeType)), ["image/jpeg", "video/quicktime"])
+        XCTAssertTrue(media.allSatisfy { $0.record.state == .pending })
     }
 
     @MainActor

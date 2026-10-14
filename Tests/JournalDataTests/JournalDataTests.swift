@@ -641,10 +641,10 @@ final class JournalDataTests: XCTestCase {
 
         XCTAssertTrue(updated)
         let stored = try XCTUnwrap(repository.attachment(id: record.id))
-        XCTAssertEqual(stored.0.state, .uploaded)
-        XCTAssertEqual(stored.0.updatedAt, Date(timeIntervalSince1970: 100))
+        XCTAssertEqual(stored.record.state, .uploaded)
+        XCTAssertEqual(stored.record.updatedAt, Date(timeIntervalSince1970: 100))
         // The whole point of this method: binary must survive a state-only update.
-        XCTAssertEqual(stored.1, binary)
+        XCTAssertEqual(stored.binary, binary)
 
         let missing = try repository.updateAttachmentState(
             id: UUID(), state: .uploaded, updatedAt: .now
@@ -670,7 +670,7 @@ final class JournalDataTests: XCTestCase {
 
         let pendingOnly = try repository.attachments(inStates: [.pending])
 
-        XCTAssertEqual(pendingOnly.map(\.0.id), [pending.id])
+        XCTAssertEqual(pendingOnly.map(\.record.id), [pending.id])
     }
 
     func testAttachmentChecksumNeverReadsBinaryButFindsIt() throws {
@@ -1124,10 +1124,10 @@ final class JournalDataTests: XCTestCase {
         )
         XCTAssertEqual(try destination.classificationRules(), [rule])
         let migratedAttachment = try XCTUnwrap(
-            destination.allAttachments().first { $0.0.id == attachment.id }
+            destination.allAttachments().first { $0.record.id == attachment.id }
         )
-        XCTAssertEqual(migratedAttachment.0, attachment)
-        XCTAssertEqual(migratedAttachment.1, binary)
+        XCTAssertEqual(migratedAttachment.record, attachment)
+        XCTAssertEqual(migratedAttachment.binary, binary)
         XCTAssertEqual(result.migratedEntries, 1)
         XCTAssertEqual(result.migratedRevisions, 2)
         XCTAssertEqual(result.migratedRules, 1)

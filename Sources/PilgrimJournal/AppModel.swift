@@ -71,7 +71,7 @@ final class AppModel: ObservableObject {
     @Published var isWorking = false
     @Published var backupDocument: BackupDocument?
     @Published var isExportingBackup = false
-    @Published var includeSourceSnapshotsInBackup = false
+    @Published var backupIncludesSourceSnapshots = false
     @Published var isImportingBackup = false
     @Published var pendingRestoreData: Data?
     @Published var lastRestoreResult: RestoreResult?
@@ -972,7 +972,7 @@ final class AppModel: ObservableObject {
         }
         if fileStore.hasData(checksum: checksum) { return true }
         guard let stored = try? attachmentRepository.attachment(id: attachmentID),
-            let binary = stored.1
+            let binary = stored.binary
         else { return false }
         try? fileStore.hydrate(checksum: checksum, data: binary)
         return true
@@ -996,10 +996,10 @@ final class AppModel: ObservableObject {
         }
         guard let stored = try? attachmentRepository.attachment(id: attachmentID)
         else { return nil }
-        if let fileStore = attachmentFileStore, let binary = stored.1 {
-            try? fileStore.hydrate(checksum: stored.0.checksum, data: binary)
+        if let fileStore = attachmentFileStore, let binary = stored.binary {
+            try? fileStore.hydrate(checksum: stored.record.checksum, data: binary)
         }
-        return stored.1
+        return stored.binary
     }
 
     /// Writes the attachment's binary to a per-attachment temp directory so
@@ -1012,7 +1012,7 @@ final class AppModel: ObservableObject {
             let stored = try? attachmentRepository.attachment(id: attachmentID),
             let data = attachmentData(for: attachmentID)
         else { return nil }
-        let record = stored.0
+        let record = stored.record
         let directory = FileManager.default.temporaryDirectory
             .appending(path: "AttachmentPreview", directoryHint: .isDirectory)
             .appending(path: attachmentID.uuidString, directoryHint: .isDirectory)
@@ -1128,7 +1128,7 @@ final class AppModel: ObservableObject {
             guard let stored = try attachmentRepository.attachment(id: attachmentID)
             else { return }
             let newState: AttachmentTransferState =
-                stored.1 != nil
+                stored.binary != nil
                 ? (cloudAccountMonitor == nil ? .local : .uploaded)
                 : .downloading
             try attachmentRepository.updateAttachmentState(
@@ -1145,7 +1145,7 @@ final class AppModel: ObservableObject {
         do {
             guard let stored = try attachmentRepository.attachment(id: attachmentID)
             else { return }
-            let newState: AttachmentTransferState = stored.1 == nil ? .downloading : .pending
+            let newState: AttachmentTransferState = stored.binary == nil ? .downloading : .pending
             try attachmentRepository.updateAttachmentState(
                 id: attachmentID, state: newState, updatedAt: .now
             )
@@ -1360,7 +1360,7 @@ final class AppModel: ObservableObject {
             defer { try? FileManager.default.removeItem(at: temporary) }
             try writeCurrentBackup(
                 to: temporary,
-                includeSourceSnapshots: includeSourceSnapshotsInBackup
+                includeSourceSnapshots: backupIncludesSourceSnapshots
             )
             backupDocument = BackupDocument(data: try Data(contentsOf: temporary))
             isExportingBackup = true
@@ -1385,7 +1385,7 @@ final class AppModel: ObservableObject {
             let attachments: [BackupAttachment]
             if let attachmentRepository = repository as? any AttachmentRepository {
                 attachments = try attachmentRepository.allAttachments().map {
-                    BackupAttachment(record: $0.0, binary: $0.1)
+                    BackupAttachment(record: $0.record, binary: $0.binary)
                 }
             } else {
                 attachments = []
@@ -1530,7 +1530,7 @@ final class AppModel: ObservableObject {
         let attachments: [BackupAttachment]
         if let attachmentRepository = repository as? any AttachmentRepository {
             attachments = try attachmentRepository.allAttachments().map {
-                BackupAttachment(record: $0.0, binary: $0.1)
+                BackupAttachment(record: $0.record, binary: $0.binary)
             }
         } else {
             attachments = []
@@ -1575,9 +1575,9 @@ final class AppModel: ObservableObject {
             // every matching row's blob just to flip an enum, and could
             // re-upload the same CKAsset on every sync event).
             for stored in try attachmentRepository.attachments(inStates: states)
-            where stored.0.deletedAt == nil {
+            where stored.record.deletedAt == nil {
                 if try attachmentRepository.updateAttachmentState(
-                    id: stored.0.id, state: newState, updatedAt: .now
+                    id: stored.record.id, state: newState, updatedAt: .now
                 ) {
                     didUpdate = true
                 }
@@ -1593,9 +1593,9 @@ final class AppModel: ObservableObject {
         do {
             var didUpdate = false
             for stored in try attachmentRepository.attachments(inStates: [.downloading])
-            where stored.1 != nil {
+            where stored.binary != nil {
                 if try attachmentRepository.updateAttachmentState(
-                    id: stored.0.id, state: .uploaded, updatedAt: .now
+                    id: stored.record.id, state: .uploaded, updatedAt: .now
                 ) {
                     didUpdate = true
                 }

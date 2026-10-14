@@ -367,42 +367,20 @@ public final class SwiftDataJournalRepository:
         try saveIfNeeded()
     }
 
-    public func allAttachments() throws -> [(AttachmentRecord, Data?)] {
+    public func allAttachments() throws -> [StoredAttachment] {
         let descriptor = FetchDescriptor<AttachmentEntity>()
         return try context.fetch(descriptor).map { entity in
-            let record = AttachmentRecord(
-                id: entity.stableID,
-                entryID: entity.entryID,
-                originalName: entity.originalName,
-                mimeType: entity.mimeType,
-                checksum: entity.checksum,
-                byteCount: entity.byteCount,
-                state: AttachmentTransferState(rawValue: entity.stateRaw) ?? .failed,
-                updatedAt: entity.updatedAt,
-                deletedAt: entity.deletedAt
-            )
-            return (record, entity.binary)
+            StoredAttachment(record: attachmentRecord(entity), binary: entity.binary)
         }
     }
 
-    public func attachment(id: UUID) throws -> (AttachmentRecord, Data?)? {
+    public func attachment(id: UUID) throws -> StoredAttachment? {
         var descriptor = FetchDescriptor<AttachmentEntity>(
             predicate: #Predicate { entity in entity.stableID == id }
         )
         descriptor.fetchLimit = 1
         guard let entity = try context.fetch(descriptor).first else { return nil }
-        let record = AttachmentRecord(
-            id: entity.stableID,
-            entryID: entity.entryID,
-            originalName: entity.originalName,
-            mimeType: entity.mimeType,
-            checksum: entity.checksum,
-            byteCount: entity.byteCount,
-            state: AttachmentTransferState(rawValue: entity.stateRaw) ?? .failed,
-            updatedAt: entity.updatedAt,
-            deletedAt: entity.deletedAt
-        )
-        return (record, entity.binary)
+        return StoredAttachment(record: attachmentRecord(entity), binary: entity.binary)
     }
 
     public func attachmentChecksum(id: UUID) throws -> String? {
@@ -428,41 +406,36 @@ public final class SwiftDataJournalRepository:
         // comment. This is the metadata-only, entryID-scoped counterpart to
         // `attachment(id:)`.
         return try context.fetch(descriptor).map { entity in
-            AttachmentRecord(
-                id: entity.stableID,
-                entryID: entity.entryID,
-                originalName: entity.originalName,
-                mimeType: entity.mimeType,
-                checksum: entity.checksum,
-                byteCount: entity.byteCount,
-                state: AttachmentTransferState(rawValue: entity.stateRaw) ?? .failed,
-                updatedAt: entity.updatedAt,
-                deletedAt: entity.deletedAt
-            )
+            attachmentRecord(entity)
         }
     }
 
     public func attachments(
         inStates states: Set<AttachmentTransferState>
-    ) throws -> [(AttachmentRecord, Data?)] {
+    ) throws -> [StoredAttachment] {
         let rawStates = states.map(\.rawValue)
         let descriptor = FetchDescriptor<AttachmentEntity>(
             predicate: #Predicate { entity in rawStates.contains(entity.stateRaw) }
         )
         return try context.fetch(descriptor).map { entity in
-            let record = AttachmentRecord(
-                id: entity.stableID,
-                entryID: entity.entryID,
-                originalName: entity.originalName,
-                mimeType: entity.mimeType,
-                checksum: entity.checksum,
-                byteCount: entity.byteCount,
-                state: AttachmentTransferState(rawValue: entity.stateRaw) ?? .failed,
-                updatedAt: entity.updatedAt,
-                deletedAt: entity.deletedAt
-            )
-            return (record, entity.binary)
+            StoredAttachment(record: attachmentRecord(entity), binary: entity.binary)
         }
+    }
+
+    /// Metadata only. Must never read `entity.binary`: callers such as
+    /// `attachments(forEntry:)` rely on not faulting external-storage blobs.
+    private func attachmentRecord(_ entity: AttachmentEntity) -> AttachmentRecord {
+        AttachmentRecord(
+            id: entity.stableID,
+            entryID: entity.entryID,
+            originalName: entity.originalName,
+            mimeType: entity.mimeType,
+            checksum: entity.checksum,
+            byteCount: entity.byteCount,
+            state: AttachmentTransferState(rawValue: entity.stateRaw) ?? .failed,
+            updatedAt: entity.updatedAt,
+            deletedAt: entity.deletedAt
+        )
     }
 
     @discardableResult

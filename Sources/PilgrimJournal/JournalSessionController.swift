@@ -271,7 +271,7 @@ final class JournalSessionController: ObservableObject {
         )
         #else
         let legacyModel = try AppModel(
-            repository: InMemoryJournalRepository(storageURL: legacyJSONURL),
+            repository: InMemoryJournalRepository(persistingTo: legacyJSONURL),
             importStore: InMemoryImportStore(),
             searchIndex: JournalSearchIndex(
                 url: FileManager.default.temporaryDirectory.appending(
