@@ -345,26 +345,7 @@ enum EntryListSummaryFormatter {
             .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
         let joined = lines.prefix(4).joined(separator: "\n")
         var output = joined
-        let replacements: [(String, String)] = [
-            (#"(?m)^[\s\p{Cf}]{0,8}#{1,6}\s+"#, ""),
-            (#"(?m)^\s*[-*+]\s+\[[ xX]\]\s+"#, ""),
-            (#"(?m)^\s*(?:[-*+]|\d+\.)\s+"#, ""),
-            (#"(?m)^\s*>\s?"#, ""),
-            (#"\*\*([^*]+)\*\*"#, "$1"),
-            (#"(?<!\*)\*([^*]+)\*(?!\*)"#, "$1"),
-            (#"__([^_]+)__"#, "$1"),
-            (#"_([^_]+)_"#, "$1"),
-            (#"~~([^~]+)~~"#, "$1"),
-            (#"==([^=]+)=="#, "$1"),
-            (#"`([^`]+)`"#, "$1"),
-            (#"\[([^\]]+)\]\([^)]+\)"#, "$1"),
-            (#"(?:---|\*\*\*|___)"#, " "),
-            (#"\s+"#, " "),
-        ]
-        for (pattern, replacement) in replacements {
-            guard let regex = try? NSRegularExpression(pattern: pattern) else {
-                continue
-            }
+        for (regex, replacement) in EntrySummaryPatterns.replacements {
             let range = NSRange(output.startIndex..., in: output)
             output = regex.stringByReplacingMatches(
                 in: output,
@@ -375,6 +356,27 @@ enum EntryListSummaryFormatter {
         output = MarkdownEscaping.unescaped(output)
         return output.trimmingCharacters(in: .whitespacesAndNewlines)
     }
+}
+
+/// Markdown-to-plain-text rewrites for list row summaries, applied in order.
+/// Compiled once: the summary is computed for every visible row.
+enum EntrySummaryPatterns {
+    static let replacements: [(NSRegularExpression, String)] = [
+        (NSRegularExpression(literal: #"(?m)^[\s\p{Cf}]{0,8}#{1,6}\s+"#), ""),
+        (NSRegularExpression(literal: #"(?m)^\s*[-*+]\s+\[[ xX]\]\s+"#), ""),
+        (NSRegularExpression(literal: #"(?m)^\s*(?:[-*+]|\d+\.)\s+"#), ""),
+        (NSRegularExpression(literal: #"(?m)^\s*>\s?"#), ""),
+        (NSRegularExpression(literal: #"\*\*([^*]+)\*\*"#), "$1"),
+        (NSRegularExpression(literal: #"(?<!\*)\*([^*]+)\*(?!\*)"#), "$1"),
+        (NSRegularExpression(literal: #"__([^_]+)__"#), "$1"),
+        (NSRegularExpression(literal: #"_([^_]+)_"#), "$1"),
+        (NSRegularExpression(literal: #"~~([^~]+)~~"#), "$1"),
+        (NSRegularExpression(literal: #"==([^=]+)=="#), "$1"),
+        (NSRegularExpression(literal: #"`([^`]+)`"#), "$1"),
+        (NSRegularExpression(literal: #"\[([^\]]+)\]\([^)]+\)"#), "$1"),
+        (NSRegularExpression(literal: #"(?:---|\*\*\*|___)"#), " "),
+        (NSRegularExpression(literal: #"\s+"#), " "),
+    ]
 }
 
 #if DEBUG

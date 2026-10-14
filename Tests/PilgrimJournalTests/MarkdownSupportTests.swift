@@ -8,6 +8,13 @@ import AppKit
 #endif
 
 final class MarkdownSupportTests: XCTestCase {
+    // Every pattern is a literal compiled once into a static; touching them all
+    // here turns a typo into a test failure instead of a crash on first use.
+    func testEveryEditorPatternCompiles() {
+        XCTAssertEqual(MarkdownPatterns.all.count, 23)
+        XCTAssertEqual(EntrySummaryPatterns.replacements.count, 14)
+    }
+
     #if os(macOS)
     @MainActor
     func testNativeDelegateStylesInlineMarkdownOnClosingDelimiter() throws {
@@ -47,11 +54,24 @@ final class MarkdownSupportTests: XCTestCase {
         let coordinator = editor.makeCoordinator()
         coordinator.textView = view
         coordinator.textDidChange(Notification(name: NSText.didChangeNotification, object: view))
-        try await Task.sleep(for: .milliseconds(500))
 
-        let font = try XCTUnwrap(
-            view.textStorage?.attribute(.font, at: 2, effectiveRange: nil) as? NSFont)
-        XCTAssertFalse(NSFontManager.shared.traits(of: font).contains(.boldFontMask))
+        // Restyling is debounced. Wait for it by condition rather than a fixed
+        // sleep, which failed under load, and keep the coordinator alive: the
+        // scheduled task only holds it weakly.
+        func isBold() -> Bool {
+            guard
+                let font = view.textStorage?.attribute(.font, at: 2, effectiveRange: nil)
+                    as? NSFont
+            else { return false }
+            return NSFontManager.shared.traits(of: font).contains(.boldFontMask)
+        }
+        let deadline = ContinuousClock.now + .seconds(5)
+        while isBold(), ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        withExtendedLifetime(coordinator) {}
+
+        XCTAssertFalse(isBold())
         XCTAssertEqual(view.string, "**bold")
         XCTAssertEqual(view.selectedRange().location, 6)
     }
