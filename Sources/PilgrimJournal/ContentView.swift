@@ -192,9 +192,7 @@ struct ContentView: View {
                 } else if model.isPresentingEditor {
                     InlineEntryEditorView(
                         entry: nil,
-                        defaultKind: model.selectedKind?.canCreateManually == true
-                            ? model.selectedKind!
-                            : .diary,
+                        defaultKind: model.defaultKindForNewEntry,
                         defaultNotebookName: model.newEntryNotebookName
                     )
                     .id(model.editorSessionID)
@@ -231,9 +229,7 @@ struct ContentView: View {
         .fullScreenCover(isPresented: $model.isPresentingEditor) {
             EntryEditorView(
                 entry: model.editingEntry,
-                defaultKind: model.selectedKind?.canCreateManually == true
-                    ? model.selectedKind!
-                    : .diary,
+                defaultKind: model.defaultKindForNewEntry,
                 defaultNotebookName: model.newEntryNotebookName
             )
         }

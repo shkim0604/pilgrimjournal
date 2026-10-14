@@ -1822,7 +1822,8 @@ enum LiveMarkdownStyler {
     /// top of one level's worth of leading whitespace repeated
     /// `indentationLevel` times (those characters are real, un-hidden text).
     private static func bulletParagraphStyle(indentationLevel: Int) -> NSParagraphStyle {
-        let style = bodyParagraphStyle.mutableCopy() as! NSMutableParagraphStyle
+        let style = NSMutableParagraphStyle()
+        style.setParagraphStyle(bodyParagraphStyle)
         let base: CGFloat = 4 + CGFloat(indentationLevel) * bulletExtraIndentPerLevel
         let markerWidth = measuredWidth("-", kern: bulletMarkerKern) + measuredWidth(" ")
         let levelWhitespaceWidth = CGFloat(indentationLevel) * measuredWidth("  ")
@@ -1844,7 +1845,8 @@ enum LiveMarkdownStyler {
     }
 
     private static func quoteParagraphStyle() -> NSParagraphStyle {
-        let style = bodyParagraphStyle.mutableCopy() as! NSMutableParagraphStyle
+        let style = NSMutableParagraphStyle()
+        style.setParagraphStyle(bodyParagraphStyle)
         style.firstLineHeadIndent = 12
         style.headIndent = 12
         style.tailIndent = -12
@@ -1879,7 +1881,8 @@ enum LiveMarkdownStyler {
     }
 
     private static func codeParagraphStyle() -> NSParagraphStyle {
-        let style = bodyParagraphStyle.mutableCopy() as! NSMutableParagraphStyle
+        let style = NSMutableParagraphStyle()
+        style.setParagraphStyle(bodyParagraphStyle)
         style.firstLineHeadIndent = 12
         style.headIndent = 12
         style.tailIndent = -12
@@ -1909,7 +1912,8 @@ enum LiveMarkdownStyler {
     }
 
     private static var separatorParagraphStyle: NSParagraphStyle {
-        let style = bodyParagraphStyle.mutableCopy() as! NSMutableParagraphStyle
+        let style = NSMutableParagraphStyle()
+        style.setParagraphStyle(bodyParagraphStyle)
         style.minimumLineHeight = 20
         style.maximumLineHeight = 20
         style.paragraphSpacingBefore = 6
@@ -1975,7 +1979,8 @@ enum LiveMarkdownStyler {
         let size = attachmentImageDisplaySize(
             storedWidth: storedWidth, storedHeight: storedHeight, containerWidth: containerWidth
         )
-        let style = bodyParagraphStyle.mutableCopy() as! NSMutableParagraphStyle
+        let style = NSMutableParagraphStyle()
+        style.setParagraphStyle(bodyParagraphStyle)
         style.minimumLineHeight = size.height
         style.maximumLineHeight = size.height
         style.paragraphSpacingBefore = 6
@@ -2677,11 +2682,13 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
         textView.textContainerInset = NSSize(width: 2, height: 8)
         textView.textContainer?.widthTracksTextView = true
         textView.string = text
-        LiveMarkdownStyler.apply(
-            to: textView.textStorage!,
-            revealing: selection,
-            containerWidth: textView.textContainer?.size.width ?? 600
-        )
+        if let storage = textView.textStorage {
+            LiveMarkdownStyler.apply(
+                to: storage,
+                revealing: selection,
+                containerWidth: textView.textContainer?.size.width ?? 600
+            )
+        }
         textView.typingAttributes = LiveMarkdownStyler.baseAttributes
         scrollView.documentView = textView
 
@@ -2978,11 +2985,13 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
                 replacementSelection,
                 to: replacement.utf16.count
             )
-            LiveMarkdownStyler.apply(
-                to: textView.textStorage!,
-                revealing: safeSelection,
-                containerWidth: textView.textContainer?.size.width ?? 600
-            )
+            if let storage = textView.textStorage {
+                LiveMarkdownStyler.apply(
+                    to: storage,
+                    revealing: safeSelection,
+                    containerWidth: textView.textContainer?.size.width ?? 600
+                )
+            }
             // Order matters: AppKit re-derives `typingAttributes` from the
             // character before the caret whenever the selection moves, so
             // resetting them *before* `setSelectedRange` would be undone
@@ -3236,11 +3245,13 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
 
         private func applyStyling(to textView: NSTextView) {
             let selection = textView.selectedRange()
-            LiveMarkdownStyler.apply(
-                to: textView.textStorage!,
-                revealing: selection,
-                containerWidth: textView.textContainer?.size.width ?? 600
-            )
+            if let storage = textView.textStorage {
+                LiveMarkdownStyler.apply(
+                    to: storage,
+                    revealing: selection,
+                    containerWidth: textView.textContainer?.size.width ?? 600
+                )
+            }
             let safeSelection = clamped(selection, to: textView.string.utf16.count)
             // Must follow the caret move — see `replaceExternalText`.
             textView.setSelectedRange(safeSelection)

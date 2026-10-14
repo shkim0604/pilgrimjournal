@@ -7,6 +7,22 @@ import XCTest
 
 @MainActor
 final class JournalSessionControllerTests: XCTestCase {
+    func testStartupFailureIsReportedInsteadOfOpeningAStore() async {
+        let cause = NSError(
+            domain: "test",
+            code: 1,
+            userInfo: [NSLocalizedDescriptionKey: "Application Support 없음"]
+        )
+        let controller = JournalSessionController(startupFailure: cause)
+
+        await controller.activate(appleUserIdentifier: "apple-user")
+
+        XCTAssertNil(controller.appModel)
+        XCTAssertNil(controller.activeScope)
+        let message = try? XCTUnwrap(controller.errorMessage)
+        XCTAssertTrue(message?.contains("Application Support 없음") == true)
+    }
+
     func testLocalRecordsRequireConfirmationBeforeMovingToICloud() async throws {
         let parent = FileManager.default.temporaryDirectory.appending(
             path: "journal-session-\(UUID().uuidString)",

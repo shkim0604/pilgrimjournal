@@ -177,6 +177,7 @@ struct PilgrimJournalApp: App {
                     || Self.developerSignInBypassUser != nil
             )
         )
+        let session: JournalSessionController
         do {
             let root =
                 Self.isVisualTesting
@@ -185,17 +186,17 @@ struct PilgrimJournalApp: App {
                     directoryHint: .isDirectory
                 )
                 : try JournalPaths.applicationRoot()
-            _journalSession = StateObject(
-                wrappedValue: JournalSessionController(
-                    rootURL: root,
-                    cloudKitContainerIdentifier: cloudKitEnabled
-                        ? requestedCloudIdentifier
-                        : nil,
-                    isVisualTesting: Self.isVisualTesting
-                ))
+            session = JournalSessionController(
+                rootURL: root,
+                cloudKitContainerIdentifier: cloudKitEnabled
+                    ? requestedCloudIdentifier
+                    : nil,
+                isVisualTesting: Self.isVisualTesting
+            )
         } catch {
-            fatalError("Pilgrim Journal 초기화 실패: \(error.localizedDescription)")
+            session = JournalSessionController(startupFailure: error)
         }
+        _journalSession = StateObject(wrappedValue: session)
     }
 
     var body: some Scene {
