@@ -10,6 +10,16 @@ import AppKit
 final class MarkdownSupportTests: XCTestCase {
     // Every pattern is a literal compiled once into a static; touching them all
     // here turns a typo into a test failure instead of a crash on first use.
+    // Two spaces or one tab per nesting level; a stray odd space rounds down.
+    func testIndentationLevelCountsTabsAsTwoSpaces() {
+        XCTAssertEqual(MarkdownIndentation.level(of: ""), 0)
+        XCTAssertEqual(MarkdownIndentation.level(of: " "), 0)
+        XCTAssertEqual(MarkdownIndentation.level(of: "  "), 1)
+        XCTAssertEqual(MarkdownIndentation.level(of: "\t"), 1)
+        XCTAssertEqual(MarkdownIndentation.level(of: "   "), 1)
+        XCTAssertEqual(MarkdownIndentation.level(of: "\t  "), 2)
+    }
+
     func testEveryEditorPatternCompiles() {
         XCTAssertEqual(MarkdownPatterns.all.count, 23)
         XCTAssertEqual(EntrySummaryPatterns.replacements.count, 14)
@@ -876,6 +886,18 @@ final class MarkdownSupportTests: XCTestCase {
         let blocks = MarkdownDocumentParser.parse(markdown)
 
         XCTAssertEqual(blocks, [MarkdownBlock(kind: .paragraph, content: markdown)])
+    }
+
+    // The preview must agree with the live editor, which only draws an image
+    // for an exact marker with an optional " =WIDTHxHEIGHT" suffix.
+    func testDocumentParserTreatsAttachmentMarkerWithUnknownSuffixAsText() {
+        let id = UUID()
+        let markdown = "![](attachment:\(id.uuidString) 캡션)"
+
+        let blocks = MarkdownDocumentParser.parse(markdown)
+
+        XCTAssertEqual(blocks, [MarkdownBlock(kind: .paragraph, content: markdown)])
+        XCTAssertTrue(MarkdownAttachmentImageDecoration.matches(in: markdown).isEmpty)
     }
 
     func testInsertingAttachmentImageWithDisplaySizeAppendsSizeSuffix() {

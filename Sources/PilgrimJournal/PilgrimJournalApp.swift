@@ -18,7 +18,7 @@ struct PilgrimJournalApp: App {
         "iCloud.com.dhouse.PilgrimJournal"
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage("has-completed-onboarding") private var hasCompletedOnboarding = false
-    @AppStorage("editor-text-scale") private var editorTextScale =
+    @AppStorage(EditorTextScale.storageKey) private var editorTextScale =
         EditorTextScale.defaultValue
     @StateObject private var journalSession: JournalSessionController
     @StateObject private var appLock: AppLockCoordinator

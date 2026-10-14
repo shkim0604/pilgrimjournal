@@ -112,7 +112,11 @@ public enum JournalError: LocalizedError, Equatable, Sendable {
 
     public var errorDescription: String? {
         switch self {
-        case .invalidManualKind: "새 기록은 네 가지 기록 유형 중 하나여야 합니다."
+        case .invalidManualKind:
+            "새 기록의 유형은 "
+                + JournalKind.allCases.filter(\.canCreateManually).map(\.localizedName)
+                .joined(separator: ", ")
+                + " 중 하나여야 합니다."
         case .emptyContent: "제목이나 본문 중 하나는 입력해야 합니다."
         case .entryNotFound: "기록을 찾을 수 없습니다."
         case .revisionNotFound: "기록 이력을 찾을 수 없습니다."

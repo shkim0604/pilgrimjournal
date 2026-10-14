@@ -19,7 +19,7 @@ struct InlineEntryEditorView: View {
     }
 
     @EnvironmentObject private var model: AppModel
-    @AppStorage("editor-text-scale") private var editorTextScale =
+    @AppStorage(EditorTextScale.storageKey) private var editorTextScale =
         EditorTextScale.defaultValue
     @FocusState private var focusedField: FocusedField?
     @State private var draft: JournalEntryDraft
@@ -540,7 +540,7 @@ struct InlineEntryEditorView: View {
         if saveState != .saving { saveState = .saving }
         autosaveTask = Task { @MainActor in
             do {
-                try await Task.sleep(for: .milliseconds(650))
+                try await Task.sleep(for: EditorTiming.autosaveDelay)
             } catch {
                 return
             }
@@ -1244,7 +1244,7 @@ struct EntryEditorView: View {
         if saveState != .saving { saveState = .saving }
         autosaveTask = Task { @MainActor in
             do {
-                try await Task.sleep(for: .milliseconds(650))
+                try await Task.sleep(for: EditorTiming.autosaveDelay)
             } catch {
                 return
             }
