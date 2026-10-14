@@ -4,6 +4,10 @@ import SwiftUI
 struct AppleSignInView: View {
     @EnvironmentObject private var authentication: AppleAuthenticationCoordinator
 
+    private var guidance: BlockedSignInGuidance? {
+        BlockedSignInGuidance(state: authentication.state)
+    }
+
     var body: some View {
         VStack(spacing: 24) {
             Spacer()
@@ -22,22 +26,21 @@ struct AppleSignInView: View {
                     .foregroundStyle(JournalTheme.inkSecondary)
             }
 
-            if authentication.state == .blockedDifferentUser {
-                Label(
-                    "이 기기의 기존 기록은 다른 Apple 사용자에게 연결되어 있습니다.",
-                    systemImage: "person.crop.circle.badge.exclamationmark"
-                )
-                .foregroundStyle(.orange)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 420)
-            } else if authentication.state == .blockedCloudAccountMismatch {
-                Label(
-                    "현재 iCloud는 다른 Apple 로그인 사용자에게 연결되어 있습니다.",
-                    systemImage: "icloud.slash"
-                )
-                .foregroundStyle(.orange)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 420)
+            if let guidance {
+                VStack(spacing: 12) {
+                    Label(guidance.title, systemImage: guidance.systemImage)
+                        .font(.headline)
+                        .foregroundStyle(.orange)
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(guidance.steps, id: \.self) { step in
+                            Label(step, systemImage: "arrow.forward.circle")
+                                .font(.callout)
+                                .foregroundStyle(JournalTheme.inkSecondary)
+                        }
+                    }
+                }
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: 440)
             } else {
                 Text(
                     "Apple 로그인은 일기 화면 접근에만 사용합니다. Apple이 제공한 이메일은 현재 계정 표시를 위해 기기 Keychain에 저장합니다."
@@ -48,13 +51,13 @@ struct AppleSignInView: View {
                 .frame(maxWidth: 440)
             }
 
-            if authentication.state == .blockedCloudAccountMismatch {
+            if guidance?.offersCloudRecheck == true {
                 Button("iCloud 연결 다시 확인") {
                     Task { await authentication.refreshCloudIdentityBinding() }
                 }
                 .buttonStyle(.borderedProminent)
 
-                Button("Apple 로그인 로그아웃") {
+                Button("다른 Apple 계정으로 로그인") {
                     Task { await authentication.signOut() }
                 }
                 .buttonStyle(.borderless)
@@ -86,7 +89,8 @@ struct AppleSignInView: View {
                 .accessibilityHint("Apple 계정으로 Pilgrim Journal에 로그인합니다.")
             }
 
-            if let errorMessage = authentication.errorMessage {
+            // In a blocked state the error only repeats the guidance above.
+            if guidance == nil, let errorMessage = authentication.errorMessage {
                 Text(errorMessage)
                     .font(.caption)
                     .foregroundStyle(.red)
@@ -122,5 +126,41 @@ struct AppleAuthenticationCheckingView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(JournalTheme.canvas)
+    }
+}
+
+/// What the sign-in screen tells the user when the journal is blocked, and
+/// the way out. Neither block deletes anything; it only refuses to show one
+/// Apple account's records to another.
+struct BlockedSignInGuidance: Equatable {
+    var title: String
+    var systemImage: String
+    var steps: [String]
+    /// Whether "check iCloud again" can help, i.e. the fix happens outside
+    /// the app (switching the device's iCloud account).
+    var offersCloudRecheck: Bool
+
+    init?(state: AppleAuthenticationCoordinator.State) {
+        switch state {
+        case .blockedDifferentUser:
+            title = "이 기기의 기록은 다른 Apple 계정에 연결되어 있습니다."
+            systemImage = "person.crop.circle.badge.exclamationmark"
+            steps = [
+                "기록을 처음 만든 Apple 계정으로 다시 로그인하세요.",
+                "다른 계정의 기록은 보호를 위해 열거나 합치지 않습니다. 기록은 삭제되지 않았습니다.",
+            ]
+            offersCloudRecheck = false
+        case .blockedCloudAccountMismatch:
+            title = "현재 iCloud는 다른 Apple 계정에 연결되어 있습니다."
+            systemImage = "icloud.slash"
+            steps = [
+                "이 iCloud를 처음 연결한 Apple 계정으로 로그인하세요.",
+                "또는 기기 설정에서 다른 iCloud 계정으로 바꾼 뒤 ‘iCloud 연결 다시 확인’을 누르세요.",
+                "어느 쪽 기록도 삭제되지 않았습니다.",
+            ]
+            offersCloudRecheck = true
+        case .checking, .signedOut, .authenticated, .failed:
+            return nil
+        }
     }
 }
