@@ -27,6 +27,9 @@ final class JournalSessionController: ObservableObject {
     private let isVisualTesting: Bool
     private let storageLocationProvider: () async -> JournalStorageLocation
     private let registry: JournalAccountScopeRegistry
+    /// Set when the app could not even locate its storage folder; every
+    /// `activate` then reports it instead of opening a store.
+    private var startupFailure: (any Error)?
 
     init(
         rootURL: URL,
@@ -52,11 +55,25 @@ final class JournalSessionController: ObservableObject {
         }
     }
 
+    /// A controller that never opens a store and shows `error` on the session
+    /// error screen, for when the storage root itself cannot be resolved.
+    convenience init(startupFailure error: any Error) {
+        self.init(
+            rootURL: FileManager.default.temporaryDirectory,
+            cloudKitContainerIdentifier: nil
+        )
+        startupFailure = error
+    }
+
     func activate(
         appleUserIdentifier: String,
         forceRefresh: Bool = false
     ) async {
         guard !isLoading else { return }
+        if let startupFailure {
+            errorMessage = "기록 저장 위치를 준비하지 못했습니다. \(startupFailure.localizedDescription)"
+            return
+        }
         isLoading = true
         defer { isLoading = false }
         do {
@@ -182,27 +199,27 @@ final class JournalSessionController: ObservableObject {
             paths = try registry.prepareScope(scope)
         }
 
+        // Set only when this scope syncs through iCloud and a container exists.
+        let syncedContainerIdentifier: String?
+        if case .iCloud = scope.storageLocation {
+            syncedContainerIdentifier = cloudKitContainerIdentifier
+        } else {
+            syncedContainerIdentifier = nil
+        }
+
         let repository: any JournalRepository
         let importStore: any ImportAuditStore
         #if PILGRIM_SWIFTDATA
-        let usesCloud: Bool
-        if case .iCloud = scope.storageLocation {
-            usesCloud = cloudKitContainerIdentifier != nil
-        } else {
-            usesCloud = false
-        }
         let container = try JournalContainerFactory.make(
             inMemory: isVisualTesting,
-            cloudKitContainerIdentifier: usesCloud
-                ? cloudKitContainerIdentifier
-                : nil,
+            cloudKitContainerIdentifier: syncedContainerIdentifier,
             storageDirectory: isVisualTesting ? nil : paths.root
         )
         repository = SwiftDataJournalRepository(container: container)
         importStore = LocalImportStore(container: container)
         #else
         repository = try InMemoryJournalRepository(
-            storageURL: paths.root.appending(path: "journal-local.json")
+            persistingTo: paths.root.appending(path: "journal-local.json")
         )
         importStore = InMemoryImportStore()
         #endif
@@ -210,12 +227,6 @@ final class JournalSessionController: ObservableObject {
         let defaultsName =
             "PilgrimJournal.\(scope.appleUserHash).\(scope.storageLocation.directoryName)"
         let defaults = UserDefaults(suiteName: defaultsName) ?? .standard
-        let usesICloud: Bool
-        if case .iCloud = scope.storageLocation {
-            usesICloud = cloudKitContainerIdentifier != nil
-        } else {
-            usesICloud = false
-        }
         return try AppModel(
             repository: repository,
             importStore: importStore,
@@ -223,13 +234,11 @@ final class JournalSessionController: ObservableObject {
                 url: paths.search.appending(path: "journal-search.sqlite")
             ),
             paths: paths,
-            cloudAccountMonitor: usesICloud
-                ? CloudAccountMonitor(
-                    containerIdentifier: cloudKitContainerIdentifier!
-                )
-                : nil,
+            cloudAccountMonitor: syncedContainerIdentifier.map {
+                CloudAccountMonitor(containerIdentifier: $0)
+            },
             notebookDefaults: defaults,
-            notebookCloudStore: usesICloud ? .default : nil
+            notebookCloudStore: syncedContainerIdentifier == nil ? nil : .default
         )
     }
 

@@ -92,6 +92,13 @@ final class AppModel: ObservableObject {
         return entries.first { $0.id == selectedEntryID }
     }
 
+    /// The kind a new entry starts as: the sidebar's kind when one that can be
+    /// created by hand is selected, otherwise diary.
+    var defaultKindForNewEntry: JournalKind {
+        guard let selectedKind, selectedKind.canCreateManually else { return .diary }
+        return selectedKind
+    }
+
     var hasActiveSearchCriteria: Bool {
         !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             || !searchTags.isEmpty
