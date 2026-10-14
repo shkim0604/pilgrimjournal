@@ -1,3 +1,4 @@
+import DayOneImport
 import Foundation
 import zlib
 
@@ -24,9 +25,7 @@ enum TestZipFactory {
         for item in items {
             let name = Data(item.name.utf8)
             let compressed = try item.deflated ? deflateRaw(item.data) : item.data
-            let checksum = item.data.withUnsafeBytes { bytes in
-                UInt32(crc32(0, bytes.bindMemory(to: Bytef.self).baseAddress, uInt(bytes.count)))
-            }
+            let checksum = ZipChecksum.crc32(item.data)
             let offset = UInt32(output.count)
             output.appendLE(UInt32(0x04034B50))
             output.appendLE(UInt16(20))
@@ -167,13 +166,6 @@ enum TestZipFactory {
         }
         output.count = Int(stream.total_out)
         return output
-    }
-}
-
-private extension Data {
-    mutating func appendLE<T: FixedWidthInteger>(_ value: T) {
-        var little = value.littleEndian
-        Swift.withUnsafeBytes(of: &little) { append(contentsOf: $0) }
     }
 }
 

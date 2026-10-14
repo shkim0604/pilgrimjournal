@@ -1,4 +1,3 @@
-import CryptoKit
 import Foundation
 import JournalDomain
 
@@ -26,7 +25,7 @@ public final class AttachmentFileStore: @unchecked Sendable {
         mimeType: String
     ) throws -> StoredAttachment {
         try withLock {
-            let checksum = sha256(data)
+            let checksum = ContentHash.sha256Hex(data)
             let directory = root.appending(
                 path: String(checksum.prefix(2)),
                 directoryHint: .isDirectory
@@ -125,10 +124,6 @@ public final class AttachmentFileStore: @unchecked Sendable {
         root
             .appending(path: String(checksum.prefix(2)), directoryHint: .isDirectory)
             .appending(path: checksum)
-    }
-
-    private func sha256(_ data: Data) -> String {
-        SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 
     private func withLock<T>(_ operation: () throws -> T) throws -> T {

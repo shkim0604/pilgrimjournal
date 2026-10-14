@@ -1,4 +1,3 @@
-import CryptoKit
 import DayOneImport
 import Foundation
 import JournalDomain
@@ -43,7 +42,7 @@ public struct JournalBackupService {
             }
         }
 
-        let checksums = files.mapValues(sha256)
+        let checksums = files.mapValues(ContentHash.sha256Hex)
         let manifest = BackupManifest(
             files: checksums,
             includesSourceSnapshots: !sourceSnapshots.isEmpty
@@ -88,7 +87,7 @@ public struct JournalBackupService {
                 throw JournalError.invalidBackup("manifest 파일이 없습니다: \(name)")
             }
             let data = try archive.data(for: entry)
-            guard sha256(data) == checksum else {
+            guard ContentHash.sha256Hex(data) == checksum else {
                 throw JournalError.invalidBackup("checksum 불일치: \(name)")
             }
             validated[name] = data
@@ -173,10 +172,6 @@ public struct JournalBackupService {
         return try data.split(separator: 0x0A).map { line in
             try decoder.decode(T.self, from: Data(line))
         }
-    }
-
-    private func sha256(_ data: Data) -> String {
-        SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 }
 

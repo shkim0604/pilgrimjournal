@@ -153,6 +153,9 @@ func deflateRaw(_ input: Data) throws -> Data {
     return output
 }
 
+// This script runs standalone (`swift scripts/...`) and cannot import the
+// package, so it keeps its own ZIP writer. It needs deflate, which the
+// package's stored-only `StoredZipWriter` (Sources/DayOneImport) does not do.
 extension Data {
     mutating func appendLE<T: FixedWidthInteger>(_ value: T) {
         var little = value.littleEndian

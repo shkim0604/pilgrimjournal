@@ -222,7 +222,7 @@ do {
     ]
     let anonymousJSON = try JSONSerialization.data(withJSONObject: root)
     let dayOneURL = temporary.appending(path: "anonymous-day-one.zip")
-    try CheckZipFactory.makeStored(
+    try writeSingleEntryZip(
         name: "%EC%9D%BC%EA%B8%B0.json",
         data: anonymousJSON,
         at: dayOneURL
@@ -261,7 +261,7 @@ do {
     try expect(importCounts == (1, 1, 1), "Day One 재실행 중복 방지가 실패했습니다.")
 
     let unsafeURL = temporary.appending(path: "unsafe.zip")
-    try CheckZipFactory.makeStored(
+    try writeSingleEntryZip(
         name: "../outside.json",
         data: anonymousJSON,
         at: unsafeURL
@@ -397,4 +397,11 @@ do {
         Data("JournalChecks 실패: \(error.localizedDescription)\n".utf8)
     )
     exit(1)
+}
+
+/// One stored (uncompressed) entry, enough for the importer and safety checks.
+func writeSingleEntryZip(name: String, data: Data, at url: URL) throws {
+    let writer = try StoredZipWriter(url: url)
+    try writer.add(name: name, data: data)
+    try writer.finish()
 }

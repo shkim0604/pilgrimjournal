@@ -1,4 +1,5 @@
 #if canImport(XCTest)
+import DayOneImport
 import Foundation
 @testable import JournalBackup
 import JournalData

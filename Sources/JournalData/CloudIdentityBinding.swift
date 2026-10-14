@@ -1,6 +1,6 @@
 import CloudKit
-import CryptoKit
 import Foundation
+import JournalDomain
 
 #if os(macOS)
 import Security
@@ -78,9 +78,7 @@ public actor CloudIdentityBindingService: CloudIdentityBindingChecking {
 
     public static func subjectHash(for userIdentifier: String) -> String {
         let scopedValue = "PilgrimJournal.CloudIdentity.v1:\(userIdentifier)"
-        return SHA256.hash(data: Data(scopedValue.utf8))
-            .map { String(format: "%02x", $0) }
-            .joined()
+        return ContentHash.sha256Hex(scopedValue)
     }
 }
 
