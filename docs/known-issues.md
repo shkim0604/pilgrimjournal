@@ -621,7 +621,9 @@ macOS 편집기에만 있음). **macOS에는 같은 시딩을 넣지 않았다**
 **회귀 테스트:** `Tests/PilgrimJournalTests/LiveMarkdownTextEditorIOSTests.swift`
 (`#if os(iOS)`). 실제 `EntryEditorView`를 창에 띄우고 `insertText`로 입력한다.
 수정 없이 두 테스트 모두 실패, 수정 후 통과를 확인했다. `swift test`(macOS)는
-이 파일을 건너뛰므로 시뮬레이터에서 따로 돌린다:
+이 파일을 건너뛰므로 시뮬레이터에서 따로 돌린다. CI(`.github/workflows/check.yml`의
+`ios-tests` 잡)가 모든 PR에서 `PilgrimJournalTests` 전체를 iOS 시뮬레이터로 돌려
+이 테스트를 포함한다:
 
 ```sh
 xcodebuild test -scheme PilgrimJournal-Package \
