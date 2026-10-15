@@ -25,16 +25,16 @@
     },
     "%@ · 우선순위 %lld" : {
       "localizations" : {
-        "ko" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@ · 우선순위 %2$lld"
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ · Priority %lld"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · 우선순위 %2$lld"
           }
         }
       }
@@ -82,16 +82,16 @@
     },
     "%lld개 반영 · %lld개 휴지통 · 충돌 %lld개" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restored: %lld · Moved to Trash: %lld · Conflicts: %lld"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$lld개 반영 · %2$lld개 휴지통 · 충돌 %3$lld개"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld restored · %lld trashed · %lld conflicts"
           }
         }
       }
@@ -206,16 +206,16 @@
     },
     "Apple 계정 · %@…%@" : {
       "localizations" : {
-        "ko" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Apple 계정 · %1$@…%2$@"
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Apple Account · %@…%@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Apple 계정 · %1$@…%2$@"
           }
         }
       }
@@ -265,7 +265,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't check your Sign in with Apple status. Connect to the internet and try again."
+            "value" : "Couldn’t check your Sign in with Apple status. Connect to the internet and try again."
           }
         }
       }
@@ -285,7 +285,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't verify your Sign in with Apple information."
+            "value" : "Couldn’t verify your Sign in with Apple information."
           }
         }
       }
@@ -325,7 +325,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sign in with Apple is used to access the app, and entries sync through the device's system iCloud private database. Use the same Apple user and iCloud account on your Mac and iPhone."
+            "value" : "Sign in with Apple is used to access the app, and entries sync through the private iCloud database of the account signed in on your device. Use the same Apple Account and iCloud account on your Mac and iPhone."
           }
         }
       }
@@ -345,7 +345,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sign in with Apple is only for accessing your journal. Entries sync separately through the device's system iCloud private database."
+            "value" : "Sign in with Apple is only for accessing your journal. Entries sync separately through the private iCloud database of the account signed in on your device."
           }
         }
       }
@@ -355,7 +355,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Waiting for CloudKit sync"
+            "value" : "Waiting to Sync with CloudKit"
           }
         }
       }
@@ -365,7 +365,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "CloudKit sync data uses your iCloud storage. Entries that stay local-only after authentication aren't sent to your other devices."
+            "value" : "CloudKit sync data uses your iCloud storage. After you sign in, entries kept only on this device aren’t sent to your other devices."
           }
         }
       }
@@ -375,7 +375,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "CloudKit sync complete: %@. Your iPhone on the same iCloud account will receive it."
+            "value" : "CloudKit sync complete: %@. Changes will appear on your iPhone signed in to the same iCloud account."
           }
         }
       }
@@ -385,7 +385,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "CloudKit sync is complete. Your iPhone on the same iCloud account will receive the changes."
+            "value" : "CloudKit sync is complete. Changes will appear on your iPhone signed in to the same iCloud account."
           }
         }
       }
@@ -415,7 +415,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The CloudKit production schema hasn't been deployed yet."
+            "value" : "The CloudKit production schema hasn’t been deployed yet."
           }
         }
       }
@@ -456,7 +456,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Import Day One Entries"
+            "value" : "Importing Day One Entries"
           }
         }
       }
@@ -496,7 +496,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Full original Day One snapshots, import audit records, and the search index stay only in local storage on the Mac that did the import."
+            "value" : "Full original Day One snapshots, import audit records, and the search index stay in local storage on the Mac used for the import."
           }
         }
       }
@@ -547,7 +547,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Import Complete on Mac"
+            "value" : "Import Complete"
           }
         }
       }
@@ -649,7 +649,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pilgrim Journal never sends your journal content to its own servers, ad servers, or analytics servers. Original Day One snapshots and the search index stay only on the Mac that did the import."
+            "value" : "Pilgrim Journal doesn’t send your journal content to any server of its own, or to ad or analytics servers. Original Day One snapshots and the search index stay only on the Mac used for the import."
           }
         }
       }
@@ -670,7 +670,43 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Checking the ZIP's safety and JSON structure. Your journal data hasn't been changed yet."
+            "value" : "Checking the ZIP’s safety and JSON structure. Your journal data hasn’t been changed yet."
+          }
+        }
+      }
+    },
+    "editor.heading" : {
+      "comment" : "Markdown heading command",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "제목"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Heading"
+          }
+        }
+      }
+    },
+    "entryInfo.organizeSection" : {
+      "comment" : "Entry info section holding the type and notebook pickers",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "분류"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Organize"
           }
         }
       }
@@ -690,7 +726,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Waiting to upload to iCloud"
+            "value" : "Waiting to Upload to iCloud"
           }
         }
       }
@@ -720,7 +756,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't verify the iCloud connection, so data stays on this device only: %@"
+            "value" : "Couldn’t verify the iCloud connection, so data stays on this device only: %@"
           }
         }
       }
@@ -730,7 +766,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Can't sync because there isn't enough iCloud storage."
+            "value" : "There isn’t enough iCloud storage to sync."
           }
         }
       }
@@ -770,7 +806,43 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't download from iCloud"
+            "value" : "Couldn’t download from iCloud"
+          }
+        }
+      }
+    },
+    "organize.typeSection" : {
+      "comment" : "Header of the section that changes the type of selected entries",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "유형"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Type"
+          }
+        }
+      }
+    },
+    "sidebar.notebooks" : {
+      "comment" : "Sidebar section header listing notebooks",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "노트북"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notebooks"
           }
         }
       }
@@ -831,7 +903,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Changes to the same entry are kept as revision conflicts."
+            "value" : "Conflicting changes to the same entry are kept as separate revisions."
           }
         }
       }
@@ -1161,7 +1233,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A per-device passcode and Face ID·Touch ID hide the app’s screens and its preview in the app switcher. They don’t add end-to-end encryption with a separate password to the database or CloudKit records."
+            "value" : "A per-device passcode and Face ID or Touch ID hide the app’s screens and its preview in the app switcher. They don’t encrypt the database or CloudKit records end to end with a separate password."
           }
         }
       }
@@ -1181,7 +1253,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Prayer Status·Answered Date"
+            "value" : "Prayer Status & Answered Date"
           }
         }
       }
@@ -1191,7 +1263,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ongoing"
+            "value" : "Praying"
           }
         }
       }
@@ -1273,7 +1345,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Search Entries"
+            "value" : "Searching Entries"
           }
         }
       }
@@ -1393,7 +1465,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Edit Entry"
+            "value" : "Editing Entries"
           }
         }
       }
@@ -1453,7 +1525,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Enter a name for the notebook to collect entries in."
+            "value" : "Enter a name for a notebook to group your entries."
           }
         }
       }
@@ -1543,7 +1615,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Keep Your Journal Safe and Going"
+            "value" : "Keep writing your private journal, safely"
           }
         }
       }
@@ -1593,7 +1665,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The network or CloudKit service is temporarily unstable."
+            "value" : "There’s a temporary problem with the network or CloudKit."
           }
         }
       }
@@ -1603,7 +1675,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Notes"
+            "value" : "Entries"
           }
         }
       }
@@ -1723,7 +1795,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "To protect them, entries from another account aren’t opened or merged. No entries were deleted."
+            "value" : "To keep them private, entries from another account won’t be opened or merged. No entries were deleted."
           }
         }
       }
@@ -1893,7 +1965,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Delete them all at once with the Trash button in the toolbar, or change their type and tags with “Select” → “Organize”."
+            "value" : "Delete them all at once with the Trash button in the toolbar, or change their type and tags with “Select” → “Organize.”"
           }
         }
       }
@@ -1983,7 +2055,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Or switch to a different iCloud account in your device’s Settings, then tap “Check iCloud Connection Again”."
+            "value" : "Or switch to a different iCloud account in your device’s Settings, then tap “Check iCloud Connection Again.”"
           }
         }
       }
@@ -2120,16 +2192,16 @@
     },
     "문제가 없습니다 · 기록 %lld개, revision %lld개, 첨부 %lld개" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No problems found · Entries: %lld, Revisions: %lld, Attachments: %lld"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "new",
             "value" : "문제가 없습니다 · 기록 %1$lld개, revision %2$lld개, 첨부 %3$lld개"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No problems found · Entries: %lld, revisions: %lld, attachments: %lld"
           }
         }
       }
@@ -2209,7 +2281,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restore a Backup"
+            "value" : "Restoring a Backup"
           }
         }
       }
@@ -2319,7 +2391,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Merge Restore"
+            "value" : "Restore and Merge"
           }
         }
       }
@@ -2329,7 +2401,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Merge restore complete"
+            "value" : "Restore and Merge Complete"
           }
         }
       }
@@ -2339,7 +2411,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Applying merge restore"
+            "value" : "Restoring and Merging"
           }
         }
       }
@@ -2669,7 +2741,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Delete %@"
+            "value" : "Deleted %@"
           }
         }
       }
@@ -3183,7 +3255,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The App Lock passcode isn’t a separate key for end-to-end encrypting the database or CloudKit data."
+            "value" : "The App Lock passcode isn’t a separate key that encrypts the database or CloudKit data end to end."
           }
         }
       }
@@ -3193,7 +3265,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Use App Lock"
+            "value" : "Using App Lock"
           }
         }
       }
@@ -3223,7 +3295,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "App Lock hides titles, body text, search results, and the app switcher snapshot on this device. The passcode verifier and settings are stored only in this device’s Keychain."
+            "value" : "App Lock hides titles, body text, search results, and the app switcher preview on this device. The data used to verify your passcode, along with your lock settings, is stored only in this device’s Keychain."
           }
         }
       }
@@ -3283,7 +3355,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No entries were deleted on either side."
+            "value" : "Nothing has been deleted from either account."
           }
         }
       }
@@ -3573,7 +3645,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Answered On"
+            "value" : "Date Answered"
           }
         }
       }
@@ -3593,7 +3665,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Saved on this Mac. Uploading to CloudKit and delivering to iPhone are in progress."
+            "value" : "Saved on this Mac. Still uploading to CloudKit and syncing to iPhone."
           }
         }
       }
@@ -3623,7 +3695,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sign in with the Apple Account that first connected to this iCloud."
+            "value" : "Sign in with the Apple Account that first connected this iCloud storage."
           }
         }
       }
@@ -3653,7 +3725,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Keep Storing on This Device Only"
+            "value" : "Keep on This Device Only"
           }
         }
       }
@@ -3695,7 +3767,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "This will be erased from this device and iCloud. This can’t be undone."
+            "value" : "This attachment will be permanently erased from this device and iCloud. This can’t be undone."
           }
         }
       }
@@ -3895,7 +3967,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Your journal is never sent to our own servers."
+            "value" : "Your journal is never sent to any server we operate."
           }
         }
       }
@@ -3935,7 +4007,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Formatting Appears as You Type"
+            "value" : "Formatting appears as you type"
           }
         }
       }
@@ -4205,7 +4277,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Organize %lld"
+            "value" : "Organize (%lld)"
           }
         }
       }
@@ -4425,7 +4497,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Before adding attachments, enter a title or body to save the entry."
+            "value" : "To add attachments, first enter a title or body text so the entry can be saved."
           }
         }
       }
@@ -4522,16 +4594,16 @@
     },
     "최근 복원: %lld개 반영, %lld개 휴지통, 충돌 %lld개" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last restore — Restored: %lld, Moved to Trash: %lld, Conflicts: %lld"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "new",
             "value" : "최근 복원: %1$lld개 반영, %2$lld개 휴지통, 충돌 %3$lld개"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Last restore: %lld applied, %lld moved to Trash, %lld conflicts"
           }
         }
       }
@@ -4541,7 +4613,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "If the current iCloud storage is linked to a different Apple user than the one first connected, your entries won’t open. Accounts are compared using Apple’s unique user identifier, not your email."
+            "value" : "If this iCloud storage is linked to a different Apple user than the one who first connected it, your entries won’t open. Accounts are compared using Apple’s unique user identifier, not your email."
           }
         }
       }
@@ -4793,7 +4865,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Display"
+            "value" : "Options"
           }
         }
       }
@@ -4863,7 +4935,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "iCloud is currently linked to a different Apple Account."
+            "value" : "This iCloud storage is linked to a different Apple Account."
           }
         }
       }
@@ -4933,7 +5005,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The current storage adapter doesn’t support restore."
+            "value" : "Restoring isn’t supported by the current storage."
           }
         }
       }
@@ -5130,13 +5202,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld entry in the Trash, along with its revision history and attachments, will be permanently erased from this device and iCloud. This can’t be undone. Wait until your other devices have synced."
+                  "value" : "%lld entry in the Trash, along with its revision history and attachments, will be permanently erased from this device and iCloud. This can’t be undone. Do this only after your other devices have synced."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld entries in the Trash, along with their revision history and attachments, will be permanently erased from this device and iCloud. This can’t be undone. Wait until your other devices have synced."
+                  "value" : "%lld entries in the Trash, along with their revision history and attachments, will be permanently erased from this device and iCloud. This can’t be undone. Do this only after your other devices have synced."
                 }
               }
             }

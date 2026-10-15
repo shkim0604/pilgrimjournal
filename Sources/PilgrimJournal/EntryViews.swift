@@ -1044,7 +1044,11 @@ struct EntryEditorView: View {
     private var mobileMetadataSheet: some View {
         NavigationStack {
             Form {
-                Section("분류") {
+                Section(
+                    String(
+                        localized: "entryInfo.organizeSection", defaultValue: "분류",
+                        comment: "Entry info section holding the type and notebook pickers")
+                ) {
                     Picker("기록 유형", selection: kindBinding) {
                         ForEach(model.kindPickerOptions(including: draft.kind), id: \.kind) {
                             definition in
@@ -1161,7 +1165,11 @@ struct EntryEditorView: View {
     private var keyboardAccessory: MarkdownKeyboardAccessory {
         MarkdownKeyboardAccessory(
             leading: [
-                .init(title: String(localized: "제목"), systemImage: "textformat.size") {
+                .init(
+                    title: String(
+                        localized: "editor.heading", defaultValue: "제목",
+                        comment: "Markdown heading command"), systemImage: "textformat.size"
+                ) {
                     appendCommand(.h2)
                 },
                 .init(title: String(localized: "불릿"), systemImage: "list.bullet") {
@@ -2217,7 +2225,11 @@ struct BatchOrganizerView: View {
                         value: String(localized: "\(model.selectedEntryIDs.count)개")
                     )
                 }
-                Section("유형") {
+                Section(
+                    String(
+                        localized: "organize.typeSection", defaultValue: "유형",
+                        comment: "Header of the section that changes the type of selected entries")
+                ) {
                     Picker("변경할 유형", selection: $targetKind) {
                         Text("유형 유지").tag(nil as JournalKind?)
                         ForEach(model.kindPickerOptions(), id: \.kind) { definition in

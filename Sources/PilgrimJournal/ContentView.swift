@@ -613,7 +613,11 @@ private struct JournalSidebar: View {
                 }
             }
 
-            Section("노트북") {
+            Section(
+                String(
+                    localized: "sidebar.notebooks", defaultValue: "노트북",
+                    comment: "Sidebar section header listing notebooks")
+            ) {
                 ForEach(model.notebooks, id: \.self) { notebook in
                     JournalSidebarItem(
                         title: notebook,

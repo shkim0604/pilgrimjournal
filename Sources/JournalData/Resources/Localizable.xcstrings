@@ -36,7 +36,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't verify the Sign in with Apple user information."
+            "value" : "Couldn’t verify the Sign in with Apple user information."
           }
         }
       }
@@ -46,7 +46,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't verify the Sign in with Apple user."
+            "value" : "Couldn’t verify the Sign in with Apple user."
           }
         }
       }
@@ -56,7 +56,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't convert the SwiftData model to a Core Data model."
+            "value" : "Couldn’t convert the SwiftData model to a Core Data model."
           }
         }
       }
@@ -66,7 +66,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't check the iCloud account status."
+            "value" : "Couldn’t check the iCloud account status."
           }
         }
       }
@@ -86,7 +86,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't read the iCloud user link information."
+            "value" : "Couldn’t read the iCloud account link information."
           }
         }
       }
@@ -116,7 +116,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The revision snapshot is missing."
+            "value" : "The revision’s content is missing."
           }
         }
       }
@@ -136,7 +136,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Device secure storage error (%d)."
+            "value" : "A Keychain error occurred (%d)."
           }
         }
       }
@@ -146,7 +146,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn’t verify the device owner."
+            "value" : "Authentication failed."
           }
         }
       }
@@ -226,7 +226,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Owner authentication isn’t available on this device."
+            "value" : "Device authentication isn’t available on this device."
           }
         }
       }
