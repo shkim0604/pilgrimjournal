@@ -155,6 +155,11 @@ public struct KindDefinition: Codable, Equatable, Sendable {
   - 노트북 카탈로그와 같은 시점에 병합한다: 앱 시작, 포그라운드 복귀,
     `didChangeExternallyNotification`(`PilgrimJournalApp.swift`에 이미 구독 있음).
   - 병합은 `KindCatalog.merged(with:)`로 하고, 결과를 두 저장소에 다시 쓴다.
+  - iCloud KV 사본은 타임스탬프를 초 단위로 정규화해 저장한다. 병합 결과는 ID 순으로
+    정렬해, 두 저장소 중 다른 쪽에 다시 쓴다. 두 기기가 서로의 값을 계속 덮어쓰지
+    않게 하려는 것이다.
+  - 기록을 로컬 전용에서 iCloud로 옮길 때도 카탈로그를 함께 옮긴다.
+    `AppModel.adoptKindCatalog`를 거치며, 백업 복원과 같은 경로다.
   - 테스트를 위해 `UserDefaults`와 KV 저장소는 주입한다(`AppModel`의 노트북
     저장소 주입과 같은 방식).
 - **`AppModel`:** `@Published kindCatalog`를 노출한다. `selectedKind`가 삭제되면
@@ -162,7 +167,13 @@ public struct KindDefinition: Codable, Equatable, Sendable {
 
 ### 정리 작업 (`KindReconciler`, JournalDomain)
 
-`AppModel.refresh()`의 끝과 카탈로그 병합 직후에 한 번 실행한다.
+다음 시점에 실행한다. 매 `refresh()`마다 돌리지는 않고, 삭제된 유형이 없으면
+건너뛴다.
+
+- 모델의 첫 `refresh()`
+- 클라우드 병합으로 카탈로그가 바뀐 때
+- CloudKit 가져오기가 끝난 때
+- 백업 복원과 로컬→iCloud 범위 이전 직후
 
 - **대상:** 기록 중 `catalog.resolvedTarget(for: entry.kind) != nil`인 것.
 - **동작:** 해당 기록을 그 대상으로 옮긴다. 옮기는 방식은 아래 삭제 흐름의 3단계와
@@ -176,6 +187,10 @@ public struct KindDefinition: Codable, Equatable, Sendable {
 
 `JournalRepository` 프로토콜만 사용하므로 `InMemoryJournalRepository`로 테스트할
 수 있다.
+
+> 이미 손으로 쓴 기록을 미분류로 옮기는 것은 허용한다. 새로 쓰는 손글 기록만
+> 구체적인 유형이 있어야 한다. 그렇지 않으면 기본 이동 대상이 미분류인 삭제가
+> 모두 실패한다.
 
 1. **확인 창:** "‘기도노트’를 삭제할까요? 기록 N개를 어디로 옮길까요?"라고 묻는다.
    선택지는 활성 유형이고, 기본값은 미분류다. 기록이 0개면 이동 대상을 묻지 않고

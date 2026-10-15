@@ -379,6 +379,28 @@ do {
         "replace 복원 계획 또는 RestoreEpoch 적용이 실패했습니다."
     )
 
+    let userKindResult = try await Task { @MainActor in
+        let repository = InMemoryJournalRepository()
+        var catalog = KindCatalog()
+        let created = try catalog.create(
+            name: "설교노트", colorToken: .amber, iconToken: KindIconCatalog.symbols[0],
+            deviceID: "Mac", at: Date(timeIntervalSince1970: 1))
+        _ = try repository.save(
+            JournalEntryDraft(kind: created.kind, title: "주일 설교", body: "본문 요약"),
+            deviceID: "Mac",
+            at: Date(timeIntervalSince1970: 2)
+        )
+        let before = try repository.list(kind: created.kind, includeDeleted: false, limit: 10)
+        try catalog.delete(
+            created.kind, moveTarget: .memo, deviceID: "Mac", at: Date(timeIntervalSince1970: 3))
+        let moved = try KindDeletionService().moveEntries(
+            from: created.kind, to: .memo, repository: repository,
+            deviceID: "Mac", at: Date(timeIntervalSince1970: 4))
+        return (before.count, moved.count, moved.first?.kind == .memo)
+    }.value
+    try expect(
+        userKindResult == (1, 1, true), "사용자 유형 저장·이동 확인이 실패했습니다.")
+
     if let sampleIndex = CommandLine.arguments.firstIndex(of: "--day-one"),
         CommandLine.arguments.indices.contains(sampleIndex + 1)
     {
