@@ -1,0 +1,116 @@
+{
+  "sourceLanguage" : "ko",
+  "strings" : {
+    "canonical 기록이 없는 검색 문서입니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This search document has no canonical entry."
+          }
+        }
+      }
+    },
+    "checksum 불일치: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checksum mismatch: %@"
+          }
+        }
+      }
+    },
+    "manifest 파일이 없습니다: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The manifest file is missing: %@"
+          }
+        }
+      }
+    },
+    "manifest.json이 없습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "manifest.json is missing."
+          }
+        }
+      }
+    },
+    "검색 history token이 canonical 저장소와 일치하지 않습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The search history token doesn’t match the canonical store."
+          }
+        }
+      }
+    },
+    "검색 인덱스에 기록이 없습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The search index has no entries."
+          }
+        }
+      }
+    },
+    "로컬 binary가 없고 원격 업로드 완료 상태도 아닙니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The file isn’t on this device, and its upload hasn’t finished."
+          }
+        }
+      }
+    },
+    "원본 기록이 없는 revision입니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This revision has no original entry."
+          }
+        }
+      }
+    },
+    "원본 기록이 없는 첨부입니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This attachment has no original entry."
+          }
+        }
+      }
+    },
+    "지원하지 않는 format version %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unsupported format version %lld"
+          }
+        }
+      }
+    },
+    "현재 revision을 찾을 수 없습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Can’t find the current revision."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

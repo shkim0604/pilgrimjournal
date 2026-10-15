@@ -26,13 +26,14 @@ public final class StoredZipWriter {
 
     public func add(name: String, data: Data) throws {
         guard !isFinished else {
-            throw JournalError.invalidBackup("이미 완료된 ZIP입니다.")
+            throw JournalError.invalidBackup(String(localized: "이미 완료된 ZIP입니다.", bundle: .module))
         }
         guard let nameData = name.data(using: .utf8), !nameData.isEmpty,
             data.count <= Int(UInt32.max),
             offset <= UInt64(UInt32.max)
         else {
-            throw JournalError.invalidBackup("ZIP64가 필요한 백업 크기입니다.")
+            throw JournalError.invalidBackup(
+                String(localized: "ZIP64가 필요한 백업 크기입니다.", bundle: .module))
         }
         let checksum = ZipChecksum.crc32(data)
         var header = Data()
@@ -65,7 +66,8 @@ public final class StoredZipWriter {
         guard centralRecords.count <= Int(UInt16.max),
             offset <= UInt64(UInt32.max)
         else {
-            throw JournalError.invalidBackup("ZIP64가 필요한 백업입니다.")
+            throw JournalError.invalidBackup(
+                String(localized: "ZIP64가 필요한 백업입니다.", bundle: .module))
         }
         let centralOffset = UInt32(offset)
         var centralSize: UInt64 = 0
@@ -93,7 +95,8 @@ public final class StoredZipWriter {
             centralSize += UInt64(header.count + record.name.count)
         }
         guard centralSize <= UInt64(UInt32.max) else {
-            throw JournalError.invalidBackup("ZIP 중앙 디렉터리가 너무 큽니다.")
+            throw JournalError.invalidBackup(
+                String(localized: "ZIP 중앙 디렉터리가 너무 큽니다.", bundle: .module))
         }
         var end = Data()
         end.appendLE(UInt32(0x06054B50))

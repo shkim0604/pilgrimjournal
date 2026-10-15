@@ -405,43 +405,43 @@ struct PilgrimJournalApp: App {
                 .keyboardShortcut(.rightArrow, modifiers: [.command, .option])
             }
             CommandMenu("Markdown") {
-                markdownCommand("굵게", command: .bold, key: "b")
-                markdownCommand("기울임", command: .italic, key: "i")
-                markdownCommand("링크", command: .link, key: "k")
+                markdownCommand(String(localized: "굵게"), command: .bold, key: "b")
+                markdownCommand(String(localized: "기울임"), command: .italic, key: "i")
+                markdownCommand(String(localized: "링크"), command: .link, key: "k")
                 Divider()
                 markdownCommand(
-                    "번호 목록",
+                    String(localized: "번호 목록"),
                     command: .numberedList,
                     key: "7",
                     modifiers: [.command, .shift]
                 )
                 markdownCommand(
-                    "글머리표 목록",
+                    String(localized: "글머리표 목록"),
                     command: .bulletList,
                     key: "8",
                     modifiers: [.command, .shift]
                 )
                 markdownCommand(
-                    "인용문",
+                    String(localized: "인용문"),
                     command: .quote,
                     key: "9",
                     modifiers: [.command, .shift]
                 )
                 Divider()
                 markdownCommand(
-                    "제목 1",
+                    String(localized: "제목 1"),
                     command: .heading1,
                     key: "1",
                     modifiers: [.command, .option]
                 )
                 markdownCommand(
-                    "제목 2",
+                    String(localized: "제목 2"),
                     command: .heading2,
                     key: "2",
                     modifiers: [.command, .option]
                 )
                 markdownCommand(
-                    "제목 3",
+                    String(localized: "제목 3"),
                     command: .heading3,
                     key: "3",
                     modifiers: [.command, .option]
@@ -659,7 +659,7 @@ private struct OfflineCloudIdentityChecker: CloudIdentityBindingChecking {
     func verifyOrBind(
         userIdentifier: String
     ) async -> CloudIdentityBindingResult {
-        .unavailable(reason: "이 빌드에는 iCloud 권한이 없어 로컬 모드로 실행합니다.")
+        .unavailable(reason: String(localized: "이 빌드에는 iCloud 권한이 없어 로컬 모드로 실행합니다."))
     }
 }
 
@@ -710,7 +710,7 @@ func cloudSyncErrorPresentation(
         )
     }) {
         return CloudSyncErrorPresentation(
-            message: "CloudKit 프로덕션 스키마가 아직 배포되지 않았습니다.",
+            message: String(localized: "CloudKit 프로덕션 스키마가 아직 배포되지 않았습니다."),
             retryable: false
         )
     }
@@ -718,7 +718,7 @@ func cloudSyncErrorPresentation(
         $0.domain == CKErrorDomain && $0.code == CKError.notAuthenticated.rawValue
     }) {
         return CloudSyncErrorPresentation(
-            message: "iCloud에 로그인한 뒤 동기화를 다시 시도하세요.",
+            message: String(localized: "iCloud에 로그인한 뒤 동기화를 다시 시도하세요."),
             retryable: true
         )
     }
@@ -726,7 +726,7 @@ func cloudSyncErrorPresentation(
         $0.domain == CKErrorDomain && $0.code == CKError.quotaExceeded.rawValue
     }) {
         return CloudSyncErrorPresentation(
-            message: "iCloud 저장 공간이 부족해 동기화할 수 없습니다.",
+            message: String(localized: "iCloud 저장 공간이 부족해 동기화할 수 없습니다."),
             retryable: false
         )
     }
@@ -741,7 +741,7 @@ func cloudSyncErrorPresentation(
         ].map(\.rawValue).contains($0.code)
     }) {
         return CloudSyncErrorPresentation(
-            message: "네트워크 또는 CloudKit 서비스가 일시적으로 불안정합니다.",
+            message: String(localized: "네트워크 또는 CloudKit 서비스가 일시적으로 불안정합니다."),
             retryable: true
         )
     }
@@ -750,8 +750,8 @@ func cloudSyncErrorPresentation(
     }) {
         let detail = errors.dropFirst().first.map { cloudDiagnosticText($0) }
         return CloudSyncErrorPresentation(
-            message: detail.map { "일부 기록 동기화에 실패했습니다: \($0)" }
-                ?? "일부 기록 동기화에 실패했습니다.",
+            message: detail.map { String(localized: "일부 기록 동기화에 실패했습니다: \($0)") }
+                ?? String(localized: "일부 기록 동기화에 실패했습니다."),
             retryable: true
         )
     }

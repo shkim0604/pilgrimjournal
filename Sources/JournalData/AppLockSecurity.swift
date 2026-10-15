@@ -14,10 +14,10 @@ public enum AppLockTimeout: Int, Codable, CaseIterable, Identifiable, Sendable {
 
     public var localizedName: String {
         switch self {
-        case .immediately: "즉시"
-        case .oneMinute: "1분"
-        case .fiveMinutes: "5분"
-        case .fifteenMinutes: "15분"
+        case .immediately: String(localized: "즉시", bundle: .module)
+        case .oneMinute: String(localized: "1분", bundle: .module)
+        case .fiveMinutes: String(localized: "5분", bundle: .module)
+        case .fifteenMinutes: String(localized: "15분", bundle: .module)
         }
     }
 
@@ -62,13 +62,15 @@ public enum AppLockError: LocalizedError, Equatable, Sendable {
 
     public var errorDescription: String? {
         switch self {
-        case .passwordTooShort: "비밀번호는 6자 이상이어야 합니다."
-        case .passwordMismatch: "확인 비밀번호가 일치하지 않습니다."
-        case .currentPasswordInvalid: "현재 비밀번호가 올바르지 않습니다."
-        case let .keychain(status): "기기 보안 저장소 오류입니다(\(status))."
-        case .malformedState: "저장된 앱 잠금 정보를 읽을 수 없습니다."
-        case .authenticationUnavailable: "이 기기에서 소유자 인증을 사용할 수 없습니다."
-        case .authenticationFailed: "기기 소유자 인증에 실패했습니다."
+        case .passwordTooShort: String(localized: "비밀번호는 6자 이상이어야 합니다.", bundle: .module)
+        case .passwordMismatch: String(localized: "확인 비밀번호가 일치하지 않습니다.", bundle: .module)
+        case .currentPasswordInvalid: String(localized: "현재 비밀번호가 올바르지 않습니다.", bundle: .module)
+        case let .keychain(status):
+            String(localized: "기기 보안 저장소 오류입니다(\(status)).", bundle: .module)
+        case .malformedState: String(localized: "저장된 앱 잠금 정보를 읽을 수 없습니다.", bundle: .module)
+        case .authenticationUnavailable:
+            String(localized: "이 기기에서 소유자 인증을 사용할 수 없습니다.", bundle: .module)
+        case .authenticationFailed: String(localized: "기기 소유자 인증에 실패했습니다.", bundle: .module)
         }
     }
 }

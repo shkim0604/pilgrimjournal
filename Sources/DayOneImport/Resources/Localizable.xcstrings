@@ -1,0 +1,488 @@
+{
+  "sourceLanguage" : "ko",
+  "strings" : {
+    "JSON 파일이 없습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No JSON file found."
+          }
+        }
+      }
+    },
+    "ZIP entry header가 손상되었습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A ZIP entry header is corrupted."
+          }
+        }
+      }
+    },
+    "ZIP 압축 방식 %u은 지원하지 않습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ZIP compression method %u isn't supported."
+          }
+        }
+      }
+    },
+    "ZIP 전체 압축 해제 크기 제한을 초과했습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The ZIP's total uncompressed size exceeds the limit."
+          }
+        }
+      }
+    },
+    "ZIP 전체 크기가 범위를 벗어났습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The ZIP's total size is out of range."
+          }
+        }
+      }
+    },
+    "ZIP 종료 record가 손상되었습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The ZIP end record is corrupted."
+          }
+        }
+      }
+    },
+    "ZIP 중앙 디렉터리 범위가 잘못되었습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The ZIP central directory range is invalid."
+          }
+        }
+      }
+    },
+    "ZIP 중앙 디렉터리가 너무 큽니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The ZIP central directory is too large."
+          }
+        }
+      }
+    },
+    "ZIP 중앙 디렉터리를 찾을 수 없습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't find the ZIP central directory."
+          }
+        }
+      }
+    },
+    "ZIP 파일 수 제한을 초과했습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The ZIP exceeds the file count limit."
+          }
+        }
+      }
+    },
+    "ZIP 파일이 너무 작습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The ZIP file is too small."
+          }
+        }
+      }
+    },
+    "ZIP 파일이 예상보다 짧습니다(offset=%llu, count=%lld)." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "ZIP 파일이 예상보다 짧습니다(offset=%1$llu, count=%2$lld)."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The ZIP file is shorter than expected (offset=%llu, count=%lld)."
+          }
+        }
+      }
+    },
+    "ZIP64 extra field가 짧습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The ZIP64 extra field is too short."
+          }
+        }
+      }
+    },
+    "ZIP64 locator가 손상되었습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The ZIP64 locator is corrupted."
+          }
+        }
+      }
+    },
+    "ZIP64 locator가 없습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The ZIP64 locator is missing."
+          }
+        }
+      }
+    },
+    "ZIP64 종료 record가 손상되었습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The ZIP64 end record is corrupted."
+          }
+        }
+      }
+    },
+    "ZIP64가 필요한 백업 크기입니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This backup is large enough to require ZIP64."
+          }
+        }
+      }
+    },
+    "ZIP64가 필요한 백업입니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This backup requires ZIP64."
+          }
+        }
+      }
+    },
+    "creationDate를 parse하지 못했습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't parse creationDate."
+          }
+        }
+      }
+    },
+    "deflate 데이터가 손상되었습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The deflate data is corrupted."
+          }
+        }
+      }
+    },
+    "deflate 초기화에 실패했습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't initialize deflate."
+          }
+        }
+      }
+    },
+    "drive 경로가 포함되어 있습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The path contains a drive prefix."
+          }
+        }
+      }
+    },
+    "metadata와 entries를 가진 Day One JSON을 찾지 못했습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't find a Day One JSON file with metadata and entries."
+          }
+        }
+      }
+    },
+    "richText를 parse하지 못해 text를 사용했습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't parse richText, so text was used instead."
+          }
+        }
+      }
+    },
+    "richText에서 본문을 찾지 못했습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't find the body in richText."
+          }
+        }
+      }
+    },
+    "개별 파일 크기 제한을 초과했습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A file exceeds the individual file size limit."
+          }
+        }
+      }
+    },
+    "로컬 ZIP header가 올바르지 않습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The ZIP local file header is invalid."
+          }
+        }
+      }
+    },
+    "비정상적인 압축률입니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The compression ratio is abnormal."
+          }
+        }
+      }
+    },
+    "사용자가 가져오기를 취소했습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import was canceled."
+          }
+        }
+      }
+    },
+    "상위 디렉터리 경로가 포함되어 있습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The path contains a parent directory reference."
+          }
+        }
+      }
+    },
+    "암호화 ZIP은 지원하지 않습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Encrypted ZIP files aren’t supported."
+          }
+        }
+      }
+    },
+    "압축 데이터가 너무 큽니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The compressed data is too large."
+          }
+        }
+      }
+    },
+    "압축 해제 결과가 너무 큽니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The decompressed data is too large."
+          }
+        }
+      }
+    },
+    "압축 해제 크기가 ZIP metadata와 다릅니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The decompressed size doesn’t match the ZIP metadata."
+          }
+        }
+      }
+    },
+    "압축률 안전 제한을 초과했습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The compression ratio exceeds the safety limit."
+          }
+        }
+      }
+    },
+    "이미 가져온 기록" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Already imported"
+          }
+        }
+      }
+    },
+    "이미 완료된 ZIP입니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This ZIP has already been finalized."
+          }
+        }
+      }
+    },
+    "일반 ZIP 파일이 아닙니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This isn’t a standard ZIP file."
+          }
+        }
+      }
+    },
+    "읽을 수 있는 본문이 없습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "There’s no readable body text."
+          }
+        }
+      }
+    },
+    "절대 경로나 빈 경로가 포함되어 있습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The archive contains an absolute or empty path."
+          }
+        }
+      }
+    },
+    "첨부 파일 %@을(를) 가져오지 못했습니다: %@" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "첨부 파일 %1$@을(를) 가져오지 못했습니다: %2$@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t import attachment %@: %@"
+          }
+        }
+      }
+    },
+    "첨부 파일을 위해 ZIP을 다시 열지 못했습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t reopen the ZIP to read attachments."
+          }
+        }
+      }
+    },
+    "첨부 파일을 찾지 못했습니다: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Attachment not found: %@"
+          }
+        }
+      }
+    },
+    "파일 checksum이 일치하지 않습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "File checksum doesn’t match."
+          }
+        }
+      }
+    },
+    "필요한 ZIP64 extra field가 없습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Missing required ZIP64 extra field."
+          }
+        }
+      }
+    },
+    "항목 %lld: uuid가 없어 건너뜁니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Item %lld: Skipped because it has no UUID."
+          }
+        }
+      }
+    },
+    "현재 저장소가 첨부 파일을 지원하지 않습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The current storage doesn’t support attachments."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

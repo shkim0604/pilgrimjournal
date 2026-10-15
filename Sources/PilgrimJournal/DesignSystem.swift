@@ -211,9 +211,9 @@ enum EditorSaveState: Equatable {
 
     var label: String {
         switch self {
-        case .saved: "저장됨"
-        case .saving: "저장 중"
-        case .failed: "저장 오류"
+        case .saved: String(localized: "저장됨")
+        case .saving: String(localized: "저장 중")
+        case .failed: String(localized: "저장 오류")
         }
     }
 

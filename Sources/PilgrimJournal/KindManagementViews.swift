@@ -101,7 +101,7 @@ struct KindManagementSheet: View {
         .frame(minWidth: 460, minHeight: 480)
         #endif
         .confirmationDialog(
-            pendingDeletion.map { "‘\($0.name)’을(를) 삭제할까요?" } ?? "",
+            pendingDeletion.map { String(localized: "‘\($0.name)’을(를) 삭제할까요?") } ?? "",
             isPresented: Binding(
                 get: { pendingDeletion != nil },
                 set: { if !$0 { pendingDeletion = nil } }
@@ -110,7 +110,7 @@ struct KindManagementSheet: View {
             presenting: pendingDeletion
         ) { dialog in
             ForEach(dialog.targets) { target in
-                Button("\(target.name)(으)로 옮기고 삭제") {
+                Button("\(target.displayName)(으)로 옮기고 삭제") {
                     delete(dialog.kind, moveTo: target.kind)
                 }
             }
@@ -171,7 +171,7 @@ struct KindManagementSheet: View {
             }
             pendingDeletion = KindDeletionDialog(
                 kind: definition.kind,
-                name: definition.name,
+                name: definition.displayName,
                 entryCount: count,
                 targets: KindDeletionDialog.moveTargets(
                     excluding: definition.kind,
@@ -260,7 +260,7 @@ struct KindDetailEditor: View {
     /// as the real name would win over the name from the other device.
     static func initialName(editing: KindDefinition?, isKnown: Bool) -> String {
         guard let editing, isKnown else { return "" }
-        return editing.name
+        return editing.displayName
     }
 
     /// The first colour no active kind uses, or teal when all are taken.
@@ -330,7 +330,7 @@ struct KindDetailEditor: View {
 
     private var previewName: String {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? "유형 이름" : trimmed
+        return trimmed.isEmpty ? String(localized: "유형 이름") : trimmed
     }
 
     private func colorSwatch(_ token: KindColorToken) -> some View {
@@ -393,7 +393,8 @@ struct KindDetailEditor: View {
         do {
             if let editing {
                 try model.updateKind(
-                    editing.kind, name: name, colorToken: colorToken, iconToken: iconToken)
+                    editing.kind, name: editing.storedName(for: name), colorToken: colorToken,
+                    iconToken: iconToken)
             } else {
                 _ = try model.createKind(name: name, colorToken: colorToken, iconToken: iconToken)
             }
@@ -410,7 +411,7 @@ private struct KindRowLabel: View {
 
     var body: some View {
         Label {
-            Text(definition.name)
+            Text(definition.displayName)
         } icon: {
             Image(systemName: KindIconCatalog.displaySymbol(for: definition.iconToken))
                 .foregroundStyle(JournalTheme.categoryColor(for: definition))
@@ -451,14 +452,14 @@ struct PremiumFeatureNoticeSheet: View {
 extension KindColorToken {
     fileprivate var accessibilityName: String {
         switch self {
-        case .amber: "호박색"
-        case .sage: "세이지색"
-        case .slate: "청회색"
-        case .clay: "점토색"
-        case .iris: "보라색"
-        case .stone: "회색"
-        case .teal: "청록색"
-        case .rose: "장미색"
+        case .amber: String(localized: "호박색")
+        case .sage: String(localized: "세이지색")
+        case .slate: String(localized: "청회색")
+        case .clay: String(localized: "점토색")
+        case .iris: String(localized: "보라색")
+        case .stone: String(localized: "회색")
+        case .teal: String(localized: "청록색")
+        case .rose: String(localized: "장미색")
         }
     }
 }

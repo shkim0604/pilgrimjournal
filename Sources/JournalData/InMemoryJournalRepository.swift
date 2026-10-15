@@ -217,7 +217,8 @@ public final class InMemoryJournalRepository:
         guard !purgedIDs.isEmpty else { return .empty }
         // Validate-all-then-delete, matching SwiftDataJournalRepository.
         guard purgedIDs.allSatisfy({ entries[$0]?.isDeleted == true }) else {
-            throw JournalError.persistence("휴지통에 있는 기록만 영구 삭제할 수 있습니다.")
+            throw JournalError.persistence(
+                String(localized: "휴지통에 있는 기록만 영구 삭제할 수 있습니다.", bundle: .module))
         }
 
         let originalEntries = entries

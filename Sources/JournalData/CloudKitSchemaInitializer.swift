@@ -29,9 +29,10 @@ public enum CloudKitSchemaInitializer {
         public var errorDescription: String? {
             switch self {
             case .managedObjectModelUnavailable:
-                "SwiftData 모델을 Core Data 모델로 변환하지 못했습니다."
+                String(localized: "SwiftData 모델을 Core Data 모델로 변환하지 못했습니다.", bundle: .module)
             case let .storeLoadFailed(error):
-                "임시 저장소를 열지 못했습니다: \(error.localizedDescription)"
+                String(
+                    localized: "임시 저장소를 열지 못했습니다: \(error.localizedDescription)", bundle: .module)
             }
         }
     }

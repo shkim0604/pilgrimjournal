@@ -57,11 +57,11 @@ public enum JournalAccountScopeError: LocalizedError, Equatable, Sendable {
     public var errorDescription: String? {
         switch self {
         case .legacyDataClaimedByDifferentUser:
-            "기존 로컬 데이터는 다른 Apple 로그인 사용자에게 귀속되어 있습니다."
+            String(localized: "기존 로컬 데이터는 다른 Apple 로그인 사용자에게 귀속되어 있습니다.", bundle: .module)
         case .invalidScopeManifest:
-            "계정별 저장소 정보를 확인할 수 없습니다."
+            String(localized: "계정별 저장소 정보를 확인할 수 없습니다.", bundle: .module)
         case .unavailableICloudIdentity:
-            "시스템 iCloud 계정을 안전하게 식별할 수 없어 로컬 전용 저장소를 사용합니다."
+            String(localized: "시스템 iCloud 계정을 안전하게 식별할 수 없어 로컬 전용 저장소를 사용합니다.", bundle: .module)
         }
     }
 }

@@ -234,7 +234,8 @@ public final class SwiftDataJournalRepository:
         // longer exist at all are simply absent from `entities` and are
         // skipped — repeated purge calls are idempotent.
         guard entities.allSatisfy({ $0.deletedAt != nil }) else {
-            throw JournalError.persistence("휴지통에 있는 기록만 영구 삭제할 수 있습니다.")
+            throw JournalError.persistence(
+                String(localized: "휴지통에 있는 기록만 영구 삭제할 수 있습니다.", bundle: .module))
         }
 
         let purgedIDs = Set(entities.map(\.stableID))
@@ -583,7 +584,8 @@ public final class SwiftDataJournalRepository:
 
     private func map(_ entity: EntryRevisionEntity) throws -> EntryRevisionRecord {
         guard let data = entity.snapshotData else {
-            throw JournalError.persistence("revision snapshot이 없습니다.")
+            throw JournalError.persistence(
+                String(localized: "revision snapshot이 없습니다.", bundle: .module))
         }
         return EntryRevisionRecord(
             id: entity.stableID,

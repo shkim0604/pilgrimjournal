@@ -50,7 +50,7 @@ struct OrganizationSettingsView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("\(sourceName(rule.source)) · \(rule.value)")
                             Text(
-                                "\(model.kindDefinition(for: rule.targetKind).name) · 우선순위 \(rule.priority)"
+                                "\(model.kindDefinition(for: rule.targetKind).displayName) · 우선순위 \(rule.priority)"
                             )
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -87,7 +87,7 @@ struct OrganizationSettingsView: View {
             Text("이 태그가 연결된 모든 기록에 revision이 생성됩니다.")
         }
         .confirmationDialog(
-            "‘\(tagToRemove ?? "")’ 태그를 모든 기록에서 제거할까요?",
+            "‘\(removingTagName)’ 태그를 모든 기록에서 제거할까요?",
             isPresented: Binding(
                 get: { tagToRemove != nil },
                 set: { if !$0 { tagToRemove = nil } }
@@ -112,11 +112,13 @@ struct OrganizationSettingsView: View {
         rules = model.classificationRules()
     }
 
+    private var removingTagName: String { tagToRemove ?? "" }
+
     private func sourceName(_ source: ClassificationSource) -> String {
         switch source {
-        case .tag: "태그"
-        case .templateUUID: "템플릿 UUID"
-        case .templateTitle: "템플릿 제목"
+        case .tag: String(localized: "태그")
+        case .templateUUID: String(localized: "템플릿 UUID")
+        case .templateTitle: String(localized: "템플릿 제목")
         }
     }
 }
@@ -147,7 +149,7 @@ private struct ClassificationRuleEditorView: View {
             Picker("대상 유형", selection: $rule.targetKind) {
                 ForEach(model.kindPickerOptions(including: rule.targetKind), id: \.kind) {
                     definition in
-                    Text(definition.name).tag(definition.kind)
+                    Text(definition.displayName).tag(definition.kind)
                 }
             }
             Stepper("우선순위 \(rule.priority)", value: $rule.priority, in: -100...100)
@@ -179,9 +181,9 @@ private struct ClassificationRuleEditorView: View {
 
     private var valuePrompt: String {
         switch rule.source {
-        case .tag: "태그 이름"
-        case .templateUUID: "템플릿 UUID"
-        case .templateTitle: "템플릿 제목"
+        case .tag: String(localized: "태그 이름")
+        case .templateUUID: String(localized: "템플릿 UUID")
+        case .templateTitle: String(localized: "템플릿 제목")
         }
     }
 }

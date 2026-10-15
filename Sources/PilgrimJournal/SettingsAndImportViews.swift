@@ -24,8 +24,8 @@ struct SettingsView: View {
                 LabeledContent(
                     "상태",
                     value: authentication.isUsingOfflineAuthorization
-                        ? "로그인됨 · 오프라인 확인"
-                        : "로그인됨"
+                        ? String(localized: "로그인됨 · 오프라인 확인")
+                        : String(localized: "로그인됨")
                 )
                 if let account = authentication.accountDisplayName {
                     LabeledContent("계정", value: account)
@@ -172,8 +172,7 @@ struct SettingsView: View {
                 }
                 if let result = model.lastRestoreResult {
                     Text(
-                        "최근 복원: \(result.restored)개 반영, "
-                            + "\(result.tombstoned)개 휴지통, 충돌 \(result.conflicts)개"
+                        "최근 복원: \(result.restored)개 반영, \(result.tombstoned)개 휴지통, 충돌 \(result.conflicts)개"
                     )
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -182,16 +181,12 @@ struct SettingsView: View {
                     DisclosureGroup("충돌 기록 \(model.lastRestoreConflicts.count)개") {
                         ForEach(model.lastRestoreConflicts) { conflict in
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(
-                                    conflict.currentTitle.isEmpty ? "제목 없음" : conflict.currentTitle
-                                )
-                                .font(.caption.weight(.semibold))
+                                Text(untitledFallback(conflict.currentTitle))
+                                    .font(.caption.weight(.semibold))
                                 if conflict.currentTitle != conflict.backupTitle {
-                                    Text(
-                                        "백업: \(conflict.backupTitle.isEmpty ? "제목 없음" : conflict.backupTitle)"
-                                    )
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                    Text("백업: \(untitledFallback(conflict.backupTitle))")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
                                 }
                             }
                         }
@@ -291,9 +286,10 @@ struct SettingsView: View {
         ) { result in
             switch result {
             case let .success(url):
-                model.lastBackupExportMessage = "백업을 저장했습니다 · \(url.lastPathComponent)"
+                model.lastBackupExportMessage = String(
+                    localized: "백업을 저장했습니다 · \(url.lastPathComponent)")
                 model.reportOutcome(
-                    title: "백업을 저장했습니다",
+                    title: String(localized: "백업을 저장했습니다"),
                     message: url.path(percentEncoded: false)
                 )
             case let .failure(error):
@@ -346,23 +342,27 @@ struct SettingsView: View {
     private var storageLocationDescription: String {
         switch journalSession.activeScope?.storageLocation {
         case .localOnly:
-            "이 기기만"
+            String(localized: "이 기기만")
         case .iCloud(accountHash: _):
-            "현재 iCloud 계정"
+            String(localized: "현재 iCloud 계정")
         case nil:
-            "확인 중"
+            String(localized: "확인 중")
         }
     }
 
     private var syncDescription: String {
         switch model.syncState {
-        case .localOnly: "이 기기에만 저장"
-        case .savedLocally: "로컬 저장 완료"
-        case .pending: "동기화 대기"
-        case let .synced(date): date?.formatted() ?? "동기화됨"
-        case let .unavailable(reason): "사용 불가: \(reason)"
-        case let .failed(message, _): "오류: \(message)"
+        case .localOnly: String(localized: "이 기기에만 저장")
+        case .savedLocally: String(localized: "로컬 저장 완료")
+        case .pending: String(localized: "동기화 대기")
+        case let .synced(date): date?.formatted() ?? String(localized: "동기화됨")
+        case let .unavailable(reason): String(localized: "사용 불가: \(reason)")
+        case let .failed(message, _): String(localized: "오류: \(message)")
         }
+    }
+
+    private func untitledFallback(_ title: String) -> String {
+        title.isEmpty ? String(localized: "제목 없음") : title
     }
 }
 
@@ -543,8 +543,11 @@ struct DayOneImportView: View {
 
                 TableColumn("기록") { item in
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(item.draft.title.isEmpty ? "제목 없음" : item.draft.title)
-                            .lineLimit(1)
+                        Text(
+                            item.draft.title.isEmpty
+                                ? String(localized: "제목 없음") : item.draft.title
+                        )
+                        .lineLimit(1)
                         Text(item.draft.body)
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -565,7 +568,7 @@ struct DayOneImportView: View {
                                 including: item.draft.kind, activeOnly: true),
                             id: \.kind
                         ) { definition in
-                            Text(definition.name).tag(definition.kind)
+                            Text(definition.displayName).tag(definition.kind)
                         }
                     }
                     .labelsHidden()
@@ -706,7 +709,7 @@ struct DayOneImportView: View {
                             )
                             .foregroundStyle(outcomeColor(outcome.status))
                             Spacer()
-                            Text(model.kindDefinition(for: outcome.kind).name)
+                            Text(model.kindDefinition(for: outcome.kind).displayName)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -749,7 +752,7 @@ struct DayOneImportView: View {
         }
     }
 
-    private func summaryMetric(_ title: String, value: Int) -> some View {
+    private func summaryMetric(_ title: LocalizedStringKey, value: Int) -> some View {
         VStack(alignment: .trailing, spacing: 2) {
             Text("\(value)")
                 .font(.title3.bold())
@@ -769,7 +772,7 @@ struct DayOneImportView: View {
             .sorted { $0.key < $1.key }
             .map { "\($0.key) \($0.value)" }
             .joined(separator: " · ")
-        return "발견한 선택 필드: \(fields)"
+        return String(localized: "발견한 선택 필드: \(fields)")
     }
 
     private func filteredOutcomes(_ result: DayOneImportResult) -> [DayOneImportOutcome] {
@@ -788,9 +791,9 @@ struct DayOneImportView: View {
     private func outcomeTitle(_ outcome: DayOneImportOutcome) -> String {
         if !outcome.title.isEmpty { return outcome.title }
         return switch outcome.status {
-        case .imported: "가져온 기록"
-        case .skipped: "건너뛴 기록"
-        case .failed: "실패한 기록"
+        case .imported: String(localized: "가져온 기록")
+        case .skipped: String(localized: "건너뛴 기록")
+        case .failed: String(localized: "실패한 기록")
         }
     }
 
@@ -813,18 +816,21 @@ struct DayOneImportView: View {
     private var syncConvergenceDescription: String {
         switch model.syncState {
         case .localOnly:
-            "기록은 이 Mac에만 저장됐습니다. iCloud를 켜기 전에는 iPhone으로 전송되지 않습니다."
+            String(localized: "기록은 이 Mac에만 저장됐습니다. iCloud를 켜기 전에는 iPhone으로 전송되지 않습니다.")
         case .savedLocally:
-            "이 Mac에는 저장됐고 CloudKit 업로드 상태를 확인하고 있습니다."
+            String(localized: "이 Mac에는 저장됐고 CloudKit 업로드 상태를 확인하고 있습니다.")
         case .pending:
-            "이 Mac에는 저장됐습니다. CloudKit 업로드와 iPhone 수신은 진행 중입니다."
+            String(localized: "이 Mac에는 저장됐습니다. CloudKit 업로드와 iPhone 수신은 진행 중입니다.")
         case let .synced(date):
-            date.map { "CloudKit 동기화 완료: \($0.formatted()). 같은 iCloud 계정의 iPhone에서 수신됩니다." }
-                ?? "CloudKit 동기화가 완료됐습니다. 같은 iCloud 계정의 iPhone에서 수신됩니다."
+            date.map {
+                String(
+                    localized: "CloudKit 동기화 완료: \($0.formatted()). 같은 iCloud 계정의 iPhone에서 수신됩니다.")
+            }
+                ?? String(localized: "CloudKit 동기화가 완료됐습니다. 같은 iCloud 계정의 iPhone에서 수신됩니다.")
         case let .unavailable(reason):
-            "이 Mac에는 저장됐지만 iCloud를 사용할 수 없습니다: \(reason)"
+            String(localized: "이 Mac에는 저장됐지만 iCloud를 사용할 수 없습니다: \(reason)")
         case let .failed(message, _):
-            "이 Mac에는 저장됐지만 CloudKit 동기화에 실패했습니다: \(message)"
+            String(localized: "이 Mac에는 저장됐지만 CloudKit 동기화에 실패했습니다: \(message)")
         }
     }
 
@@ -840,12 +846,12 @@ struct DayOneImportView: View {
 
         var title: String {
             switch self {
-            case .all: "전체"
-            case .imported: "성공"
-            case .skipped: "건너뜀"
-            case .failed: "실패"
-            case .warnings: "경고"
-            case .unclassified: "미분류"
+            case .all: String(localized: "전체")
+            case .imported: String(localized: "성공")
+            case .skipped: String(localized: "건너뜀")
+            case .failed: String(localized: "실패")
+            case .warnings: String(localized: "경고")
+            case .unclassified: String(localized: "미분류")
             }
         }
     }

@@ -20,7 +20,7 @@ public struct DayOneImportExecutor {
 
         for (index, item) in preview.items.enumerated() {
             if Task.isCancelled || !shouldContinue() {
-                result.warnings.append("사용자가 가져오기를 취소했습니다.")
+                result.warnings.append(String(localized: "사용자가 가져오기를 취소했습니다.", bundle: .module))
                 break
             }
             do {
@@ -39,13 +39,13 @@ public struct DayOneImportExecutor {
                             status: .skipped,
                             kind: item.draft.kind,
                             title: item.draft.title,
-                            message: "이미 가져온 기록",
+                            message: String(localized: "이미 가져온 기록", bundle: .module),
                             warnings: item.warnings + attachmentWarnings
                         ))
                     onEvent(
                         .skipped(
                             sourceUUID: item.sourceUUID,
-                            reason: "이미 가져온 기록",
+                            reason: String(localized: "이미 가져온 기록", bundle: .module),
                             rawJSON: item.rawJSON
                         ))
                 } else {
@@ -118,10 +118,10 @@ public struct DayOneImportExecutor {
     ) -> [String] {
         guard !item.attachments.isEmpty else { return [] }
         guard let archive else {
-            return ["첨부 파일을 위해 ZIP을 다시 열지 못했습니다."]
+            return [String(localized: "첨부 파일을 위해 ZIP을 다시 열지 못했습니다.", bundle: .module)]
         }
         guard let attachmentRepository = repository as? any AttachmentRepository else {
-            return ["현재 저장소가 첨부 파일을 지원하지 않습니다."]
+            return [String(localized: "현재 저장소가 첨부 파일을 지원하지 않습니다.", bundle: .module)]
         }
 
         var warnings: [String] = []
@@ -144,7 +144,8 @@ public struct DayOneImportExecutor {
                     in: archive.entries
                 )
             else {
-                let warning = "첨부 파일을 찾지 못했습니다: \(reference.filename)"
+                let warning = String(
+                    localized: "첨부 파일을 찾지 못했습니다: \(reference.filename)", bundle: .module)
                 if !item.warnings.contains(warning) {
                     warnings.append(warning)
                 }
@@ -166,8 +167,10 @@ public struct DayOneImportExecutor {
                 existingChecksums.insert(checksum)
             } catch {
                 warnings.append(
-                    "첨부 파일 \(reference.filename)을(를) 가져오지 못했습니다: "
-                        + error.localizedDescription
+                    String(
+                        localized:
+                            "첨부 파일 \(reference.filename)을(를) 가져오지 못했습니다: \(error.localizedDescription)",
+                        bundle: .module)
                 )
             }
         }

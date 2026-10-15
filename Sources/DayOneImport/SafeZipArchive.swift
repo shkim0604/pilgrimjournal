@@ -51,24 +51,27 @@ public final class SafeZipArchive: @unchecked Sendable {
 
     public func data(for entry: ZipEntry) throws -> Data {
         guard entry.uncompressedSize <= limits.maximumEntrySize else {
-            throw JournalError.unsafeArchive("개별 파일 크기 제한을 초과했습니다.")
+            throw JournalError.unsafeArchive(
+                String(localized: "개별 파일 크기 제한을 초과했습니다.", bundle: .module))
         }
         let handle = try FileHandle(forReadingFrom: url)
         defer { try? handle.close() }
 
         let header = try handle.readExactly(at: entry.localHeaderOffset, count: 30)
         guard header.uint32LE(at: 0) == 0x04034B50 else {
-            throw JournalError.unsupportedArchive("로컬 ZIP header가 올바르지 않습니다.")
+            throw JournalError.unsupportedArchive(
+                String(localized: "로컬 ZIP header가 올바르지 않습니다.", bundle: .module))
         }
         let flags = header.uint16LE(at: 6)
         guard flags & 0x0001 == 0 else {
-            throw JournalError.unsupportedArchive("암호화 ZIP은 지원하지 않습니다.")
+            throw JournalError.unsupportedArchive(
+                String(localized: "암호화 ZIP은 지원하지 않습니다.", bundle: .module))
         }
         let nameLength = Int(header.uint16LE(at: 26))
         let extraLength = Int(header.uint16LE(at: 28))
         let dataOffset = entry.localHeaderOffset + 30 + UInt64(nameLength + extraLength)
         guard entry.compressedSize <= UInt64(Int.max) else {
-            throw JournalError.unsafeArchive("압축 데이터가 너무 큽니다.")
+            throw JournalError.unsafeArchive(String(localized: "압축 데이터가 너무 큽니다.", bundle: .module))
         }
         let compressed = try handle.readExactly(
             at: dataOffset,
@@ -87,15 +90,18 @@ public final class SafeZipArchive: @unchecked Sendable {
             )
         default:
             throw JournalError.unsupportedArchive(
-                "ZIP 압축 방식 \(entry.compressionMethod)은 지원하지 않습니다."
+                String(
+                    localized: "ZIP 압축 방식 \(entry.compressionMethod)은 지원하지 않습니다.", bundle: .module)
             )
         }
 
         guard UInt64(result.count) == entry.uncompressedSize else {
-            throw JournalError.unsupportedArchive("압축 해제 크기가 ZIP metadata와 다릅니다.")
+            throw JournalError.unsupportedArchive(
+                String(localized: "압축 해제 크기가 ZIP metadata와 다릅니다.", bundle: .module))
         }
         guard ZipChecksum.crc32(result) == entry.crc32 else {
-            throw JournalError.unsupportedArchive("파일 checksum이 일치하지 않습니다.")
+            throw JournalError.unsupportedArchive(
+                String(localized: "파일 checksum이 일치하지 않습니다.", bundle: .module))
         }
         return result
     }
@@ -106,11 +112,13 @@ public final class SafeZipArchive: @unchecked Sendable {
     ) throws -> [ZipEntry] {
         let values = try url.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey])
         guard values.isRegularFile == true, let fileSizeValue = values.fileSize else {
-            throw JournalError.unsupportedArchive("일반 ZIP 파일이 아닙니다.")
+            throw JournalError.unsupportedArchive(
+                String(localized: "일반 ZIP 파일이 아닙니다.", bundle: .module))
         }
         let fileSize = UInt64(fileSizeValue)
         guard fileSize >= 22 else {
-            throw JournalError.unsupportedArchive("ZIP 파일이 너무 작습니다.")
+            throw JournalError.unsupportedArchive(
+                String(localized: "ZIP 파일이 너무 작습니다.", bundle: .module))
         }
         let handle = try FileHandle(forReadingFrom: url)
         defer { try? handle.close() }
@@ -119,12 +127,14 @@ public final class SafeZipArchive: @unchecked Sendable {
         let tailOffset = fileSize - UInt64(tailCount)
         let tail = try handle.readExactly(at: tailOffset, count: tailCount)
         guard let eocdIndex = tail.lastIndex(ofSignature: 0x06054B50) else {
-            throw JournalError.unsupportedArchive("ZIP 중앙 디렉터리를 찾을 수 없습니다.")
+            throw JournalError.unsupportedArchive(
+                String(localized: "ZIP 중앙 디렉터리를 찾을 수 없습니다.", bundle: .module))
         }
         let eocdOffset = tailOffset + UInt64(eocdIndex)
         let eocd = tail.subdata(in: eocdIndex..<min(tail.count, eocdIndex + 22))
         guard eocd.count >= 22 else {
-            throw JournalError.unsupportedArchive("ZIP 종료 record가 손상되었습니다.")
+            throw JournalError.unsupportedArchive(
+                String(localized: "ZIP 종료 record가 손상되었습니다.", bundle: .module))
         }
 
         var totalEntries = UInt64(eocd.uint16LE(at: 10))
@@ -135,16 +145,19 @@ public final class SafeZipArchive: @unchecked Sendable {
             || centralOffset == UInt64(UInt32.max)
         {
             guard eocdOffset >= 20 else {
-                throw JournalError.unsupportedArchive("ZIP64 locator가 없습니다.")
+                throw JournalError.unsupportedArchive(
+                    String(localized: "ZIP64 locator가 없습니다.", bundle: .module))
             }
             let locator = try handle.readExactly(at: eocdOffset - 20, count: 20)
             guard locator.uint32LE(at: 0) == 0x07064B50 else {
-                throw JournalError.unsupportedArchive("ZIP64 locator가 손상되었습니다.")
+                throw JournalError.unsupportedArchive(
+                    String(localized: "ZIP64 locator가 손상되었습니다.", bundle: .module))
             }
             let zip64Offset = locator.uint64LE(at: 8)
             let zip64 = try handle.readExactly(at: zip64Offset, count: 56)
             guard zip64.uint32LE(at: 0) == 0x06064B50 else {
-                throw JournalError.unsupportedArchive("ZIP64 종료 record가 손상되었습니다.")
+                throw JournalError.unsupportedArchive(
+                    String(localized: "ZIP64 종료 record가 손상되었습니다.", bundle: .module))
             }
             totalEntries = zip64.uint64LE(at: 32)
             centralSize = zip64.uint64LE(at: 40)
@@ -152,10 +165,12 @@ public final class SafeZipArchive: @unchecked Sendable {
         }
 
         guard totalEntries <= UInt64(limits.maximumFileCount) else {
-            throw JournalError.unsafeArchive("ZIP 파일 수 제한을 초과했습니다.")
+            throw JournalError.unsafeArchive(
+                String(localized: "ZIP 파일 수 제한을 초과했습니다.", bundle: .module))
         }
         guard centralOffset + centralSize <= fileSize else {
-            throw JournalError.unsupportedArchive("ZIP 중앙 디렉터리 범위가 잘못되었습니다.")
+            throw JournalError.unsupportedArchive(
+                String(localized: "ZIP 중앙 디렉터리 범위가 잘못되었습니다.", bundle: .module))
         }
 
         var entries: [ZipEntry] = []
@@ -166,11 +181,13 @@ public final class SafeZipArchive: @unchecked Sendable {
         for _ in 0..<totalEntries {
             let fixed = try handle.readExactly(at: offset, count: 46)
             guard fixed.uint32LE(at: 0) == 0x02014B50 else {
-                throw JournalError.unsupportedArchive("ZIP entry header가 손상되었습니다.")
+                throw JournalError.unsupportedArchive(
+                    String(localized: "ZIP entry header가 손상되었습니다.", bundle: .module))
             }
             let flags = fixed.uint16LE(at: 8)
             guard flags & 0x0001 == 0 else {
-                throw JournalError.unsupportedArchive("암호화 ZIP은 지원하지 않습니다.")
+                throw JournalError.unsupportedArchive(
+                    String(localized: "암호화 ZIP은 지원하지 않습니다.", bundle: .module))
             }
             let method = fixed.uint16LE(at: 10)
             let checksum = fixed.uint32LE(at: 16)
@@ -211,23 +228,28 @@ public final class SafeZipArchive: @unchecked Sendable {
             let displayName = rawName.removingPercentEncoding ?? rawName
             try validatePath(displayName)
             guard uncompressed <= limits.maximumEntrySize else {
-                throw JournalError.unsafeArchive("개별 파일 크기 제한을 초과했습니다.")
+                throw JournalError.unsafeArchive(
+                    String(localized: "개별 파일 크기 제한을 초과했습니다.", bundle: .module))
             }
             let addition = totalUncompressed.addingReportingOverflow(uncompressed)
             guard !addition.overflow else {
-                throw JournalError.unsafeArchive("ZIP 전체 크기가 범위를 벗어났습니다.")
+                throw JournalError.unsafeArchive(
+                    String(localized: "ZIP 전체 크기가 범위를 벗어났습니다.", bundle: .module))
             }
             totalUncompressed = addition.partialValue
             guard totalUncompressed <= limits.maximumTotalSize else {
-                throw JournalError.unsafeArchive("ZIP 전체 압축 해제 크기 제한을 초과했습니다.")
+                throw JournalError.unsafeArchive(
+                    String(localized: "ZIP 전체 압축 해제 크기 제한을 초과했습니다.", bundle: .module))
             }
             if uncompressed > 0 {
                 guard compressed > 0 else {
-                    throw JournalError.unsafeArchive("비정상적인 압축률입니다.")
+                    throw JournalError.unsafeArchive(
+                        String(localized: "비정상적인 압축률입니다.", bundle: .module))
                 }
                 let ratio = Double(uncompressed) / Double(compressed)
                 guard ratio <= limits.maximumCompressionRatio else {
-                    throw JournalError.unsafeArchive("압축률 안전 제한을 초과했습니다.")
+                    throw JournalError.unsafeArchive(
+                        String(localized: "압축률 안전 제한을 초과했습니다.", bundle: .module))
                 }
             }
 
@@ -264,7 +286,8 @@ public final class SafeZipArchive: @unchecked Sendable {
                 var valueCursor = start
                 func next() throws -> UInt64 {
                     guard valueCursor + 8 <= end else {
-                        throw JournalError.unsupportedArchive("ZIP64 extra field가 짧습니다.")
+                        throw JournalError.unsupportedArchive(
+                            String(localized: "ZIP64 extra field가 짧습니다.", bundle: .module))
                     }
                     defer { valueCursor += 8 }
                     return extra.uint64LE(at: valueCursor)
@@ -276,7 +299,8 @@ public final class SafeZipArchive: @unchecked Sendable {
             }
             cursor = end
         }
-        throw JournalError.unsupportedArchive("필요한 ZIP64 extra field가 없습니다.")
+        throw JournalError.unsupportedArchive(
+            String(localized: "필요한 ZIP64 extra field가 없습니다.", bundle: .module))
     }
 
     private static func validatePath(_ path: String) throws {
@@ -285,17 +309,20 @@ public final class SafeZipArchive: @unchecked Sendable {
             !path.hasPrefix("\\"),
             !path.contains("\0")
         else {
-            throw JournalError.unsafeArchive("절대 경로나 빈 경로가 포함되어 있습니다.")
+            throw JournalError.unsafeArchive(
+                String(localized: "절대 경로나 빈 경로가 포함되어 있습니다.", bundle: .module))
         }
         let normalized = path.replacingOccurrences(of: "\\", with: "/")
         let components = normalized.split(separator: "/", omittingEmptySubsequences: false)
         guard !components.contains("..") else {
-            throw JournalError.unsafeArchive("상위 디렉터리 경로가 포함되어 있습니다.")
+            throw JournalError.unsafeArchive(
+                String(localized: "상위 디렉터리 경로가 포함되어 있습니다.", bundle: .module))
         }
         if normalized.count >= 2 {
             let second = normalized.index(after: normalized.startIndex)
             guard normalized[second] != ":" else {
-                throw JournalError.unsafeArchive("drive 경로가 포함되어 있습니다.")
+                throw JournalError.unsafeArchive(
+                    String(localized: "drive 경로가 포함되어 있습니다.", bundle: .module))
             }
         }
     }
@@ -307,7 +334,7 @@ private func inflateRaw(
     maximumSize: UInt64
 ) throws -> Data {
     guard expectedSize <= maximumSize, expectedSize <= UInt64(Int.max) else {
-        throw JournalError.unsafeArchive("압축 해제 결과가 너무 큽니다.")
+        throw JournalError.unsafeArchive(String(localized: "압축 해제 결과가 너무 큽니다.", bundle: .module))
     }
     var stream = z_stream()
     let initialized = inflateInit2_(
@@ -317,7 +344,8 @@ private func inflateRaw(
         Int32(MemoryLayout<z_stream>.size)
     )
     guard initialized == Z_OK else {
-        throw JournalError.unsupportedArchive("deflate 초기화에 실패했습니다.")
+        throw JournalError.unsupportedArchive(
+            String(localized: "deflate 초기화에 실패했습니다.", bundle: .module))
     }
     defer { inflateEnd(&stream) }
 
@@ -334,7 +362,8 @@ private func inflateRaw(
         }
     }
     guard result == Z_STREAM_END, stream.total_out == expectedSize else {
-        throw JournalError.unsupportedArchive("deflate 데이터가 손상되었습니다.")
+        throw JournalError.unsupportedArchive(
+            String(localized: "deflate 데이터가 손상되었습니다.", bundle: .module))
     }
     return output
 }
@@ -345,7 +374,9 @@ private extension FileHandle {
         try seek(toOffset: offset)
         guard let data = try read(upToCount: count), data.count == count else {
             throw JournalError.unsupportedArchive(
-                "ZIP 파일이 예상보다 짧습니다(offset=\(offset), count=\(count))."
+                String(
+                    localized: "ZIP 파일이 예상보다 짧습니다(offset=\(offset), count=\(count)).",
+                    bundle: .module)
             )
         }
         return data

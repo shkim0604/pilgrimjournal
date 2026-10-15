@@ -1,0 +1,280 @@
+{
+  "sourceLanguage" : "ko",
+  "strings" : {
+    "‘%@’ 유형이 이미 있습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A type named “%@” already exists."
+          }
+        }
+      }
+    },
+    "기록 %lld개를 옮기지 못했습니다%@. 다음에 앱을 열 때 다시 시도합니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "기록 %1$lld개를 옮기지 못했습니다%2$@. 다음에 앱을 열 때 다시 시도합니다."
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Couldn’t move %lld entry%@. It will be tried again the next time you open the app."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Couldn’t move %lld entries%@. They will be tried again the next time you open the app."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "기록 %lld개와 분류 규칙 %lld개를 옮기지 못했습니다%@. 다음에 앱을 열 때 다시 시도합니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "기록 %1$lld개와 분류 규칙 %2$lld개를 옮기지 못했습니다%3$@. 다음에 앱을 열 때 다시 시도합니다."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t move %lld entries and %lld classification rules%@. They will be tried again the next time you open the app."
+          }
+        }
+      }
+    },
+    "기록 이력을 찾을 수 없습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t find the entry’s history."
+          }
+        }
+      }
+    },
+    "기록을 옮길 다른 유형을 골라 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose another type to move the entries to."
+          }
+        }
+      }
+    },
+    "기록을 찾을 수 없습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t find the entry."
+          }
+        }
+      }
+    },
+    "데이터를 저장할 수 없습니다: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t save data: %@"
+          }
+        }
+      }
+    },
+    "미분류는 바꿀 수 없습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unclassified can’t be changed."
+          }
+        }
+      }
+    },
+    "미분류로는 새 기록을 만들 수 없습니다. 다른 유형을 골라 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New entries can’t be Unclassified. Choose another type."
+          }
+        }
+      }
+    },
+    "분류 규칙 %lld개를 옮기지 못했습니다%@. 다음에 앱을 열 때 다시 시도합니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "분류 규칙 %1$lld개를 옮기지 못했습니다%2$@. 다음에 앱을 열 때 다시 시도합니다."
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Couldn’t move %lld classification rule%@. The app will try again the next time it opens."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Couldn’t move %lld classification rules%@. The app will try again the next time it opens."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "삭제된 유형이 아닙니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This type hasn’t been deleted."
+          }
+        }
+      }
+    },
+    "선택한 기록 %lld개를 찾지 못했습니다." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Couldn’t find %lld selected entry."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Couldn’t find %lld selected entries."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "안전하지 않은 압축 파일입니다: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This archive isn’t safe to open: %@"
+          }
+        }
+      }
+    },
+    "유형 이름은 20자 이하로 입력해 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Type names can be up to 20 characters."
+          }
+        }
+      }
+    },
+    "유형 이름을 입력해 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter a type name."
+          }
+        }
+      }
+    },
+    "유형이 하나 이상 있어야 합니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You need at least one type."
+          }
+        }
+      }
+    },
+    "유효하지 않은 백업입니다: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invalid backup: %@"
+          }
+        }
+      }
+    },
+    "이미 가져온 Day One 기록입니다: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This Day One entry was already imported: %@"
+          }
+        }
+      }
+    },
+    "정리할 기록을 선택하세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select entries to organize."
+          }
+        }
+      }
+    },
+    "제목이나 본문 중 하나는 입력해야 합니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter a title or body."
+          }
+        }
+      }
+    },
+    "지원하지 않는 가져오기 파일입니다: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unsupported import file: %@"
+          }
+        }
+      }
+    },
+    "직접 만든 유형은 되살릴 수 없습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Custom types can’t be restored."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

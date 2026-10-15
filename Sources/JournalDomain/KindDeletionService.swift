@@ -29,14 +29,21 @@ public struct KindMoveError: LocalizedError, Equatable, Sendable {
     public var errorDescription: String? {
         let entries = failures.filter { $0.item == .entry }.count
         let rules = failures.count - entries
-        let what = [
-            entries > 0 ? "기록 \(entries)개" : nil,
-            rules > 0 ? "분류 규칙 \(rules)개" : nil,
-        ]
-        .compactMap { $0 }
-        .joined(separator: "와 ")
         let reason = failures.first.map { " (\($0.message))" } ?? ""
-        return "\(what)를 옮기지 못했습니다\(reason). 다음에 앱을 열 때 다시 시도합니다."
+        if entries > 0, rules > 0 {
+            return String(
+                localized:
+                    "기록 \(entries)개와 분류 규칙 \(rules)개를 옮기지 못했습니다\(reason). 다음에 앱을 열 때 다시 시도합니다.",
+                bundle: .module)
+        } else if rules > 0 {
+            return String(
+                localized: "분류 규칙 \(rules)개를 옮기지 못했습니다\(reason). 다음에 앱을 열 때 다시 시도합니다.",
+                bundle: .module)
+        } else {
+            return String(
+                localized: "기록 \(entries)개를 옮기지 못했습니다\(reason). 다음에 앱을 열 때 다시 시도합니다.",
+                bundle: .module)
+        }
     }
 }
 

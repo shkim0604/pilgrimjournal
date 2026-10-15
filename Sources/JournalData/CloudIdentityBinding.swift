@@ -61,7 +61,8 @@ public actor CloudIdentityBindingService: CloudIdentityBindingChecking {
             in: .whitespacesAndNewlines
         )
         guard !identifier.isEmpty else {
-            return .unavailable(reason: "Apple 로그인 사용자를 확인할 수 없습니다.")
+            return .unavailable(
+                reason: String(localized: "Apple 로그인 사용자를 확인할 수 없습니다.", bundle: .module))
         }
 
         let subjectHash = Self.subjectHash(for: identifier)
@@ -139,19 +140,19 @@ public actor CloudKitIdentityBindingStore: CloudIdentityBindingStore {
             return
         case .noAccount:
             throw CloudIdentityBindingStoreError.unavailable(
-                "이 기기에 iCloud 계정이 없습니다."
+                String(localized: "이 기기에 iCloud 계정이 없습니다.", bundle: .module)
             )
         case .restricted:
             throw CloudIdentityBindingStoreError.unavailable(
-                "이 기기에서 iCloud 사용이 제한되었습니다."
+                String(localized: "이 기기에서 iCloud 사용이 제한되었습니다.", bundle: .module)
             )
         case .couldNotDetermine, .temporarilyUnavailable:
             throw CloudIdentityBindingStoreError.unavailable(
-                "iCloud 계정 상태를 확인할 수 없습니다."
+                String(localized: "iCloud 계정 상태를 확인할 수 없습니다.", bundle: .module)
             )
         @unknown default:
             throw CloudIdentityBindingStoreError.unavailable(
-                "알 수 없는 iCloud 계정 상태입니다."
+                String(localized: "알 수 없는 iCloud 계정 상태입니다.", bundle: .module)
             )
         }
     }
@@ -165,7 +166,7 @@ public enum CloudIdentityBindingStoreError: LocalizedError, Sendable {
         switch self {
         case let .unavailable(message): message
         case .malformedBinding:
-            "iCloud 사용자 연결 정보를 읽을 수 없습니다."
+            String(localized: "iCloud 사용자 연결 정보를 읽을 수 없습니다.", bundle: .module)
         }
     }
 }
