@@ -35,11 +35,23 @@ public final class KindCatalogStore {
     public func mergeFromCloud() -> Bool {
         guard let cloudStore else { return false }
         cloudStore.synchronize()
-        guard let remote = Self.decode(cloudStore.data(forKey: Self.key)) else { return false }
-        let merged = catalog.merged(with: remote)
-        guard merged != catalog else { return false }
-        save(merged)
-        return true
+        let cloudData = cloudStore.data(forKey: Self.key)
+        let remote = Self.decode(cloudData)
+        // Present but unreadable: leave the cloud value alone.
+        if cloudData != nil && remote == nil { return false }
+        let merged = remote.map { catalog.merged(with: $0) } ?? catalog
+        let localChanged = merged != catalog
+        let cloudStale = remote.map { merged != $0 } ?? (merged != KindCatalog())
+        guard localChanged || cloudStale, let data = Self.encode(merged) else {
+            return false
+        }
+        catalog = merged
+        if localChanged { defaults.set(data, forKey: Self.key) }
+        if cloudStale {
+            cloudStore.set(data, forKey: Self.key)
+            cloudStore.synchronize()
+        }
+        return localChanged
     }
 
     public func save(_ catalog: KindCatalog) {

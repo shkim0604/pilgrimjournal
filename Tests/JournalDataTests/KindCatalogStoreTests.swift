@@ -98,7 +98,7 @@ final class KindCatalogStoreTests: XCTestCase {
         XCTAssertFalse(store.mergeFromCloud())
     }
 
-    func testCorruptStoredCatalogFallsBackWithoutOverwritingCloud() {
+    func testCorruptStoredCatalogFallsBackWithoutOverwritingCloud() throws {
         let garbage = Data("not json".utf8)
         defaults.set(garbage, forKey: KindCatalogStore.key)
         let cloud = FakeCloudStore()
@@ -107,6 +107,51 @@ final class KindCatalogStoreTests: XCTestCase {
         let store = KindCatalogStore(defaults: defaults, cloudStore: cloud)
         XCTAssertEqual(store.catalog, KindCatalog())
         XCTAssertEqual(cloud.storage[KindCatalogStore.key], garbage)
+        XCTAssertEqual(defaults.data(forKey: KindCatalogStore.key), garbage)
+
+        // Corrupt cloud next to a valid local catalog.
+        let valid = KindCatalog(definitions: [definition(name: "메모", at: 100)])
+        defaults.set(try encode(valid), forKey: KindCatalogStore.key)
+        let store2 = KindCatalogStore(defaults: defaults, cloudStore: cloud)
+        XCTAssertEqual(store2.catalog, valid)
+        XCTAssertFalse(store2.mergeFromCloud())
+        XCTAssertEqual(cloud.storage[KindCatalogStore.key], garbage)
+    }
+
+    func testMissingCloudReceivesLocalCatalog() throws {
+        let local = KindCatalog(definitions: [definition(name: "메모", at: 100)])
+        defaults.set(try encode(local), forKey: KindCatalogStore.key)
+        let cloud = FakeCloudStore()
+        let store = KindCatalogStore(defaults: defaults, cloudStore: cloud)
+        XCTAssertEqual(store.catalog, local)
+        XCTAssertEqual(cloud.storage[KindCatalogStore.key], try encode(local))
+        XCTAssertFalse(store.mergeFromCloud())
+    }
+
+    func testStaleCloudIsRepairedWithMerge() throws {
+        var other = definition(name: "독서", at: 50)
+        other.kind = JournalKind(id: "reading")
+        let stale = KindCatalog(definitions: [other])
+        let local = KindCatalog(definitions: [other, definition(name: "메모", at: 100)])
+        defaults.set(try encode(local), forKey: KindCatalogStore.key)
+        let cloud = FakeCloudStore()
+        cloud.storage[KindCatalogStore.key] = try encode(stale)
+        let store = KindCatalogStore(defaults: defaults, cloudStore: cloud)
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let stored = try decoder.decode(
+            KindCatalog.self, from: try XCTUnwrap(cloud.storage[KindCatalogStore.key]))
+        XCTAssertEqual(stored, store.catalog)
+        XCTAssertEqual(store.catalog.definitions.count, 2)
+    }
+
+    func testInitAdoptsCloudWhenLocalEmpty() throws {
+        let remote = KindCatalog(definitions: [definition(name: "아이디어", at: 200)])
+        let cloud = FakeCloudStore()
+        cloud.storage[KindCatalogStore.key] = try encode(remote)
+        let store = KindCatalogStore(defaults: defaults, cloudStore: cloud)
+        XCTAssertEqual(store.catalog, remote)
+        XCTAssertEqual(defaults.data(forKey: KindCatalogStore.key), try encode(remote))
     }
 
     func testWorksWithoutCloudStore() {
