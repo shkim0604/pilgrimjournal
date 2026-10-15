@@ -747,6 +747,38 @@ struct EntryDetailView: View {
     }
 }
 
+/// Which parts of the iPhone entry editor stay on screen.
+///
+/// Focus mode (집중 모드) keeps only the title and the body. The body's text
+/// view is deliberately not part of this: it stays mounted in both layouts,
+/// so switching can never re-create it mid-typing and drop keystrokes (see
+/// the editor input section of docs/known-issues.md). The Mac's focus mode is
+/// a split-view layout instead; see `FocusModeLayoutPolicy`.
+struct EntryEditorFocusLayout: Equatable {
+    /// 완료 and the save status pill.
+    var showsNavigationBar: Bool
+    /// Metadata chips, type-specific fields, tags, attachments and footer.
+    var showsEntryDetails: Bool
+    /// The body editor's Markdown menu row and its slash-command hint.
+    var showsMarkdownChrome: Bool
+    /// The corner button that leaves focus mode while the keyboard is down.
+    var showsExitButton: Bool
+    /// A failed save must stay visible once the status pill is hidden.
+    var showsSaveFailure: Bool
+
+    init(isFocusMode: Bool, saveState: EditorSaveState) {
+        showsNavigationBar = !isFocusMode
+        showsEntryDetails = !isFocusMode
+        showsMarkdownChrome = !isFocusMode
+        showsExitButton = isFocusMode
+        if isFocusMode, case .failed = saveState {
+            showsSaveFailure = true
+        } else {
+            showsSaveFailure = false
+        }
+    }
+}
+
 #if os(iOS)
 struct EntryEditorView: View {
     @Environment(\.dismiss) private var dismiss
@@ -770,8 +802,15 @@ struct EntryEditorView: View {
     @State private var pendingKind: JournalKind?
     @State private var isConfirmingTypeChange = false
     @State private var isShowingMetadata = false
+    /// Per editor session on purpose: every open starts in the normal layout,
+    /// so tags and kind are never hidden by a mode the user forgot about.
+    @State private var isFocusMode = false
     // See the matching field on InlineEntryEditorView (macOS).
     @State private var bodyCharacterCount: Int
+
+    private var focusLayout: EntryEditorFocusLayout {
+        EntryEditorFocusLayout(isFocusMode: isFocusMode, saveState: saveState)
+    }
 
     init(
         entry: JournalEntryRecord?,
@@ -795,8 +834,13 @@ struct EntryEditorView: View {
             ZStack {
                 JournalTheme.canvas.ignoresSafeArea()
                 ScrollView {
+                    // Focus mode only wraps the body's siblings in `if`, so
+                    // the body editor keeps its structural identity and its
+                    // text view, caret and in-flight input survive a toggle.
                     VStack(alignment: .leading, spacing: JournalTheme.Spacing.regular) {
-                        mobileMetadataBar
+                        if focusLayout.showsEntryDetails {
+                            mobileMetadataBar
+                        }
 
                         TextField("제목", text: $draft.title, axis: .vertical)
                             .textFieldStyle(.plain)
@@ -804,7 +848,9 @@ struct EntryEditorView: View {
                             .foregroundStyle(JournalTheme.ink)
                             .accessibilityLabel("제목")
 
-                        typeSpecificFields
+                        if focusLayout.showsEntryDetails {
+                            typeSpecificFields
+                        }
 
                         MarkdownBodyEditor(
                             text: $draft.body,
@@ -820,26 +866,39 @@ struct EntryEditorView: View {
                                 )
                             },
                             attachmentImage: { id in model.attachmentData(for: id) },
-                            attachmentRevision: model.attachmentRevision
+                            attachmentRevision: model.attachmentRevision,
+                            showsChrome: focusLayout.showsMarkdownChrome
                         )
+                        .environment(\.markdownKeyboardAccessory, keyboardAccessory)
 
-                        Rectangle()
-                            .fill(JournalTheme.separator)
-                            .frame(height: 1)
+                        if focusLayout.showsEntryDetails {
+                            Rectangle()
+                                .fill(JournalTheme.separator)
+                                .frame(height: 1)
 
-                        mobileTagsEditor
-                        AttachmentEditorSection(
-                            entryID: persistedEntryID,
-                            ensureEntryID: ensurePersistedEntryID
-                        )
-                        mobileFooter
+                            mobileTagsEditor
+                            AttachmentEditorSection(
+                                entryID: persistedEntryID,
+                                ensureEntryID: ensurePersistedEntryID
+                            )
+                            mobileFooter
+                        }
                     }
                     .padding(JournalTheme.Spacing.large)
                     .background(JournalTheme.paper)
                 }
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    if focusLayout.showsExitButton {
+                        focusModeBar
+                    }
+                }
             }
             .navigationTitle(draft.id == nil ? "새 기록" : "기록 편집")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar(
+                focusLayout.showsNavigationBar ? .visible : .hidden,
+                for: .navigationBar
+            )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("완료") {
@@ -850,34 +909,17 @@ struct EntryEditorView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     StatusPill(state: saveState)
                 }
+                // For the SwiftUI fields (title, type fields, tags). The body's
+                // UIKit text view never gets this; it shows the same items in
+                // its own toolbar (see `MarkdownKeyboardAccessory`).
                 ToolbarItemGroup(placement: .keyboard) {
-                    Button {
-                        appendCommand(.h2)
-                    } label: {
-                        Label("제목", systemImage: "textformat.size")
-                    }
-                    Button {
-                        appendCommand(.bullet)
-                    } label: {
-                        Label("불릿", systemImage: "list.bullet")
-                    }
-                    Button {
-                        postMarkdownCommand(.outdentList)
-                    } label: {
-                        Label("내어쓰기", systemImage: "decrease.indent")
-                    }
-                    Button {
-                        postMarkdownCommand(.indentList)
-                    } label: {
-                        Label("하위 불릿", systemImage: "increase.indent")
-                    }
-                    Button {
-                        appendCommand(.today)
-                    } label: {
-                        Label("오늘", systemImage: "calendar")
+                    ForEach(keyboardAccessory.leading, id: \.title) { item in
+                        keyboardToolbarButton(item)
                     }
                     Spacer()
-                    Button("키보드 닫기") { dismissKeyboard() }
+                    ForEach(keyboardAccessory.trailing, id: \.title) { item in
+                        keyboardToolbarButton(item)
+                    }
                 }
             }
         }
@@ -1044,6 +1086,87 @@ struct EntryEditorView: View {
         }
         .font(.caption)
         .foregroundStyle(JournalTheme.inkSecondary)
+    }
+
+    /// Focus mode hides the navigation bar, so this is the way out while the
+    /// keyboard (and its toolbar button) is down.
+    private var focusModeBar: some View {
+        HStack(spacing: JournalTheme.Spacing.small) {
+            if focusLayout.showsSaveFailure {
+                StatusPill(state: saveState)
+                Button("다시 저장") { _ = performAutosave() }
+                    .font(.caption.weight(.semibold))
+            }
+            Spacer()
+            Button {
+                setFocusMode(false)
+            } label: {
+                Image(systemName: "arrow.down.right.and.arrow.up.left")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(JournalTheme.inkSecondary)
+                    .frame(width: 34, height: 34)
+                    .background(.ultraThinMaterial, in: Circle())
+            }
+            .accessibilityLabel("집중 모드 종료")
+        }
+        .padding(.horizontal, JournalTheme.Spacing.regular)
+        .padding(.vertical, JournalTheme.Spacing.small)
+        // Opaque up to the screen edge: with the navigation bar hidden,
+        // scrolled text would otherwise run under the status bar clock.
+        .background(JournalTheme.canvas.ignoresSafeArea(edges: .top))
+    }
+
+    /// One list for both keyboard toolbars, so the body and the other fields
+    /// can't drift apart. Icons only, and at most six: more overflow a
+    /// 390pt-wide iPhone.
+    private var keyboardAccessory: MarkdownKeyboardAccessory {
+        MarkdownKeyboardAccessory(
+            leading: [
+                .init(title: "제목", systemImage: "textformat.size") {
+                    appendCommand(.h2)
+                },
+                .init(title: "불릿", systemImage: "list.bullet") {
+                    appendCommand(.bullet)
+                },
+                .init(title: "내어쓰기", systemImage: "decrease.indent") {
+                    postMarkdownCommand(.outdentList)
+                },
+                .init(title: "하위 불릿", systemImage: "increase.indent") {
+                    postMarkdownCommand(.indentList)
+                },
+                // No 오늘 button: seven items overflow a 390pt-wide iPhone,
+                // and the date is still a `/today` slash command away.
+                .init(
+                    title: isFocusMode ? "집중 모드 종료" : "집중 모드",
+                    systemImage: isFocusMode
+                        ? "arrow.down.right.and.arrow.up.left"
+                        : "arrow.up.left.and.arrow.down.right"
+                ) {
+                    setFocusMode(!isFocusMode)
+                },
+            ],
+            trailing: [
+                .init(title: "키보드 닫기", systemImage: "keyboard.chevron.compact.down") {
+                    dismissKeyboard()
+                }
+            ]
+        )
+    }
+
+    private func keyboardToolbarButton(_ item: MarkdownKeyboardAccessory.Item) -> some View {
+        Button(action: item.action) {
+            if let systemImage = item.systemImage {
+                Label(item.title, systemImage: systemImage)
+            } else {
+                Text(item.title)
+            }
+        }
+    }
+
+    private func setFocusMode(_ enabled: Bool) {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            isFocusMode = enabled
+        }
     }
 
     @ViewBuilder
