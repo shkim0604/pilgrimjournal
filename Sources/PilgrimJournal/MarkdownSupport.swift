@@ -3063,7 +3063,11 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
             MarkdownInputReconciliation.canMutateTextStorage(
                 isComposing: textView.hasMarkedText()
             )
-        else { return }
+        else {
+            context.coordinator.deferExternalText(text)
+            return
+        }
+        if context.coordinator.applyDeferredExternalText(latest: text) { return }
         if MarkdownInputReconciliation.shouldApplyExternalText(
             incoming: text,
             current: textView.string,
@@ -3121,6 +3125,58 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
                 in: &publishedHistory
             )
             parent.text = newText
+        }
+
+        /// An external text (an entry reload) that arrived while the IME was
+        /// composing, and the editor text it was meant to replace. Held until
+        /// the composition ends — see `ExternalTextRebase`.
+        private var deferredExternalText: (base: String, incoming: String)?
+
+        /// Called instead of applying external text while text is marked.
+        /// Echoes of the editor's own values are ignored as usual.
+        func deferExternalText(_ incoming: String) {
+            guard let textView,
+                MarkdownInputReconciliation.shouldApplyExternalText(
+                    incoming: incoming,
+                    current: textView.string,
+                    publishedHistory: publishedHistory
+                )
+            else { return }
+            deferredExternalText = (deferredExternalText?.base ?? textView.string, incoming)
+        }
+
+        /// Once composition has ended, applies a deferred external text with
+        /// the composed characters carried over. Returns false when nothing
+        /// was deferred. `latest` is a newer binding value, if any.
+        @discardableResult
+        func applyDeferredExternalText(latest: String? = nil) -> Bool {
+            guard let textView, var deferred = deferredExternalText else { return false }
+            deferredExternalText = nil
+            if let latest,
+                MarkdownInputReconciliation.shouldApplyExternalText(
+                    incoming: latest,
+                    current: textView.string,
+                    publishedHistory: publishedHistory
+                )
+            {
+                deferred.incoming = latest
+            }
+            let rebased = ExternalTextRebase.rebase(
+                local: textView.string,
+                base: deferred.base,
+                incoming: deferred.incoming,
+                localCursorUTF16Offset: NSMaxRange(textView.selectedRange())
+            )
+            if rebased.text == textView.string {
+                publish(rebased.text)
+            } else {
+                replaceExternalText(
+                    rebased.text,
+                    selection: NSRange(location: rebased.cursorUTF16Offset, length: 0),
+                    registersUndo: true
+                )
+            }
+            return true
         }
 
         init(parent: LiveMarkdownTextEditor) {
@@ -3433,10 +3489,14 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
             if !MarkdownInputReconciliation.canMutateTextStorage(
                 isComposing: textView.hasMarkedText()
             ) {
-                publish(textView.string)
+                // A deferred reload owns the binding until composition ends;
+                // publishing the pre-reload text here would autosave it over
+                // the reload.
+                if deferredExternalText == nil { publish(textView.string) }
                 parent.selection = currentSelection
                 return
             }
+            if applyDeferredExternalText() { return }
             isUpdating = true
             let expanded = MarkdownCommandProcessor.expandCommand(
                 in: textView.string,
@@ -4285,7 +4345,11 @@ struct LiveMarkdownTextEditor: UIViewRepresentable {
             MarkdownInputReconciliation.canMutateTextStorage(
                 isComposing: textView.markedTextRange != nil
             )
-        else { return }
+        else {
+            context.coordinator.deferExternalText(text)
+            return
+        }
+        if context.coordinator.applyDeferredExternalText(latest: text) { return }
         if MarkdownInputReconciliation.shouldApplyExternalText(
             incoming: text,
             current: textView.text,
@@ -4335,6 +4399,52 @@ struct LiveMarkdownTextEditor: UIViewRepresentable {
                 text,
                 in: &publishedHistory
             )
+        }
+
+        /// See the matching field in the macOS Coordinator.
+        private var deferredExternalText: (base: String, incoming: String)?
+
+        func deferExternalText(_ incoming: String) {
+            guard let textView,
+                MarkdownInputReconciliation.shouldApplyExternalText(
+                    incoming: incoming,
+                    current: textView.text,
+                    publishedHistory: publishedHistory
+                )
+            else { return }
+            deferredExternalText = (deferredExternalText?.base ?? textView.text ?? "", incoming)
+        }
+
+        /// See the matching method in the macOS Coordinator.
+        @discardableResult
+        func applyDeferredExternalText(latest: String? = nil) -> Bool {
+            guard let textView, var deferred = deferredExternalText else { return false }
+            deferredExternalText = nil
+            if let latest,
+                MarkdownInputReconciliation.shouldApplyExternalText(
+                    incoming: latest,
+                    current: textView.text,
+                    publishedHistory: publishedHistory
+                )
+            {
+                deferred.incoming = latest
+            }
+            let rebased = ExternalTextRebase.rebase(
+                local: textView.text ?? "",
+                base: deferred.base,
+                incoming: deferred.incoming,
+                localCursorUTF16Offset: NSMaxRange(textView.selectedRange)
+            )
+            if rebased.text == textView.text {
+                publish(rebased.text)
+            } else {
+                replaceExternalText(
+                    rebased.text,
+                    selection: NSRange(location: rebased.cursorUTF16Offset, length: 0),
+                    registersUndo: true
+                )
+            }
+            return true
         }
 
         private var stylingTask: Task<Void, Never>?
@@ -4842,11 +4952,13 @@ struct LiveMarkdownTextEditor: UIViewRepresentable {
                 // Keep the SwiftUI source of truth current without touching
                 // UITextView's marked range. Otherwise any unrelated view
                 // update can restore the pre-composition text and drop Korean
-                // jamo or an English autocorrection candidate.
-                publish(textView.text)
+                // jamo or an English autocorrection candidate. A deferred
+                // reload owns the binding until composition ends, though.
+                if deferredExternalText == nil { publish(textView.text) }
                 parent.selection = currentSelection
                 return
             }
+            if applyDeferredExternalText() { return }
             isUpdating = true
             let expanded = MarkdownCommandProcessor.expandCommand(
                 in: textView.text,
@@ -5208,6 +5320,100 @@ enum MarkdownInputReconciliation {
                 length: 1
             ))
         return ["*", "_", "~", "=", "`", ")", "]"].contains(lastCharacter)
+    }
+}
+
+/// Carries what the user typed during an IME composition over to an external
+/// text change (an entry reload) that had to wait for the composition to end.
+///
+/// The text view refuses external text while text is marked, so a reload that
+/// lands mid-composition is held back. When the composition ends, the editor
+/// holds `base` (its text when the reload arrived) plus the composed
+/// characters, and the reload holds `base` plus its own change — typically
+/// detail lines appended by a kind move. Applying either alone drops the
+/// other's change.
+enum ExternalTextRebase {
+    struct Result: Equatable {
+        let text: String
+        /// UTF-16 caret offset: just after the carried-over edit, or the
+        /// local caret mapped into `text` when there was nothing to carry.
+        let cursorUTF16Offset: Int
+    }
+
+    /// Applies the edit `base → local` to `incoming`. When both edits touch
+    /// the same part of `base`, `incoming` wins and the local edit (at most
+    /// the composed characters) is dropped: the reload is the one that cannot
+    /// be retyped.
+    static func rebase(
+        local: String,
+        base: String,
+        incoming: String,
+        localCursorUTF16Offset: Int
+    ) -> Result {
+        let baseUnits = Array(base.utf16)
+        let localUnits = Array(local.utf16)
+        let incomingUnits = Array(incoming.utf16)
+        let localEdit = changedRange(from: baseUnits, to: localUnits)
+        let incomingEdit = changedRange(from: baseUnits, to: incomingUnits)
+        let shift = incomingUnits.count - baseUnits.count
+
+        guard let localEdit else {
+            // Nothing typed since the reload arrived: keep the caret where
+            // it was, moved past whatever the reload inserted before it.
+            var cursor = min(max(0, localCursorUTF16Offset), baseUnits.count)
+            if let incomingEdit, cursor > incomingEdit.start {
+                cursor =
+                    cursor >= incomingEdit.end
+                    ? cursor + shift
+                    : incomingEdit.start + incomingEdit.replacementCount
+            }
+            return Result(text: incoming, cursorUTF16Offset: cursor)
+        }
+        let inserted = localUnits[
+            localEdit.start..<(localEdit.start + localEdit.replacementCount)]
+        let offset: Int
+        if let incomingEdit {
+            if localEdit.end <= incomingEdit.start {
+                offset = 0
+            } else if incomingEdit.end <= localEdit.start {
+                offset = shift
+            } else {
+                return Result(
+                    text: incoming,
+                    cursorUTF16Offset: incomingEdit.start + incomingEdit.replacementCount)
+            }
+        } else {
+            offset = 0
+        }
+        let start = localEdit.start + offset
+        let end = localEdit.end + offset
+        let merged = Array(incomingUnits[..<start]) + inserted + incomingUnits[end...]
+        return Result(
+            text: String(decoding: merged, as: UTF16.self),
+            cursorUTF16Offset: start + inserted.count
+        )
+    }
+
+    /// The range of `old` that differs from `new` (after the common prefix
+    /// and suffix), and how many units of `new` replace it. Nil when equal.
+    /// Boundaries never split a surrogate pair.
+    private static func changedRange(
+        from old: [UTF16.CodeUnit],
+        to new: [UTF16.CodeUnit]
+    ) -> (start: Int, end: Int, replacementCount: Int)? {
+        guard old != new else { return nil }
+        var prefix = 0
+        let limit = min(old.count, new.count)
+        while prefix < limit, old[prefix] == new[prefix] { prefix += 1 }
+        if prefix > 0, UTF16.isLeadSurrogate(old[prefix - 1]) { prefix -= 1 }
+        var suffix = 0
+        while suffix < limit - prefix,
+            old[old.count - 1 - suffix] == new[new.count - 1 - suffix]
+        {
+            suffix += 1
+        }
+        if suffix > 0, UTF16.isTrailSurrogate(old[old.count - suffix]) { suffix -= 1 }
+        return (prefix, old.count - suffix, new.count - suffix - prefix)
     }
 }
 

@@ -971,6 +971,22 @@ struct EntryEditorView: View {
             Button("촬영") { photoRequest = .camera }
             Button("취소", role: .cancel) {}
         }
+        // AppModel flushes the open editor before a kind move, then asks it
+        // to reload the moved entry — the same pair as the macOS inline
+        // editor. Without them the next autosave writes the old kind and
+        // body back over the move.
+        .onReceive(
+            NotificationCenter.default.publisher(for: .saveJournalEntry)
+        ) { _ in
+            autosaveTask?.cancel()
+            _ = performAutosave()
+        }
+        .onChange(of: model.editorReloadRequest) { _, request in
+            guard let request, let id = persistedEntryID,
+                request.entryIDs.contains(id)
+            else { return }
+            resyncDraftFromRepository()
+        }
         .confirmationDialog(
             "기록 유형을 바꾸면 일부 상세 정보가 제거됩니다.",
             isPresented: $isConfirmingTypeChange,
@@ -985,6 +1001,23 @@ struct EntryEditorView: View {
         } message: {
             Text(discardedDetailLabels.joined(separator: ", "))
         }
+    }
+
+    /// See the macOS inline editor's `resyncDraftFromRepository`.
+    private func resyncDraftFromRepository() {
+        guard let id = persistedEntryID,
+            let latest = try? model.repository.entry(id: id)
+        else { return }
+        autosaveTask?.cancel()
+        let initial = latest.draft
+        draft = initial
+        tagsText = initial.visibleTags.joined(separator: ", ")
+        tagInputDraft = ""
+        lastSavedDraft = initial
+        lastSavedTagsText = tagsText
+        lastSavedTagInputDraft = tagInputDraft
+        lastSavedAt = latest.updatedAt
+        saveState = .saved
     }
 
     private var mobileMetadataBar: some View {

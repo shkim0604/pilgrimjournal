@@ -63,6 +63,15 @@
 
 ## 완료
 
+- **유형 이동 뒤 편집기 재로드의 경계 사례 3건 (최종 리뷰에서 미룸)** —
+  (1) macOS에서 새 기록의 autosave가 refresh → 정리 작업 → 편집기 flush로
+  재진입해 같은 기록을 두 번 저장하던 것: 저장 중에는 flush를 건너뛴다
+  (`AppModel.isSavingEntry`). (2) 한글 조합 중에 도착한 재로드가 조합이 끝날 때
+  덮이던 것: 편집기가 조합이 끝날 때까지 미뤘다가 조합 글자를 얹어 적용한다
+  (`ExternalTextRebase`, `docs/known-issues.md` 참고). (3) iOS 전체 화면
+  편집기에 재로드가 없던 것: macOS 인라인 편집기처럼 flush와 재로드를 받는다.
+  실기기 확인은 `docs/pre-release-checklist.md`. (2026-10-15)
+
 - **macOS 본문 이미지 ▲▼ 이동** (2026-10-15) — iPhone과 같은 버튼과 규칙
   (`movingAttachmentImage`, `moveButtonRects`). 커서가 이미지 줄에 있으면 우측 상단에
   ▲▼가 그려지고, 클릭은 `mouseDown`이 `super`보다 먼저 받는다(그래야 커서가 이미지
