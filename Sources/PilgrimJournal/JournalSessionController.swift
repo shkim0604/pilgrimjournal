@@ -333,6 +333,9 @@ final class JournalSessionController: ObservableObject {
             from: source,
             to: destination
         )
+        // Each scope keeps its own catalog; without this, custom kinds would
+        // arrive as unknown IDs and deleted built-ins would come back.
+        destinationModel.adoptKindCatalog(sourceModel.kindCatalog)
         let snapshots = try sourceModel.importStore.sourceSnapshots()
         if !snapshots.isEmpty {
             let jobID = try destinationModel.importStore.begin(

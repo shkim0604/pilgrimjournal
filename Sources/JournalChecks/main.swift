@@ -379,6 +379,59 @@ do {
         "replace 복원 계획 또는 RestoreEpoch 적용이 실패했습니다."
     )
 
+    let userKindResult = try await Task { @MainActor in
+        let repository = InMemoryJournalRepository()
+        var catalog = KindCatalog()
+        let created = try catalog.create(
+            name: "설교노트", colorToken: .amber, iconToken: KindIconCatalog.symbols[0],
+            deviceID: "Mac", at: Date(timeIntervalSince1970: 1))
+        _ = try repository.save(
+            JournalEntryDraft(kind: created.kind, title: "주일 설교", body: "본문 요약"),
+            deviceID: "Mac",
+            at: Date(timeIntervalSince1970: 2)
+        )
+        let before = try repository.list(kind: created.kind, includeDeleted: false, limit: 10)
+        try catalog.delete(
+            created.kind, moveTarget: .memo, deviceID: "Mac", at: Date(timeIntervalSince1970: 3))
+        let moved = try KindDeletionService().moveEntries(
+            from: created.kind, to: .memo, repository: repository,
+            deviceID: "Mac", at: Date(timeIntervalSince1970: 4)
+        ).moved
+        return (before.count, moved.count, moved.first?.kind == .memo)
+    }.value
+    try expect(
+        userKindResult == (1, 1, true), "사용자 유형 저장·이동 확인이 실패했습니다.")
+
+    // A hand-written entry moved to 미분류 must survive a backup restored into an empty store.
+    let unclassifiedBackupURL = temporary.appending(path: "unclassified.journalbackup")
+    let unclassifiedRestore = try await Task { @MainActor in
+        let source = InMemoryJournalRepository()
+        var catalog = KindCatalog()
+        let entry = try source.save(
+            JournalEntryDraft(kind: .prayer, title: "손으로 쓴 기도", body: "감사"),
+            deviceID: "Mac", at: Date(timeIntervalSince1970: 1))
+        try catalog.delete(
+            .prayer, moveTarget: .unclassified, deviceID: "Mac", at: Date(timeIntervalSince1970: 2))
+        let move = try KindDeletionService().moveEntries(
+            from: .prayer, to: .unclassified, repository: source,
+            deviceID: "Mac", at: Date(timeIntervalSince1970: 3))
+        if let error = move.error { throw error }
+        let entries = try source.list(kind: nil, includeDeleted: true, limit: 10)
+        try backup.create(
+            at: unclassifiedBackupURL, entries: entries,
+            revisions: try source.revisions(entryID: entry.id), rules: [], attachments: [],
+            kindCatalog: catalog)
+        let contents = try backup.readAndValidate(from: unclassifiedBackupURL)
+        let destination = InMemoryJournalRepository()
+        let result = try JournalRestoreExecutor().execute(
+            contents: contents,
+            plan: backup.plan(contents: contents, currentEntries: [], mode: .merge),
+            repository: destination, deviceID: "iPhone", at: Date(timeIntervalSince1970: 4))
+        return (result.restored, try destination.entry(id: entry.id)?.kind == .unclassified)
+    }.value
+    try expect(
+        unclassifiedRestore == (1, true), "미분류로 옮긴 손 기록의 백업 복원이 실패했습니다.")
+
     if let sampleIndex = CommandLine.arguments.firstIndex(of: "--day-one"),
         CommandLine.arguments.indices.contains(sampleIndex + 1)
     {

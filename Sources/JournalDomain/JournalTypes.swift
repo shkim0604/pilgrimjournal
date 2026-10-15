@@ -1,7 +1,7 @@
 import CryptoKit
 import Foundation
 
-public enum JournalKind: String, Codable, CaseIterable, Identifiable, Sendable {
+public enum BuiltInKind: String, CaseIterable, Sendable {
     case prayer
     case bibleStudy
     case reading
@@ -9,9 +9,7 @@ public enum JournalKind: String, Codable, CaseIterable, Identifiable, Sendable {
     case memo
     case unclassified
 
-    public var id: String { rawValue }
-
-    public var localizedName: String {
+    public var defaultName: String {
         switch self {
         case .prayer: "기도노트"
         case .bibleStudy: "성경공부"
@@ -23,6 +21,58 @@ public enum JournalKind: String, Codable, CaseIterable, Identifiable, Sendable {
     }
 
     public var canCreateManually: Bool { self != .unclassified }
+}
+
+/// A journal kind identified by an open string ID: built-in IDs are the `BuiltInKind` raw
+/// values, user-created kinds use `"custom-" + UUID`. Encoded as a single bare string.
+public struct JournalKind: Hashable, Codable, Identifiable, Sendable {
+    public let id: String
+
+    public init(id: String) {
+        self.id = id
+    }
+
+    public init?(rawValue: String) {
+        guard !rawValue.isEmpty else { return nil }
+        self.id = rawValue
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let value = try container.decode(String.self)
+        guard !value.isEmpty else {
+            throw DecodingError.dataCorruptedError(
+                in: container, debugDescription: "JournalKind id must not be empty")
+        }
+        self.id = value
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(id)
+    }
+
+    public var rawValue: String { id }
+    public var builtIn: BuiltInKind? { BuiltInKind(rawValue: id) }
+    public var isUnclassified: Bool { id == BuiltInKind.unclassified.rawValue }
+
+    /// Name used outside the kind catalog (validation messages, check scripts).
+    public var fallbackName: String { builtIn?.defaultName ?? "이름 없는 유형" }
+
+    public static let prayer = JournalKind(id: BuiltInKind.prayer.rawValue)
+    public static let bibleStudy = JournalKind(id: BuiltInKind.bibleStudy.rawValue)
+    public static let reading = JournalKind(id: BuiltInKind.reading.rawValue)
+    public static let diary = JournalKind(id: BuiltInKind.diary.rawValue)
+    public static let memo = JournalKind(id: BuiltInKind.memo.rawValue)
+    public static let unclassified = JournalKind(id: BuiltInKind.unclassified.rawValue)
+
+    public static var builtIns: [JournalKind] {
+        BuiltInKind.allCases.map { JournalKind(id: $0.rawValue) }
+    }
+
+    public static func custom() -> JournalKind {
+        JournalKind(id: "custom-" + UUID().uuidString)
+    }
 }
 
 public enum PrayerStatus: String, Codable, CaseIterable, Sendable {
@@ -56,7 +106,7 @@ public struct EntryDetails: Codable, Equatable, Sendable {
 
     public func validated(for kind: JournalKind) throws -> EntryDetails {
         var copy = self
-        switch kind {
+        switch kind.builtIn {
         case .prayer:
             copy.scriptureReference = nil
             copy.bookTitle = nil
@@ -81,12 +131,57 @@ public struct EntryDetails: Codable, Equatable, Sendable {
             copy.scriptureReference = nil
             copy.bookTitle = nil
             copy.bookAuthor = nil
-        case .memo:
-            copy = EntryDetails()
-        case .unclassified:
+        case .memo, .unclassified, nil:
             copy = EntryDetails()
         }
         return copy
+    }
+
+    /// Human-readable lines for the kind-specific fields that would be lost when an entry
+    /// leaves `kind`, or nil when there is nothing to carry over.
+    public func carryOverLines(from kind: BuiltInKind, timeZoneIdentifier: String?) -> String? {
+        func clean(_ value: String?) -> String? {
+            guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines),
+                !trimmed.isEmpty
+            else { return nil }
+            return trimmed
+        }
+        var lines: [String] = []
+        switch kind {
+        case .prayer:
+            switch prayerStatus {
+            case .ongoing:
+                lines.append("기도 상태: 기도 중")
+            case .answered:
+                if let answeredAt {
+                    var calendar = Calendar(identifier: .gregorian)
+                    calendar.timeZone =
+                        timeZoneIdentifier.flatMap { TimeZone(identifier: $0) } ?? .current
+                    let formatter = DateFormatter()
+                    formatter.calendar = calendar
+                    formatter.locale = Locale(identifier: "en_US_POSIX")
+                    formatter.timeZone = calendar.timeZone
+                    formatter.dateFormat = "yyyy-MM-dd"
+                    lines.append("기도 상태: 응답됨 (\(formatter.string(from: answeredAt)))")
+                } else {
+                    lines.append("기도 상태: 응답됨")
+                }
+            case nil:
+                break
+            }
+        case .bibleStudy:
+            if let reference = clean(scriptureReference) { lines.append("본문: \(reference)") }
+        case .reading:
+            let title = clean(bookTitle).map { "책: \($0)" }
+            let author = clean(bookAuthor).map { "저자: \($0)" }
+            let joined = [title, author].compactMap { $0 }.joined(separator: " / ")
+            if !joined.isEmpty { lines.append(joined) }
+        case .diary:
+            if let mood = clean(mood) { lines.append("기분: \(mood)") }
+        case .memo, .unclassified:
+            break
+        }
+        return lines.isEmpty ? nil : lines.joined(separator: "\n")
     }
 }
 
@@ -113,10 +208,7 @@ public enum JournalError: LocalizedError, Equatable, Sendable {
     public var errorDescription: String? {
         switch self {
         case .invalidManualKind:
-            "새 기록의 유형은 "
-                + JournalKind.allCases.filter(\.canCreateManually).map(\.localizedName)
-                .joined(separator: ", ")
-                + " 중 하나여야 합니다."
+            "미분류로는 새 기록을 만들 수 없습니다. 다른 유형을 골라 주세요."
         case .emptyContent: "제목이나 본문 중 하나는 입력해야 합니다."
         case .entryNotFound: "기록을 찾을 수 없습니다."
         case .revisionNotFound: "기록 이력을 찾을 수 없습니다."

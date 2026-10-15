@@ -109,7 +109,12 @@ public final class InMemoryJournalRepository:
         deviceID: String,
         at date: Date
     ) throws -> JournalEntryRecord {
-        let validated = try draft.validated(manual: draft.sourceUUID == nil)
+        // Only creating a new hand-written entry (no ID yet) must pick a concrete
+        // kind. A draft with an ID is an existing entry — possibly moved to 미분류
+        // when its kind was deleted — even when this store has not seen it yet
+        // (backup restore, local-to-iCloud migration).
+        let isNewManualEntry = draft.sourceUUID == nil && draft.id == nil
+        let validated = try draft.validated(manual: isNewManualEntry)
         if let sourceUUID = validated.sourceUUID,
             let duplicate = try entry(sourceUUID: sourceUUID),
             duplicate.id != validated.id

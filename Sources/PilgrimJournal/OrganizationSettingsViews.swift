@@ -50,7 +50,7 @@ struct OrganizationSettingsView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("\(sourceName(rule.source)) · \(rule.value)")
                             Text(
-                                "\(rule.targetKind.localizedName) · 우선순위 \(rule.priority)"
+                                "\(model.kindDefinition(for: rule.targetKind).name) · 우선순위 \(rule.priority)"
                             )
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -145,8 +145,9 @@ private struct ClassificationRuleEditorView: View {
             }
             TextField(valuePrompt, text: $rule.value)
             Picker("대상 유형", selection: $rule.targetKind) {
-                ForEach(JournalKind.allCases.filter(\.canCreateManually)) { kind in
-                    Text(kind.localizedName).tag(kind)
+                ForEach(model.kindPickerOptions(including: rule.targetKind), id: \.kind) {
+                    definition in
+                    Text(definition.name).tag(definition.kind)
                 }
             }
             Stepper("우선순위 \(rule.priority)", value: $rule.priority, in: -100...100)

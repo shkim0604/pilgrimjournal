@@ -77,7 +77,7 @@ struct InlineEntryEditorView: View {
                 Spacer(minLength: 0)
                 PaperEditorSurface {
                     VStack(alignment: .leading, spacing: JournalTheme.Spacing.regular) {
-                        TextField("제목", text: $draft.title)
+                        TextField("제목", text: $draft.title, axis: .vertical)
                             .textFieldStyle(.plain)
                             .font(
                                 .system(
@@ -141,6 +141,16 @@ struct InlineEntryEditorView: View {
         .onDisappear {
             autosaveTask?.cancel()
             performAutosave()
+        }
+        // A kind deletion or reconcile moved this entry (new kind, carried-over
+        // details in the body). AppModel flushed this editor first, so nothing
+        // unsaved is lost; without the reload the next keystroke would save the
+        // old kind and body back over the move.
+        .onChange(of: model.editorReloadRequest) { _, request in
+            guard let request, let id = persistedEntryID ?? entry?.id,
+                request.entryIDs.contains(id)
+            else { return }
+            resyncDraftFromRepository()
         }
         .sheet(isPresented: $isPresentingHistory) {
             if let entry {
@@ -214,8 +224,9 @@ struct InlineEntryEditorView: View {
 
     private var kindPicker: some View {
         Picker("기록 유형", selection: kindBinding) {
-            ForEach(JournalKind.allCases.filter(\.canCreateManually)) { kind in
-                Text(kind.localizedName).tag(kind)
+            ForEach(model.kindPickerOptions(including: draft.kind), id: \.kind) {
+                definition in
+                Text(definition.name).tag(definition.kind)
             }
         }
         .labelsHidden()
@@ -285,8 +296,8 @@ struct InlineEntryEditorView: View {
 
     @ViewBuilder
     private var typeSpecificFields: some View {
-        switch draft.kind {
-        case .prayer:
+        switch draft.kind.builtIn {
+        case .prayer?:
             HStack {
                 Picker(
                     "기도 상태",
@@ -310,22 +321,22 @@ struct InlineEntryEditorView: View {
                     )
                 }
             }
-        case .bibleStudy:
+        case .bibleStudy?:
             TextField("성경 구절", text: optionalBinding(\.scriptureReference))
                 .journalMetadataField()
-        case .reading:
+        case .reading?:
             HStack {
                 TextField("책 제목", text: optionalBinding(\.bookTitle))
                     .journalMetadataField()
                 TextField("저자", text: optionalBinding(\.bookAuthor))
                     .journalMetadataField()
             }
-        case .diary:
+        case .diary?:
             TextField("오늘의 기분", text: optionalBinding(\.mood))
                 .journalMetadataField()
-        case .memo:
+        case .memo?:
             EmptyView()
-        case .unclassified:
+        default:
             EmptyView()
         }
     }
@@ -614,8 +625,8 @@ struct InlineEntryEditorView: View {
 
     /// `draft` is only seeded from `entry` once, in `init`, and the editor
     /// keeps the same SwiftUI identity (`.id(entry.id)`) across a revision
-    /// restore. Without this, the sidebar reflects the restored content but
-    /// the open editor keeps showing the pre-restore draft.
+    /// restore or a kind move. Without this, the sidebar reflects the new
+    /// content but the open editor keeps showing (and saving) the old draft.
     private func resyncDraftFromRepository() {
         guard let id = persistedEntryID ?? entry?.id,
             let latest = try? model.repository.entry(id: id)
@@ -658,9 +669,12 @@ struct EntryDetailView: View {
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
-                Text(entry.title.isEmpty ? entry.kind.localizedName : entry.title)
-                    .font(.largeTitle.bold())
-                    .foregroundStyle(JournalTheme.ink)
+                Text(
+                    entry.title.isEmpty
+                        ? model.kindDefinition(for: entry.kind).name : entry.title
+                )
+                .font(.largeTitle.bold())
+                .foregroundStyle(JournalTheme.ink)
                 Text(entry.occurredAt.formatted(date: .long, time: .shortened))
                     .foregroundStyle(JournalTheme.inkSecondary)
                 typeDetails
@@ -691,13 +705,14 @@ struct EntryDetailView: View {
     }
 
     private var kindBadge: some View {
-        Text(entry.kind.localizedName)
+        let definition = model.kindDefinition(for: entry.kind)
+        return Text(definition.name)
             .font(.caption.weight(.semibold))
-            .foregroundStyle(JournalTheme.categoryColor(for: entry.kind))
+            .foregroundStyle(JournalTheme.categoryColor(for: definition))
             .padding(.horizontal, 9)
             .padding(.vertical, 5)
             .background(
-                JournalTheme.categoryColor(for: entry.kind).opacity(0.12),
+                JournalTheme.categoryColor(for: definition).opacity(0.12),
                 in: Capsule()
             )
             .fixedSize(horizontal: false, vertical: true)
@@ -716,32 +731,32 @@ struct EntryDetailView: View {
 
     @ViewBuilder
     private var typeDetails: some View {
-        switch entry.kind {
-        case .prayer:
+        switch entry.kind.builtIn {
+        case .prayer?:
             if let status = entry.details.prayerStatus {
                 Label(
                     status == .answered ? "응답됨" : "기도 중",
                     systemImage: status == .answered ? "checkmark.circle" : "heart"
                 )
             }
-        case .bibleStudy:
+        case .bibleStudy?:
             if let reference = entry.details.scriptureReference, !reference.isEmpty {
                 Label(reference, systemImage: "book.closed")
             }
-        case .reading:
+        case .reading?:
             if let title = entry.details.bookTitle, !title.isEmpty {
                 Label(
                     [title, entry.details.bookAuthor].compactMap { $0 }.joined(separator: " · "),
                     systemImage: "books.vertical"
                 )
             }
-        case .diary:
+        case .diary?:
             if let mood = entry.details.mood, !mood.isEmpty {
                 Label(mood, systemImage: "face.smiling")
             }
-        case .memo:
+        case .memo?:
             EmptyView()
-        case .unclassified:
+        default:
             EmptyView()
         }
     }
@@ -980,7 +995,7 @@ struct EntryEditorView: View {
                 } label: {
                     MetadataChip {
                         Label(
-                            draft.kind.localizedName,
+                            model.kindDefinition(for: draft.kind).name,
                             systemImage: "slider.horizontal.3"
                         )
                     }
@@ -1031,8 +1046,9 @@ struct EntryEditorView: View {
             Form {
                 Section("분류") {
                     Picker("기록 유형", selection: kindBinding) {
-                        ForEach(JournalKind.allCases.filter(\.canCreateManually)) { kind in
-                            Text(kind.localizedName).tag(kind)
+                        ForEach(model.kindPickerOptions(including: draft.kind), id: \.kind) {
+                            definition in
+                            Text(definition.name).tag(definition.kind)
                         }
                     }
                     Picker("노트북", selection: notebookBinding) {
@@ -1200,8 +1216,8 @@ struct EntryEditorView: View {
 
     @ViewBuilder
     private var typeSpecificFields: some View {
-        switch draft.kind {
-        case .prayer:
+        switch draft.kind.builtIn {
+        case .prayer?:
             Picker(
                 "기도 상태",
                 selection: Binding(
@@ -1222,23 +1238,23 @@ struct EntryEditorView: View {
                     displayedComponents: .date
                 )
             }
-        case .bibleStudy:
+        case .bibleStudy?:
             TextField(
                 "성경 구절",
                 text: optionalBinding(\.scriptureReference)
             )
             .journalMetadataField()
-        case .reading:
+        case .reading?:
             TextField("책 제목", text: optionalBinding(\.bookTitle))
                 .journalMetadataField()
             TextField("저자", text: optionalBinding(\.bookAuthor))
                 .journalMetadataField()
-        case .diary:
+        case .diary?:
             TextField("기분", text: optionalBinding(\.mood))
                 .journalMetadataField()
-        case .memo:
+        case .memo?:
             EmptyView()
-        case .unclassified:
+        default:
             EmptyView()
         }
     }
@@ -2167,9 +2183,12 @@ struct TrashView: View {
     @ViewBuilder
     private func trashEntryDescription(_ entry: JournalEntryRecord) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(entry.title.isEmpty ? entry.kind.localizedName : entry.title)
-                .font(.headline)
-                .lineLimit(2)
+            Text(
+                entry.title.isEmpty
+                    ? model.kindDefinition(for: entry.kind).name : entry.title
+            )
+            .font(.headline)
+            .lineLimit(2)
             if let deletedAt = entry.deletedAt {
                 Text("삭제 \(deletedAt.formatted())")
                     .font(.caption)
@@ -2197,10 +2216,8 @@ struct BatchOrganizerView: View {
                 Section("유형") {
                     Picker("변경할 유형", selection: $targetKind) {
                         Text("유형 유지").tag(nil as JournalKind?)
-                        ForEach(
-                            JournalKind.allCases.filter(\.canCreateManually)
-                        ) { kind in
-                            Text(kind.localizedName).tag(kind as JournalKind?)
+                        ForEach(model.kindPickerOptions(), id: \.kind) { definition in
+                            Text(definition.name).tag(definition.kind as JournalKind?)
                         }
                     }
                     Text("유형을 바꾸면 각 기록에 새 revision이 생성되고 해당 유형에 맞지 않는 상세 필드는 정리됩니다.")

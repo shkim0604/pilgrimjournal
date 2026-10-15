@@ -1,8 +1,18 @@
 #if canImport(XCTest)
+import JournalDomain
 @testable import PilgrimJournal
 import XCTest
 
 final class DesignSystemTests: XCTestCase {
+    func testEveryColorTokenMapsAndBuiltInsKeepTheirColors() {
+        XCTAssertEqual(KindColorToken.allCases.count, 8)
+        XCTAssertEqual(KindCatalog.defaultDefinition(for: .prayer).colorToken, .amber)
+        XCTAssertEqual(KindCatalog.defaultDefinition(for: .unclassified).colorToken, .stone)
+        for token in KindColorToken.allCases {
+            _ = JournalTheme.color(for: token)
+        }
+    }
+
     func testEntrySummaryRemovesMarkdownMarkersAndKeepsReadableText() {
         let markdown = """
             # **아침 묵상**
