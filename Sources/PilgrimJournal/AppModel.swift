@@ -86,6 +86,12 @@ final class AppModel: ObservableObject {
     @Published var lastRestoreConflicts: [RestoreConflictSummary] = []
     @Published private(set) var attachmentRevision = 0
     @Published private(set) var isCloudImportInProgress = false
+    @Published private(set) var kindCatalog: KindCatalog
+    /// Kind IDs found on loaded entries that the catalog does not know yet
+    /// (e.g. a kind created on another device whose catalog has not arrived).
+    @Published private(set) var unknownKinds: [JournalKind] = []
+    @Published var isPresentingKindManagement = false
+    @Published var isPresentingPremiumNotice = false
 
     var selectedEntry: JournalEntryRecord? {
         guard let selectedEntryID else { return nil }
@@ -93,10 +99,15 @@ final class AppModel: ObservableObject {
     }
 
     /// The kind a new entry starts as: the sidebar's kind when one that can be
-    /// created by hand is selected, otherwise diary.
+    /// created by hand is selected, otherwise diary, otherwise the first kind
+    /// that can be created (the catalog always keeps at least one).
     var defaultKindForNewEntry: JournalKind {
-        guard let selectedKind, !selectedKind.isUnclassified else { return .diary }
-        return selectedKind
+        let creatable = kindCatalog.creatableKinds
+        if let selectedKind, creatable.contains(where: { $0.kind == selectedKind }) {
+            return selectedKind
+        }
+        if creatable.contains(where: { $0.kind == .diary }) { return .diary }
+        return creatable.first?.kind ?? .diary
     }
 
     var hasActiveSearchCriteria: Bool {
@@ -113,7 +124,12 @@ final class AppModel: ObservableObject {
     let searchIndex: JournalSearchIndex
     let paths: JournalPaths
     let deviceID: String
+    let featureAccess: any FeatureAccess
     private let cloudAccountMonitor: CloudAccountMonitor?
+    private let kindCatalogStore: KindCatalogStore
+    /// Set by the first `refresh()`, which runs the one full reconcile pass
+    /// that later refreshes skip.
+    private var hasReconciledKinds = false
     private let searchCoordinator: SearchIndexCoordinator
     private let notebookDefaults: UserDefaults
     private let notebookCloudStore: NSUbiquitousKeyValueStore?
@@ -136,7 +152,8 @@ final class AppModel: ObservableObject {
         paths: JournalPaths,
         cloudAccountMonitor: CloudAccountMonitor?,
         notebookDefaults: UserDefaults = .standard,
-        notebookCloudStore: NSUbiquitousKeyValueStore? = nil
+        notebookCloudStore: NSUbiquitousKeyValueStore? = nil,
+        featureAccess: (any FeatureAccess)? = nil
     ) {
         self.repository = repository
         self.importStore = importStore
@@ -145,6 +162,12 @@ final class AppModel: ObservableObject {
         self.cloudAccountMonitor = cloudAccountMonitor
         self.notebookDefaults = notebookDefaults
         self.notebookCloudStore = notebookCloudStore
+        self.featureAccess = featureAccess ?? UnlockedFeatureAccess()
+        kindCatalogStore = KindCatalogStore(
+            defaults: notebookDefaults,
+            cloudStore: notebookCloudStore
+        )
+        kindCatalog = kindCatalogStore.catalog
         searchCoordinator = SearchIndexCoordinator(index: searchIndex)
         notebookCloudStore?.synchronize()
         let initialDeletedNotebookNames = Self.mergedNotebookNames(
@@ -231,6 +254,8 @@ final class AppModel: ObservableObject {
         case .importing:
             reconcileDownloadedAttachments()
             syncState = .synced(completedAt)
+            // Imported entries may still carry a kind this catalog deleted.
+            reconcileKinds()
             rebuildSearchIndex()
             refresh()
         }
@@ -279,6 +304,11 @@ final class AppModel: ObservableObject {
 
     func refresh() {
         mergeNotebookCatalogFromCloud()
+        let kindCatalogChanged = mergeKindCatalogFromCloud()
+        if kindCatalogChanged || !hasReconciledKinds {
+            hasReconciledKinds = true
+            reconcileKinds()
+        }
         do {
             let needsSearchIndex =
                 !searchText
@@ -311,6 +341,7 @@ final class AppModel: ObservableObject {
                 entries = try hits.compactMap { try repository.entry(id: $0.id) }
             }
             refreshNotebookCatalog(from: entries)
+            refreshUnknownKinds(from: entries)
             if let selectedNotebookName {
                 entries = entries.filter {
                     $0.notebookName?.caseInsensitiveCompare(selectedNotebookName) == .orderedSame
@@ -1474,6 +1505,14 @@ final class AppModel: ObservableObject {
                 message: restoreSummary(lastRestoreResult)
             )
             markLocalMutation()
+            if let backupCatalog = contents.kindCatalog {
+                _ = mergeKindCatalogFromCloud()
+                kindCatalogStore.save(kindCatalogStore.catalog.merged(with: backupCatalog))
+                applyStoredKindCatalog()
+                deselectInactiveKind()
+            }
+            // Restored entries may carry kinds the catalog has since deleted.
+            reconcileKinds()
             rebuildSearchIndex()
             // Without this the list keeps showing the pre-restore state, which
             // reads as "nothing happened".
@@ -1556,7 +1595,8 @@ final class AppModel: ObservableObject {
             revisions: revisions,
             rules: try repository.classificationRules(),
             attachments: attachments,
-            sourceSnapshots: snapshots
+            sourceSnapshots: snapshots,
+            kindCatalog: kindCatalog
         )
     }
 
@@ -1734,5 +1774,170 @@ final class AppModel: ObservableObject {
             .split(separator: ",")
             .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
+    }
+}
+
+// MARK: - Journal kinds
+
+extension AppModel {
+    /// Active kinds in sidebar order, with kinds the catalog does not know
+    /// listed just before 미분류.
+    var sidebarKinds: [KindDefinition] {
+        let active = kindCatalog.activeKinds
+        return active.filter { !$0.kind.isUnclassified }
+            + unknownKinds.map(KindCatalog.unknownDefinition(for:))
+            + active.filter(\.kind.isUnclassified)
+    }
+
+    func kindDefinition(for kind: JournalKind) -> KindDefinition {
+        kindCatalog.definition(for: kind)
+    }
+
+    func openKindManagement() {
+        if featureAccess.canManageKinds {
+            isPresentingKindManagement = true
+        } else {
+            isPresentingPremiumNotice = true
+        }
+    }
+
+    /// Entries of `kind` outside the trash — the ones a deletion would move.
+    func entryCount(for kind: JournalKind) throws -> Int {
+        var count = 0
+        var cursor: JournalTimelineCursor?
+        repeat {
+            let page = try repository.page(
+                kind: kind, includeDeleted: false, after: cursor, limit: 500)
+            count += page.entries.count
+            cursor = page.nextCursor
+        } while cursor != nil
+        return count
+    }
+
+    func createKind(
+        name: String, colorToken: KindColorToken, iconToken: String
+    ) throws -> JournalKind {
+        try editKindCatalog { catalog, now in
+            try catalog.create(
+                name: name, colorToken: colorToken, iconToken: iconToken,
+                deviceID: deviceID, at: now
+            ).kind
+        }
+    }
+
+    func updateKind(
+        _ kind: JournalKind, name: String, colorToken: KindColorToken, iconToken: String
+    ) throws {
+        try editKindCatalog { catalog, now in
+            try catalog.update(
+                kind, name: name, colorToken: colorToken, iconToken: iconToken,
+                deviceID: deviceID, at: now)
+        }
+    }
+
+    func reorderKinds(_ ordered: [JournalKind]) throws {
+        try editKindCatalog { catalog, now in
+            try catalog.reorder(ordered, deviceID: deviceID, at: now)
+        }
+    }
+
+    /// Marks `kind` deleted, then moves its entries and classification rules
+    /// to `target`. The catalog is saved first, so if moving fails part-way
+    /// the next reconcile pass moves whatever is left.
+    func deleteKind(_ kind: JournalKind, moveTo target: JournalKind) throws {
+        try editKindCatalog { catalog, now in
+            try catalog.delete(kind, moveTarget: target, deviceID: deviceID, at: now)
+        }
+        defer {
+            if selectedKind == kind {
+                selectKind(nil)
+            } else {
+                refresh()
+            }
+        }
+        let now = Date.now
+        let service = KindDeletionService()
+        let moved = try service.moveEntries(
+            from: kind, to: target, repository: repository, deviceID: deviceID, at: now)
+        for record in moved {
+            try searchIndex.upsert(record)
+        }
+        _ = try service.retargetRules(from: kind, to: target, repository: repository, at: now)
+    }
+
+    func restoreKind(_ kind: JournalKind) throws {
+        try editKindCatalog { catalog, now in
+            try catalog.restore(kind, deviceID: deviceID, at: now)
+        }
+    }
+
+    /// Applies `edit` to the latest catalog (merged from iCloud first, so a
+    /// save never overwrites another device's edits this one has not seen)
+    /// and saves it.
+    private func editKindCatalog<Result>(
+        _ edit: (inout KindCatalog, Date) throws -> Result
+    ) throws -> Result {
+        let cloudChanged = mergeKindCatalogFromCloud()
+        if cloudChanged { reconcileKinds() }
+        defer { if cloudChanged { refresh() } }
+        var catalog = kindCatalogStore.catalog
+        let result = try edit(&catalog, .now)
+        kindCatalogStore.save(catalog)
+        applyStoredKindCatalog()
+        markLocalMutation()
+        return result
+    }
+
+    /// Merges the iCloud catalog. Returns true when the local catalog changed;
+    /// a selected kind that is no longer active is then deselected.
+    private func mergeKindCatalogFromCloud() -> Bool {
+        guard kindCatalogStore.mergeFromCloud() else { return false }
+        applyStoredKindCatalog()
+        deselectInactiveKind()
+        return true
+    }
+
+    /// Clears a selected kind that the catalog has deleted meanwhile, without
+    /// a nested refresh (callers refresh afterwards).
+    private func deselectInactiveKind() {
+        if let selectedKind, kindCatalog.isKnown(selectedKind),
+            !kindCatalog.definition(for: selectedKind).isActive
+        {
+            self.selectedKind = nil
+        }
+    }
+
+    /// Takes the store's (normalised) catalog and drops unknown IDs it now knows.
+    private func applyStoredKindCatalog() {
+        kindCatalog = kindCatalogStore.catalog
+        unknownKinds.removeAll { kindCatalog.isKnown($0) }
+    }
+
+    /// Moves entries and rules whose kind the catalog marks deleted. Runs only
+    /// at the trigger points (first refresh, catalog change from iCloud,
+    /// CloudKit import, backup restore) — not on every refresh.
+    private func reconcileKinds() {
+        do {
+            let moved = try KindReconciler().reconcile(
+                catalog: kindCatalog, repository: repository, deviceID: deviceID, at: .now)
+            for record in moved {
+                try searchIndex.upsert(record)
+            }
+            if !moved.isEmpty { markLocalMutation() }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Accumulates unknown kind IDs across refreshes so an unknown kind keeps
+    /// its sidebar row while another kind is selected.
+    private func refreshUnknownKinds(from records: [JournalEntryRecord]) {
+        var merged = unknownKinds
+        for kind in records.map(\.kind)
+        where !kindCatalog.isKnown(kind) && !merged.contains(kind) {
+            merged.append(kind)
+        }
+        merged.removeAll { kindCatalog.isKnown($0) }
+        if merged != unknownKinds { unknownKinds = merged }
     }
 }

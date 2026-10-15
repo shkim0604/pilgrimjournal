@@ -51,5 +51,20 @@ final class NewEntryDefaultsTests: XCTestCase {
         model.selectedKind = .unclassified
         XCTAssertEqual(model.defaultKindForNewEntry, .diary)
     }
+
+    func testNewEntryFallsBackWhenDiaryIsDeleted() throws {
+        let model = try makeModel()
+        try model.deleteKind(.diary, moveTo: .memo)
+        model.selectedKind = nil
+        XCTAssertEqual(model.defaultKindForNewEntry, model.kindCatalog.creatableKinds.first?.kind)
+        XCTAssertNotEqual(model.defaultKindForNewEntry, .diary)
+    }
+
+    func testNewEntryUsesSelectedCustomKind() throws {
+        let model = try makeModel()
+        let custom = try model.createKind(name: "설교노트", colorToken: .teal, iconToken: "star")
+        model.selectedKind = custom
+        XCTAssertEqual(model.defaultKindForNewEntry, custom)
+    }
 }
 #endif
