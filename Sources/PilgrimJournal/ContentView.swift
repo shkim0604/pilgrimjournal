@@ -594,7 +594,7 @@ private struct JournalSidebar: View {
 
             }
 
-            Section {
+            Section("유형") {
                 ForEach(model.sidebarKinds, id: \.kind) { definition in
                     JournalSidebarItem(
                         title: definition.name,
@@ -607,22 +607,6 @@ private struct JournalSidebar: View {
                     ) {
                         selectKind(definition.kind)
                     }
-                }
-            } header: {
-                HStack {
-                    Text("유형")
-                    Spacer()
-                    Button {
-                        model.openKindManagement()
-                    } label: {
-                        if model.featureAccess.canManageKinds {
-                            Text("편집")
-                        } else {
-                            Label("편집", systemImage: "lock.fill")
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(JournalTheme.brandPrimary)
                 }
             }
 

@@ -77,6 +77,15 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
             Section("정리") {
+                Button {
+                    model.openKindManagement()
+                } label: {
+                    Label(
+                        "유형 편집",
+                        systemImage: model.featureAccess.canManageKinds
+                            ? "slider.horizontal.3" : "lock.fill"
+                    )
+                }
                 NavigationLink("태그 및 Day One 분류 규칙") {
                     OrganizationSettingsView()
                 }
