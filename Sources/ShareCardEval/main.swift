@@ -93,7 +93,7 @@ if entries.isEmpty {
 }
 
 #if canImport(FoundationModels)
-if #available(macOS 26, *) {
+if #available(macOS 26, iOS 26, *) {
     let pipeline = SharePipeline(includeProse: options.includeProse)
     if let problem = pipeline.availabilityProblem {
         print(problem)
