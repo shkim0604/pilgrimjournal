@@ -12,6 +12,8 @@ struct SettingsView: View {
     @State private var restoreMode = RestoreMode.merge
     @State private var isConfirmingRestore = false
     @State private var isConfirmingSignOut = false
+    @AppStorage(AppAppearance.storageKey) private var appearance =
+        AppAppearance.defaultValue.rawValue
     #if DEBUG
     @AppStorage(UnlockedFeatureAccess.simulateLockedKey) private var simulateLocked = false
     #endif
@@ -96,6 +98,17 @@ struct SettingsView: View {
                     )
                 }
                 #endif
+            }
+            Section("화면") {
+                Picker("화면 모드", selection: $appearance) {
+                    ForEach(AppAppearance.allCases) { option in
+                        Text(option.title).tag(option.rawValue)
+                    }
+                }
+                .pickerStyle(.segmented)
+                Text("시스템 설정을 고르면 기기의 라이트·다크 설정을 따릅니다. 이 기기에만 적용됩니다.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
             Section("보안") {
                 NavigationLink("앱 잠금") {
