@@ -70,6 +70,62 @@ final class JournalBackupTests: XCTestCase {
         XCTAssertEqual(replace.tombstoneIDs, [other.id])
     }
 
+    func testBackupRoundTripsKindCatalogAndCustomKindEntries() throws {
+        let destination = FileManager.default.temporaryDirectory
+            .appending(path: "\(UUID().uuidString).journalbackup")
+        defer { try? FileManager.default.removeItem(at: destination) }
+        let date = Date(timeIntervalSince1970: 100)
+        var catalog = KindCatalog()
+        let sermon = try catalog.create(
+            name: "설교노트", colorToken: .teal, iconToken: "tag", deviceID: "Mac", at: date)
+        try catalog.delete(.prayer, moveTarget: .memo, deviceID: "Mac", at: date)
+        var entry = makeRecord(title: "설교 기록", date: date)
+        entry.kind = sermon.kind
+
+        let service = JournalBackupService()
+        try service.create(
+            at: destination,
+            entries: [entry],
+            revisions: [],
+            rules: [],
+            attachments: [],
+            kindCatalog: catalog
+        )
+
+        let contents = try service.readAndValidate(from: destination)
+        XCTAssertEqual(contents.kindCatalog, catalog)
+        XCTAssertTrue(contents.manifest.includesKindCatalog)
+        XCTAssertEqual(contents.entries[0].kind, entry.kind)
+    }
+
+    func testBackupWithoutKindCatalogStillReads() throws {
+        let destination = FileManager.default.temporaryDirectory
+            .appending(path: "\(UUID().uuidString).journalbackup")
+        defer { try? FileManager.default.removeItem(at: destination) }
+        let service = JournalBackupService()
+        try service.create(
+            at: destination,
+            entries: [makeRecord(title: "기록", date: .now)],
+            revisions: [],
+            rules: [],
+            attachments: []
+        )
+
+        let contents = try service.readAndValidate(from: destination)
+        XCTAssertNil(contents.kindCatalog)
+        XCTAssertFalse(contents.manifest.includesKindCatalog)
+    }
+
+    func testManifestWithoutKindCatalogKeyDecodes() throws {
+        let json = Data(
+            #"{"formatVersion":1,"schemaVersion":1,"createdAt":"2026-01-01T00:00:00Z","files":{},"includesSourceSnapshots":false}"#
+                .utf8)
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let manifest = try decoder.decode(BackupManifest.self, from: json)
+        XCTAssertFalse(manifest.includesKindCatalog)
+    }
+
     func testRejectsCorruptedBackup() throws {
         let destination = FileManager.default.temporaryDirectory
             .appending(path: "\(UUID().uuidString).journalbackup")
