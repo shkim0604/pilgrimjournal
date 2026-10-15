@@ -239,7 +239,7 @@ final class AppModel: ObservableObject {
                 to: .failed
             )
             syncState = .failed(
-                message: event.errorDescription ?? "CloudKit 동기화에 실패했습니다.",
+                message: event.errorDescription ?? String(localized: "CloudKit 동기화에 실패했습니다."),
                 retryable: event.errorRetryable ?? true
             )
             return
@@ -422,7 +422,7 @@ final class AppModel: ObservableObject {
     @discardableResult
     func createNotebook(named name: String) -> String? {
         guard let normalized = NotebookTagCodec.normalizedName(name) else {
-            errorMessage = "노트북 이름을 입력해 주세요."
+            errorMessage = String(localized: "노트북 이름을 입력해 주세요.")
             return nil
         }
         if let existing = notebooks.first(where: {
@@ -897,8 +897,10 @@ final class AppModel: ObservableObject {
 
             if announceCount {
                 lastOperationOutcome = JournalOperationOutcome(
-                    title: "영구 삭제 완료",
-                    message: "\(summary.purgedEntryIDs.count)개의 기록을 영구히 삭제했습니다."
+                    title: String(localized: "영구 삭제 완료"),
+                    message: String(
+                        localized: "\(summary.purgedEntryIDs.count)개의 기록을 영구히 삭제했습니다."
+                    )
                 )
             }
             return true
@@ -1115,7 +1117,7 @@ final class AppModel: ObservableObject {
         to entryID: UUID
     ) async -> UUID? {
         guard let attachmentRepository = repository as? any AttachmentRepository else {
-            errorMessage = "이 저장소에서는 첨부 파일을 사용할 수 없습니다."
+            errorMessage = String(localized: "이 저장소에서는 첨부 파일을 사용할 수 없습니다.")
             return nil
         }
         let attachmentsRoot = paths.attachments
@@ -1271,7 +1273,7 @@ final class AppModel: ObservableObject {
         to sourceUUIDs: Set<String>
     ) -> Bool {
         guard !sourceUUIDs.isEmpty else {
-            errorMessage = "노트북에 넣을 기록을 선택해 주세요."
+            errorMessage = String(localized: "노트북에 넣을 기록을 선택해 주세요.")
             return false
         }
         guard let notebook = createNotebook(named: name),
@@ -1389,7 +1391,7 @@ final class AppModel: ObservableObject {
     func prepareBackup() async {
         isWorking = true
         lastBackupExportMessage = nil
-        dataOperationDescription = "백업 데이터 준비 중"
+        dataOperationDescription = String(localized: "백업 데이터 준비 중")
         await Task.yield()
         defer {
             isWorking = false
@@ -1444,7 +1446,7 @@ final class AppModel: ObservableObject {
 
     func restoreBackup(data: Data, mode: RestoreMode) async {
         isWorking = true
-        dataOperationDescription = "백업 검증 중"
+        dataOperationDescription = String(localized: "백업 검증 중")
         await Task.yield()
         defer {
             isWorking = false
@@ -1452,7 +1454,9 @@ final class AppModel: ObservableObject {
         }
         do {
             guard let restorable = repository as? any BackupRestoreRepository else {
-                throw JournalError.persistence("현재 저장 adapter는 복원을 지원하지 않습니다.")
+                throw JournalError.persistence(
+                    String(localized: "현재 저장 adapter는 복원을 지원하지 않습니다.")
+                )
             }
             let temporary = paths.backupStaging
                 .appending(path: "\(UUID().uuidString).journalbackup")
@@ -1466,7 +1470,7 @@ final class AppModel: ObservableObject {
                 limit: 100_000
             )
             if mode == .replace {
-                dataOperationDescription = "현재 상태 안전 백업 중"
+                dataOperationDescription = String(localized: "현재 상태 안전 백업 중")
                 await Task.yield()
                 let safetyURL = paths.backupStaging.appending(
                     path: "SafetyBackup-\(Int(Date.now.timeIntervalSince1970)).journalbackup"
@@ -1491,8 +1495,8 @@ final class AppModel: ObservableObject {
             }
             dataOperationDescription =
                 mode == .replace
-                ? "교체 복원 적용 중"
-                : "병합 복원 적용 중"
+                ? String(localized: "교체 복원 적용 중")
+                : String(localized: "병합 복원 적용 중")
             await Task.yield()
             lastRestoreResult = try JournalRestoreExecutor().execute(
                 contents: contents,
@@ -1504,7 +1508,9 @@ final class AppModel: ObservableObject {
             lastRestoreFailureMessage = nil
             pendingRestoreData = nil
             reportOutcome(
-                title: mode == .replace ? "교체 복원 완료" : "병합 복원 완료",
+                title: mode == .replace
+                    ? String(localized: "교체 복원 완료")
+                    : String(localized: "병합 복원 완료"),
                 message: restoreSummary(lastRestoreResult)
             )
             markLocalMutation()
@@ -1541,9 +1547,11 @@ final class AppModel: ObservableObject {
     }
 
     private func restoreSummary(_ result: RestoreResult?) -> String {
-        guard let result else { return "복원이 끝났습니다." }
-        return "\(result.restored)개 반영 · \(result.tombstoned)개 휴지통 · "
-            + "충돌 \(result.conflicts)개"
+        guard let result else { return String(localized: "복원이 끝났습니다.") }
+        return String(
+            localized:
+                "\(result.restored)개 반영 · \(result.tombstoned)개 휴지통 · 충돌 \(result.conflicts)개"
+        )
     }
 
     func retryPendingRestore(mode: RestoreMode) async {

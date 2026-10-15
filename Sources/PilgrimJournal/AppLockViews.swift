@@ -79,7 +79,7 @@ struct AppLockView: View {
 
     private func retryText(until: Date, now: Date) -> String {
         let seconds = max(0, Int(ceil(until.timeIntervalSince(now))))
-        return "\(seconds)초 후 다시 시도할 수 있습니다."
+        return String(localized: "\(seconds)초 후 다시 시도할 수 있습니다.")
     }
 }
 
@@ -179,7 +179,7 @@ struct AppLockSettingsView: View {
                                 allowsBiometrics: allowsBiometrics
                             ) {
                                 clearFields()
-                                successMessage = "앱 잠금을 켰습니다."
+                                successMessage = String(localized: "앱 잠금을 켰습니다.")
                             }
                         }
                     }
@@ -219,7 +219,7 @@ struct AppLockSettingsView: View {
                         timeout: timeout,
                         allowsBiometrics: allowsBiometrics
                     ) {
-                        successMessage = "잠금 설정을 저장했습니다."
+                        successMessage = String(localized: "잠금 설정을 저장했습니다.")
                     }
                 }
             }
@@ -237,7 +237,7 @@ struct AppLockSettingsView: View {
                         confirmation: confirmation
                     ) {
                         clearFields()
-                        successMessage = "비밀번호를 변경했습니다."
+                        successMessage = String(localized: "비밀번호를 변경했습니다.")
                     }
                 }
             }
@@ -250,7 +250,7 @@ struct AppLockSettingsView: View {
                         confirmation: confirmation
                     ) {
                         clearFields()
-                        successMessage = "비밀번호를 재설정했습니다."
+                        successMessage = String(localized: "비밀번호를 재설정했습니다.")
                     }
                 }
             }
@@ -260,7 +260,7 @@ struct AppLockSettingsView: View {
                 Task {
                     if await lock.disable(currentPassword: currentPassword) {
                         clearFields()
-                        successMessage = "앱 잠금을 껐습니다."
+                        successMessage = String(localized: "앱 잠금을 껐습니다.")
                     }
                 }
             }

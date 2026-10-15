@@ -15,7 +15,8 @@ public struct DayOneArchiveAnalyzer {
         let archive = try SafeZipArchive(url: archiveURL)
         let candidates = archive.entries.filter(\.isJSONCandidate)
         guard !candidates.isEmpty else {
-            throw JournalError.unsupportedArchive("JSON 파일이 없습니다.")
+            throw JournalError.unsupportedArchive(
+                String(localized: "JSON 파일이 없습니다.", bundle: .module))
         }
 
         var selected: (entry: ZipEntry, root: [String: Any], data: Data)?
@@ -33,7 +34,7 @@ public struct DayOneArchiveAnalyzer {
         }
         guard let selected else {
             throw JournalError.unsupportedArchive(
-                "metadata와 entries를 가진 Day One JSON을 찾지 못했습니다."
+                String(localized: "metadata와 entries를 가진 Day One JSON을 찾지 못했습니다.", bundle: .module)
             )
         }
 
@@ -53,7 +54,8 @@ public struct DayOneArchiveAnalyzer {
 
         for (index, rawEntry) in rawEntries.enumerated() {
             guard let sourceUUID = rawEntry["uuid"] as? String, !sourceUUID.isEmpty else {
-                warnings.append("항목 \(index + 1): uuid가 없어 건너뜁니다.")
+                warnings.append(
+                    String(localized: "항목 \(index + 1): uuid가 없어 건너뜁니다.", bundle: .module))
                 continue
             }
             let normalizedUUID = sourceUUID.lowercased()
@@ -81,7 +83,8 @@ public struct DayOneArchiveAnalyzer {
             for attachment in mapped.attachments
             where !archiveContains(attachment, entries: archive.entries) {
                 missingAttachmentCount += 1
-                itemWarnings.append("첨부 파일을 찾지 못했습니다: \(attachment.filename)")
+                itemWarnings.append(
+                    String(localized: "첨부 파일을 찾지 못했습니다: \(attachment.filename)", bundle: .module))
             }
             countOptionalFields(in: rawEntry, into: &optionalFieldCounts)
             previewItems.append(
@@ -161,20 +164,25 @@ public struct DayOneArchiveAnalyzer {
         if let text, !text.isEmpty {
             body = text
             if let richText, (try? JSONSerialization.jsonObject(with: Data(richText.utf8))) == nil {
-                warnings.append("richText를 parse하지 못해 text를 사용했습니다.")
+                warnings.append(
+                    String(localized: "richText를 parse하지 못해 text를 사용했습니다.", bundle: .module))
             }
         } else if let richText,
             let object = try? JSONSerialization.jsonObject(with: Data(richText.utf8))
         {
             body = collectText(from: object)
-            if body.isEmpty { warnings.append("richText에서 본문을 찾지 못했습니다.") }
+            if body.isEmpty {
+                warnings.append(String(localized: "richText에서 본문을 찾지 못했습니다.", bundle: .module))
+            }
         } else {
             body = ""
-            warnings.append("읽을 수 있는 본문이 없습니다.")
+            warnings.append(String(localized: "읽을 수 있는 본문이 없습니다.", bundle: .module))
         }
 
         let occurredAt = parseDate(raw["creationDate"] as? String) ?? .distantPast
-        if occurredAt == .distantPast { warnings.append("creationDate를 parse하지 못했습니다.") }
+        if occurredAt == .distantPast {
+            warnings.append(String(localized: "creationDate를 parse하지 못했습니다.", bundle: .module))
+        }
         let tags = raw["tags"] as? [String] ?? []
         let template = raw["template"] as? [String: Any]
         let templateUUID = template?["uuid"] as? String

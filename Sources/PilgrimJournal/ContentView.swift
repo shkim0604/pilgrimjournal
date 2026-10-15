@@ -78,8 +78,8 @@ struct ContentView: View {
             .overlay {
                 if model.entries.isEmpty && model.hasActiveSearchCriteria {
                     JournalEmptyState(
-                        title: "검색 결과가 없습니다",
-                        description: "검색어나 필터를 바꾸거나 모든 조건을 지워보세요.",
+                        title: String(localized: "검색 결과가 없습니다"),
+                        description: String(localized: "검색어나 필터를 바꾸거나 모든 조건을 지워보세요."),
                         systemImage: "magnifyingglass"
                     ) {
                         Button("검색 조건 지우기") {
@@ -89,8 +89,8 @@ struct ContentView: View {
                     }
                 } else if model.entries.isEmpty && !model.isBatchSelecting {
                     JournalEmptyState(
-                        title: "아직 노트가 없습니다",
-                        description: "위의 ‘새 노트’를 눌러 바로 작성하세요.",
+                        title: String(localized: "아직 노트가 없습니다"),
+                        description: String(localized: "위의 ‘새 노트’를 눌러 바로 작성하세요."),
                         systemImage: "square.and.pencil"
                     ) {}
                     // The list still owns the 새 노트 button underneath.
@@ -104,8 +104,8 @@ struct ContentView: View {
             .onChange(of: model.searchText) { _, _ in model.refresh() }
             .navigationTitle(
                 model.selectedNotebookName
-                    ?? model.selectedKind.map { model.kindDefinition(for: $0).name }
-                    ?? "전체 기록"
+                    ?? model.selectedKind.map { model.kindDefinition(for: $0).displayName }
+                    ?? String(localized: "전체 기록")
             )
             .toolbar {
                 if model.isBatchSelecting {
@@ -184,9 +184,13 @@ struct ContentView: View {
                         .id(entry.id)
                 } else if model.selectedEntryIDs.count > 1 {
                     JournalEmptyState(
-                        title: "\(model.selectedEntryIDs.count)개의 노트를 선택했습니다",
-                        description: "도구 막대의 휴지통으로 한 번에 삭제하거나, "
-                            + "‘선택’ → ‘정리’로 유형과 태그를 바꿀 수 있습니다.",
+                        title: String(
+                            localized: "\(model.selectedEntryIDs.count)개의 노트를 선택했습니다"
+                        ),
+                        description: String(
+                            localized:
+                                "도구 막대의 휴지통으로 한 번에 삭제하거나, ‘선택’ → ‘정리’로 유형과 태그를 바꿀 수 있습니다."
+                        ),
                         systemImage: "checklist"
                     ) {}
                 } else if model.isPresentingEditor {
@@ -198,8 +202,8 @@ struct ContentView: View {
                     .id(model.editorSessionID)
                 } else {
                     JournalEmptyState(
-                        title: "기록을 선택하세요",
-                        description: "왼쪽 목록에서 기록을 고르거나 새 기록을 시작하세요.",
+                        title: String(localized: "기록을 선택하세요"),
+                        description: String(localized: "왼쪽 목록에서 기록을 고르거나 새 기록을 시작하세요."),
                         systemImage: "doc.text"
                     ) {}
                 }
@@ -215,8 +219,8 @@ struct ContentView: View {
                 EntryDetailView(entry: entry)
             } else {
                 JournalEmptyState(
-                    title: "기록을 선택하세요",
-                    description: "왼쪽 목록에서 기록을 고르면 여기에 내용이 보입니다.",
+                    title: String(localized: "기록을 선택하세요"),
+                    description: String(localized: "왼쪽 목록에서 기록을 고르면 여기에 내용이 보입니다."),
                     systemImage: "doc.text"
                 ) {}
             }
@@ -313,8 +317,7 @@ struct ContentView: View {
             }
         } message: {
             Text(
-                "선택한 \(model.selectedEntryIDs.count)개의 노트를 "
-                    + "휴지통으로 이동합니다."
+                "선택한 \(model.selectedEntryIDs.count)개의 노트를 휴지통으로 이동합니다."
             )
         }
         #if os(macOS)
@@ -583,7 +586,7 @@ private struct JournalSidebar: View {
         List {
             Section {
                 JournalSidebarItem(
-                    title: "전체 기록",
+                    title: String(localized: "전체 기록"),
                     systemImage: "books.vertical",
                     accent: JournalTheme.brandPrimary,
                     isSelected: model.selectedKind == nil
@@ -597,7 +600,7 @@ private struct JournalSidebar: View {
             Section("유형") {
                 ForEach(model.sidebarKinds, id: \.kind) { definition in
                     JournalSidebarItem(
-                        title: definition.name,
+                        title: definition.displayName,
                         systemImage: KindIconCatalog.displaySymbol(
                             for: definition.iconToken
                         ),
@@ -643,7 +646,7 @@ private struct JournalSidebar: View {
 
             Section {
                 JournalSidebarItem(
-                    title: "설정",
+                    title: String(localized: "설정"),
                     systemImage: "gearshape",
                     accent: JournalTheme.inkSecondary,
                     isSelected: false
@@ -760,7 +763,7 @@ private struct EntryRow: View {
                         EntryListSummaryFormatter.title(
                             explicitTitle: entry.title,
                             body: entry.body,
-                            fallback: model.kindDefinition(for: entry.kind).name
+                            fallback: model.kindDefinition(for: entry.kind).displayName
                         )
                     )
                     .font(.headline)

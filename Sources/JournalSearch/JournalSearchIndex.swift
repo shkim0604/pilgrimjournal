@@ -40,7 +40,7 @@ public enum JournalSearchError: LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case let .sqlite(message): "검색 데이터베이스 오류: \(message)"
+        case let .sqlite(message): String(localized: "검색 데이터베이스 오류: \(message)", bundle: .module)
         }
     }
 }
@@ -64,7 +64,7 @@ public final class JournalSearchIndex: @unchecked Sendable {
                 nil
             ) == SQLITE_OK
         else {
-            throw JournalSearchError.sqlite("데이터베이스를 열 수 없습니다.")
+            throw JournalSearchError.sqlite(String(localized: "데이터베이스를 열 수 없습니다.", bundle: .module))
         }
         try execute("PRAGMA journal_mode=WAL")
         try createSchema()
@@ -233,7 +233,9 @@ public final class JournalSearchIndex: @unchecked Sendable {
 
     public func indexedEntryIDs() throws -> Set<UUID> {
         try withLock {
-            guard let database else { throw JournalSearchError.sqlite("연결이 닫혔습니다.") }
+            guard let database else {
+                throw JournalSearchError.sqlite(String(localized: "연결이 닫혔습니다.", bundle: .module))
+            }
             var statement: OpaquePointer?
             guard
                 sqlite3_prepare_v2(
@@ -355,7 +357,9 @@ public final class JournalSearchIndex: @unchecked Sendable {
         _ sql: String,
         bindings: [Binding]
     ) throws -> [JournalSearchHit] {
-        guard let database else { throw JournalSearchError.sqlite("연결이 닫혔습니다.") }
+        guard let database else {
+            throw JournalSearchError.sqlite(String(localized: "연결이 닫혔습니다.", bundle: .module))
+        }
         var statement: OpaquePointer?
         guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
             throw sqliteError()
@@ -394,7 +398,9 @@ public final class JournalSearchIndex: @unchecked Sendable {
         _ sql: String,
         bindings: [Binding] = []
     ) throws {
-        guard let database else { throw JournalSearchError.sqlite("연결이 닫혔습니다.") }
+        guard let database else {
+            throw JournalSearchError.sqlite(String(localized: "연결이 닫혔습니다.", bundle: .module))
+        }
         var statement: OpaquePointer?
         guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
             throw sqliteError()
@@ -428,7 +434,7 @@ public final class JournalSearchIndex: @unchecked Sendable {
     private func sqliteError() -> JournalSearchError {
         let message =
             database.flatMap(sqlite3_errmsg).map(String.init(cString:))
-            ?? "알 수 없는 SQLite 오류"
+            ?? String(localized: "알 수 없는 SQLite 오류", bundle: .module)
         return .sqlite(message)
     }
 

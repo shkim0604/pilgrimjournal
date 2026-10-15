@@ -87,4 +87,5 @@ jobs:
             -scheme PilgrimJournal-Package \
             -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
             -only-testing:PilgrimJournalTests \
+            -testLanguage ko -testRegion KR \
             CODE_SIGNING_ALLOWED=NO

@@ -218,15 +218,20 @@ public enum JournalError: LocalizedError, Equatable, Sendable {
     public var errorDescription: String? {
         switch self {
         case .invalidManualKind:
-            "미분류로는 새 기록을 만들 수 없습니다. 다른 유형을 골라 주세요."
-        case .emptyContent: "제목이나 본문 중 하나는 입력해야 합니다."
-        case .entryNotFound: "기록을 찾을 수 없습니다."
-        case .revisionNotFound: "기록 이력을 찾을 수 없습니다."
-        case let .duplicateSource(source): "이미 가져온 Day One 기록입니다: \(source)"
-        case let .unsupportedArchive(reason): "지원하지 않는 가져오기 파일입니다: \(reason)"
-        case let .unsafeArchive(reason): "안전하지 않은 압축 파일입니다: \(reason)"
-        case let .invalidBackup(reason): "유효하지 않은 백업입니다: \(reason)"
-        case let .persistence(reason): "데이터를 저장할 수 없습니다: \(reason)"
+            String(localized: "미분류로는 새 기록을 만들 수 없습니다. 다른 유형을 골라 주세요.", bundle: .module)
+        case .emptyContent: String(localized: "제목이나 본문 중 하나는 입력해야 합니다.", bundle: .module)
+        case .entryNotFound: String(localized: "기록을 찾을 수 없습니다.", bundle: .module)
+        case .revisionNotFound: String(localized: "기록 이력을 찾을 수 없습니다.", bundle: .module)
+        case let .duplicateSource(source):
+            String(localized: "이미 가져온 Day One 기록입니다: \(source)", bundle: .module)
+        case let .unsupportedArchive(reason):
+            String(localized: "지원하지 않는 가져오기 파일입니다: \(reason)", bundle: .module)
+        case let .unsafeArchive(reason):
+            String(localized: "안전하지 않은 압축 파일입니다: \(reason)", bundle: .module)
+        case let .invalidBackup(reason):
+            String(localized: "유효하지 않은 백업입니다: \(reason)", bundle: .module)
+        case let .persistence(reason):
+            String(localized: "데이터를 저장할 수 없습니다: \(reason)", bundle: .module)
         }
     }
 }

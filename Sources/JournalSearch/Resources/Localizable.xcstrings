@@ -1,0 +1,46 @@
+{
+  "sourceLanguage" : "ko",
+  "strings" : {
+    "검색 데이터베이스 오류: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search database error: %@"
+          }
+        }
+      }
+    },
+    "데이터베이스를 열 수 없습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t open the database."
+          }
+        }
+      }
+    },
+    "알 수 없는 SQLite 오류" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unknown SQLite error"
+          }
+        }
+      }
+    },
+    "연결이 닫혔습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The connection is closed."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

@@ -42,7 +42,7 @@ final class AppleAuthenticationCoordinator: ObservableObject {
     }
 
     nonisolated static let cloudAccountMismatchMessage =
-        "현재 iCloud 저장 공간은 다른 Apple 로그인 사용자에게 연결되어 있습니다."
+        String(localized: "현재 iCloud 저장 공간은 다른 Apple 로그인 사용자에게 연결되어 있습니다.")
 
     @Published private(set) var state: State = .checking
     @Published var errorMessage: String?
@@ -241,7 +241,7 @@ final class AppleAuthenticationCoordinator: ObservableObject {
                 errorMessage = nil
             } else {
                 state = .signedOut
-                errorMessage = "Apple 로그인 상태를 확인할 수 없습니다. 연결 후 다시 시도해 주세요."
+                errorMessage = String(localized: "Apple 로그인 상태를 확인할 수 없습니다. 연결 후 다시 시도해 주세요.")
             }
         }
     }
@@ -267,7 +267,7 @@ final class AppleAuthenticationCoordinator: ObservableObject {
             errorMessage = Self.cloudAccountMismatchMessage
         case let .unavailable(reason):
             state = .authenticated(offline: offline)
-            errorMessage = "iCloud 연결을 확인하지 못해 이 기기에서만 사용합니다: \(reason)"
+            errorMessage = String(localized: "iCloud 연결을 확인하지 못해 이 기기에서만 사용합니다: \(reason)")
         }
     }
 
@@ -277,6 +277,7 @@ final class AppleAuthenticationCoordinator: ObservableObject {
     ) -> String {
         if let email, !email.isEmpty { return email }
         guard identifier.count > 12 else { return identifier }
-        return "Apple 계정 · \(identifier.prefix(6))…\(identifier.suffix(4))"
+        return String(
+            localized: "Apple 계정 · \(String(identifier.prefix(6)))…\(String(identifier.suffix(4)))")
     }
 }

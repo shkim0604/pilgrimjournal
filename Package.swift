@@ -21,10 +21,14 @@ let package = Package(
         .executable(name: "JournalChecks", targets: ["JournalChecks"]),
     ],
     targets: [
-        .target(name: "JournalDomain"),
+        .target(
+            name: "JournalDomain",
+            resources: [.process("Resources")]
+        ),
         .target(
             name: "JournalData",
             dependencies: ["JournalDomain"],
+            resources: [.process("Resources")],
             swiftSettings: [
                 swiftDataDefine,
             ],
@@ -37,16 +41,19 @@ let package = Package(
         ),
         .target(
             name: "DayOneImport",
-            dependencies: ["JournalDomain"]
+            dependencies: ["JournalDomain"],
+            resources: [.process("Resources")]
         ),
         .target(
             name: "JournalSearch",
             dependencies: ["JournalDomain"],
+            resources: [.process("Resources")],
             linkerSettings: [.linkedLibrary("sqlite3")]
         ),
         .target(
             name: "JournalBackup",
-            dependencies: ["JournalDomain", "DayOneImport"]
+            dependencies: ["JournalDomain", "DayOneImport"],
+            resources: [.process("Resources")]
         ),
         .executableTarget(
             name: "PilgrimJournal",
@@ -57,6 +64,10 @@ let package = Package(
                 "JournalSearch",
                 "JournalBackup",
             ],
+            // The app's String Catalog is compiled by the Xcode app target,
+            // which builds these sources directly; SwiftPM builds only run
+            // tests, which read the Korean source strings.
+            exclude: ["Localizable.xcstrings"],
             swiftSettings: [
                 .define("DEBUG", .when(configuration: .debug)),
                 swiftDataDefine,

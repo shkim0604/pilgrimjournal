@@ -93,14 +93,15 @@ public enum KindCatalogError: LocalizedError, Equatable, Sendable {
 
     public var errorDescription: String? {
         switch self {
-        case .emptyName: "유형 이름을 입력해 주세요."
-        case .nameTooLong: "유형 이름은 20자 이하로 입력해 주세요."
-        case .duplicateName(let name): "‘\(name)’ 유형이 이미 있습니다."
-        case .systemKindLocked: "미분류는 바꿀 수 없습니다."
-        case .lastCreatableKind: "유형이 하나 이상 있어야 합니다."
-        case .invalidMoveTarget: "기록을 옮길 다른 유형을 골라 주세요."
-        case .notDeleted: "삭제된 유형이 아닙니다."
-        case .customKindCannotBeRestored: "직접 만든 유형은 되살릴 수 없습니다."
+        case .emptyName: String(localized: "유형 이름을 입력해 주세요.", bundle: .module)
+        case .nameTooLong: String(localized: "유형 이름은 20자 이하로 입력해 주세요.", bundle: .module)
+        case .duplicateName(let name): String(localized: "‘\(name)’ 유형이 이미 있습니다.", bundle: .module)
+        case .systemKindLocked: String(localized: "미분류는 바꿀 수 없습니다.", bundle: .module)
+        case .lastCreatableKind: String(localized: "유형이 하나 이상 있어야 합니다.", bundle: .module)
+        case .invalidMoveTarget: String(localized: "기록을 옮길 다른 유형을 골라 주세요.", bundle: .module)
+        case .notDeleted: String(localized: "삭제된 유형이 아닙니다.", bundle: .module)
+        case .customKindCannotBeRestored:
+            String(localized: "직접 만든 유형은 되살릴 수 없습니다.", bundle: .module)
         }
     }
 }

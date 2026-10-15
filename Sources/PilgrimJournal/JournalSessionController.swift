@@ -92,7 +92,8 @@ final class JournalSessionController: ObservableObject {
                 registry = JournalAccountScopeRegistry(root: root)
                 unresolvedRootProvider = nil
             } catch {
-                errorMessage = "기록 저장 위치를 준비하지 못했습니다. \(error.localizedDescription)"
+                errorMessage = String(
+                    localized: "기록 저장 위치를 준비하지 못했습니다. \(error.localizedDescription)")
                 return
             }
         }

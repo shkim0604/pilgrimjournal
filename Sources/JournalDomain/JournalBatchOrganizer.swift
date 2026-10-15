@@ -15,9 +15,9 @@ public enum JournalBatchOrganizationError: LocalizedError, Equatable, Sendable {
     public var errorDescription: String? {
         switch self {
         case .emptySelection:
-            "정리할 기록을 선택하세요."
+            String(localized: "정리할 기록을 선택하세요.", bundle: .module)
         case let .missingEntries(ids):
-            "선택한 기록 \(ids.count)개를 찾지 못했습니다."
+            String(localized: "선택한 기록 \(ids.count)개를 찾지 못했습니다.", bundle: .module)
         }
     }
 }

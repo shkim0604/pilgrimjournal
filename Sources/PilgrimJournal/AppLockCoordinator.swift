@@ -8,8 +8,13 @@ final class AppLockCoordinator: ObservableObject {
     @Published private(set) var isLocked = false
     @Published private(set) var isPrivacyShieldVisible = false
     @Published private(set) var retryAfter: Date?
-    @Published var errorMessage: String?
+    @Published var errorMessage: String? {
+        didSet { isShowingRetryMessage = false }
+    }
 
+    /// True only while `errorMessage` is the lockout "try again later" message,
+    /// so the retry timer can clear it without comparing localized text.
+    private var isShowingRetryMessage = false
     private let service: AppLockService
     private let authenticator: any DeviceOwnerAuthenticating
     private var backgroundedAt: Date?
@@ -90,10 +95,11 @@ final class AppLockCoordinator: ObservableObject {
                 isLocked = false
                 return true
             case .failed:
-                errorMessage = "비밀번호가 올바르지 않습니다."
+                errorMessage = String(localized: "비밀번호가 올바르지 않습니다.")
             case let .retryAfter(until):
                 retryAfter = until
-                errorMessage = "잠시 후 다시 시도하세요."
+                errorMessage = String(localized: "잠시 후 다시 시도하세요.")
+                isShowingRetryMessage = true
                 scheduleRetryClear(at: until)
             }
         } catch {
@@ -111,7 +117,7 @@ final class AppLockCoordinator: ObservableObject {
         }
         do {
             try await authenticator.authenticateBiometrics(
-                reason: "Pilgrim Journal의 기록을 여세요."
+                reason: String(localized: "Pilgrim Journal의 기록을 여세요.")
             )
             try await service.clearFailuresAfterDeviceAuthentication()
             retryTask?.cancel()
@@ -119,7 +125,7 @@ final class AppLockCoordinator: ObservableObject {
             isLocked = false
             return true
         } catch {
-            errorMessage = "생체 인증을 사용할 수 없습니다. 비밀번호를 입력하세요."
+            errorMessage = String(localized: "생체 인증을 사용할 수 없습니다. 비밀번호를 입력하세요.")
             return false
         }
     }
@@ -208,7 +214,7 @@ final class AppLockCoordinator: ObservableObject {
         }
         do {
             try await authenticator.authenticateDeviceOwner(
-                reason: "Pilgrim Journal 앱 잠금 비밀번호를 재설정하세요."
+                reason: String(localized: "Pilgrim Journal 앱 잠금 비밀번호를 재설정하세요.")
             )
             try await service.resetAfterDeviceAuthentication(
                 newPassword: newPassword,
@@ -239,7 +245,7 @@ final class AppLockCoordinator: ObservableObject {
             try? await Task.sleep(for: .seconds(delay))
             guard !Task.isCancelled, self?.retryAfter == date else { return }
             self?.retryAfter = nil
-            if self?.errorMessage == "잠시 후 다시 시도하세요." {
+            if self?.isShowingRetryMessage == true {
                 self?.errorMessage = nil
             }
         }

@@ -74,7 +74,8 @@ public struct JournalBackupService {
         let archive = try SafeZipArchive(url: url)
         let lookup = Dictionary(uniqueKeysWithValues: archive.entries.map { ($0.displayName, $0) })
         guard let manifestEntry = lookup["manifest.json"] else {
-            throw JournalError.invalidBackup("manifest.json이 없습니다.")
+            throw JournalError.invalidBackup(
+                String(localized: "manifest.json이 없습니다.", bundle: .module))
         }
         let manifest = try decoder.decode(
             BackupManifest.self,
@@ -82,18 +83,21 @@ public struct JournalBackupService {
         )
         guard manifest.formatVersion == BackupManifest.currentFormatVersion else {
             throw JournalError.invalidBackup(
-                "지원하지 않는 format version \(manifest.formatVersion)"
+                String(
+                    localized: "지원하지 않는 format version \(manifest.formatVersion)", bundle: .module)
             )
         }
 
         var validated: [String: Data] = [:]
         for (name, checksum) in manifest.files {
             guard let entry = lookup[name] else {
-                throw JournalError.invalidBackup("manifest 파일이 없습니다: \(name)")
+                throw JournalError.invalidBackup(
+                    String(localized: "manifest 파일이 없습니다: \(name)", bundle: .module))
             }
             let data = try archive.data(for: entry)
             guard ContentHash.sha256Hex(data) == checksum else {
-                throw JournalError.invalidBackup("checksum 불일치: \(name)")
+                throw JournalError.invalidBackup(
+                    String(localized: "checksum 불일치: \(name)", bundle: .module))
             }
             validated[name] = data
         }

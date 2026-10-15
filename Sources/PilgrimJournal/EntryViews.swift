@@ -226,7 +226,7 @@ struct InlineEntryEditorView: View {
         Picker("기록 유형", selection: kindBinding) {
             ForEach(model.kindPickerOptions(including: draft.kind), id: \.kind) {
                 definition in
-                Text(definition.name).tag(definition.kind)
+                Text(definition.displayName).tag(definition.kind)
             }
         }
         .labelsHidden()
@@ -372,20 +372,20 @@ struct InlineEntryEditorView: View {
         if pendingKind != .prayer,
             details.prayerStatus != nil || details.answeredAt != nil
         {
-            labels.append("기도 상태·응답일")
+            labels.append(String(localized: "기도 상태·응답일"))
         }
         if pendingKind != .bibleStudy,
             !(details.scriptureReference ?? "").isEmpty
         {
-            labels.append("성경 구절")
+            labels.append(String(localized: "성경 구절"))
         }
         if pendingKind != .reading,
             !(details.bookTitle ?? "").isEmpty || !(details.bookAuthor ?? "").isEmpty
         {
-            labels.append("책 제목·저자")
+            labels.append(String(localized: "책 제목·저자"))
         }
         if pendingKind != .diary, !(details.mood ?? "").isEmpty {
-            labels.append("기분")
+            labels.append(String(localized: "기분"))
         }
         return labels
     }
@@ -600,7 +600,7 @@ struct InlineEntryEditorView: View {
                 selectSavedEntry: false
             )
         else {
-            saveState = .failed(model.errorMessage ?? "기록을 저장할 수 없습니다.")
+            saveState = .failed(model.errorMessage ?? String(localized: "기록을 저장할 수 없습니다."))
             return
         }
         persistedEntryID = record.id
@@ -671,7 +671,7 @@ struct EntryDetailView: View {
                 }
                 Text(
                     entry.title.isEmpty
-                        ? model.kindDefinition(for: entry.kind).name : entry.title
+                        ? model.kindDefinition(for: entry.kind).displayName : entry.title
                 )
                 .font(.largeTitle.bold())
                 .foregroundStyle(JournalTheme.ink)
@@ -706,7 +706,7 @@ struct EntryDetailView: View {
 
     private var kindBadge: some View {
         let definition = model.kindDefinition(for: entry.kind)
-        return Text(definition.name)
+        return Text(definition.displayName)
             .font(.caption.weight(.semibold))
             .foregroundStyle(JournalTheme.categoryColor(for: definition))
             .padding(.horizontal, 9)
@@ -995,7 +995,7 @@ struct EntryEditorView: View {
                 } label: {
                     MetadataChip {
                         Label(
-                            model.kindDefinition(for: draft.kind).name,
+                            model.kindDefinition(for: draft.kind).displayName,
                             systemImage: "slider.horizontal.3"
                         )
                     }
@@ -1048,7 +1048,7 @@ struct EntryEditorView: View {
                     Picker("기록 유형", selection: kindBinding) {
                         ForEach(model.kindPickerOptions(including: draft.kind), id: \.kind) {
                             definition in
-                            Text(definition.name).tag(definition.kind)
+                            Text(definition.displayName).tag(definition.kind)
                         }
                     }
                     Picker("노트북", selection: notebookBinding) {
@@ -1161,22 +1161,23 @@ struct EntryEditorView: View {
     private var keyboardAccessory: MarkdownKeyboardAccessory {
         MarkdownKeyboardAccessory(
             leading: [
-                .init(title: "제목", systemImage: "textformat.size") {
+                .init(title: String(localized: "제목"), systemImage: "textformat.size") {
                     appendCommand(.h2)
                 },
-                .init(title: "불릿", systemImage: "list.bullet") {
+                .init(title: String(localized: "불릿"), systemImage: "list.bullet") {
                     appendCommand(.bullet)
                 },
-                .init(title: "내어쓰기", systemImage: "decrease.indent") {
+                .init(title: String(localized: "내어쓰기"), systemImage: "decrease.indent") {
                     postMarkdownCommand(.outdentList)
                 },
-                .init(title: "하위 불릿", systemImage: "increase.indent") {
+                .init(title: String(localized: "하위 불릿"), systemImage: "increase.indent") {
                     postMarkdownCommand(.indentList)
                 },
                 // No 오늘 button: seven items overflow a 390pt-wide iPhone,
                 // and the date is still a `/today` slash command away.
                 .init(
-                    title: isFocusMode ? "집중 모드 종료" : "집중 모드",
+                    title: isFocusMode
+                        ? String(localized: "집중 모드 종료") : String(localized: "집중 모드"),
                     systemImage: isFocusMode
                         ? "arrow.down.right.and.arrow.up.left"
                         : "arrow.up.left.and.arrow.down.right"
@@ -1187,7 +1188,7 @@ struct EntryEditorView: View {
             // 📷 took 키보드 닫기's place: six is the limit, and dragging the
             // body down already dismisses the keyboard (`.interactive`).
             trailing: [
-                .init(title: "사진", systemImage: "photo") {
+                .init(title: String(localized: "사진"), systemImage: "photo") {
                     if UIImagePickerController.isSourceTypeAvailable(.camera) {
                         isChoosingPhotoSource = true
                     } else {
@@ -1297,20 +1298,20 @@ struct EntryEditorView: View {
         if pendingKind != .prayer,
             details.prayerStatus != nil || details.answeredAt != nil
         {
-            labels.append("기도 상태·응답일")
+            labels.append(String(localized: "기도 상태·응답일"))
         }
         if pendingKind != .bibleStudy,
             !(details.scriptureReference ?? "").isEmpty
         {
-            labels.append("성경 구절")
+            labels.append(String(localized: "성경 구절"))
         }
         if pendingKind != .reading,
             !(details.bookTitle ?? "").isEmpty || !(details.bookAuthor ?? "").isEmpty
         {
-            labels.append("책 제목·저자")
+            labels.append(String(localized: "책 제목·저자"))
         }
         if pendingKind != .diary, !(details.mood ?? "").isEmpty {
-            labels.append("기분")
+            labels.append(String(localized: "기분"))
         }
         return labels
     }
@@ -1462,7 +1463,7 @@ struct EntryEditorView: View {
                 selectSavedEntry: false
             )
         else {
-            saveState = .failed(model.errorMessage ?? "기록을 저장할 수 없습니다.")
+            saveState = .failed(model.errorMessage ?? String(localized: "기록을 저장할 수 없습니다."))
             return false
         }
         persistedEntryID = record.id
@@ -1664,7 +1665,7 @@ private struct AttachmentEditorSection: View {
                 let url = try result.get().first
                 guard let url else { return }
                 guard let targetID = entryID ?? ensureEntryID() else {
-                    model.errorMessage = "첨부할 기록을 먼저 저장해 주세요."
+                    model.errorMessage = String(localized: "첨부할 기록을 먼저 저장해 주세요.")
                     return
                 }
                 Task {
@@ -1761,7 +1762,7 @@ private struct AttachmentEditorSection: View {
 
     private func requireEntryThenRun(_ action: () -> Void) {
         guard entryID != nil || ensureEntryID() != nil else {
-            model.errorMessage = "첨부 전에 제목이나 본문을 입력해 기록을 저장해 주세요."
+            model.errorMessage = String(localized: "첨부 전에 제목이나 본문을 입력해 기록을 저장해 주세요.")
             return
         }
         action()
@@ -1777,7 +1778,7 @@ private struct AttachmentEditorSection: View {
 
     private func importPhotoPickerSelection(_ items: [PhotosPickerItem]) {
         guard let targetID = entryID ?? ensureEntryID() else {
-            model.errorMessage = "첨부할 기록을 먼저 저장해 주세요."
+            model.errorMessage = String(localized: "첨부할 기록을 먼저 저장해 주세요.")
             photoPickerSelection = []
             return
         }
@@ -1819,7 +1820,7 @@ private struct AttachmentEditorSection: View {
     #if os(iOS)
     private func importCapturedPhoto(_ image: UIImage) {
         guard let targetID = entryID ?? ensureEntryID() else {
-            model.errorMessage = "첨부할 기록을 먼저 저장해 주세요."
+            model.errorMessage = String(localized: "첨부할 기록을 먼저 저장해 주세요.")
             return
         }
         guard let data = image.jpegData(compressionQuality: 0.9) else { return }
@@ -1909,7 +1910,9 @@ private struct AttachmentEditorSection: View {
         guard let data = model.attachmentData(for: attachment.id) else { return }
         exportDocument = AttachmentDocument(data: data)
         exportContentType = UTType(mimeType: attachment.mimeType) ?? .data
-        let name = attachment.originalName.isEmpty ? "첨부파일" : attachment.originalName
+        let name =
+            attachment.originalName.isEmpty
+            ? String(localized: "첨부파일") : attachment.originalName
         exportFilename =
             (name as NSString).deletingPathExtension.isEmpty
             ? name
@@ -1932,12 +1935,12 @@ private struct AttachmentEditorSection: View {
         )
         let state =
             switch attachment.state {
-            case .local: "이 기기에 저장됨"
-            case .pending: "iCloud 업로드 대기"
-            case .uploading: "iCloud 업로드 중"
-            case .uploaded: "iCloud에 저장됨"
-            case .downloading: "다운로드 중"
-            case .failed: "전송 실패 · 다시 시도 필요"
+            case .local: String(localized: "이 기기에 저장됨")
+            case .pending: String(localized: "iCloud 업로드 대기")
+            case .uploading: String(localized: "iCloud 업로드 중")
+            case .uploaded: String(localized: "iCloud에 저장됨")
+            case .downloading: String(localized: "다운로드 중")
+            case .failed: String(localized: "전송 실패 · 다시 시도 필요")
             }
         return "\(size) · \(state)"
     }
@@ -2040,8 +2043,11 @@ struct RevisionHistoryView: View {
             List(model.revisions(for: entry.id)) { revision in
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
-                        Text(revision.snapshot.title.isEmpty ? "제목 없음" : revision.snapshot.title)
-                            .font(.headline)
+                        Text(
+                            revision.snapshot.title.isEmpty
+                                ? String(localized: "제목 없음") : revision.snapshot.title
+                        )
+                        .font(.headline)
                         if revision.id == entry.currentRevisionID {
                             Text("현재")
                                 .font(.caption)
@@ -2173,9 +2179,7 @@ struct TrashView: View {
             Button("취소", role: .cancel) {}
         } message: {
             Text(
-                "휴지통의 \(model.trashEntries.count)개 기록과 수정 이력, 첨부가 이 기기와 "
-                    + "iCloud에서 완전히 지워집니다. 되돌릴 수 없습니다. 다른 기기가 동기화된 "
-                    + "뒤에 실행하세요."
+                "휴지통의 \(model.trashEntries.count)개 기록과 수정 이력, 첨부가 이 기기와 iCloud에서 완전히 지워집니다. 되돌릴 수 없습니다. 다른 기기가 동기화된 뒤에 실행하세요."
             )
         }
     }
@@ -2185,7 +2189,7 @@ struct TrashView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(
                 entry.title.isEmpty
-                    ? model.kindDefinition(for: entry.kind).name : entry.title
+                    ? model.kindDefinition(for: entry.kind).displayName : entry.title
             )
             .font(.headline)
             .lineLimit(2)
@@ -2210,14 +2214,14 @@ struct BatchOrganizerView: View {
                 Section {
                     LabeledContent(
                         "선택한 기록",
-                        value: "\(model.selectedEntryIDs.count)개"
+                        value: String(localized: "\(model.selectedEntryIDs.count)개")
                     )
                 }
                 Section("유형") {
                     Picker("변경할 유형", selection: $targetKind) {
                         Text("유형 유지").tag(nil as JournalKind?)
                         ForEach(model.kindPickerOptions(), id: \.kind) { definition in
-                            Text(definition.name).tag(definition.kind as JournalKind?)
+                            Text(definition.displayName).tag(definition.kind as JournalKind?)
                         }
                     }
                     Text("유형을 바꾸면 각 기록에 새 revision이 생성되고 해당 유형에 맞지 않는 상세 필드는 정리됩니다.")

@@ -67,8 +67,8 @@ struct OnboardingView: View {
 
     private func informationRow(
         icon: String,
-        title: String,
-        description: String
+        title: LocalizedStringKey,
+        description: LocalizedStringKey
     ) -> some View {
         HStack(alignment: .top, spacing: 16) {
             Image(systemName: icon)
@@ -129,12 +129,12 @@ struct PrivacyInformationView: View {
 
     private var syncDescription: String {
         switch syncState {
-        case .localOnly: "이 기기에만 저장"
-        case .savedLocally: "이 기기에 저장됨"
-        case .pending: "CloudKit 동기화 대기"
-        case .synced: "CloudKit 동기화됨"
-        case let .unavailable(reason): "iCloud 사용 불가: \(reason)"
-        case let .failed(message, _): "동기화 오류: \(message)"
+        case .localOnly: String(localized: "이 기기에만 저장")
+        case .savedLocally: String(localized: "이 기기에 저장됨")
+        case .pending: String(localized: "CloudKit 동기화 대기")
+        case .synced: String(localized: "CloudKit 동기화됨")
+        case let .unavailable(reason): String(localized: "iCloud 사용 불가: \(reason)")
+        case let .failed(message, _): String(localized: "동기화 오류: \(message)")
         }
     }
 }

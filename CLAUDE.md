@@ -34,8 +34,12 @@ xcodebuild -project PilgrimJournal/PilgrimJournal.xcodeproj -scheme PilgrimJourn
 `swift test` runs on macOS, so it skips `#if os(iOS)` tests such as `LiveMarkdownTextEditorIOSTests` (the hosted iPhone editor tests guarding the typing release gate). Run the app test target on an iOS Simulator for those:
 
 ```sh
-xcodebuild test -scheme PilgrimJournal-Package -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:PilgrimJournalTests CODE_SIGNING_ALLOWED=NO
+xcodebuild test -scheme PilgrimJournal-Package -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:PilgrimJournalTests -testLanguage ko -testRegion KR CODE_SIGNING_ALLOWED=NO
 ```
+
+### Localization (Korean source, English translation)
+
+The UI is Korean-first; the Korean text itself is the localization key and English lives in String Catalogs: `Sources/PilgrimJournal/Localizable.xcstrings` (app, main bundle; excluded from SwiftPM and compiled by the Xcode app target), `Sources/<Library>/Resources/Localizable.xcstrings` (libraries, `String(localized: "…", bundle: .module)`), and `PilgrimJournal/PilgrimJournal/InfoPlist.xcstrings` (permission texts). New user-visible text must go through `Text("…")`-style `LocalizedStringKey` literals or `String(localized:)`; never localize stored or synced data (Day One matching, import-audit records, kind names in the catalog). Built-in kind names are stored in Korean and translated only for display (`KindDefinition.displayName` / `storedName(for:)`). Command-line SwiftPM copies catalogs without compiling them, so `swift test` sees Korean; Xcode builds do compile them, which is why the iOS Simulator test run pins `-testLanguage ko`. After adding strings, `xcodebuild -exportLocalizations -project PilgrimJournal/PilgrimJournal.xcodeproj -localizationPath <dir> -exportLanguage en` (and the same without `-project` in the package root for the libraries) refreshes the catalogs' keys; then fill in the missing `en` values.
 
 CI (`.github/workflows/check.yml`) runs `scripts/check.sh`, both unsigned Xcode builds, and that iOS Simulator test run on every PR and push to `main`. It is pinned to Xcode 26.2 on the `macos-26` runner, and the iOS job picks any available iPhone on the newest iOS runtime instead of naming a device. When bumping the local Xcode, bump `DEVELOPER_DIR` there too.
 

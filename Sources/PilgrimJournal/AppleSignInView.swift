@@ -72,7 +72,8 @@ struct AppleSignInView: View {
                             let credential = authorization.credential
                                 as? ASAuthorizationAppleIDCredential
                         else {
-                            authentication.errorMessage = "Apple 로그인 정보를 확인할 수 없습니다."
+                            authentication.errorMessage = String(
+                                localized: "Apple 로그인 정보를 확인할 수 없습니다.")
                             return
                         }
                         Task {
@@ -147,21 +148,21 @@ struct BlockedSignInGuidance: Equatable {
     init?(state: AppleAuthenticationCoordinator.State) {
         switch state {
         case .blockedDifferentUser:
-            title = "이 기기의 기록은 다른 Apple 계정에 연결되어 있습니다."
+            title = String(localized: "이 기기의 기록은 다른 Apple 계정에 연결되어 있습니다.")
             systemImage = "person.crop.circle.badge.exclamationmark"
             steps = [
-                "기록을 처음 만든 Apple 계정으로 다시 로그인하세요.",
-                "다른 계정의 기록은 보호를 위해 열거나 합치지 않습니다. 기록은 삭제되지 않았습니다.",
+                String(localized: "기록을 처음 만든 Apple 계정으로 다시 로그인하세요."),
+                String(localized: "다른 계정의 기록은 보호를 위해 열거나 합치지 않습니다. 기록은 삭제되지 않았습니다."),
             ]
             offersCloudRecheck = false
             restatedError = AppleAuthenticationSessionError.differentUser.localizedDescription
         case .blockedCloudAccountMismatch:
-            title = "현재 iCloud는 다른 Apple 계정에 연결되어 있습니다."
+            title = String(localized: "현재 iCloud는 다른 Apple 계정에 연결되어 있습니다.")
             systemImage = "icloud.slash"
             steps = [
-                "이 iCloud를 처음 연결한 Apple 계정으로 로그인하세요.",
-                "또는 기기 설정에서 다른 iCloud 계정으로 바꾼 뒤 ‘iCloud 연결 다시 확인’을 누르세요.",
-                "어느 쪽 기록도 삭제되지 않았습니다.",
+                String(localized: "이 iCloud를 처음 연결한 Apple 계정으로 로그인하세요."),
+                String(localized: "또는 기기 설정에서 다른 iCloud 계정으로 바꾼 뒤 ‘iCloud 연결 다시 확인’을 누르세요."),
+                String(localized: "어느 쪽 기록도 삭제되지 않았습니다."),
             ]
             offersCloudRecheck = true
             restatedError = AppleAuthenticationCoordinator.cloudAccountMismatchMessage

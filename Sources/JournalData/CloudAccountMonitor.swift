@@ -34,7 +34,7 @@ public struct CloudAccountMonitor: Sendable {
         }
         guard let status else {
             return .failed(
-                message: "iCloud 상태 확인이 시간 내에 끝나지 않았습니다.",
+                message: String(localized: "iCloud 상태 확인이 시간 내에 끝나지 않았습니다.", bundle: .module),
                 retryable: true
             )
         }
@@ -42,15 +42,20 @@ public struct CloudAccountMonitor: Sendable {
         case .available:
             return nil
         case .noAccount:
-            return .unavailable(reason: "iCloud 계정이 없습니다.")
+            return .unavailable(reason: String(localized: "iCloud 계정이 없습니다.", bundle: .module))
         case .restricted:
-            return .unavailable(reason: "이 기기에서 iCloud가 제한되었습니다.")
+            return .unavailable(
+                reason: String(localized: "이 기기에서 iCloud가 제한되었습니다.", bundle: .module))
         case .couldNotDetermine:
-            return .unavailable(reason: "iCloud 계정 상태를 확인할 수 없습니다.")
+            return .unavailable(
+                reason: String(localized: "iCloud 계정 상태를 확인할 수 없습니다.", bundle: .module))
         case .temporarilyUnavailable:
-            return .failed(message: "iCloud를 일시적으로 사용할 수 없습니다.", retryable: true)
+            return .failed(
+                message: String(localized: "iCloud를 일시적으로 사용할 수 없습니다.", bundle: .module),
+                retryable: true)
         @unknown default:
-            return .unavailable(reason: "알 수 없는 iCloud 계정 상태입니다.")
+            return .unavailable(
+                reason: String(localized: "알 수 없는 iCloud 계정 상태입니다.", bundle: .module))
         }
     }
 

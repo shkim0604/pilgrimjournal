@@ -275,6 +275,27 @@ enum MarkdownSlashCommand: String, CaseIterable, Identifiable {
         }
     }
 
+    /// `title` for display. `title` itself stays the Korean source text
+    /// because the slash-command palette also matches typed queries against
+    /// it; this is only what the menu and palette show.
+    var displayTitle: String {
+        switch self {
+        case .h1: String(localized: "제목 1")
+        case .h2: String(localized: "제목 2")
+        case .h3: String(localized: "제목 3")
+        case .h4: String(localized: "제목 4")
+        case .h5: String(localized: "제목 5")
+        case .h6: String(localized: "제목 6")
+        case .bullet: String(localized: "불릿 목록")
+        case .numbered: String(localized: "번호 목록")
+        case .checklist: String(localized: "체크리스트")
+        case .quote: String(localized: "인용문")
+        case .code: String(localized: "코드 블록")
+        case .today: String(localized: "오늘 날짜")
+        case .line: String(localized: "구분선")
+        }
+    }
+
     var systemImage: String {
         switch self {
         case .h1: "1.square"
@@ -325,15 +346,15 @@ enum MarkdownInlineFormat: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .bold: "굵게"
-        case .italic: "기울임"
-        case .strikethrough: "취소선"
-        case .highlight: "하이라이트"
-        case .code: "인라인 코드"
-        case .heading: "제목"
-        case .bullet: "불릿"
-        case .quote: "인용"
-        case .link: "링크"
+        case .bold: String(localized: "굵게")
+        case .italic: String(localized: "기울임")
+        case .strikethrough: String(localized: "취소선")
+        case .highlight: String(localized: "하이라이트")
+        case .code: String(localized: "인라인 코드")
+        case .heading: String(localized: "제목")
+        case .bullet: String(localized: "불릿")
+        case .quote: String(localized: "인용")
+        case .link: String(localized: "링크")
         }
     }
 
@@ -1326,7 +1347,7 @@ struct MarkdownBodyEditor: View {
                             )
                         } label: {
                             Label(
-                                "\(command.trigger)  \(command.title)",
+                                "\(command.trigger)  \(command.displayTitle)",
                                 systemImage: command.systemImage
                             )
                         }
@@ -1419,6 +1440,7 @@ struct MarkdownBodyEditor: View {
             query.isEmpty
                 || $0.rawValue.localizedCaseInsensitiveContains(query)
                 || $0.title.localizedCaseInsensitiveContains(query)
+                || $0.displayTitle.localizedCaseInsensitiveContains(query)
         }
         if !matches.isEmpty {
             VStack(alignment: .leading, spacing: 2) {
@@ -1441,7 +1463,7 @@ struct MarkdownBodyEditor: View {
                         HStack {
                             Image(systemName: command.systemImage)
                                 .frame(width: 22)
-                            Text(command.title)
+                            Text(command.displayTitle)
                             Spacer()
                             Text(command.trigger)
                                 .font(.caption.monospaced())
@@ -3371,7 +3393,7 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
                         registersUndo: true
                     )
                 }
-                undoManager.setActionName("Markdown 서식")
+                undoManager.setActionName(String(localized: "Markdown 서식"))
             }
             isUpdating = true
             textView.string = replacement
@@ -4497,7 +4519,7 @@ struct LiveMarkdownTextEditor: UIViewRepresentable {
             textView.undoManager?.registerUndo(withTarget: self) { target in
                 target.setChecklistState(previous, at: range)
             }
-            textView.undoManager?.setActionName("체크리스트")
+            textView.undoManager?.setActionName(String(localized: "체크리스트"))
             // `[ ]` and `[x]` are the same length, so `range` stays valid for
             // the undo above and the selection needs no adjusting.
             let storage = textView.textStorage
@@ -4740,20 +4762,23 @@ struct LiveMarkdownTextEditor: UIViewRepresentable {
             let insertPhoto: UIMenuElement
             if UIImagePickerController.isSourceTypeAvailable(.camera) {
                 insertPhoto = UIMenu(
-                    title: "사진 삽입",
+                    title: String(localized: "사진 삽입"),
                     image: image,
                     children: [
                         UIAction(
-                            title: "사진 보관함",
+                            title: String(localized: "사진 보관함"),
                             image: UIImage(systemName: "photo.on.rectangle")
                         ) { _ in request(.library) },
-                        UIAction(title: "촬영", image: UIImage(systemName: "camera")) { _ in
+                        UIAction(
+                            title: String(localized: "촬영"),
+                            image: UIImage(systemName: "camera")
+                        ) { _ in
                             request(.camera)
                         },
                     ]
                 )
             } else {
-                insertPhoto = UIAction(title: "사진 삽입", image: image) { _ in
+                insertPhoto = UIAction(title: String(localized: "사진 삽입"), image: image) { _ in
                     request(.library)
                 }
             }
@@ -4779,7 +4804,7 @@ struct LiveMarkdownTextEditor: UIViewRepresentable {
                         registersUndo: true
                     )
                 }
-                undoManager.setActionName("Markdown 서식")
+                undoManager.setActionName(String(localized: "Markdown 서식"))
             }
             isUpdating = true
             textView.text = replacement

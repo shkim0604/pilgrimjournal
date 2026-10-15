@@ -32,11 +32,11 @@ public enum AppleAuthenticationSessionError: LocalizedError, Equatable, Sendable
     public var errorDescription: String? {
         switch self {
         case .invalidUserIdentifier:
-            "Apple 로그인 사용자 정보를 확인할 수 없습니다."
+            String(localized: "Apple 로그인 사용자 정보를 확인할 수 없습니다.", bundle: .module)
         case .differentUser:
-            "이 기기의 기존 기록은 다른 Apple 사용자에게 연결되어 있습니다."
+            String(localized: "이 기기의 기존 기록은 다른 Apple 사용자에게 연결되어 있습니다.", bundle: .module)
         case .malformedState:
-            "저장된 Apple 로그인 상태를 읽을 수 없습니다."
+            String(localized: "저장된 Apple 로그인 상태를 읽을 수 없습니다.", bundle: .module)
         }
     }
 }
