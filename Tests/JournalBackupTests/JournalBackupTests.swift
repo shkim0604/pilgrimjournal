@@ -70,6 +70,62 @@ final class JournalBackupTests: XCTestCase {
         XCTAssertEqual(replace.tombstoneIDs, [other.id])
     }
 
+    func testBackupRoundTripsKindCatalogAndCustomKindEntries() throws {
+        let destination = FileManager.default.temporaryDirectory
+            .appending(path: "\(UUID().uuidString).journalbackup")
+        defer { try? FileManager.default.removeItem(at: destination) }
+        let date = Date(timeIntervalSince1970: 100)
+        var catalog = KindCatalog()
+        let sermon = try catalog.create(
+            name: "설교노트", colorToken: .teal, iconToken: "tag", deviceID: "Mac", at: date)
+        try catalog.delete(.prayer, moveTarget: .memo, deviceID: "Mac", at: date)
+        var entry = makeRecord(title: "설교 기록", date: date)
+        entry.kind = sermon.kind
+
+        let service = JournalBackupService()
+        try service.create(
+            at: destination,
+            entries: [entry],
+            revisions: [],
+            rules: [],
+            attachments: [],
+            kindCatalog: catalog
+        )
+
+        let contents = try service.readAndValidate(from: destination)
+        XCTAssertEqual(contents.kindCatalog, catalog)
+        XCTAssertTrue(contents.manifest.includesKindCatalog)
+        XCTAssertEqual(contents.entries[0].kind, entry.kind)
+    }
+
+    func testBackupWithoutKindCatalogStillReads() throws {
+        let destination = FileManager.default.temporaryDirectory
+            .appending(path: "\(UUID().uuidString).journalbackup")
+        defer { try? FileManager.default.removeItem(at: destination) }
+        let service = JournalBackupService()
+        try service.create(
+            at: destination,
+            entries: [makeRecord(title: "기록", date: .now)],
+            revisions: [],
+            rules: [],
+            attachments: []
+        )
+
+        let contents = try service.readAndValidate(from: destination)
+        XCTAssertNil(contents.kindCatalog)
+        XCTAssertFalse(contents.manifest.includesKindCatalog)
+    }
+
+    func testManifestWithoutKindCatalogKeyDecodes() throws {
+        let json = Data(
+            #"{"formatVersion":1,"schemaVersion":1,"createdAt":"2026-01-01T00:00:00Z","files":{},"includesSourceSnapshots":false}"#
+                .utf8)
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let manifest = try decoder.decode(BackupManifest.self, from: json)
+        XCTAssertFalse(manifest.includesKindCatalog)
+    }
+
     func testRejectsCorruptedBackup() throws {
         let destination = FileManager.default.temporaryDirectory
             .appending(path: "\(UUID().uuidString).journalbackup")
@@ -379,6 +435,39 @@ final class JournalBackupTests: XCTestCase {
         XCTAssertEqual(try repository.entry(id: entryID)?.title, "백업의 이전 내용")
         XCTAssertTrue(try XCTUnwrap(repository.entry(id: extra.id)).isDeleted)
         XCTAssertEqual(repository.allRestoreEpochs().map(\.mode), [.merge, .replace])
+    }
+
+    /// A hand-written entry lands in 미분류 when its kind is deleted with the
+    /// default target; restoring that backup into an empty store must not
+    /// treat it as a new manual entry.
+    @MainActor
+    func testRestoresManualUnclassifiedEntryIntoEmptyRepository() throws {
+        let repository = InMemoryJournalRepository()
+        var entry = makeRecord(title: "옮겨진 손 기록", date: Date(timeIntervalSince1970: 10))
+        entry.kind = .unclassified
+        entry.details = EntryDetails()
+        let contents = BackupContents(
+            manifest: BackupManifest(files: [:], includesSourceSnapshots: false),
+            entries: [entry],
+            revisions: [],
+            rules: [],
+            attachments: [],
+            sourceSnapshots: []
+        )
+        let plan = JournalBackupService().plan(
+            contents: contents, currentEntries: [], mode: .merge)
+
+        let result = try JournalRestoreExecutor().execute(
+            contents: contents,
+            plan: plan,
+            repository: repository,
+            deviceID: "restore",
+            at: Date(timeIntervalSince1970: 20)
+        )
+
+        XCTAssertEqual(result.restored, 1)
+        XCTAssertEqual(try repository.entry(id: entry.id)?.kind, .unclassified)
+        XCTAssertEqual(try repository.entry(id: entry.id)?.title, entry.title)
     }
 
     private func makeRecord(title: String, date: Date) -> JournalEntryRecord {

@@ -9,19 +9,34 @@ public struct BackupManifest: Codable, Equatable, Sendable {
     public var createdAt: Date
     public var files: [String: String]
     public var includesSourceSnapshots: Bool
+    public var includesKindCatalog: Bool
 
     public init(
         formatVersion: Int = Self.currentFormatVersion,
         schemaVersion: Int = 1,
         createdAt: Date = .now,
         files: [String: String],
-        includesSourceSnapshots: Bool
+        includesSourceSnapshots: Bool,
+        includesKindCatalog: Bool = false
     ) {
         self.formatVersion = formatVersion
         self.schemaVersion = schemaVersion
         self.createdAt = createdAt
         self.files = files
         self.includesSourceSnapshots = includesSourceSnapshots
+        self.includesKindCatalog = includesKindCatalog
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        formatVersion = try container.decode(Int.self, forKey: .formatVersion)
+        schemaVersion = try container.decode(Int.self, forKey: .schemaVersion)
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        files = try container.decode([String: String].self, forKey: .files)
+        includesSourceSnapshots = try container.decode(
+            Bool.self, forKey: .includesSourceSnapshots)
+        includesKindCatalog =
+            try container.decodeIfPresent(Bool.self, forKey: .includesKindCatalog) ?? false
     }
 }
 
@@ -52,6 +67,7 @@ public struct BackupContents: Sendable {
     public var rules: [ClassificationRuleRecord]
     public var attachments: [BackupAttachment]
     public var sourceSnapshots: [BackupSourceSnapshot]
+    public var kindCatalog: KindCatalog?
 
     public init(
         manifest: BackupManifest,
@@ -59,7 +75,8 @@ public struct BackupContents: Sendable {
         revisions: [EntryRevisionRecord],
         rules: [ClassificationRuleRecord],
         attachments: [BackupAttachment],
-        sourceSnapshots: [BackupSourceSnapshot]
+        sourceSnapshots: [BackupSourceSnapshot],
+        kindCatalog: KindCatalog? = nil
     ) {
         self.manifest = manifest
         self.entries = entries
@@ -67,6 +84,7 @@ public struct BackupContents: Sendable {
         self.rules = rules
         self.attachments = attachments
         self.sourceSnapshots = sourceSnapshots
+        self.kindCatalog = kindCatalog
     }
 }
 

@@ -13,6 +13,36 @@ final class JournalDataTests: XCTestCase {
         )
     }
 
+    func testUpdatingExistingManualEntryToUnclassifiedIsAllowed() throws {
+        let repository = try makeRepository()
+        let saved = try repository.save(
+            JournalEntryDraft(kind: .diary, body: "d"), deviceID: "d", at: .now)
+        var draft = saved.draft
+        draft.kind = .unclassified
+        XCTAssertEqual(
+            try repository.save(draft, deviceID: "d", at: .now).kind, .unclassified)
+        XCTAssertThrowsError(
+            try repository.save(
+                JournalEntryDraft(kind: .unclassified, body: "n"), deviceID: "d", at: .now)
+        ) { XCTAssertEqual($0 as? JournalError, .invalidManualKind) }
+    }
+
+    /// Restore and scope migration save entries missing from the store with
+    /// their `id` set; only a draft without an `id` is a new manual entry.
+    func testManualUnclassifiedDraftWithIDIsAcceptedEvenWhenAbsent() throws {
+        let repository = try makeRepository()
+        let id = UUID()
+        let saved = try repository.save(
+            JournalEntryDraft(id: id, kind: .unclassified, body: "옮겨진 기록"),
+            deviceID: "d", at: .now)
+        XCTAssertEqual(saved.id, id)
+        XCTAssertEqual(try repository.entry(id: id)?.kind, .unclassified)
+        XCTAssertThrowsError(
+            try repository.save(
+                JournalEntryDraft(kind: .unclassified, body: "새 기록"), deviceID: "d", at: .now)
+        ) { XCTAssertEqual($0 as? JournalError, .invalidManualKind) }
+    }
+
     func testSaveCreatesRevisionAndCanRestore() throws {
         let repository = try makeRepository()
         let original = try repository.save(
@@ -433,6 +463,36 @@ final class JournalDataTests: XCTestCase {
         XCTAssertEqual(try repository.classificationRules(), [rule])
         try repository.deleteClassificationRule(id: rule.id)
         XCTAssertTrue(try repository.classificationRules().isEmpty)
+    }
+
+    func testSwiftDataPreservesCustomKindId() throws {
+        let repository = try makeRepository()
+        let custom = JournalKind(id: "custom-X")
+        let saved = try repository.save(
+            JournalEntryDraft(kind: custom, body: "사용자 유형"),
+            deviceID: "Mac",
+            at: Date(timeIntervalSince1970: 1)
+        )
+        _ = try repository.save(
+            JournalEntryDraft(kind: .diary, body: "일기"),
+            deviceID: "Mac",
+            at: Date(timeIntervalSince1970: 2)
+        )
+        XCTAssertEqual(try repository.entry(id: saved.id)?.kind.id, "custom-X")
+        let filtered = try repository.list(kind: custom, includeDeleted: false, limit: 100)
+        XCTAssertEqual(filtered.map(\.id), [saved.id])
+    }
+
+    func testRuleWithCustomTargetIsPreserved() throws {
+        let repository = try makeRepository()
+        let rule = ClassificationRuleRecord(
+            source: .tag,
+            value: "사용자",
+            targetKind: JournalKind(id: "custom-X"),
+            priority: 5
+        )
+        try repository.saveClassificationRule(rule)
+        XCTAssertEqual(try repository.classificationRules().map(\.targetKind.id), ["custom-X"])
     }
 
     func testClassificationRuleReplicasConvergeAcrossOppositeDeliveryOrders() throws {

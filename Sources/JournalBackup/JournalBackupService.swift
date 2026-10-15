@@ -20,7 +20,8 @@ public struct JournalBackupService {
         revisions: [EntryRevisionRecord],
         rules: [ClassificationRuleRecord],
         attachments: [BackupAttachment],
-        sourceSnapshots: [BackupSourceSnapshot] = []
+        sourceSnapshots: [BackupSourceSnapshot] = [],
+        kindCatalog: KindCatalog? = nil
     ) throws {
         let partial =
             destination
@@ -36,6 +37,9 @@ public struct JournalBackupService {
         if !sourceSnapshots.isEmpty {
             files["source-snapshots.jsonl"] = try encodeLines(sourceSnapshots)
         }
+        if let kindCatalog {
+            files["kinds.json"] = try encoder.encode(kindCatalog)
+        }
         for attachment in attachments {
             if let binary = attachment.binary {
                 files["attachments/\(attachment.record.id.uuidString)"] = binary
@@ -45,7 +49,8 @@ public struct JournalBackupService {
         let checksums = files.mapValues(ContentHash.sha256Hex)
         let manifest = BackupManifest(
             files: checksums,
-            includesSourceSnapshots: !sourceSnapshots.isEmpty
+            includesSourceSnapshots: !sourceSnapshots.isEmpty,
+            includesKindCatalog: kindCatalog != nil
         )
         files["manifest.json"] = try encoder.encode(manifest)
 
@@ -114,13 +119,17 @@ public struct JournalBackupService {
         let snapshots: [BackupSourceSnapshot] = try decodeLines(
             validated["source-snapshots.jsonl"] ?? Data()
         )
+        let kindCatalog = try validated["kinds.json"].map {
+            try decoder.decode(KindCatalog.self, from: $0)
+        }
         return BackupContents(
             manifest: manifest,
             entries: entries,
             revisions: revisions,
             rules: rules,
             attachments: attachments,
-            sourceSnapshots: snapshots
+            sourceSnapshots: snapshots,
+            kindCatalog: kindCatalog
         )
     }
 

@@ -224,6 +224,10 @@ binding 쓰기 → `publish(_:)`가 `publishedHistory`에 기록)를 통과해�
       한다(`EntryEditorFocusLayout`). 본문 `MarkdownBodyEditor`/
       `LiveMarkdownTextEditor`를 `if`·`Group` 분기나 `.id()`로 감싸면 전환마다
       새 `UITextView`가 생겨 입력 중인 글자와 캐럿을 잃는다.
+- [ ] **편집기를 막 연 직후 첫 입력이 남는지** 따로 본다 — 기존 기록과 새 기록
+      각각, 본문 끝을 탭하고 **영어 한 글자**를 친 뒤 1초 기다린다. 글자가 그대로
+      있고 캐럿이 그 뒤에 있어야 한다. 30초 연속 입력으로는 이 경우가 가려진다
+      (아래 2026-10-15 항목).
 
 관련: `docs/device-verification.md`의 세션 D-2.
 
@@ -599,6 +603,61 @@ Notion·Bear처럼 **이미지를 독립 블록으로** 다룬다: 이미지 줄
 **주의:** 본문 키보드에 무언가 띄우려면 SwiftUI 도구막대가 아니라 이 목록에
 추가할 것. 390pt 폭 iPhone에서는 아이콘 6개(키보드 닫기 포함)가 한계다 — 7개는
 양쪽이 잘리는 것을 iPhone 16e 시뮬레이터에서 확인했다.
+
+### 2026-10-15 — iPhone 편집기를 연 직후 첫 입력이 지워짐 (수정, 실기기 확인 대기)
+
+**증상:** iPhone 시뮬레이터에서 기록을 편집으로 열고 본문 끝을 탭한 뒤 몇
+글자 치고 쉬기를 반복하면, 첫 묶음 직후 캐럿이 처음 탭한 자리로 돌아가고
+글자가 빠지거나 순서가 섞였다(`sizes.` 뒤에 `abc`, `def`를 치면
+`sizes.defbc`). 리팩토링 전 커밋 `0e567c3`에서도 같았다.
+
+**원인 (계측 로그로 확인):** iOS 엔트리 편집 화면에서는 키 입력마다 SwiftUI가
+`updateUIView`를 두 번 이상 부르는데, **첫 번째 호출의 `text` binding은 그
+키 입력 이전 값**이다(selection binding은 이미 최신). 두 번째 키 입력부터는 그
+이전 값이 `publishedHistory`에 있으므로 메아리로 무시된다. 그런데 **편집기를 연
+시점의 본문은 한 번도 `publish(_:)`된 적이 없어 이력에 없다.** 그래서 첫 키
+입력 직후의 늦은 메아리가 "외부 변경"으로 판정되고 `replaceExternalText`가 문서를
+여는 시점 값으로 되돌렸다. 시뮬레이터처럼 키가 몰려 들어오면 되돌리는 도중
+(`isUpdating == true`) 대기 중이던 키가 삽입돼 순서가 섞이고, 선택 영역을
+되돌린 텍스트 길이로 자른 탓에 캐럿이 앞쪽에 남았다. 그 사이 삽입된 키는
+`textViewDidChange`가 `isUpdating`에서 걸러져 binding에 안 올라가므로 하단 글자
+수도 여는 시점 값에 머문다. (`/h2 `가 줄 **중간**에서 안 펼쳐지는 것은 별개로
+원래 동작이다 — 줄 전체가 `/h2 `일 때만 펼친다. 수정 후 새 줄에서는 펼쳐짐을
+시뮬레이터에서 확인했다.)
+
+**시뮬레이터 전용이 아니다.** 시뮬레이터의 하드웨어 키 주입 없이, 앱 안에서
+`insertText`(소프트 키보드가 부르는 바로 그 API)를 1초 간격으로 한 글자씩
+호출해도 첫 글자가 사라졌다. 같은 현상이 아래 XCTest에서도 재현된다. 새 기록은
+여는 시점 본문이 `""`라 첫 묶음 전체가 지워진다. build 21 실기기 게이트를
+통과한 이유는 확인하지 못했다 — 한글 첫 입력은 조합 중(`markedTextRange`)이라
+`updateUIView`가 건너뛰므로 가려졌을 가능성이 있지만 **검증하지 않은 추정**이다.
+
+**수정:** `makeUIView`에서 여는 시점 본문을 `publishedHistory`에 넣는다
+(`Coordinator.adoptInitialText`). 판정 함수(`shouldApplyExternalText`), IME 가드,
+입력 속성 리셋, 이미지 줄 원자성은 손대지 않았다. "외부 값이 과거에 본 값과
+같으면 무시된다"는 위 **남은 위험**이 여는 시점 값까지 넓어지지만, iOS에는
+편집기가 열린 채로 본문을 여는 시점 값으로 되돌리는 경로가 없다(키보드
+도구모음 `appendCommand`는 항상 새 값, 이력 복원 `resyncDraftFromRepository`는
+macOS 편집기에만 있음). **macOS에는 같은 시딩을 넣지 않았다** — 거기서는 이력
+복원이 여는 시점 값으로 돌아갈 수 있어 오히려 복원을 삼킬 수 있고, macOS에서
+이 증상이 관찰된 적도 없다.
+
+**회귀 테스트:** `Tests/PilgrimJournalTests/LiveMarkdownTextEditorIOSTests.swift`
+(`#if os(iOS)`). 실제 `EntryEditorView`를 창에 띄우고 `insertText`로 입력한다.
+수정 없이 두 테스트 모두 실패, 수정 후 통과를 확인했다. `swift test`(macOS)는
+이 파일을 건너뛰므로 시뮬레이터에서 따로 돌린다. CI(`.github/workflows/check.yml`의
+`ios-tests` 잡)가 모든 PR에서 `PilgrimJournalTests` 전체를 iOS 시뮬레이터로 돌려
+이 테스트를 포함한다:
+
+```sh
+xcodebuild test -scheme PilgrimJournal-Package \
+  -destination 'platform=iOS Simulator,name=iPhone 17' \
+  -only-testing:PilgrimJournalTests/LiveMarkdownTextEditorIOSTests \
+  CODE_SIGNING_ALLOWED=NO
+```
+
+참고: 단순한 호스트 뷰(부모 `@State` → `MarkdownBodyEditor`)로는 늦은 메아리가
+재현되지 않았다. 실제 `EntryEditorView` 구성에서만 나오므로 테스트는 그것을 띄운다.
 
 ### 참고 — `BGSystemTaskSchedulerErrorDomain Code=3` 로그는 우리 문제가 아니다
 
