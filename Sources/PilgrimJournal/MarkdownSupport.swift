@@ -2472,6 +2472,9 @@ final class MarkdownNSTextView: NSTextView {
     /// Toggles the checklist item whose box is under the point; returns
     /// whether one was hit and the click therefore consumed.
     var toggleChecklistItem: ((NSPoint) -> Bool)?
+    /// Moves the image under the caret if the point hits its ▲/▼; returns
+    /// whether one was hit and the click therefore consumed.
+    var moveAttachmentImage: ((NSPoint) -> Bool)?
     /// The size an image is being dragged to, while the drag is in progress.
     /// The marker text — and with it `storedWidth`/`storedHeight` — is only
     /// rewritten when the drag ends, so without this the reserved space
@@ -2846,12 +2849,60 @@ final class MarkdownNSTextView: NSTextView {
                     ? PlatformColor.black : PlatformColor.white).setStroke()
                 path.lineWidth = 1.5
                 path.stroke()
+                drawMoveButtons(for: imageMatch, in: imageRect)
             }
+        }
+    }
+
+    /// See the iOS view: ▲/▼ only where the image can actually go, and the
+    /// click test (`Coordinator.attachmentMoveTarget`) asks the same question.
+    private func drawMoveButtons(
+        for imageMatch: MarkdownAttachmentImageDecoration.Match,
+        in imageRect: CGRect
+    ) {
+        let buttons = MarkdownAttachmentImageDecoration.moveButtonRects(for: imageRect)
+        let glyphColor =
+            effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            ? PlatformColor.black : PlatformColor.white
+        let configuration = NSImage.SymbolConfiguration(pointSize: 12, weight: .semibold)
+            .applying(NSImage.SymbolConfiguration(paletteColors: [glyphColor]))
+        for (rect, direction, symbol) in [
+            (buttons.up, MarkdownImageMoveDirection.up, "chevron.up"),
+            (buttons.down, MarkdownImageMoveDirection.down, "chevron.down"),
+        ] {
+            guard
+                MarkdownCommandProcessor.movingAttachmentImage(
+                    at: imageMatch.markerRange.location, direction: direction, in: string
+                ) != nil
+            else { continue }
+            EditorPalette.label.withAlphaComponent(0.75).setFill()
+            NSBezierPath(ovalIn: rect).fill()
+            guard
+                let glyph = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)?
+                    .withSymbolConfiguration(configuration)
+            else { continue }
+            let size = glyph.size
+            glyph.draw(
+                in: CGRect(
+                    x: rect.midX - size.width / 2,
+                    y: rect.midY - size.height / 2,
+                    width: size.width,
+                    height: size.height
+                ),
+                from: .zero,
+                operation: .sourceOver,
+                fraction: 1,
+                respectFlipped: true,
+                hints: nil
+            )
         }
     }
 
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
+        // Before `super`, which would move the caret off the image and so
+        // take its buttons away.
+        if moveAttachmentImage?(point) == true { return }
         if beginAttachmentResize?(point) == true {
             isResizingAttachment = true
             return
@@ -2943,6 +2994,9 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
         }
         textView.toggleChecklistItem = { [weak coordinator = context.coordinator] point in
             coordinator?.toggleChecklistItem(at: point) ?? false
+        }
+        textView.moveAttachmentImage = { [weak coordinator = context.coordinator] point in
+            coordinator?.moveAttachmentImage(at: point) ?? false
         }
         textView.beginAttachmentResize = { [weak coordinator = context.coordinator] point in
             coordinator?.beginAttachmentResize(at: point) ?? false
@@ -3232,6 +3286,72 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
             let width = max(
                 40, min(containerWidth, resizeStartSize.width + (point.x - resizeStartPoint.x)))
             return CGSize(width: width, height: width * aspect)
+        }
+
+        /// See the iOS coordinator: which ▲/▼ button is under `point`, for
+        /// the image whose line holds the caret and only in a direction it
+        /// can move — the same test `draw(_:)` uses, so a button that isn't
+        /// drawn never takes a click.
+        func attachmentMoveTarget(
+            at point: NSPoint
+        ) -> (markerOffset: Int, direction: MarkdownImageMoveDirection)? {
+            guard let textView, let layoutManager = textView.layoutManager,
+                let textContainer = textView.textContainer
+            else { return nil }
+            let text = textView.string
+            let caret = textView.selectedRange().location
+            let origin = textView.textContainerOrigin
+            for match in MarkdownAttachmentImageDecoration.matches(in: text) {
+                let lineRange = (text as NSString).lineRange(for: match.markerRange)
+                guard caret >= lineRange.location, caret <= NSMaxRange(lineRange) else {
+                    continue
+                }
+                let glyphRange = layoutManager.glyphRange(
+                    forCharacterRange: match.markerRange, actualCharacterRange: nil
+                )
+                guard glyphRange.location < layoutManager.numberOfGlyphs else { continue }
+                let fragment = layoutManager.lineFragmentRect(
+                    forGlyphAt: glyphRange.location, effectiveRange: nil
+                )
+                let imageRect = MarkdownAttachmentImageDecoration.imageRect(
+                    origin: origin,
+                    fragment: fragment,
+                    displaySize: LiveMarkdownStyler.attachmentImageDisplaySize(
+                        storedWidth: match.storedWidth,
+                        storedHeight: match.storedHeight,
+                        containerWidth: textContainer.size.width
+                    )
+                )
+                let buttons = MarkdownAttachmentImageDecoration.moveButtonRects(for: imageRect)
+                for (rect, direction) in [(buttons.up, .up), (buttons.down, .down)]
+                    as [(CGRect, MarkdownImageMoveDirection)]
+                {
+                    guard rect.insetBy(dx: -2, dy: -2).contains(point),
+                        MarkdownCommandProcessor.movingAttachmentImage(
+                            at: match.markerRange.location, direction: direction, in: text
+                        ) != nil
+                    else { continue }
+                    return (match.markerRange.location, direction)
+                }
+            }
+            return nil
+        }
+
+        /// An ordinary text edit, so it undoes, autosaves and syncs like any
+        /// other.
+        func moveAttachmentImage(at point: NSPoint) -> Bool {
+            guard let textView, !textView.hasMarkedText(),
+                let target = attachmentMoveTarget(at: point),
+                let result = MarkdownCommandProcessor.movingAttachmentImage(
+                    at: target.markerOffset, direction: target.direction, in: textView.string
+                )
+            else { return false }
+            replaceExternalText(
+                result.text,
+                selection: NSRange(location: result.cursorUTF16Offset, length: 0),
+                registersUndo: true
+            )
+            return true
         }
 
         func replaceExternalText(
