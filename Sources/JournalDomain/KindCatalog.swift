@@ -97,10 +97,26 @@ public enum KindCatalogError: LocalizedError, Equatable, Sendable {
 public struct KindCatalog: Codable, Equatable, Sendable {
     public static let maxNameLength = 20
 
-    public private(set) var definitions: [KindDefinition]
+    /// Always sorted by `kind.id` so equal catalogs compare equal regardless of edit history.
+    public private(set) var definitions: [KindDefinition] {
+        didSet { definitions = Self.normalized(definitions) }
+    }
+
+    private enum CodingKeys: String, CodingKey { case definitions }
 
     public init(definitions: [KindDefinition] = []) {
-        self.definitions = definitions
+        self.definitions = Self.normalized(definitions)
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let decoded = try container.decode([KindDefinition].self, forKey: .definitions)
+        self.init(definitions: decoded)
+    }
+
+    private static func normalized(_ definitions: [KindDefinition]) -> [KindDefinition] {
+        let sorted = definitions.sorted { $0.id < $1.id }
+        return sorted == definitions ? definitions : sorted
     }
 
     public static func defaultDefinition(for builtIn: BuiltInKind) -> KindDefinition {
@@ -278,14 +294,26 @@ public struct KindCatalog: Codable, Equatable, Sendable {
                 continue
             }
             let current = result[index]
-            if candidate.updatedAt > current.updatedAt
-                || (candidate.updatedAt == current.updatedAt
-                    && candidate.modifiedByDeviceID > current.modifiedByDeviceID)
-            {
+            if Self.wins(candidate, over: current) {
                 result[index] = candidate
             }
         }
         return KindCatalog(definitions: result)
+    }
+
+    /// Total order: later `updatedAt`, then larger device ID, then larger encoded bytes.
+    private static func wins(_ candidate: KindDefinition, over current: KindDefinition) -> Bool {
+        if candidate.updatedAt != current.updatedAt {
+            return candidate.updatedAt > current.updatedAt
+        }
+        if candidate.modifiedByDeviceID != current.modifiedByDeviceID {
+            return candidate.modifiedByDeviceID > current.modifiedByDeviceID
+        }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        guard let lhs = try? encoder.encode(candidate), let rhs = try? encoder.encode(current)
+        else { return false }
+        return lhs.lexicographicallyPrecedes(rhs) ? false : lhs != rhs
     }
 
     // MARK: Helpers

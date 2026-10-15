@@ -242,5 +242,23 @@ final class KindCatalogTests: XCTestCase {
         XCTAssertEqual(KindCatalogError.duplicateName("메모").errorDescription, "‘메모’ 유형이 이미 있습니다.")
         XCTAssertEqual(KindCatalogError.emptyName.errorDescription, "유형 이름을 입력해 주세요.")
     }
+
+    func testMergeIsCommutativeAndIdempotent() {
+        func def(_ id: String, _ name: String, at seconds: TimeInterval) -> KindDefinition {
+            KindDefinition(
+                kind: JournalKind(id: id), name: name, colorToken: .stone, iconToken: "tag",
+                order: 1, state: .active, updatedAt: Date(timeIntervalSince1970: seconds),
+                modifiedByDeviceID: "dev")
+        }
+        let a = KindCatalog(definitions: [
+            def("z", "Z", at: 10), def("m", "tie-one", at: 5), def("a", "A-old", at: 1),
+        ])
+        let b = KindCatalog(definitions: [
+            def("a", "A-new", at: 2), def("m", "tie-two", at: 5), def("q", "Q", at: 3),
+        ])
+        XCTAssertEqual(a.merged(with: b), b.merged(with: a))
+        XCTAssertEqual(a.merged(with: b).merged(with: b), a.merged(with: b))
+        XCTAssertEqual(a.merged(with: b).definitions.map(\.id), ["a", "m", "q", "z"])
+    }
 }
 #endif

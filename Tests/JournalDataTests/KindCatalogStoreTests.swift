@@ -8,10 +8,12 @@ import XCTest
 final class FakeCloudStore: KindCatalogCloudStore {
     var storage: [String: Data] = [:]
     var synchronizeCount = 0
+    var setCount = 0
 
     func data(forKey key: String) -> Data? { storage[key] }
 
     func set(_ data: Data?, forKey key: String) {
+        setCount += 1
         storage[key] = data
     }
 
@@ -152,6 +154,31 @@ final class KindCatalogStoreTests: XCTestCase {
         let store = KindCatalogStore(defaults: defaults, cloudStore: cloud)
         XCTAssertEqual(store.catalog, remote)
         XCTAssertEqual(defaults.data(forKey: KindCatalogStore.key), try encode(remote))
+    }
+
+    func testTwoDevicesConvergeWithoutFurtherWrites() throws {
+        let cloud = FakeCloudStore()
+        let nameB = "pilgrim-kinds-\(UUID().uuidString)"
+        let defaultsB = UserDefaults(suiteName: nameB)!
+        defer { defaultsB.removePersistentDomain(forName: nameB) }
+        var other = definition(name: "독서", at: 150)
+        other.kind = JournalKind(id: "reading")
+        defaults.set(
+            try encode(KindCatalog(definitions: [definition(name: "메모A", at: 100)])),
+            forKey: KindCatalogStore.key)
+        defaultsB.set(
+            try encode(KindCatalog(definitions: [other, definition(name: "메모B", at: 200)])),
+            forKey: KindCatalogStore.key)
+        let a = KindCatalogStore(defaults: defaults, cloudStore: cloud)
+        let b = KindCatalogStore(defaults: defaultsB, cloudStore: cloud)
+        a.mergeFromCloud()
+        b.mergeFromCloud()
+        let writes = cloud.setCount
+        a.mergeFromCloud()
+        b.mergeFromCloud()
+        XCTAssertEqual(cloud.setCount, writes)
+        XCTAssertEqual(a.catalog, b.catalog)
+        XCTAssertEqual(a.catalog.definitions.count, 2)
     }
 
     func testWorksWithoutCloudStore() {
