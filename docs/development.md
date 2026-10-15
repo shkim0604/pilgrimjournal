@@ -93,6 +93,44 @@ replace 모드로 복원한다.
 존을 지워도 **로컬 사본을 가진 기기는 다음 실행에서 존을 다시 만들고 전부
 재업로드한다.** 정말로 비우려면 모든 기기의 로컬 데이터도 같이 지워야 한다.
 
+## 공유 카드 추출 평가 (온디바이스 모델)
+
+`docs/roadmap.md`의 공유 카드(기도제목·간증·독후감) 추출을 Apple 온디바이스 모델로
+돌려 보고 점수를 매기는 실행 파일이다. 프롬프트를 바꿀 때마다 같은 기록으로 다시 돌려
+비교한다.
+
+```sh
+swift run ShareCardEval                      # 전체 23개 기록 (약 2~3분)
+swift run ShareCardEval --skip-prose         # 카드 문장 생성 생략. 점수는 같고 더 빠르다
+swift run ShareCardEval --only next-month-day,long-no-prayer --verbose
+swift run ShareCardEval --list               # 기록 id 목록
+swift run ShareCardEval --json /tmp/share-card-run.json
+```
+
+- **필요 조건:** macOS 26 이상, Apple Intelligence 지원 Mac에서 Apple Intelligence가
+  켜져 있어야 한다. 모델을 쓸 수 없으면 이유를 출력하고 종료 코드 69로 끝난다.
+  `swift build`는 어디서나 통과하도록 모델 코드를 `canImport(FoundationModels)`와
+  macOS 26 확인 뒤에 두었다. 하드웨어가 필요하므로 `scripts/check.sh`와 CI에서는
+  **돌리지 않는다.** (날짜 해석·채점 같은 순수 로직은 `ShareCardEvalTests`로 `swift
+  test`에 들어 있다.)
+- **기록은 전부 지어낸 것이다** (`Sources/ShareCardEval/EvalFixtures.swift`). 실제
+  기록이나 Day One 내용을 넣지 않는다. 기록을 추가할 때 `expected` 라벨(기도제목
+  여부, 간증 여부, 제3자 사정, 데드라인)을 함께 적는다. 데드라인은 `phrase`가 본문에
+  그대로 있어야 하고, 테스트가 그 표현을 코드로 해석해 라벨 날짜와 맞는지 확인한다.
+- **파이프라인**(`SharePipeline.swift`): ① 짧은 예시를 넣은 예/아니오 분류 3개(기도제목
+  있음, 간증, 제3자 사정) ② 기도제목이 있으면 `@Generable`로 짧은 값(요약·날짜 표현·
+  날짜)만 뽑고 ③ 카드 문장은 자유 텍스트로 따로 받는다 ④ 작성일 기준 달력 힌트(내일,
+  이번/다음 주 요일별 날짜, 이번/다음 달 말)를 코드가 계산해 넣고, 모델이 뽑은 날짜
+  표현은 `DatePhraseResolver`가 먼저 해석한다 — 해석 못 하면 모델 날짜를 쓴다 ⑤
+  `SystemLanguageModel(guardrails: .permissiveContentTransformations)`, greedy
+  샘플링, `guardrailViolation`은 "추천 건너뜀"으로 기록한다.
+- **출력:** 기록별 PASS/FAIL과 검사 항목, 호출 수·지연 시간, 마지막에 요약 점수
+  (검사 통과 수/전체), 항목별 정확도, 지연 중앙값·p90·첫 호출, guardrail 건너뜀 수.
+  "데드라인(모델 날짜만)"과 "카드에 남은 제3자 이름"은 참고용으로 점수에서 뺀다.
+- **프롬프트를 바꾸면 `SharePrompts.version`을 올린다.** 요약과 JSON에 찍혀서 어떤
+  프롬프트의 점수인지 구분된다. 의미 있는 결과는 `docs/roadmap.md`의 성능 테스트 표에
+  적는다. JSON 결과는 저장소 밖에 둔다.
+
 ## 릴리스 아카이브
 
 ### iCloud 동기화 폴더에서 archive 하지 않기

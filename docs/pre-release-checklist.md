@@ -6,10 +6,11 @@
 
 ## 미룬 항목 (재개 필요)
 
-- [ ] **1.1.0 (26) — TestFlight 빌드로 출시 게이트** (2026-10-15). iOS·macOS
-      둘 다 업로드함(Xcode 계정 인증, API 키 없이 `-allowProvisioningUpdates`).
-      아카이브는 `.release/build26/`. 1.0.1 (25) 이후 CloudKit 스키마 변경 없음.
-      심사 제출 전에 남은 것:
+- [ ] **1.1.0 (28) — 심사 제출됨, 출시 전 게이트** (2026-10-15). iOS·macOS 둘 다
+      업로드 후 심사 제출(Xcode 계정 인증, API 키 없이 `-allowProvisioningUpdates`).
+      새 아이콘·홈 화면 이름 "Pilgrim" 포함. 아카이브는 `.release/build28/`.
+      1.0.1 (25) 이후 CloudKit 스키마 변경 없음. 수동 출시로 설정했으니 승인 후
+      "이 버전 출시"를 누르기 전에 TestFlight 28로 확인할 것:
       - 편집기 입력 게이트(`docs/known-issues.md`): 실제 iPhone 소프트 키보드,
         30초 이상 한글·영어 혼합 고속 타이핑. 1.0.1 이후 사진 위치·집중 모드·본문
         탭 영역·키보드 도구막대·Mac 줄바꿈이 편집기를 바꿨다.
@@ -79,6 +80,10 @@
           → PR #4(`fix/ios-empty-body-tap`)에서 수정해 main에 머지. 실기기 재확인 필요.
         - ⚠️ 하드웨어 키보드에서 제목 입력 중 Return이 편집기를 닫는다(완료로 동작).
           소프트 키보드에서도 그런지 확인 필요.
+
+- [ ] **성경·불꽃 아이콘 — 실기기 재검수** (2026-10-15). 기본·다크·틴트와
+      macOS 크기별 에셋을 새 디자인으로 교체했다. 이전 E-3 통과는 구 아이콘
+      기준이며, 새 빌드의 Dock/Finder와 iPhone 홈 화면/Spotlight에서 다시 확인.
 
 - [ ] **리팩토링 Phase 0 — 실기기 확인** (2026-10-15, 브랜치
       `refactor/phase-0-hygiene`). 자동 테스트와 서명 없는 iOS/macOS 빌드는

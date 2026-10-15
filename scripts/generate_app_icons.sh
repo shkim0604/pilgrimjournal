@@ -22,6 +22,7 @@ render_svg() {
 render_svg "$design_dir/AppIcon.svg" "$icon_dir/AppIcon-iOS.png"
 render_svg "$design_dir/AppIcon-dark.svg" "$icon_dir/AppIcon-iOS-dark.png"
 render_svg "$design_dir/AppIcon-tinted.svg" "$icon_dir/AppIcon-iOS-tinted.png"
+cp "$icon_dir/AppIcon-iOS.png" "$design_dir/PilgrimJournal-AppIcon-master.png"
 
 for size in 16 32 128 256 512; do
   sips -z "$size" "$size" "$icon_dir/AppIcon-iOS.png" \
