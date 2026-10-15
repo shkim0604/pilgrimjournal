@@ -1951,3 +1951,19 @@ extension AppModel {
         if merged != unknownKinds { unknownKinds = merged }
     }
 }
+
+extension AppModel {
+    /// Kinds a picker may offer. The current kind is kept in front when it is
+    /// no longer offered (deleted or unknown) so the selection never vanishes.
+    func kindPickerOptions(
+        including current: JournalKind? = nil,
+        activeOnly: Bool = false
+    ) -> [KindDefinition] {
+        let base =
+            activeOnly ? kindCatalog.activeKinds : kindCatalog.creatableKinds
+        guard let current, !base.contains(where: { $0.kind == current }) else {
+            return base
+        }
+        return [kindDefinition(for: current)] + base
+    }
+}

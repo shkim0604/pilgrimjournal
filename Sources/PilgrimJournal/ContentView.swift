@@ -104,7 +104,7 @@ struct ContentView: View {
             .onChange(of: model.searchText) { _, _ in model.refresh() }
             .navigationTitle(
                 model.selectedNotebookName
-                    ?? model.selectedKind?.fallbackName
+                    ?? model.selectedKind.map { model.kindDefinition(for: $0).name }
                     ?? "전체 기록"
             )
             .toolbar {
@@ -586,16 +586,37 @@ private struct JournalSidebar: View {
                     selectKind(nil)
                 }
 
-                ForEach(JournalKind.builtIns) { kind in
+            }
+
+            Section {
+                ForEach(model.sidebarKinds, id: \.kind) { definition in
                     JournalSidebarItem(
-                        title: kind.fallbackName,
-                        systemImage: icon(for: kind),
-                        accent: JournalTheme.categoryColor(for: kind),
-                        isSelected: model.selectedKind == kind
+                        title: definition.name,
+                        systemImage: KindIconCatalog.displaySymbol(
+                            for: definition.iconToken
+                        ),
+                        accent: JournalTheme.categoryColor(for: definition),
+                        isSelected: model.selectedKind == definition.kind
                             && model.selectedNotebookName == nil
                     ) {
-                        selectKind(kind)
+                        selectKind(definition.kind)
                     }
+                }
+            } header: {
+                HStack {
+                    Text("유형")
+                    Spacer()
+                    Button {
+                        model.openKindManagement()
+                    } label: {
+                        if model.featureAccess.canManageKinds {
+                            Text("편집")
+                        } else {
+                            Label("편집", systemImage: "lock.fill")
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(JournalTheme.brandPrimary)
                 }
             }
 
@@ -711,18 +732,6 @@ private struct JournalSidebar: View {
         model.showSettings()
         preferredCompactColumn = .detail
     }
-
-    private func icon(for kind: JournalKind) -> String {
-        switch kind.builtIn {
-        case .prayer?: "hands.sparkles"
-        case .bibleStudy?: "book.closed"
-        case .reading?: "books.vertical"
-        case .diary?: "pencil.and.scribble"
-        case .memo?: "note.text"
-        case .unclassified?: "tray"
-        case nil: "tag"
-        }
-    }
 }
 
 private struct NewEntryListButton: View {
@@ -742,12 +751,15 @@ private struct NewEntryListButton: View {
 }
 
 private struct EntryRow: View {
+    @EnvironmentObject private var model: AppModel
     let entry: JournalEntryRecord
 
     var body: some View {
         HStack(spacing: JournalTheme.Spacing.medium) {
             RoundedRectangle(cornerRadius: 1.5)
-                .fill(JournalTheme.categoryColor(for: entry.kind))
+                .fill(
+                    JournalTheme.categoryColor(
+                        for: model.kindDefinition(for: entry.kind)))
                 .frame(width: 3)
                 .accessibilityHidden(true)
 
@@ -757,7 +769,7 @@ private struct EntryRow: View {
                         EntryListSummaryFormatter.title(
                             explicitTitle: entry.title,
                             body: entry.body,
-                            fallback: entry.kind.fallbackName
+                            fallback: model.kindDefinition(for: entry.kind).name
                         )
                     )
                     .font(.headline)

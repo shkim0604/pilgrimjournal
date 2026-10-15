@@ -214,8 +214,9 @@ struct InlineEntryEditorView: View {
 
     private var kindPicker: some View {
         Picker("기록 유형", selection: kindBinding) {
-            ForEach(JournalKind.builtIns.filter { !$0.isUnclassified }) { kind in
-                Text(kind.fallbackName).tag(kind)
+            ForEach(model.kindPickerOptions(including: draft.kind), id: \.kind) {
+                definition in
+                Text(definition.name).tag(definition.kind)
             }
         }
         .labelsHidden()
@@ -658,7 +659,10 @@ struct EntryDetailView: View {
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
-                Text(entry.title.isEmpty ? entry.kind.fallbackName : entry.title)
+                Text(
+                    entry.title.isEmpty
+                        ? model.kindDefinition(for: entry.kind).name : entry.title
+                )
                     .font(.largeTitle.bold())
                     .foregroundStyle(JournalTheme.ink)
                 Text(entry.occurredAt.formatted(date: .long, time: .shortened))
@@ -691,13 +695,14 @@ struct EntryDetailView: View {
     }
 
     private var kindBadge: some View {
-        Text(entry.kind.fallbackName)
+        let definition = model.kindDefinition(for: entry.kind)
+        return Text(definition.name)
             .font(.caption.weight(.semibold))
-            .foregroundStyle(JournalTheme.categoryColor(for: entry.kind))
+            .foregroundStyle(JournalTheme.categoryColor(for: definition))
             .padding(.horizontal, 9)
             .padding(.vertical, 5)
             .background(
-                JournalTheme.categoryColor(for: entry.kind).opacity(0.12),
+                JournalTheme.categoryColor(for: definition).opacity(0.12),
                 in: Capsule()
             )
             .fixedSize(horizontal: false, vertical: true)
@@ -915,7 +920,7 @@ struct EntryEditorView: View {
                 } label: {
                     MetadataChip {
                         Label(
-                            draft.kind.fallbackName,
+                            model.kindDefinition(for: draft.kind).name,
                             systemImage: "slider.horizontal.3"
                         )
                     }
@@ -966,8 +971,9 @@ struct EntryEditorView: View {
             Form {
                 Section("분류") {
                     Picker("기록 유형", selection: kindBinding) {
-                        ForEach(JournalKind.builtIns.filter { !$0.isUnclassified }) { kind in
-                            Text(kind.fallbackName).tag(kind)
+                        ForEach(model.kindPickerOptions(including: draft.kind), id: \.kind) {
+                            definition in
+                            Text(definition.name).tag(definition.kind)
                         }
                     }
                     Picker("노트북", selection: notebookBinding) {
@@ -1988,7 +1994,10 @@ struct TrashView: View {
     @ViewBuilder
     private func trashEntryDescription(_ entry: JournalEntryRecord) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(entry.title.isEmpty ? entry.kind.fallbackName : entry.title)
+            Text(
+                entry.title.isEmpty
+                    ? model.kindDefinition(for: entry.kind).name : entry.title
+            )
                 .font(.headline)
                 .lineLimit(2)
             if let deletedAt = entry.deletedAt {
@@ -2018,10 +2027,8 @@ struct BatchOrganizerView: View {
                 Section("유형") {
                     Picker("변경할 유형", selection: $targetKind) {
                         Text("유형 유지").tag(nil as JournalKind?)
-                        ForEach(
-                            JournalKind.builtIns.filter { !$0.isUnclassified }
-                        ) { kind in
-                            Text(kind.fallbackName).tag(kind as JournalKind?)
+                        ForEach(model.kindPickerOptions(), id: \.kind) { definition in
+                            Text(definition.name).tag(definition.kind as JournalKind?)
                         }
                     }
                     Text("유형을 바꾸면 각 기록에 새 revision이 생성되고 해당 유형에 맞지 않는 상세 필드는 정리됩니다.")
