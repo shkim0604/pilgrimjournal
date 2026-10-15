@@ -1848,7 +1848,9 @@ extension AppModel {
 
     /// Marks `kind` deleted, then moves its entries and classification rules
     /// to `target`. The catalog is saved first, so if moving fails part-way
-    /// the next reconcile pass moves whatever is left.
+    /// the next reconcile pass moves whatever is left. Entries that could not
+    /// be saved do not stop the rest; they are reported by the thrown
+    /// `KindMoveError` once everything else has moved.
     func deleteKind(_ kind: JournalKind, moveTo target: JournalKind) throws {
         try editKindCatalog { catalog, now in
             try catalog.delete(kind, moveTarget: target, deviceID: deviceID, at: now)
@@ -1862,12 +1864,14 @@ extension AppModel {
         }
         let now = Date.now
         let service = KindDeletionService()
-        let moved = try service.moveEntries(
+        var outcome = try service.moveEntries(
             from: kind, to: target, repository: repository, deviceID: deviceID, at: now)
-        for record in moved {
-            try searchIndex.upsert(record)
-        }
-        _ = try service.retargetRules(from: kind, to: target, repository: repository, at: now)
+        let rules = try service.retargetRules(
+            from: kind, to: target, repository: repository, at: now)
+        outcome.retargetedRuleCount = rules.retargetedRuleCount
+        outcome.failures += rules.failures
+        try applyMovedEntries(outcome.moved)
+        if let error = outcome.error { throw error }
     }
 
     func restoreKind(_ kind: JournalKind) throws {
@@ -1933,15 +1937,23 @@ extension AppModel {
     /// at the trigger points (first refresh, catalog change from iCloud,
     /// CloudKit import, backup restore) — not on every refresh.
     private func reconcileKinds() {
+        guard kindCatalog.hasDeletedKinds else { return }
         do {
-            let moved = try KindReconciler().reconcile(
+            let outcome = try KindReconciler().reconcile(
                 catalog: kindCatalog, repository: repository, deviceID: deviceID, at: .now)
-            for record in moved {
-                try searchIndex.upsert(record)
-            }
-            if !moved.isEmpty { markLocalMutation() }
+            try applyMovedEntries(outcome.moved)
+            if let error = outcome.error { errorMessage = error.localizedDescription }
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Records the local change for sync and updates the search index.
+    private func applyMovedEntries(_ moved: [JournalEntryRecord]) throws {
+        guard !moved.isEmpty else { return }
+        markLocalMutation()
+        for record in moved {
+            try searchIndex.upsert(record)
         }
     }
 

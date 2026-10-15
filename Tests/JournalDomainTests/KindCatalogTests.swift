@@ -243,6 +243,76 @@ final class KindCatalogTests: XCTestCase {
         XCTAssertEqual(KindCatalogError.emptyName.errorDescription, "유형 이름을 입력해 주세요.")
     }
 
+    /// 미분류 can never be deleted through the API; a catalog that says so
+    /// anyway (crafted or corrupt) must not send its entries anywhere.
+    func testResolvedTargetIgnoresUnclassifiedMarkedDeleted() {
+        var unclassified = KindCatalog.defaultDefinition(for: .unclassified)
+        unclassified.state = .deleted(moveTarget: .memo)
+        var memo = KindCatalog.defaultDefinition(for: .memo)
+        memo.state = .deleted(moveTarget: .unclassified)
+        let catalog = KindCatalog(definitions: [unclassified, memo])
+        XCTAssertNil(catalog.resolvedTarget(for: .unclassified))
+        XCTAssertEqual(catalog.resolvedTarget(for: .memo), .unclassified)
+    }
+
+    /// Two quick edits on one device must stay ordered once timestamps are
+    /// cut to whole seconds, or the byte tie-break could revert the second.
+    func testSameInstantEditsGetStrictlyIncreasingStamps() throws {
+        var catalog = KindCatalog()
+        try catalog.reorder([.memo, .prayer, .bibleStudy, .reading, .diary], deviceID: "A", at: t1)
+        let firstReorder = catalog.definition(for: .memo).updatedAt
+        try catalog.reorder([.prayer, .memo, .bibleStudy, .reading, .diary], deviceID: "A", at: t1)
+        XCTAssertGreaterThan(catalog.definition(for: .memo).updatedAt, firstReorder)
+
+        try catalog.update(
+            .diary, name: "하루", colorToken: .rose, iconToken: "tag", deviceID: "A", at: t1)
+        let intermediate = catalog
+        try catalog.update(
+            .diary, name: "하루 일기", colorToken: .amber, iconToken: "tag", deviceID: "A", at: t1)
+        let final = catalog
+        XCTAssertGreaterThan(
+            final.definition(for: .diary).updatedAt,
+            intermediate.definition(for: .diary).updatedAt)
+
+        // Whole-second normalisation, as the catalog store applies it.
+        func roundTripped(_ catalog: KindCatalog) throws -> KindCatalog {
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            return try decoder.decode(KindCatalog.self, from: encoder.encode(catalog))
+        }
+        let fractional = Date(timeIntervalSince1970: 3_000.4)
+        var quick = KindCatalog()
+        try quick.update(
+            .diary, name: "나", colorToken: .rose, iconToken: "tag", deviceID: "A", at: fractional)
+        let quickIntermediate = try roundTripped(quick)
+        try quick.update(
+            .diary, name: "가", colorToken: .rose, iconToken: "tag", deviceID: "A",
+            at: fractional.addingTimeInterval(0.3))
+        let quickFinal = try roundTripped(quick)
+        for merged in [
+            quickIntermediate.merged(with: quickFinal), quickFinal.merged(with: quickIntermediate),
+        ] {
+            XCTAssertEqual(merged.definition(for: .diary).name, "가")
+        }
+        XCTAssertEqual(intermediate.merged(with: final).definition(for: .diary).name, "하루 일기")
+        XCTAssertEqual(final.merged(with: intermediate).definition(for: .diary).name, "하루 일기")
+    }
+
+    func testMutationStampNeverGoesBackwards() throws {
+        var catalog = KindCatalog()
+        try catalog.update(
+            .diary, name: "하루", colorToken: .rose, iconToken: "tag", deviceID: "A", at: t1)
+        // A clock that moved backwards still yields a later stamp.
+        try catalog.delete(.diary, moveTarget: .memo, deviceID: "A", at: t0)
+        XCTAssertEqual(
+            catalog.definition(for: .diary).updatedAt, t1.addingTimeInterval(1))
+        try catalog.restore(.diary, deviceID: "A", at: t0)
+        XCTAssertEqual(
+            catalog.definition(for: .diary).updatedAt, t1.addingTimeInterval(2))
+    }
+
     func testMergeIsCommutativeAndIdempotent() {
         func def(_ id: String, _ name: String, at seconds: TimeInterval) -> KindDefinition {
             KindDefinition(

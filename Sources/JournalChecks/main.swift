@@ -395,7 +395,8 @@ do {
             created.kind, moveTarget: .memo, deviceID: "Mac", at: Date(timeIntervalSince1970: 3))
         let moved = try KindDeletionService().moveEntries(
             from: created.kind, to: .memo, repository: repository,
-            deviceID: "Mac", at: Date(timeIntervalSince1970: 4))
+            deviceID: "Mac", at: Date(timeIntervalSince1970: 4)
+        ).moved
         return (before.count, moved.count, moved.first?.kind == .memo)
     }.value
     try expect(
@@ -411,9 +412,10 @@ do {
             deviceID: "Mac", at: Date(timeIntervalSince1970: 1))
         try catalog.delete(
             .prayer, moveTarget: .unclassified, deviceID: "Mac", at: Date(timeIntervalSince1970: 2))
-        _ = try KindDeletionService().moveEntries(
+        let move = try KindDeletionService().moveEntries(
             from: .prayer, to: .unclassified, repository: source,
             deviceID: "Mac", at: Date(timeIntervalSince1970: 3))
+        if let error = move.error { throw error }
         let entries = try source.list(kind: nil, includeDeleted: true, limit: 10)
         try backup.create(
             at: unclassifiedBackupURL, entries: entries,

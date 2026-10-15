@@ -69,6 +69,18 @@ public struct KindDefinition: Codable, Equatable, Identifiable, Sendable {
     }
 }
 
+extension KindDefinition {
+    /// Marks an edit. The stamp is at least a whole second past the previous one,
+    /// so two quick edits stay ordered after the catalog store cuts timestamps
+    /// to whole seconds (a tie would fall to the byte comparison and could
+    /// revert the second edit), and a clock that went backwards cannot make an
+    /// edit lose to the one before it.
+    fileprivate mutating func stamp(deviceID: String, at date: Date) {
+        updatedAt = max(date, updatedAt.addingTimeInterval(1))
+        modifiedByDeviceID = deviceID
+    }
+}
+
 public enum KindCatalogError: LocalizedError, Equatable, Sendable {
     case emptyName
     case nameTooLong
@@ -184,9 +196,13 @@ public struct KindCatalog: Codable, Equatable, Sendable {
         return Self.unknownDefinition(for: kind)
     }
 
-    /// Where entries of `kind` should live now: `nil` when the kind is active or unknown.
+    /// Where entries of `kind` should live now: `nil` when the kind is active or
+    /// unknown, and always for 미분류, which can never be deleted (a catalog that
+    /// says otherwise is crafted or corrupt).
     public func resolvedTarget(for kind: JournalKind) -> JournalKind? {
-        guard isKnown(kind), case .deleted(let first) = definition(for: kind).state else {
+        guard !kind.isUnclassified, isKnown(kind),
+            case .deleted(let first) = definition(for: kind).state
+        else {
             return nil
         }
         var visited: Set<String> = [kind.id]
@@ -232,8 +248,7 @@ public struct KindCatalog: Codable, Equatable, Sendable {
         edited.name = clean
         edited.colorToken = colorToken
         edited.iconToken = iconToken
-        edited.updatedAt = date
-        edited.modifiedByDeviceID = deviceID
+        edited.stamp(deviceID: deviceID, at: date)
         store(edited)
     }
 
@@ -247,8 +262,7 @@ public struct KindCatalog: Codable, Equatable, Sendable {
             var edited = definition(for: kind)
             guard !isKnown(kind) || edited.order != index else { continue }
             edited.order = index
-            edited.updatedAt = date
-            edited.modifiedByDeviceID = deviceID
+            edited.stamp(deviceID: deviceID, at: date)
             store(edited)
         }
     }
@@ -265,8 +279,7 @@ public struct KindCatalog: Codable, Equatable, Sendable {
         }
         var edited = definition(for: kind)
         edited.state = .deleted(moveTarget: moveTarget)
-        edited.updatedAt = date
-        edited.modifiedByDeviceID = deviceID
+        edited.stamp(deviceID: deviceID, at: date)
         store(edited)
     }
 
@@ -281,8 +294,7 @@ public struct KindCatalog: Codable, Equatable, Sendable {
         }
         edited.state = .active
         edited.order = nextOrder()
-        edited.updatedAt = date
-        edited.modifiedByDeviceID = deviceID
+        edited.stamp(deviceID: deviceID, at: date)
         store(edited)
     }
 

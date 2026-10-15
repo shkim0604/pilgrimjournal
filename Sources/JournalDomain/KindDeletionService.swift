@@ -1,5 +1,59 @@
 import Foundation
 
+/// An entry or classification rule a move pass could not save.
+public struct KindMoveFailure: Equatable, Sendable {
+    public enum Item: Equatable, Sendable {
+        case entry
+        case rule
+    }
+
+    public var item: Item
+    public var id: UUID
+    public var message: String
+
+    public init(item: Item, id: UUID, message: String) {
+        self.item = item
+        self.id = id
+        self.message = message
+    }
+}
+
+/// Every save a move pass could not make, reported once the pass has tried them all.
+public struct KindMoveError: LocalizedError, Equatable, Sendable {
+    public var failures: [KindMoveFailure]
+
+    public init(failures: [KindMoveFailure]) {
+        self.failures = failures
+    }
+
+    public var errorDescription: String? {
+        let entries = failures.filter { $0.item == .entry }.count
+        let rules = failures.count - entries
+        let what = [
+            entries > 0 ? "기록 \(entries)개" : nil,
+            rules > 0 ? "분류 규칙 \(rules)개" : nil,
+        ]
+        .compactMap { $0 }
+        .joined(separator: "와 ")
+        let reason = failures.first.map { " (\($0.message))" } ?? ""
+        return "\(what)를 옮기지 못했습니다\(reason). 다음에 앱을 열 때 다시 시도합니다."
+    }
+}
+
+/// What a move pass did. One unsaveable entry or rule never stops the rest.
+public struct KindMoveOutcome: Sendable {
+    /// Entries saved with their new kind, for the search index.
+    public var moved: [JournalEntryRecord] = []
+    public var retargetedRuleCount = 0
+    public var failures: [KindMoveFailure] = []
+
+    public init() {}
+
+    public var error: KindMoveError? {
+        failures.isEmpty ? nil : KindMoveError(failures: failures)
+    }
+}
+
 @MainActor
 public struct KindDeletionService {
     public init() {}
@@ -10,14 +64,15 @@ public struct KindDeletionService {
         return body + "\n\n---\n" + carryOver
     }
 
-    /// Moves every non-trashed entry of `kind` to `target` and returns the updated records.
+    /// Moves every non-trashed entry of `kind` to `target`. An entry that fails
+    /// to save is recorded in the outcome and the rest still move.
     public func moveEntries(
         from kind: JournalKind,
         to target: JournalKind,
         repository: any JournalRepository,
         deviceID: String,
         at date: Date
-    ) throws -> [JournalEntryRecord] {
+    ) throws -> KindMoveOutcome {
         var entries: [JournalEntryRecord] = []
         var cursor: JournalTimelineCursor?
         repeat {
@@ -26,20 +81,26 @@ public struct KindDeletionService {
             entries.append(contentsOf: page.entries)
             cursor = page.nextCursor
         } while cursor != nil
-        return try Self.move(
-            entries, to: target, repository: repository, deviceID: deviceID, at: date)
+        var outcome = KindMoveOutcome()
+        Self.move(
+            entries, to: { _ in target }, repository: repository, deviceID: deviceID, at: date,
+            into: &outcome)
+        return outcome
     }
 
-    /// Retargets classification rules that point at `kind` and returns how many changed.
+    /// Retargets classification rules that point at `kind`. A rule that fails
+    /// to save is recorded in the outcome and the rest are still retargeted.
     public func retargetRules(
         from kind: JournalKind,
         to target: JournalKind,
         repository: any JournalRepository,
         at date: Date
-    ) throws -> Int {
-        try Self.retarget(
+    ) throws -> KindMoveOutcome {
+        var outcome = KindMoveOutcome()
+        Self.retarget(
             try repository.classificationRules().filter { $0.targetKind == kind },
-            to: { _ in target }, repository: repository, at: date)
+            to: { _ in target }, repository: repository, at: date, into: &outcome)
+        return outcome
     }
 
     fileprivate static func move(
@@ -47,9 +108,9 @@ public struct KindDeletionService {
         to target: (JournalEntryRecord) -> JournalKind,
         repository: any JournalRepository,
         deviceID: String,
-        at date: Date
-    ) throws -> [JournalEntryRecord] {
-        var updated: [JournalEntryRecord] = []
+        at date: Date,
+        into outcome: inout KindMoveOutcome
+    ) {
         for entry in entries {
             var draft = entry.draft
             let carryOver = entry.kind.builtIn.flatMap {
@@ -57,33 +118,34 @@ public struct KindDeletionService {
             }
             draft.body = body(entry.body, appending: carryOver)
             draft.kind = target(entry)
-            updated.append(try repository.save(draft, deviceID: deviceID, at: date))
+            do {
+                outcome.moved.append(try repository.save(draft, deviceID: deviceID, at: date))
+            } catch {
+                outcome.failures.append(
+                    KindMoveFailure(
+                        item: .entry, id: entry.id, message: error.localizedDescription))
+            }
         }
-        return updated
-    }
-
-    fileprivate static func move(
-        _ entries: [JournalEntryRecord],
-        to target: JournalKind,
-        repository: any JournalRepository,
-        deviceID: String,
-        at date: Date
-    ) throws -> [JournalEntryRecord] {
-        try move(entries, to: { _ in target }, repository: repository, deviceID: deviceID, at: date)
     }
 
     fileprivate static func retarget(
         _ rules: [ClassificationRuleRecord],
         to target: (ClassificationRuleRecord) -> JournalKind,
         repository: any JournalRepository,
-        at date: Date
-    ) throws -> Int {
+        at date: Date,
+        into outcome: inout KindMoveOutcome
+    ) {
         for var rule in rules {
             rule.targetKind = target(rule)
             rule.updatedAt = date
-            try repository.saveClassificationRule(rule)
+            do {
+                try repository.saveClassificationRule(rule)
+                outcome.retargetedRuleCount += 1
+            } catch {
+                outcome.failures.append(
+                    KindMoveFailure(item: .rule, id: rule.id, message: error.localizedDescription))
+            }
         }
-        return rules.count
     }
 }
 
@@ -91,36 +153,57 @@ public struct KindDeletionService {
 public struct KindReconciler {
     public init() {}
 
-    /// Moves entries and rules whose kind the catalog marks deleted. Unknown IDs are left alone.
+    /// Moves entries and rules whose kind the catalog marks deleted. Unknown IDs
+    /// and 미분류 are left alone, and so is another device's copy of an entry
+    /// that device last saved before it deleted the kind: that device moved the
+    /// entry itself, and its newer version is still on its way through CloudKit.
+    /// Fetch errors throw; a failed save is recorded and the rest still move.
     public func reconcile(
         catalog: KindCatalog,
         repository: any JournalRepository,
         deviceID: String,
         at date: Date
-    ) throws -> [JournalEntryRecord] {
-        guard catalog.hasDeletedKinds else { return [] }
+    ) throws -> KindMoveOutcome {
+        var outcome = KindMoveOutcome()
+        guard catalog.hasDeletedKinds else { return outcome }
         var stale: [(JournalEntryRecord, JournalKind)] = []
         var cursor: JournalTimelineCursor?
         repeat {
             let page = try repository.page(
                 kind: nil, includeDeleted: false, after: cursor, limit: 500)
             for entry in page.entries {
-                if let target = catalog.resolvedTarget(for: entry.kind) {
-                    stale.append((entry, target))
-                }
+                guard let target = catalog.resolvedTarget(for: entry.kind),
+                    target != entry.kind,
+                    !Self.awaitsDeletingDevicesMove(entry, catalog: catalog, deviceID: deviceID)
+                else { continue }
+                stale.append((entry, target))
             }
             cursor = page.nextCursor
         } while cursor != nil
         let targets = Dictionary(uniqueKeysWithValues: stale.map { ($0.0.id, $0.1) })
-        let moved = try KindDeletionService.move(
+        KindDeletionService.move(
             stale.map(\.0), to: { targets[$0.id] ?? .unclassified },
-            repository: repository, deviceID: deviceID, at: date)
-        let rules = try repository.classificationRules().filter {
-            catalog.resolvedTarget(for: $0.targetKind) != nil
+            repository: repository, deviceID: deviceID, at: date, into: &outcome)
+        let rules = try repository.classificationRules().filter { rule in
+            catalog.resolvedTarget(for: rule.targetKind).map { $0 != rule.targetKind } ?? false
         }
-        _ = try KindDeletionService.retarget(
+        KindDeletionService.retarget(
             rules, to: { catalog.resolvedTarget(for: $0.targetKind) ?? .unclassified },
-            repository: repository, at: date)
-        return moved
+            repository: repository, at: date, into: &outcome)
+        return outcome
+    }
+
+    /// True for another device's pre-deletion copy: the entry was last saved by
+    /// the device that deleted its kind, no later than the deletion. That device
+    /// moved the entry when it deleted the kind; moving this older copy with a
+    /// later stamp would overwrite the moved version once it arrives. On the
+    /// deleting device itself nothing newer is coming, so its leftovers move.
+    private static func awaitsDeletingDevicesMove(
+        _ entry: JournalEntryRecord, catalog: KindCatalog, deviceID: String
+    ) -> Bool {
+        let deleted = catalog.definition(for: entry.kind)
+        return deleted.modifiedByDeviceID != deviceID
+            && entry.modifiedByDeviceID == deleted.modifiedByDeviceID
+            && entry.updatedAt <= deleted.updatedAt
     }
 }

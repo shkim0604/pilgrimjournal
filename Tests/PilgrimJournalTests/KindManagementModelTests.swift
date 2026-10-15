@@ -32,7 +32,7 @@ final class KindManagementModelTests: XCTestCase {
 
     private func makeModel(
         defaults: UserDefaults? = nil,
-        repository: InMemoryJournalRepository = InMemoryJournalRepository(),
+        repository: any JournalRepository = InMemoryJournalRepository(),
         cloudAccountMonitor: CloudAccountMonitor? = nil,
         featureAccess: (any FeatureAccess)? = nil
     ) throws -> AppModel {
@@ -133,6 +133,28 @@ final class KindManagementModelTests: XCTestCase {
         XCTAssertEqual(model.sidebarKinds.filter { $0.kind == unknown }.map(\.name), ["설교노트"])
     }
 
+    func testDeleteKindMovesTheRestWhenOneEntryFailsToSave() throws {
+        let base = InMemoryJournalRepository()
+        let broken = try base.save(
+            JournalEntryDraft(kind: .prayer, body: "저장되지 않는 기도"), deviceID: "d", at: .now)
+        let fine = try base.save(
+            JournalEntryDraft(kind: .prayer, body: "옮겨지는 기도"), deviceID: "d", at: .now)
+        let model = try makeModel(
+            repository: SaveRefusingRepository(base: base, refusedEntryIDs: [broken.id]))
+        model.refresh()
+
+        XCTAssertThrowsError(try model.deleteKind(.prayer, moveTo: .memo)) { error in
+            XCTAssertNotNil(error as? KindMoveError)
+            XCTAssertTrue(error.localizedDescription.contains("기록 1개"))
+        }
+
+        XCTAssertEqual(try base.entry(id: fine.id)?.kind, .memo)
+        XCTAssertEqual(try base.entry(id: broken.id)?.kind, .prayer)
+        let hits = try model.searchIndex.search(JournalSearchQuery(text: "옮겨지는", kind: .memo))
+        XCTAssertEqual(hits.map(\.id), [fine.id])
+        XCTAssertFalse(model.kindCatalog.activeKinds.contains { $0.kind == .prayer })
+    }
+
     func testLockedAccessShowsPremiumNoticeInsteadOfEditor() throws {
         let model = try makeModel(featureAccess: LockedFeatureAccess())
 
@@ -224,6 +246,76 @@ final class KindManagementModelTests: XCTestCase {
             CloudSyncStoreEvent(operation: .importing, completedAt: .now, succeeded: true))
 
         XCTAssertEqual(try repository.entry(id: imported.id)?.kind, .memo)
+    }
+}
+/// Forwards to an in-memory repository but refuses to save chosen entries.
+@MainActor
+private final class SaveRefusingRepository: JournalRepository {
+    let base: InMemoryJournalRepository
+    let refusedEntryIDs: Set<UUID>
+
+    init(base: InMemoryJournalRepository, refusedEntryIDs: Set<UUID>) {
+        self.base = base
+        self.refusedEntryIDs = refusedEntryIDs
+    }
+
+    func list(kind: JournalKind?, includeDeleted: Bool, limit: Int) throws -> [JournalEntryRecord] {
+        try base.list(kind: kind, includeDeleted: includeDeleted, limit: limit)
+    }
+
+    func page(
+        kind: JournalKind?, includeDeleted: Bool, after cursor: JournalTimelineCursor?, limit: Int
+    ) throws -> JournalTimelinePage {
+        try base.page(kind: kind, includeDeleted: includeDeleted, after: cursor, limit: limit)
+    }
+
+    func entry(id: UUID) throws -> JournalEntryRecord? { try base.entry(id: id) }
+
+    func entry(sourceUUID: String) throws -> JournalEntryRecord? {
+        try base.entry(sourceUUID: sourceUUID)
+    }
+
+    func save(_ draft: JournalEntryDraft, deviceID: String, at date: Date) throws
+        -> JournalEntryRecord
+    {
+        if let id = draft.id, refusedEntryIDs.contains(id) {
+            throw JournalError.persistence("저장 실패")
+        }
+        return try base.save(draft, deviceID: deviceID, at: date)
+    }
+
+    func revisions(entryID: UUID) throws -> [EntryRevisionRecord] {
+        try base.revisions(entryID: entryID)
+    }
+
+    func restore(entryID: UUID, revisionID: UUID, deviceID: String, at date: Date) throws
+        -> JournalEntryRecord
+    {
+        try base.restore(entryID: entryID, revisionID: revisionID, deviceID: deviceID, at: date)
+    }
+
+    func moveToTrash(entryID: UUID, deviceID: String, at date: Date) throws {
+        try base.moveToTrash(entryID: entryID, deviceID: deviceID, at: date)
+    }
+
+    func restoreFromTrash(entryID: UUID, deviceID: String, at date: Date) throws {
+        try base.restoreFromTrash(entryID: entryID, deviceID: deviceID, at: date)
+    }
+
+    func purgeEntries(ids: Set<UUID>) throws -> JournalPurgeSummary {
+        try base.purgeEntries(ids: ids)
+    }
+
+    func classificationRules() throws -> [ClassificationRuleRecord] {
+        try base.classificationRules()
+    }
+
+    func saveClassificationRule(_ rule: ClassificationRuleRecord) throws {
+        try base.saveClassificationRule(rule)
+    }
+
+    func deleteClassificationRule(id: UUID) throws {
+        try base.deleteClassificationRule(id: id)
     }
 }
 #endif
