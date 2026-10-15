@@ -663,8 +663,8 @@ struct EntryDetailView: View {
                     entry.title.isEmpty
                         ? model.kindDefinition(for: entry.kind).name : entry.title
                 )
-                    .font(.largeTitle.bold())
-                    .foregroundStyle(JournalTheme.ink)
+                .font(.largeTitle.bold())
+                .foregroundStyle(JournalTheme.ink)
                 Text(entry.occurredAt.formatted(date: .long, time: .shortened))
                     .foregroundStyle(JournalTheme.inkSecondary)
                 typeDetails
@@ -1998,8 +1998,8 @@ struct TrashView: View {
                 entry.title.isEmpty
                     ? model.kindDefinition(for: entry.kind).name : entry.title
             )
-                .font(.headline)
-                .lineLimit(2)
+            .font(.headline)
+            .lineLimit(2)
             if let deletedAt = entry.deletedAt {
                 Text("삭제 \(deletedAt.formatted())")
                     .font(.caption)
