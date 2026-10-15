@@ -437,6 +437,39 @@ final class JournalBackupTests: XCTestCase {
         XCTAssertEqual(repository.allRestoreEpochs().map(\.mode), [.merge, .replace])
     }
 
+    /// A hand-written entry lands in 미분류 when its kind is deleted with the
+    /// default target; restoring that backup into an empty store must not
+    /// treat it as a new manual entry.
+    @MainActor
+    func testRestoresManualUnclassifiedEntryIntoEmptyRepository() throws {
+        let repository = InMemoryJournalRepository()
+        var entry = makeRecord(title: "옮겨진 손 기록", date: Date(timeIntervalSince1970: 10))
+        entry.kind = .unclassified
+        entry.details = EntryDetails()
+        let contents = BackupContents(
+            manifest: BackupManifest(files: [:], includesSourceSnapshots: false),
+            entries: [entry],
+            revisions: [],
+            rules: [],
+            attachments: [],
+            sourceSnapshots: []
+        )
+        let plan = JournalBackupService().plan(
+            contents: contents, currentEntries: [], mode: .merge)
+
+        let result = try JournalRestoreExecutor().execute(
+            contents: contents,
+            plan: plan,
+            repository: repository,
+            deviceID: "restore",
+            at: Date(timeIntervalSince1970: 20)
+        )
+
+        XCTAssertEqual(result.restored, 1)
+        XCTAssertEqual(try repository.entry(id: entry.id)?.kind, .unclassified)
+        XCTAssertEqual(try repository.entry(id: entry.id)?.title, entry.title)
+    }
+
     private func makeRecord(title: String, date: Date) -> JournalEntryRecord {
         JournalEntryRecord(
             id: UUID(),

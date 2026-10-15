@@ -153,6 +153,56 @@ final class JournalSessionControllerTests: XCTestCase {
         XCTAssertEqual(cloudModel.unknownKinds, [])
     }
 
+    /// Deleting a kind with the default target leaves hand-written entries in
+    /// 미분류; moving the local scope to iCloud must still carry them.
+    func testMigrationCarriesManualEntriesMovedToUnclassified() async throws {
+        let parent = FileManager.default.temporaryDirectory.appending(
+            path: "journal-unclassified-migration-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        let root = parent.appending(path: "PilgrimJournal", directoryHint: .isDirectory)
+        let appleUser = "unclassified-migration-\(UUID().uuidString)"
+        var suites: [String] = []
+        defer {
+            try? FileManager.default.removeItem(at: parent)
+            for suite in suites {
+                UserDefaults().removePersistentDomain(forName: suite)
+            }
+        }
+        func suiteName(_ scope: JournalAccountScope?) throws -> String {
+            let scope = try XCTUnwrap(scope)
+            return "PilgrimJournal.\(scope.appleUserHash).\(scope.storageLocation.directoryName)"
+        }
+        var location = JournalStorageLocation.localOnly
+        let controller = JournalSessionController(
+            rootURL: root,
+            cloudKitContainerIdentifier: nil,
+            storageLocationProvider: { location }
+        )
+
+        await controller.activate(appleUserIdentifier: appleUser)
+        suites.append(try suiteName(controller.activeScope))
+        let localModel = try XCTUnwrap(controller.appModel)
+        let entry = try localModel.repository.save(
+            JournalEntryDraft(kind: .prayer, title: "손으로 쓴 기도"),
+            deviceID: "iPhone",
+            at: Date(timeIntervalSince1970: 10)
+        )
+        try localModel.deleteKind(.prayer, moveTo: .unclassified)
+        XCTAssertEqual(try localModel.repository.entry(id: entry.id)?.kind, .unclassified)
+
+        location = .iCloud(accountHash: "icloud-account-a")
+        await controller.activate(appleUserIdentifier: appleUser, forceRefresh: true)
+        suites.append(try suiteName(controller.pendingMigration?.destination))
+        let result = try XCTUnwrap(controller.confirmPendingMigration())
+
+        XCTAssertEqual(result.migratedEntries, 1)
+        XCTAssertNil(controller.errorMessage)
+        let cloudModel = try XCTUnwrap(controller.appModel)
+        XCTAssertEqual(try cloudModel.repository.entry(id: entry.id)?.kind, .unclassified)
+        XCTAssertEqual(try cloudModel.repository.entry(id: entry.id)?.title, "손으로 쓴 기도")
+    }
+
     func testICloudAccountChangeNeverOpensPreviousCloudStore() async throws {
         let parent = FileManager.default.temporaryDirectory.appending(
             path: "journal-account-change-\(UUID().uuidString)",

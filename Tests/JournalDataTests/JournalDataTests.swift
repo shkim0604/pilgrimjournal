@@ -27,6 +27,22 @@ final class JournalDataTests: XCTestCase {
         ) { XCTAssertEqual($0 as? JournalError, .invalidManualKind) }
     }
 
+    /// Restore and scope migration save entries missing from the store with
+    /// their `id` set; only a draft without an `id` is a new manual entry.
+    func testManualUnclassifiedDraftWithIDIsAcceptedEvenWhenAbsent() throws {
+        let repository = try makeRepository()
+        let id = UUID()
+        let saved = try repository.save(
+            JournalEntryDraft(id: id, kind: .unclassified, body: "옮겨진 기록"),
+            deviceID: "d", at: .now)
+        XCTAssertEqual(saved.id, id)
+        XCTAssertEqual(try repository.entry(id: id)?.kind, .unclassified)
+        XCTAssertThrowsError(
+            try repository.save(
+                JournalEntryDraft(kind: .unclassified, body: "새 기록"), deviceID: "d", at: .now)
+        ) { XCTAssertEqual($0 as? JournalError, .invalidManualKind) }
+    }
+
     func testSaveCreatesRevisionAndCanRestore() throws {
         let repository = try makeRepository()
         let original = try repository.save(
