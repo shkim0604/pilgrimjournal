@@ -104,7 +104,11 @@ public final class SwiftDataJournalRepository:
         deviceID: String,
         at date: Date = .now
     ) throws -> JournalEntryRecord {
-        let validated = try draft.validated(manual: draft.sourceUUID == nil)
+        // Only creating a new hand-written entry must pick a concrete kind; an existing
+        // entry may be moved to 미분류 (e.g. when its kind is deleted).
+        let isNewManualEntry =
+            try draft.sourceUUID == nil && (draft.id.map { try entry(id: $0) == nil } ?? true)
+        let validated = try draft.validated(manual: isNewManualEntry)
         if let sourceUUID = validated.sourceUUID,
             let duplicate = try entry(sourceUUID: sourceUUID),
             duplicate.id != validated.id

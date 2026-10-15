@@ -13,6 +13,20 @@ final class JournalDataTests: XCTestCase {
         )
     }
 
+    func testUpdatingExistingManualEntryToUnclassifiedIsAllowed() throws {
+        let repository = try makeRepository()
+        let saved = try repository.save(
+            JournalEntryDraft(kind: .diary, body: "d"), deviceID: "d", at: .now)
+        var draft = saved.draft
+        draft.kind = .unclassified
+        XCTAssertEqual(
+            try repository.save(draft, deviceID: "d", at: .now).kind, .unclassified)
+        XCTAssertThrowsError(
+            try repository.save(
+                JournalEntryDraft(kind: .unclassified, body: "n"), deviceID: "d", at: .now)
+        ) { XCTAssertEqual($0 as? JournalError, .invalidManualKind) }
+    }
+
     func testSaveCreatesRevisionAndCanRestore() throws {
         let repository = try makeRepository()
         let original = try repository.save(

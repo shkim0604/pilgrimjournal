@@ -135,5 +135,33 @@ final class KindDeletionServiceTests: XCTestCase {
             catalog: catalog, repository: repository, deviceID: "d", at: t2)
         XCTAssertEqual(try repository.entry(id: entry.id)?.kind, .memo)
     }
+
+    func testMoveManualEntriesToUnclassified() throws {
+        let repository = InMemoryJournalRepository()
+        let entry = try repository.save(
+            JournalEntryDraft(kind: .diary, body: "d"), deviceID: "d", at: t0)
+        let moved = try KindDeletionService().moveEntries(
+            from: .diary, to: .unclassified, repository: repository, deviceID: "d", at: t1)
+        XCTAssertEqual(moved.count, 1)
+        XCTAssertEqual(try repository.entry(id: entry.id)?.kind, .unclassified)
+    }
+
+    func testReconcilerMovesToUnclassifiedOnCycle() throws {
+        let repository = InMemoryJournalRepository()
+        let entry = try repository.save(
+            JournalEntryDraft(kind: .prayer, body: "p"), deviceID: "d", at: t0)
+        var catalog = KindCatalog()
+        try catalog.delete(.prayer, moveTarget: .reading, deviceID: "d", at: t1)
+        try catalog.delete(.reading, moveTarget: .diary, deviceID: "d", at: t1)
+        var reading = catalog.definition(for: .reading)
+        reading.state = .deleted(moveTarget: .prayer)
+        catalog = KindCatalog(
+            definitions: catalog.definitions.map {
+                $0.kind == .reading ? reading : $0
+            })
+        _ = try KindReconciler().reconcile(
+            catalog: catalog, repository: repository, deviceID: "d", at: t2)
+        XCTAssertEqual(try repository.entry(id: entry.id)?.kind, .unclassified)
+    }
 }
 #endif
