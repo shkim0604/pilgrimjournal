@@ -12,6 +12,9 @@ struct SettingsView: View {
     @State private var restoreMode = RestoreMode.merge
     @State private var isConfirmingRestore = false
     @State private var isConfirmingSignOut = false
+    #if DEBUG
+    @AppStorage(UnlockedFeatureAccess.simulateLockedKey) private var simulateLocked = false
+    #endif
 
     var body: some View {
         Form {
@@ -224,11 +227,26 @@ struct SettingsView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             }
+            #if DEBUG
+            Section("개발") {
+                Toggle("유료 기능 잠금 시뮬레이션", isOn: $simulateLocked)
+                Text("Debug 빌드에서만 보입니다. 켜면 유형 편집 대신 유료 안내가 뜹니다.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            #endif
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
         .background(JournalTheme.canvas)
         .navigationTitle("설정")
+        #if DEBUG
+        // `featureAccess` reads the flag but publishes nothing, so tell the
+        // model to re-render the sidebar's 편집 label and gate.
+        .onChange(of: simulateLocked) { _, _ in
+            model.featureAccessDidChange()
+        }
+        #endif
         .confirmationDialog(
             "Apple 계정에서 로그아웃할까요?",
             isPresented: $isConfirmingSignOut,
@@ -520,8 +538,12 @@ struct DayOneImportView: View {
                             set: { model.setDayOneImportKind($0, for: item.sourceUUID) }
                         )
                     ) {
-                        ForEach(JournalKind.allCases) { kind in
-                            Text(kind.localizedName).tag(kind)
+                        ForEach(
+                            model.kindPickerOptions(
+                                including: item.draft.kind, activeOnly: true),
+                            id: \.kind
+                        ) { definition in
+                            Text(definition.name).tag(definition.kind)
                         }
                     }
                     .labelsHidden()
@@ -662,7 +684,7 @@ struct DayOneImportView: View {
                             )
                             .foregroundStyle(outcomeColor(outcome.status))
                             Spacer()
-                            Text(outcome.kind.localizedName)
+                            Text(model.kindDefinition(for: outcome.kind).name)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }

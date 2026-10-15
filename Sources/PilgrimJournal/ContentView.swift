@@ -104,7 +104,7 @@ struct ContentView: View {
             .onChange(of: model.searchText) { _, _ in model.refresh() }
             .navigationTitle(
                 model.selectedNotebookName
-                    ?? model.selectedKind?.localizedName
+                    ?? model.selectedKind.map { model.kindDefinition(for: $0).name }
                     ?? "전체 기록"
             )
             .toolbar {
@@ -236,6 +236,12 @@ struct ContentView: View {
         #endif
         .sheet(isPresented: $model.isPresentingTrash) {
             TrashView()
+        }
+        .sheet(isPresented: $model.isPresentingKindManagement) {
+            KindManagementSheet()
+        }
+        .sheet(isPresented: $model.isPresentingPremiumNotice) {
+            PremiumFeatureNoticeSheet()
         }
         #if os(macOS)
         // Swapping the detail column's content (switching entries, a new
@@ -586,16 +592,37 @@ private struct JournalSidebar: View {
                     selectKind(nil)
                 }
 
-                ForEach(JournalKind.allCases) { kind in
+            }
+
+            Section {
+                ForEach(model.sidebarKinds, id: \.kind) { definition in
                     JournalSidebarItem(
-                        title: kind.localizedName,
-                        systemImage: icon(for: kind),
-                        accent: JournalTheme.categoryColor(for: kind),
-                        isSelected: model.selectedKind == kind
+                        title: definition.name,
+                        systemImage: KindIconCatalog.displaySymbol(
+                            for: definition.iconToken
+                        ),
+                        accent: JournalTheme.categoryColor(for: definition),
+                        isSelected: model.selectedKind == definition.kind
                             && model.selectedNotebookName == nil
                     ) {
-                        selectKind(kind)
+                        selectKind(definition.kind)
                     }
+                }
+            } header: {
+                HStack {
+                    Text("유형")
+                    Spacer()
+                    Button {
+                        model.openKindManagement()
+                    } label: {
+                        if model.featureAccess.canManageKinds {
+                            Text("편집")
+                        } else {
+                            Label("편집", systemImage: "lock.fill")
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(JournalTheme.brandPrimary)
                 }
             }
 
@@ -711,17 +738,6 @@ private struct JournalSidebar: View {
         model.showSettings()
         preferredCompactColumn = .detail
     }
-
-    private func icon(for kind: JournalKind) -> String {
-        switch kind {
-        case .prayer: "hands.sparkles"
-        case .bibleStudy: "book.closed"
-        case .reading: "books.vertical"
-        case .diary: "pencil.and.scribble"
-        case .memo: "note.text"
-        case .unclassified: "tray"
-        }
-    }
 }
 
 private struct NewEntryListButton: View {
@@ -741,12 +757,16 @@ private struct NewEntryListButton: View {
 }
 
 private struct EntryRow: View {
+    @EnvironmentObject private var model: AppModel
     let entry: JournalEntryRecord
 
     var body: some View {
         HStack(spacing: JournalTheme.Spacing.medium) {
             RoundedRectangle(cornerRadius: 1.5)
-                .fill(JournalTheme.categoryColor(for: entry.kind))
+                .fill(
+                    JournalTheme.categoryColor(
+                        for: model.kindDefinition(for: entry.kind))
+                )
                 .frame(width: 3)
                 .accessibilityHidden(true)
 
@@ -756,7 +776,7 @@ private struct EntryRow: View {
                         EntryListSummaryFormatter.title(
                             explicitTitle: entry.title,
                             body: entry.body,
-                            fallback: entry.kind.localizedName
+                            fallback: model.kindDefinition(for: entry.kind).name
                         )
                     )
                     .font(.headline)

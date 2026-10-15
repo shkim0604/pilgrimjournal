@@ -4,12 +4,32 @@ import JournalDomain
 import XCTest
 
 final class JournalDomainTests: XCTestCase {
-    func testInvalidManualKindMessageNamesEveryCreatableKind() throws {
-        let message = try XCTUnwrap(JournalError.invalidManualKind.errorDescription)
-        for kind in JournalKind.allCases where kind.canCreateManually {
-            XCTAssertTrue(message.contains(kind.localizedName), "missing \(kind)")
-        }
-        XCTAssertFalse(message.contains(JournalKind.unclassified.localizedName))
+    func testInvalidManualKindMessageIsFixedSentence() {
+        XCTAssertEqual(
+            JournalError.invalidManualKind.errorDescription,
+            "미분류로는 새 기록을 만들 수 없습니다. 다른 유형을 골라 주세요.")
+    }
+
+    func testJournalKindEncodesAsBareString() throws {
+        let data = try JSONEncoder().encode([JournalKind.prayer, JournalKind(id: "custom-A")])
+        XCTAssertEqual(String(decoding: data, as: UTF8.self), #"["prayer","custom-A"]"#)
+    }
+
+    func testUnknownKindIdSurvivesDecoding() throws {
+        let draft = try JSONDecoder().decode(
+            JournalEntryDraft.self,
+            from: Data(
+                #"{"kind":"custom-X","title":"t","body":"b","occurredAt":0,"tags":[],"isStarred":false,"isPinned":false,"details":{}}"#
+                    .utf8))
+        XCTAssertEqual(draft.kind.id, "custom-X")
+        XCTAssertNil(draft.kind.builtIn)
+    }
+
+    func testCustomKindIsManualAndClearsAllDetails() throws {
+        let draft = JournalEntryDraft(
+            kind: JournalKind(id: "custom-A"), body: "본문",
+            details: EntryDetails(prayerStatus: .answered, mood: "평안"))
+        XCTAssertEqual(try draft.validated(manual: true).details, EntryDetails())
     }
 
     func testManualEntryRequiresConcreteKind() throws {
@@ -20,8 +40,8 @@ final class JournalDomainTests: XCTestCase {
     }
 
     func testMemoCanBeCreatedManuallyAndHasNoTypeSpecificDetails() throws {
-        XCTAssertTrue(JournalKind.memo.canCreateManually)
-        XCTAssertEqual(JournalKind.memo.localizedName, "메모")
+        XCTAssertFalse(JournalKind.memo.isUnclassified)
+        XCTAssertEqual(BuiltInKind.memo.defaultName, "메모")
 
         let details = EntryDetails(
             prayerStatus: .answered,
@@ -168,6 +188,51 @@ final class JournalDomainTests: XCTestCase {
             resolver.winner(macEdit, phoneEdit).targetKind,
             .diary
         )
+    }
+
+    func testCarryOverLinesPerKind() {
+        let answeredAt = ISO8601DateFormatter().date(from: "2026-05-01T15:00:00Z")
+        let answered = EntryDetails(prayerStatus: .answered, answeredAt: answeredAt)
+        XCTAssertEqual(
+            answered.carryOverLines(from: .prayer, timeZoneIdentifier: "Asia/Seoul"),
+            "기도 상태: 응답됨 (2026-05-02)")
+        XCTAssertEqual(
+            EntryDetails(prayerStatus: .answered)
+                .carryOverLines(from: .prayer, timeZoneIdentifier: nil),
+            "기도 상태: 응답됨")
+        XCTAssertEqual(
+            EntryDetails(prayerStatus: .ongoing)
+                .carryOverLines(from: .prayer, timeZoneIdentifier: nil),
+            "기도 상태: 기도 중")
+        XCTAssertNil(EntryDetails().carryOverLines(from: .prayer, timeZoneIdentifier: nil))
+        XCTAssertEqual(
+            EntryDetails(scriptureReference: "요 3:16")
+                .carryOverLines(from: .bibleStudy, timeZoneIdentifier: nil),
+            "본문: 요 3:16")
+        XCTAssertEqual(
+            EntryDetails(bookTitle: "고백록", bookAuthor: "아우구스티누스")
+                .carryOverLines(from: .reading, timeZoneIdentifier: nil),
+            "책: 고백록 / 저자: 아우구스티누스")
+        XCTAssertEqual(
+            EntryDetails(bookTitle: "고백록")
+                .carryOverLines(from: .reading, timeZoneIdentifier: nil),
+            "책: 고백록")
+        XCTAssertEqual(
+            EntryDetails(bookAuthor: "아우구스티누스")
+                .carryOverLines(from: .reading, timeZoneIdentifier: nil),
+            "저자: 아우구스티누스")
+        XCTAssertEqual(
+            EntryDetails(mood: "평안").carryOverLines(from: .diary, timeZoneIdentifier: nil),
+            "기분: 평안")
+        XCTAssertNil(
+            EntryDetails(mood: "평안").carryOverLines(from: .memo, timeZoneIdentifier: nil))
+        XCTAssertNil(
+            EntryDetails(bookTitle: "  ", bookAuthor: " ")
+                .carryOverLines(from: .reading, timeZoneIdentifier: nil))
+        XCTAssertEqual(
+            EntryDetails(bookTitle: "  ", bookAuthor: "아우구스티누스")
+                .carryOverLines(from: .reading, timeZoneIdentifier: nil),
+            "저자: 아우구스티누스")
     }
 }
 #endif
