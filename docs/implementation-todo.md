@@ -57,6 +57,12 @@
   밖으로 나가 버튼이 사라지지 않는다). iPhone과 달리 `NSTextView`는 글자와 장식을 한
   뷰에서 그리고 글자가 바뀌면 스스로 다시 그려서, 별도 `needsDisplay`는 필요 없었다
   (`MacImageMoveTests`).
+- **화면 모드 설정** (2026-10-15) — 설정 › 화면에서 시스템 설정·라이트·다크를
+  고른다. 기기별(`@AppStorage`, 동기화 안 함)이고, SwiftUI `preferredColorScheme`
+  대신 창 단위로 적용한다(iOS `overrideUserInterfaceStyle`, macOS
+  `NSApp.appearance`) — 그래야 "시스템 설정"으로 돌아올 때 확실히 풀리고
+  AppKit/UIKit 편집기 색도 따라간다. iOS 시뮬레이터에서 즉시 전환·재실행 유지·
+  시스템 추종 확인. Mac 화면 확인과 실기기 확인은 아직.
 - **iPhone 본문 사진 위치 지정과 ▲▼ 이동** (2026-10-15) — 사진·촬영·파일(이미지)
   버튼, 키보드 도구줄 📷, 꾹 눌러 뜨는 메뉴의 사진 삽입으로 넣은 사진이 첨부
   목록뿐 아니라 본문의 마지막 커서 자리(커서가 없었으면 끝)에 한 줄로 들어간다.

@@ -20,6 +20,8 @@ struct PilgrimJournalApp: App {
     @AppStorage("has-completed-onboarding") private var hasCompletedOnboarding = false
     @AppStorage(EditorTextScale.storageKey) private var editorTextScale =
         EditorTextScale.defaultValue
+    @AppStorage(AppAppearance.storageKey) private var appearance =
+        AppAppearance.defaultValue.rawValue
     @StateObject private var journalSession: JournalSessionController
     @StateObject private var appLock: AppLockCoordinator
     @StateObject private var authentication: AppleAuthenticationCoordinator
@@ -226,6 +228,10 @@ struct PilgrimJournalApp: App {
             .environmentObject(appLock)
             .environmentObject(authentication)
             .environmentObject(journalSession)
+            .onAppear { AppAppearance(storedValue: appearance).apply() }
+            .onChange(of: appearance) { _, newValue in
+                AppAppearance(storedValue: newValue).apply()
+            }
             .sheet(
                 isPresented: Binding(
                     get: {
