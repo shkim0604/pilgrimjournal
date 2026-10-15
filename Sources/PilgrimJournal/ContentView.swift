@@ -104,7 +104,7 @@ struct ContentView: View {
             .onChange(of: model.searchText) { _, _ in model.refresh() }
             .navigationTitle(
                 model.selectedNotebookName
-                    ?? model.selectedKind?.localizedName
+                    ?? model.selectedKind?.fallbackName
                     ?? "전체 기록"
             )
             .toolbar {
@@ -586,9 +586,9 @@ private struct JournalSidebar: View {
                     selectKind(nil)
                 }
 
-                ForEach(JournalKind.allCases) { kind in
+                ForEach(JournalKind.builtIns) { kind in
                     JournalSidebarItem(
-                        title: kind.localizedName,
+                        title: kind.fallbackName,
                         systemImage: icon(for: kind),
                         accent: JournalTheme.categoryColor(for: kind),
                         isSelected: model.selectedKind == kind
@@ -713,13 +713,14 @@ private struct JournalSidebar: View {
     }
 
     private func icon(for kind: JournalKind) -> String {
-        switch kind {
-        case .prayer: "hands.sparkles"
-        case .bibleStudy: "book.closed"
-        case .reading: "books.vertical"
-        case .diary: "pencil.and.scribble"
-        case .memo: "note.text"
-        case .unclassified: "tray"
+        switch kind.builtIn {
+        case .prayer?: "hands.sparkles"
+        case .bibleStudy?: "book.closed"
+        case .reading?: "books.vertical"
+        case .diary?: "pencil.and.scribble"
+        case .memo?: "note.text"
+        case .unclassified?: "tray"
+        case nil: "tag"
         }
     }
 }
@@ -756,7 +757,7 @@ private struct EntryRow: View {
                         EntryListSummaryFormatter.title(
                             explicitTitle: entry.title,
                             body: entry.body,
-                            fallback: entry.kind.localizedName
+                            fallback: entry.kind.fallbackName
                         )
                     )
                     .font(.headline)

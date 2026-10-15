@@ -47,13 +47,14 @@ enum JournalTheme {
     static let selection = Color(lightHex: 0xDDEBE5, darkHex: 0x29483F)
 
     static func categoryColor(for kind: JournalKind) -> Color {
-        switch kind {
-        case .prayer: Color(lightHex: 0x9B6B25, darkHex: 0xE1B869)
-        case .bibleStudy: Color(lightHex: 0x56745B, darkHex: 0x90B895)
-        case .reading: Color(lightHex: 0x55758C, darkHex: 0x8DB4CE)
-        case .diary: Color(lightHex: 0x9B5E54, darkHex: 0xD89A90)
-        case .memo: Color(lightHex: 0x6B668C, darkHex: 0xAAA4CE)
-        case .unclassified: Color(lightHex: 0x68716C, darkHex: 0xAAB3AE)
+        switch kind.builtIn {
+        case .prayer?: Color(lightHex: 0x9B6B25, darkHex: 0xE1B869)
+        case .bibleStudy?: Color(lightHex: 0x56745B, darkHex: 0x90B895)
+        case .reading?: Color(lightHex: 0x55758C, darkHex: 0x8DB4CE)
+        case .diary?: Color(lightHex: 0x9B5E54, darkHex: 0xD89A90)
+        case .memo?: Color(lightHex: 0x6B668C, darkHex: 0xAAA4CE)
+        case .unclassified?: Color(lightHex: 0x68716C, darkHex: 0xAAB3AE)
+        case nil: Color(lightHex: 0x6B668C, darkHex: 0xAAA4CE)
         }
     }
 }

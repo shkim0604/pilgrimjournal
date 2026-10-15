@@ -435,6 +435,36 @@ final class JournalDataTests: XCTestCase {
         XCTAssertTrue(try repository.classificationRules().isEmpty)
     }
 
+    func testSwiftDataPreservesCustomKindId() throws {
+        let repository = try makeRepository()
+        let custom = JournalKind(id: "custom-X")
+        let saved = try repository.save(
+            JournalEntryDraft(kind: custom, body: "사용자 유형"),
+            deviceID: "Mac",
+            at: Date(timeIntervalSince1970: 1)
+        )
+        _ = try repository.save(
+            JournalEntryDraft(kind: .diary, body: "일기"),
+            deviceID: "Mac",
+            at: Date(timeIntervalSince1970: 2)
+        )
+        XCTAssertEqual(try repository.entry(id: saved.id)?.kind.id, "custom-X")
+        let filtered = try repository.list(kind: custom, includeDeleted: false, limit: 100)
+        XCTAssertEqual(filtered.map(\.id), [saved.id])
+    }
+
+    func testRuleWithCustomTargetIsPreserved() throws {
+        let repository = try makeRepository()
+        let rule = ClassificationRuleRecord(
+            source: .tag,
+            value: "사용자",
+            targetKind: JournalKind(id: "custom-X"),
+            priority: 5
+        )
+        try repository.saveClassificationRule(rule)
+        XCTAssertEqual(try repository.classificationRules().map(\.targetKind.id), ["custom-X"])
+    }
+
     func testClassificationRuleReplicasConvergeAcrossOppositeDeliveryOrders() throws {
         let identifier = UUID(uuidString: "22222222-2222-4222-8222-222222222222")!
         let date = Date(timeIntervalSince1970: 100)

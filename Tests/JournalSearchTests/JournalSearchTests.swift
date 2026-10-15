@@ -46,6 +46,23 @@ final class JournalSearchTests: XCTestCase {
         try index.integrityCheck()
     }
 
+    func testSearchKeepsCustomKindAndFilters() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appending(path: "\(UUID().uuidString).sqlite")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let index = try JournalSearchIndex(url: url)
+        let custom = makeRecord(
+            kind: JournalKind(id: "custom-X"), title: "사용자", body: "고유한 본문", tags: [],
+            date: .now)
+        let other = makeRecord(
+            kind: .diary, title: "일기", body: "고유한 본문", tags: [], date: .now)
+        try index.rebuild(from: [custom, other])
+        let hits = try index.search(
+            JournalSearchQuery(text: "고유한", kind: JournalKind(id: "custom-X")))
+        XCTAssertEqual(hits.map(\.id), [custom.id])
+        XCTAssertEqual(hits.first?.kind.id, "custom-X")
+    }
+
     func testDeletedRecordIsRemoved() throws {
         let url = FileManager.default.temporaryDirectory
             .appending(path: "\(UUID().uuidString).sqlite")

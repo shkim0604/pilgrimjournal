@@ -520,8 +520,8 @@ struct DayOneImportView: View {
                             set: { model.setDayOneImportKind($0, for: item.sourceUUID) }
                         )
                     ) {
-                        ForEach(JournalKind.allCases) { kind in
-                            Text(kind.localizedName).tag(kind)
+                        ForEach(JournalKind.builtIns) { kind in
+                            Text(kind.fallbackName).tag(kind)
                         }
                     }
                     .labelsHidden()
@@ -662,7 +662,7 @@ struct DayOneImportView: View {
                             )
                             .foregroundStyle(outcomeColor(outcome.status))
                             Spacer()
-                            Text(outcome.kind.localizedName)
+                            Text(outcome.kind.fallbackName)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }

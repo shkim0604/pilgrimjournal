@@ -214,8 +214,8 @@ struct InlineEntryEditorView: View {
 
     private var kindPicker: some View {
         Picker("기록 유형", selection: kindBinding) {
-            ForEach(JournalKind.allCases.filter(\.canCreateManually)) { kind in
-                Text(kind.localizedName).tag(kind)
+            ForEach(JournalKind.builtIns.filter { !$0.isUnclassified }) { kind in
+                Text(kind.fallbackName).tag(kind)
             }
         }
         .labelsHidden()
@@ -285,8 +285,8 @@ struct InlineEntryEditorView: View {
 
     @ViewBuilder
     private var typeSpecificFields: some View {
-        switch draft.kind {
-        case .prayer:
+        switch draft.kind.builtIn {
+        case .prayer?:
             HStack {
                 Picker(
                     "기도 상태",
@@ -310,22 +310,22 @@ struct InlineEntryEditorView: View {
                     )
                 }
             }
-        case .bibleStudy:
+        case .bibleStudy?:
             TextField("성경 구절", text: optionalBinding(\.scriptureReference))
                 .journalMetadataField()
-        case .reading:
+        case .reading?:
             HStack {
                 TextField("책 제목", text: optionalBinding(\.bookTitle))
                     .journalMetadataField()
                 TextField("저자", text: optionalBinding(\.bookAuthor))
                     .journalMetadataField()
             }
-        case .diary:
+        case .diary?:
             TextField("오늘의 기분", text: optionalBinding(\.mood))
                 .journalMetadataField()
-        case .memo:
+        case .memo?:
             EmptyView()
-        case .unclassified:
+        default:
             EmptyView()
         }
     }
@@ -658,7 +658,7 @@ struct EntryDetailView: View {
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
-                Text(entry.title.isEmpty ? entry.kind.localizedName : entry.title)
+                Text(entry.title.isEmpty ? entry.kind.fallbackName : entry.title)
                     .font(.largeTitle.bold())
                     .foregroundStyle(JournalTheme.ink)
                 Text(entry.occurredAt.formatted(date: .long, time: .shortened))
@@ -691,7 +691,7 @@ struct EntryDetailView: View {
     }
 
     private var kindBadge: some View {
-        Text(entry.kind.localizedName)
+        Text(entry.kind.fallbackName)
             .font(.caption.weight(.semibold))
             .foregroundStyle(JournalTheme.categoryColor(for: entry.kind))
             .padding(.horizontal, 9)
@@ -716,32 +716,32 @@ struct EntryDetailView: View {
 
     @ViewBuilder
     private var typeDetails: some View {
-        switch entry.kind {
-        case .prayer:
+        switch entry.kind.builtIn {
+        case .prayer?:
             if let status = entry.details.prayerStatus {
                 Label(
                     status == .answered ? "응답됨" : "기도 중",
                     systemImage: status == .answered ? "checkmark.circle" : "heart"
                 )
             }
-        case .bibleStudy:
+        case .bibleStudy?:
             if let reference = entry.details.scriptureReference, !reference.isEmpty {
                 Label(reference, systemImage: "book.closed")
             }
-        case .reading:
+        case .reading?:
             if let title = entry.details.bookTitle, !title.isEmpty {
                 Label(
                     [title, entry.details.bookAuthor].compactMap { $0 }.joined(separator: " · "),
                     systemImage: "books.vertical"
                 )
             }
-        case .diary:
+        case .diary?:
             if let mood = entry.details.mood, !mood.isEmpty {
                 Label(mood, systemImage: "face.smiling")
             }
-        case .memo:
+        case .memo?:
             EmptyView()
-        case .unclassified:
+        default:
             EmptyView()
         }
     }
@@ -915,7 +915,7 @@ struct EntryEditorView: View {
                 } label: {
                     MetadataChip {
                         Label(
-                            draft.kind.localizedName,
+                            draft.kind.fallbackName,
                             systemImage: "slider.horizontal.3"
                         )
                     }
@@ -966,8 +966,8 @@ struct EntryEditorView: View {
             Form {
                 Section("분류") {
                     Picker("기록 유형", selection: kindBinding) {
-                        ForEach(JournalKind.allCases.filter(\.canCreateManually)) { kind in
-                            Text(kind.localizedName).tag(kind)
+                        ForEach(JournalKind.builtIns.filter { !$0.isUnclassified }) { kind in
+                            Text(kind.fallbackName).tag(kind)
                         }
                     }
                     Picker("노트북", selection: notebookBinding) {
@@ -1048,8 +1048,8 @@ struct EntryEditorView: View {
 
     @ViewBuilder
     private var typeSpecificFields: some View {
-        switch draft.kind {
-        case .prayer:
+        switch draft.kind.builtIn {
+        case .prayer?:
             Picker(
                 "기도 상태",
                 selection: Binding(
@@ -1070,23 +1070,23 @@ struct EntryEditorView: View {
                     displayedComponents: .date
                 )
             }
-        case .bibleStudy:
+        case .bibleStudy?:
             TextField(
                 "성경 구절",
                 text: optionalBinding(\.scriptureReference)
             )
             .journalMetadataField()
-        case .reading:
+        case .reading?:
             TextField("책 제목", text: optionalBinding(\.bookTitle))
                 .journalMetadataField()
             TextField("저자", text: optionalBinding(\.bookAuthor))
                 .journalMetadataField()
-        case .diary:
+        case .diary?:
             TextField("기분", text: optionalBinding(\.mood))
                 .journalMetadataField()
-        case .memo:
+        case .memo?:
             EmptyView()
-        case .unclassified:
+        default:
             EmptyView()
         }
     }
@@ -1988,7 +1988,7 @@ struct TrashView: View {
     @ViewBuilder
     private func trashEntryDescription(_ entry: JournalEntryRecord) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(entry.title.isEmpty ? entry.kind.localizedName : entry.title)
+            Text(entry.title.isEmpty ? entry.kind.fallbackName : entry.title)
                 .font(.headline)
                 .lineLimit(2)
             if let deletedAt = entry.deletedAt {
@@ -2019,9 +2019,9 @@ struct BatchOrganizerView: View {
                     Picker("변경할 유형", selection: $targetKind) {
                         Text("유형 유지").tag(nil as JournalKind?)
                         ForEach(
-                            JournalKind.allCases.filter(\.canCreateManually)
+                            JournalKind.builtIns.filter { !$0.isUnclassified }
                         ) { kind in
-                            Text(kind.localizedName).tag(kind as JournalKind?)
+                            Text(kind.fallbackName).tag(kind as JournalKind?)
                         }
                     }
                     Text("유형을 바꾸면 각 기록에 새 revision이 생성되고 해당 유형에 맞지 않는 상세 필드는 정리됩니다.")

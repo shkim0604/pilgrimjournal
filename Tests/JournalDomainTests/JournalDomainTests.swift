@@ -4,12 +4,32 @@ import JournalDomain
 import XCTest
 
 final class JournalDomainTests: XCTestCase {
-    func testInvalidManualKindMessageNamesEveryCreatableKind() throws {
-        let message = try XCTUnwrap(JournalError.invalidManualKind.errorDescription)
-        for kind in JournalKind.allCases where kind.canCreateManually {
-            XCTAssertTrue(message.contains(kind.localizedName), "missing \(kind)")
-        }
-        XCTAssertFalse(message.contains(JournalKind.unclassified.localizedName))
+    func testInvalidManualKindMessageIsFixedSentence() {
+        XCTAssertEqual(
+            JournalError.invalidManualKind.errorDescription,
+            "미분류로는 새 기록을 만들 수 없습니다. 다른 유형을 골라 주세요.")
+    }
+
+    func testJournalKindEncodesAsBareString() throws {
+        let data = try JSONEncoder().encode([JournalKind.prayer, JournalKind(id: "custom-A")])
+        XCTAssertEqual(String(decoding: data, as: UTF8.self), #"["prayer","custom-A"]"#)
+    }
+
+    func testUnknownKindIdSurvivesDecoding() throws {
+        let draft = try JSONDecoder().decode(
+            JournalEntryDraft.self,
+            from: Data(
+                #"{"kind":"custom-X","title":"t","body":"b","occurredAt":0,"tags":[],"isStarred":false,"isPinned":false,"details":{}}"#
+                    .utf8))
+        XCTAssertEqual(draft.kind.id, "custom-X")
+        XCTAssertNil(draft.kind.builtIn)
+    }
+
+    func testCustomKindIsManualAndClearsAllDetails() throws {
+        let draft = JournalEntryDraft(
+            kind: JournalKind(id: "custom-A"), body: "본문",
+            details: EntryDetails(prayerStatus: .answered, mood: "평안"))
+        XCTAssertEqual(try draft.validated(manual: true).details, EntryDetails())
     }
 
     func testManualEntryRequiresConcreteKind() throws {
@@ -20,8 +40,8 @@ final class JournalDomainTests: XCTestCase {
     }
 
     func testMemoCanBeCreatedManuallyAndHasNoTypeSpecificDetails() throws {
-        XCTAssertTrue(JournalKind.memo.canCreateManually)
-        XCTAssertEqual(JournalKind.memo.localizedName, "메모")
+        XCTAssertFalse(JournalKind.memo.isUnclassified)
+        XCTAssertEqual(BuiltInKind.memo.defaultName, "메모")
 
         let details = EntryDetails(
             prayerStatus: .answered,

@@ -95,7 +95,7 @@ final class AppModel: ObservableObject {
     /// The kind a new entry starts as: the sidebar's kind when one that can be
     /// created by hand is selected, otherwise diary.
     var defaultKindForNewEntry: JournalKind {
-        guard let selectedKind, selectedKind.canCreateManually else { return .diary }
+        guard let selectedKind, !selectedKind.isUnclassified else { return .diary }
         return selectedKind
     }
 

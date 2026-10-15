@@ -550,7 +550,7 @@ public final class SwiftDataJournalRepository:
     }
 
     private func map(_ entity: JournalEntryEntity) throws -> JournalEntryRecord {
-        let kind = JournalKind(rawValue: entity.kindRaw) ?? .unclassified
+        let kind = entity.kindRaw.isEmpty ? .unclassified : JournalKind(id: entity.kindRaw)
         let tags = try entity.tagsData.map { try decoder.decode([String].self, from: $0) } ?? []
         let details =
             try entity.detailsData.map {
