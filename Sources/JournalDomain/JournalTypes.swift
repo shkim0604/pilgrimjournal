@@ -21,6 +21,15 @@ public enum BuiltInKind: String, CaseIterable, Sendable {
     }
 
     public var canCreateManually: Bool { self != .unclassified }
+
+    /// The core kinds the app is built around stay put; memo and user-made
+    /// kinds can go. Unclassified is locked separately.
+    public var canBeDeleted: Bool {
+        switch self {
+        case .prayer, .bibleStudy, .reading, .diary, .unclassified: false
+        case .memo: true
+        }
+    }
 }
 
 /// A journal kind identified by an open string ID: built-in IDs are the `BuiltInKind` raw
@@ -55,6 +64,7 @@ public struct JournalKind: Hashable, Codable, Identifiable, Sendable {
     public var rawValue: String { id }
     public var builtIn: BuiltInKind? { BuiltInKind(rawValue: id) }
     public var isUnclassified: Bool { id == BuiltInKind.unclassified.rawValue }
+    public var canBeDeleted: Bool { builtIn?.canBeDeleted ?? true }
 
     /// Name used outside the kind catalog (validation messages, check scripts).
     public var fallbackName: String { builtIn?.defaultName ?? "이름 없는 유형" }
