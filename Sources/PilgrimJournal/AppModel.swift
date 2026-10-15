@@ -1505,14 +1505,13 @@ final class AppModel: ObservableObject {
                 message: restoreSummary(lastRestoreResult)
             )
             markLocalMutation()
+            // Restored entries may carry kinds the catalog has since deleted,
+            // so this reconciles even when the backup has no catalog.
             if let backupCatalog = contents.kindCatalog {
-                _ = mergeKindCatalogFromCloud()
-                kindCatalogStore.save(kindCatalogStore.catalog.merged(with: backupCatalog))
-                applyStoredKindCatalog()
-                deselectInactiveKind()
+                adoptKindCatalog(backupCatalog)
+            } else {
+                reconcileKinds()
             }
-            // Restored entries may carry kinds the catalog has since deleted.
-            reconcileKinds()
             rebuildSearchIndex()
             // Without this the list keeps showing the pre-restore state, which
             // reads as "nothing happened".
@@ -1869,6 +1868,17 @@ extension AppModel {
         try editKindCatalog { catalog, now in
             try catalog.restore(kind, deviceID: deviceID, at: now)
         }
+    }
+
+    /// Merges a catalog from elsewhere (a restored backup, the local scope
+    /// moving to iCloud) into this one, then moves entries and rules of kinds
+    /// it deletes.
+    func adoptKindCatalog(_ other: KindCatalog) {
+        _ = mergeKindCatalogFromCloud()
+        kindCatalogStore.save(kindCatalogStore.catalog.merged(with: other))
+        applyStoredKindCatalog()
+        deselectInactiveKind()
+        reconcileKinds()
     }
 
     /// Applies `edit` to the latest catalog (merged from iCloud first, so a

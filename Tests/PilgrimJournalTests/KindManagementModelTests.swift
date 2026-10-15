@@ -87,6 +87,9 @@ final class KindManagementModelTests: XCTestCase {
         let model = try makeModel(repository: repository)
         try repository.saveClassificationRule(
             ClassificationRuleRecord(source: .tag, value: "기도", targetKind: .prayer))
+        // Run the first-refresh reconcile now so it cannot retarget the rule
+        // on deleteKind's behalf.
+        model.refresh()
 
         try model.deleteKind(.prayer, moveTo: .memo)
 
@@ -160,6 +163,28 @@ final class KindManagementModelTests: XCTestCase {
         XCTAssertNil(modelB.lastRestoreFailureMessage)
         XCTAssertEqual(
             modelB.kindCatalog.creatableKinds.first { $0.kind == created }?.name, "설교노트")
+    }
+
+    func testAdoptKindCatalogMergesAndReconciles() throws {
+        let modelA = try makeModel()
+        let custom = try modelA.createKind(name: "설교노트", colorToken: .teal, iconToken: "star")
+        try modelA.deleteKind(.prayer, moveTo: .memo)
+        let repository = InMemoryJournalRepository()
+        let modelB = try makeModel(repository: repository)
+        let prayer = try repository.save(
+            JournalEntryDraft(kind: .prayer, body: "손으로 쓴 기도"), deviceID: "d", at: .now)
+        modelB.refresh()
+        modelB.selectKind(.prayer)
+
+        modelB.adoptKindCatalog(modelA.kindCatalog)
+
+        XCTAssertEqual(
+            modelB.kindCatalog.creatableKinds.first { $0.kind == custom }?.name, "설교노트")
+        XCTAssertFalse(modelB.kindCatalog.activeKinds.contains { $0.kind == .prayer })
+        XCTAssertNil(modelB.selectedKind)
+        XCTAssertEqual(try repository.entry(id: prayer.id)?.kind, .memo)
+        let hits = try modelB.searchIndex.search(JournalSearchQuery(text: "손으로", kind: .memo))
+        XCTAssertEqual(hits.map(\.id), [prayer.id])
     }
 
     func testFirstRefreshReconcilesEntriesOfDeletedKinds() throws {
