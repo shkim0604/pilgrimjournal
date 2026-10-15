@@ -91,6 +91,7 @@ struct KindManagementSheet: View {
                 case .edit(let kind):
                     KindDetailEditor(
                         editing: model.kindDefinition(for: kind),
+                        isKnown: model.kindCatalog.isKnown(kind),
                         initialColor: model.kindDefinition(for: kind).colorToken
                     )
                 }
@@ -245,13 +246,21 @@ struct KindDetailEditor: View {
     @State private var iconToken: String
     @State private var errorMessage: String?
 
-    init(editing: KindDefinition?, initialColor: KindColorToken) {
+    init(editing: KindDefinition?, isKnown: Bool = true, initialColor: KindColorToken) {
         self.editing = editing
-        _name = State(initialValue: editing?.name ?? "")
+        _name = State(initialValue: Self.initialName(editing: editing, isKnown: isKnown))
         _colorToken = State(initialValue: initialColor)
         _iconToken = State(
             initialValue: editing.map { KindIconCatalog.displaySymbol(for: $0.iconToken) }
                 ?? "tag")
+    }
+
+    /// The name field starts empty for a new kind and for a kind the catalog
+    /// does not know yet, whose "이름 없는 유형" is only a placeholder: saving it
+    /// as the real name would win over the name from the other device.
+    static func initialName(editing: KindDefinition?, isKnown: Bool) -> String {
+        guard let editing, isKnown else { return "" }
+        return editing.name
     }
 
     /// The first colour no active kind uses, or teal when all are taken.

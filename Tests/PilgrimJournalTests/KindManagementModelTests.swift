@@ -198,6 +198,28 @@ final class KindManagementModelTests: XCTestCase {
         XCTAssertFalse(model.kindCatalog.activeKinds.contains { $0.kind == .prayer })
     }
 
+    func testEditorForUnknownKindStartsWithEmptyName() {
+        let unknown = KindCatalog.unknownDefinition(for: JournalKind(id: "custom-ZZZ"))
+        XCTAssertEqual(KindDetailEditor.initialName(editing: unknown, isKnown: false), "")
+        XCTAssertEqual(KindDetailEditor.initialName(editing: nil, isKnown: true), "")
+        let memo = KindCatalog.defaultDefinition(for: .memo)
+        XCTAssertEqual(KindDetailEditor.initialName(editing: memo, isKnown: true), memo.name)
+    }
+
+    func testRenamingUnknownKindStillRequiresAName() throws {
+        let repository = InMemoryJournalRepository()
+        let model = try makeModel(repository: repository)
+        let unknown = JournalKind(id: "custom-ZZZ")
+        _ = try repository.save(
+            JournalEntryDraft(kind: unknown, body: "다른 기기에서 온 기록"), deviceID: "d", at: .now)
+        model.refresh()
+
+        XCTAssertThrowsError(
+            try model.updateKind(unknown, name: "  ", colorToken: .rose, iconToken: "star")
+        ) { XCTAssertEqual($0 as? KindCatalogError, .emptyName) }
+        XCTAssertEqual(model.unknownKinds, [unknown])
+    }
+
     func testLockedAccessShowsPremiumNoticeInsteadOfEditor() throws {
         let model = try makeModel(featureAccess: LockedFeatureAccess())
 
