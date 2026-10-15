@@ -287,7 +287,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = PilgrimJournal/PilgrimJournal.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 26;
+				CURRENT_PROJECT_VERSION = 27;
 				DEVELOPMENT_TEAM = 7JZU3246YR;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
@@ -297,7 +297,7 @@
 				"GENERATE_INFOPLIST_FILE[sdk=iphonesimulator*]" = NO;
 				"INFOPLIST_FILE[sdk=iphoneos*]" = "iOS-Info.plist";
 				"INFOPLIST_FILE[sdk=iphonesimulator*]" = "iOS-Info.plist";
-				"INFOPLIST_KEY_CFBundleDisplayName[sdk=macosx*]" = "Pilgrim Journal";
+				"INFOPLIST_KEY_CFBundleDisplayName[sdk=macosx*]" = Pilgrim;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				"INFOPLIST_KEY_LSApplicationCategoryType[sdk=macosx*]" = "public.app-category.lifestyle";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "개인 일기 기록의 앱 잠금을 해제하기 위해 Face ID를 사용합니다.";
@@ -342,7 +342,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = PilgrimJournal/PilgrimJournal.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 26;
+				CURRENT_PROJECT_VERSION = 27;
 				DEVELOPMENT_TEAM = 7JZU3246YR;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
@@ -352,7 +352,7 @@
 				"GENERATE_INFOPLIST_FILE[sdk=iphonesimulator*]" = NO;
 				"INFOPLIST_FILE[sdk=iphoneos*]" = "iOS-Info.plist";
 				"INFOPLIST_FILE[sdk=iphonesimulator*]" = "iOS-Info.plist";
-				"INFOPLIST_KEY_CFBundleDisplayName[sdk=macosx*]" = "Pilgrim Journal";
+				"INFOPLIST_KEY_CFBundleDisplayName[sdk=macosx*]" = Pilgrim;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				"INFOPLIST_KEY_LSApplicationCategoryType[sdk=macosx*]" = "public.app-category.lifestyle";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "개인 일기 기록의 앱 잠금을 해제하기 위해 Face ID를 사용합니다.";
