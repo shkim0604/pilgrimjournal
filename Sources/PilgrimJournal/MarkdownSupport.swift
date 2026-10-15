@@ -1204,12 +1204,14 @@ struct MarkdownBodyEditor: View {
                 textScale: editorTextScale,
                 storeImageAttachment: storeImageAttachment,
                 attachmentImage: attachmentImage,
-                attachmentRevision: attachmentRevision
+                attachmentRevision: attachmentRevision,
+                minimumHeight: minHeight
             )
             .frame(
                 maxWidth: .infinity,
                 minHeight: minHeight,
-                maxHeight: .infinity
+                maxHeight: .infinity,
+                alignment: .topLeading
             )
             .accessibilityLabel("Markdown 본문")
 
@@ -2666,6 +2668,9 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
     var storeImageAttachment: ((Data, String, String) async -> UUID?)?
     var attachmentImage: ((UUID) async -> Data?)?
     var attachmentRevision = 0
+    /// Only the iOS editor needs this. Here the `NSScrollView` already fills
+    /// the whole `minHeight` frame and its text view starts at the top.
+    var minimumHeight: CGFloat = 0
 
     func makeCoordinator() -> Coordinator {
         Coordinator(parent: self)
@@ -3716,6 +3721,13 @@ struct LiveMarkdownTextEditor: UIViewRepresentable {
     var storeImageAttachment: ((Data, String, String) async -> UUID?)?
     var attachmentImage: ((UUID) async -> Data?)?
     var attachmentRevision = 0
+    /// The text view itself is at least this tall, so the whole blank editor
+    /// area under short text is the text view: a tap anywhere there focuses
+    /// it (UIKit puts the caret at the end). Reporting only the text's own
+    /// height let the `minHeight` frame center a one-line view, which left
+    /// the top half of an empty body dead to taps — keys kept going to the
+    /// title — and a blank gap above the first line of existing text.
+    var minimumHeight: CGFloat = 0
 
     func makeCoordinator() -> Coordinator {
         Coordinator(parent: self)
@@ -3807,7 +3819,7 @@ struct LiveMarkdownTextEditor: UIViewRepresentable {
         let fitted = uiView.sizeThatFits(
             CGSize(width: width, height: .greatestFiniteMagnitude)
         )
-        return CGSize(width: width, height: fitted.height)
+        return CGSize(width: width, height: max(fitted.height, minimumHeight))
     }
 
     func updateUIView(_ textView: UITextView, context: Context) {
