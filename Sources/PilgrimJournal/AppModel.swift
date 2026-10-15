@@ -57,6 +57,9 @@ final class AppModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var selectedEntryID: UUID?
     @Published var editorSessionID = UUID()
+    /// Set when a kind deletion or reconcile rewrites entries underneath an
+    /// open editor; the editor showing one of them reloads it from the store.
+    @Published private(set) var editorReloadRequest: EditorReloadRequest?
     @Published private(set) var newEntryNotebookName: String?
     @Published var selectedEntryIDs = Set<UUID>()
     @Published var isBatchSelecting = false
@@ -1862,6 +1865,7 @@ extension AppModel {
                 refresh()
             }
         }
+        flushOpenEditor()
         let now = Date.now
         let service = KindDeletionService()
         var outcome = try service.moveEntries(
@@ -1938,6 +1942,7 @@ extension AppModel {
     /// CloudKit import, backup restore) — not on every refresh.
     private func reconcileKinds() {
         guard kindCatalog.hasDeletedKinds else { return }
+        flushOpenEditor()
         do {
             let outcome = try KindReconciler().reconcile(
                 catalog: kindCatalog, repository: repository, deviceID: deviceID, at: .now)
@@ -1948,9 +1953,20 @@ extension AppModel {
         }
     }
 
-    /// Records the local change for sync and updates the search index.
+    /// Saves what the open editor has not saved yet, so a kind move reads the
+    /// latest text and the editor has nothing stale left to write back after
+    /// it reloads. The inline editor handles the notification synchronously.
+    private func flushOpenEditor() {
+        #if os(macOS)
+        NotificationCenter.default.post(name: .saveJournalEntry, object: nil)
+        #endif
+    }
+
+    /// Tells an editor showing a moved entry to reload it, records the local
+    /// change for sync, and updates the search index.
     private func applyMovedEntries(_ moved: [JournalEntryRecord]) throws {
         guard !moved.isEmpty else { return }
+        editorReloadRequest = EditorReloadRequest(entryIDs: Set(moved.map(\.id)))
         markLocalMutation()
         for record in moved {
             try searchIndex.upsert(record)
@@ -1984,4 +2000,11 @@ extension AppModel {
         }
         return [kindDefinition(for: current)] + base
     }
+}
+
+/// Entries rewritten underneath any open editor. A fresh `id` makes every
+/// request a change, even for the same entries.
+struct EditorReloadRequest: Equatable {
+    let id = UUID()
+    let entryIDs: Set<UUID>
 }

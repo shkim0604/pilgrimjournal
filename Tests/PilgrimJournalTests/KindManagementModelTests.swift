@@ -133,6 +133,48 @@ final class KindManagementModelTests: XCTestCase {
         XCTAssertEqual(model.sidebarKinds.filter { $0.kind == unknown }.map(\.name), ["설교노트"])
     }
 
+    func testDeleteKindReloadsTheOpenEditorOfAMovedEntry() throws {
+        let repository = InMemoryJournalRepository()
+        let model = try makeModel(repository: repository)
+        let entry = try repository.save(
+            JournalEntryDraft(kind: .prayer, body: "열어 둔 기도"), deviceID: "d", at: .now)
+        let untouched = try repository.save(
+            JournalEntryDraft(kind: .diary, body: "일기"), deviceID: "d", at: .now)
+        model.refresh()
+        model.selectEntry(entry.id)
+        XCTAssertNil(model.editorReloadRequest)
+
+        try model.deleteKind(.prayer, moveTo: .memo)
+
+        let request = try XCTUnwrap(model.editorReloadRequest)
+        XCTAssertTrue(request.entryIDs.contains(entry.id))
+        XCTAssertFalse(request.entryIDs.contains(untouched.id))
+        XCTAssertEqual(model.selectedEntryID, entry.id)
+        XCTAssertEqual(model.selectedEntry?.kind, .memo)
+    }
+
+    func testReconcileReloadsTheOpenEditorOfAMovedEntry() throws {
+        let modelA = try makeModel()
+        try modelA.deleteKind(.prayer, moveTo: .memo)
+        let repository = InMemoryJournalRepository()
+        let modelB = try makeModel(repository: repository)
+        let entry = try repository.save(
+            JournalEntryDraft(kind: .prayer, body: "열어 둔 기도"), deviceID: "d", at: .now)
+        modelB.refresh()
+        modelB.selectEntry(entry.id)
+        let before = modelB.editorReloadRequest
+
+        modelB.adoptKindCatalog(modelA.kindCatalog)
+
+        let request = try XCTUnwrap(modelB.editorReloadRequest)
+        XCTAssertNotEqual(request, before)
+        XCTAssertTrue(request.entryIDs.contains(entry.id))
+        XCTAssertEqual(try repository.entry(id: entry.id)?.kind, .memo)
+        // Callers (backup restore, scope migration) refresh afterwards.
+        modelB.refresh()
+        XCTAssertEqual(modelB.selectedEntry?.kind, .memo)
+    }
+
     func testDeleteKindMovesTheRestWhenOneEntryFailsToSave() throws {
         let base = InMemoryJournalRepository()
         let broken = try base.save(
@@ -152,6 +194,7 @@ final class KindManagementModelTests: XCTestCase {
         XCTAssertEqual(try base.entry(id: broken.id)?.kind, .prayer)
         let hits = try model.searchIndex.search(JournalSearchQuery(text: "옮겨지는", kind: .memo))
         XCTAssertEqual(hits.map(\.id), [fine.id])
+        XCTAssertEqual(model.editorReloadRequest?.entryIDs, [fine.id])
         XCTAssertFalse(model.kindCatalog.activeKinds.contains { $0.kind == .prayer })
     }
 

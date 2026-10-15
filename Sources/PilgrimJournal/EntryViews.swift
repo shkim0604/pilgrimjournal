@@ -142,6 +142,16 @@ struct InlineEntryEditorView: View {
             autosaveTask?.cancel()
             performAutosave()
         }
+        // A kind deletion or reconcile moved this entry (new kind, carried-over
+        // details in the body). AppModel flushed this editor first, so nothing
+        // unsaved is lost; without the reload the next keystroke would save the
+        // old kind and body back over the move.
+        .onChange(of: model.editorReloadRequest) { _, request in
+            guard let request, let id = persistedEntryID ?? entry?.id,
+                request.entryIDs.contains(id)
+            else { return }
+            resyncDraftFromRepository()
+        }
         .sheet(isPresented: $isPresentingHistory) {
             if let entry {
                 RevisionHistoryView(entry: entry, onRestore: resyncDraftFromRepository)
@@ -615,8 +625,8 @@ struct InlineEntryEditorView: View {
 
     /// `draft` is only seeded from `entry` once, in `init`, and the editor
     /// keeps the same SwiftUI identity (`.id(entry.id)`) across a revision
-    /// restore. Without this, the sidebar reflects the restored content but
-    /// the open editor keeps showing the pre-restore draft.
+    /// restore or a kind move. Without this, the sidebar reflects the new
+    /// content but the open editor keeps showing (and saving) the old draft.
     private func resyncDraftFromRepository() {
         guard let id = persistedEntryID ?? entry?.id,
             let latest = try? model.repository.entry(id: id)
