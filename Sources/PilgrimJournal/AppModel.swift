@@ -1792,6 +1792,12 @@ extension AppModel {
         kindCatalog.definition(for: kind)
     }
 
+    /// `featureAccess` publishes nothing of its own; call this when what it
+    /// grants may have changed so views reading it re-render.
+    func featureAccessDidChange() {
+        objectWillChange.send()
+    }
+
     func openKindManagement() {
         if featureAccess.canManageKinds {
             isPresentingKindManagement = true

@@ -237,6 +237,12 @@ struct ContentView: View {
         .sheet(isPresented: $model.isPresentingTrash) {
             TrashView()
         }
+        .sheet(isPresented: $model.isPresentingKindManagement) {
+            KindManagementSheet()
+        }
+        .sheet(isPresented: $model.isPresentingPremiumNotice) {
+            PremiumFeatureNoticeSheet()
+        }
         #if os(macOS)
         // Swapping the detail column's content (switching entries, a new
         // note's autosave) makes SwiftUI write its own idea of the layout back
@@ -759,7 +765,8 @@ private struct EntryRow: View {
             RoundedRectangle(cornerRadius: 1.5)
                 .fill(
                     JournalTheme.categoryColor(
-                        for: model.kindDefinition(for: entry.kind)))
+                        for: model.kindDefinition(for: entry.kind))
+                )
                 .frame(width: 3)
                 .accessibilityHidden(true)
 
