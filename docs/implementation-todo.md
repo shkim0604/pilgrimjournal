@@ -20,11 +20,12 @@
     나중에 이동/삭제됐을 수 있다는 점을 감안해 "파일을 찾을 수 없음" 처리가
     필요하다.
 
-- **macOS 본문 사진 위치 지정·▲▼ 이동**
-  iPhone에는 2026-10-15에 들어갔다(아래 완료 항목). macOS는 여전히 붙여넣은
-  이미지만 본문에 들어가고, 첨부 칸의 파일·사진 버튼은 목록에만 올린다.
-  같은 순수 함수(`attachmentInsertionSelection`, `movingAttachmentImage`,
-  `moveButtonRects`)를 macOS coordinator에 연결하면 된다.
+- **macOS 첨부 칸 사진을 본문 커서 자리에 넣기** (사용자 판단으로 보류, 2026-10-15)
+  macOS는 붙여넣은 이미지만 본문에 들어가고, 첨부 칸의 파일·사진 버튼은 목록에만
+  올린다. 이동은 이미 된다 — 이미지 줄을 선택해 끌어 옮기기(`NSTextView` 기본 텍스트
+  드래그)와 ▲▼(2026-10-15, 아래 완료 항목). 필요해지면 iPhone처럼
+  `attachmentInsertionSelection` + `MarkdownImageInserter`를 macOS coordinator에
+  연결하면 된다.
 - **사용자 유형 관리 — 2단계: 결제와 잠금**
   StoreKit 결제·구매 복원을 붙이고 `FeatureAccess` 기본값을 잠김으로 바꾼다.
   지금은 모든 빌드에서 열려 있다.
@@ -50,6 +51,12 @@
 
 ## 완료
 
+- **macOS 본문 이미지 ▲▼ 이동** (2026-10-15) — iPhone과 같은 버튼과 규칙
+  (`movingAttachmentImage`, `moveButtonRects`). 커서가 이미지 줄에 있으면 우측 상단에
+  ▲▼가 그려지고, 클릭은 `mouseDown`이 `super`보다 먼저 받는다(그래야 커서가 이미지
+  밖으로 나가 버튼이 사라지지 않는다). iPhone과 달리 `NSTextView`는 글자와 장식을 한
+  뷰에서 그리고 글자가 바뀌면 스스로 다시 그려서, 별도 `needsDisplay`는 필요 없었다
+  (`MacImageMoveTests`).
 - **iPhone 본문 사진 위치 지정과 ▲▼ 이동** (2026-10-15) — 사진·촬영·파일(이미지)
   버튼, 키보드 도구줄 📷, 꾹 눌러 뜨는 메뉴의 사진 삽입으로 넣은 사진이 첨부
   목록뿐 아니라 본문의 마지막 커서 자리(커서가 없었으면 끝)에 한 줄로 들어간다.
