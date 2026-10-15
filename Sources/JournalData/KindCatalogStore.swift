@@ -39,13 +39,14 @@ public final class KindCatalogStore {
         let remote = Self.decode(cloudData)
         // Present but unreadable: leave the cloud value alone.
         if cloudData != nil && remote == nil { return false }
-        let merged = remote.map { catalog.merged(with: $0) } ?? catalog
+        // Compare round-tripped (whole-second) values so fractional timestamps never look newer.
+        let merged = Self.roundTripped(remote.map { catalog.merged(with: $0) } ?? catalog)
         let localChanged = merged != catalog
         let cloudStale = remote.map { merged != $0 } ?? (merged != KindCatalog())
         guard localChanged || cloudStale, let data = Self.encode(merged) else {
             return false
         }
-        catalog = merged
+        catalog = Self.decode(data) ?? merged
         if localChanged { defaults.set(data, forKey: Self.key) }
         if cloudStale {
             cloudStore.set(data, forKey: Self.key)
@@ -55,11 +56,18 @@ public final class KindCatalogStore {
     }
 
     public func save(_ catalog: KindCatalog) {
-        self.catalog = catalog
-        guard let data = Self.encode(catalog) else { return }
+        guard let data = Self.encode(catalog) else {
+            self.catalog = catalog
+            return
+        }
+        self.catalog = Self.decode(data) ?? catalog
         defaults.set(data, forKey: Self.key)
         cloudStore?.set(data, forKey: Self.key)
         cloudStore?.synchronize()
+    }
+
+    private static func roundTripped(_ catalog: KindCatalog) -> KindCatalog {
+        encode(catalog).flatMap { decode($0) } ?? catalog
     }
 
     private static func encode(_ catalog: KindCatalog) -> Data? {

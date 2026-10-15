@@ -181,6 +181,46 @@ final class KindCatalogStoreTests: XCTestCase {
         XCTAssertEqual(a.catalog.definitions.count, 2)
     }
 
+    func testSaveThenMergeDoesNotRewriteCloud() {
+        let cloud = FakeCloudStore()
+        let store = KindCatalogStore(defaults: defaults, cloudStore: cloud)
+        store.save(KindCatalog(definitions: [definition(name: "메모", at: 1_000.7)]))
+        cloud.setCount = 0
+        XCTAssertFalse(store.mergeFromCloud())
+        XCTAssertEqual(cloud.setCount, 0)
+    }
+
+    func testSameSecondEditsConverge() {
+        let cloud = FakeCloudStore()
+        let nameB = "pilgrim-kinds-\(UUID().uuidString)"
+        let defaultsB = UserDefaults(suiteName: nameB)!
+        defer { defaultsB.removePersistentDomain(forName: nameB) }
+        let a = KindCatalogStore(defaults: defaults, cloudStore: cloud)
+        let b = KindCatalogStore(defaults: defaultsB, cloudStore: cloud)
+        var defA = definition(name: "메모A", at: 1_000.7)
+        defA.modifiedByDeviceID = "device-a"
+        var defB = definition(name: "메모B", at: 1_000.3)
+        defB.modifiedByDeviceID = "device-b"
+        a.save(KindCatalog(definitions: [defA]))
+        b.save(KindCatalog(definitions: [defB]))
+        a.mergeFromCloud()
+        b.mergeFromCloud()
+        a.mergeFromCloud()
+        let writes = cloud.setCount
+        b.mergeFromCloud()
+        a.mergeFromCloud()
+        b.mergeFromCloud()
+        XCTAssertEqual(cloud.setCount, writes)
+        XCTAssertEqual(a.catalog, b.catalog)
+    }
+
+    func testStoredCatalogMatchesDecodedForm() {
+        let store = KindCatalogStore(defaults: defaults, cloudStore: nil)
+        store.save(KindCatalog(definitions: [definition(name: "메모", at: 1_000.7)]))
+        let fresh = KindCatalogStore(defaults: defaults, cloudStore: nil)
+        XCTAssertEqual(store.catalog, fresh.catalog)
+    }
+
     func testWorksWithoutCloudStore() {
         let store = KindCatalogStore(defaults: defaults, cloudStore: nil)
         let catalog = KindCatalog(definitions: [definition(name: "메모장", at: 100)])
