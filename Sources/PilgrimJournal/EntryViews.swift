@@ -77,7 +77,7 @@ struct InlineEntryEditorView: View {
                 Spacer(minLength: 0)
                 PaperEditorSurface {
                     VStack(alignment: .leading, spacing: JournalTheme.Spacing.regular) {
-                        TextField("제목", text: $draft.title)
+                        TextField("제목", text: $draft.title, axis: .vertical)
                             .textFieldStyle(.plain)
                             .font(
                                 .system(
