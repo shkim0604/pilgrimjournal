@@ -351,7 +351,10 @@ enum MarkdownInlineFormat: String, CaseIterable, Identifiable {
         case .strikethrough: String(localized: "취소선")
         case .highlight: String(localized: "하이라이트")
         case .code: String(localized: "인라인 코드")
-        case .heading: String(localized: "제목")
+        case .heading:
+            String(
+                localized: "editor.heading", defaultValue: "제목", comment: "Markdown heading command"
+            )
         case .bullet: String(localized: "불릿")
         case .quote: String(localized: "인용")
         case .link: String(localized: "링크")

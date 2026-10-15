@@ -6,7 +6,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "This search document has no canonical entry."
+            "value" : "This search index item has no matching entry."
           }
         }
       }
@@ -46,7 +46,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The search history token doesn’t match the canonical store."
+            "value" : "The search index is out of sync with your entries."
           }
         }
       }
@@ -56,7 +56,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The search index has no entries."
+            "value" : "This entry is missing from the search index."
           }
         }
       }

@@ -26,7 +26,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ZIP compression method %u isn't supported."
+            "value" : "ZIP compression method %u isn’t supported."
           }
         }
       }
@@ -36,7 +36,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The ZIP's total uncompressed size exceeds the limit."
+            "value" : "The ZIP’s total uncompressed size exceeds the limit."
           }
         }
       }
@@ -46,7 +46,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The ZIP's total size is out of range."
+            "value" : "The ZIP’s total size is out of range."
           }
         }
       }
@@ -86,7 +86,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't find the ZIP central directory."
+            "value" : "Couldn’t find the ZIP central directory."
           }
         }
       }
@@ -96,7 +96,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The ZIP exceeds the file count limit."
+            "value" : "The ZIP contains too many files."
           }
         }
       }
@@ -192,7 +192,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't parse creationDate."
+            "value" : "Couldn’t parse creationDate."
           }
         }
       }
@@ -212,7 +212,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't initialize deflate."
+            "value" : "Couldn’t initialize deflate."
           }
         }
       }
@@ -232,7 +232,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't find a Day One JSON file with metadata and entries."
+            "value" : "Couldn’t find a Day One JSON file with metadata and entries."
           }
         }
       }
@@ -242,7 +242,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't parse richText, so text was used instead."
+            "value" : "Couldn’t parse richText, so plain text was used instead."
           }
         }
       }
@@ -252,7 +252,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't find the body in richText."
+            "value" : "Couldn’t find body text in richText."
           }
         }
       }
@@ -448,7 +448,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "File checksum doesn’t match."
+            "value" : "The file checksum doesn’t match."
           }
         }
       }
@@ -458,7 +458,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Missing required ZIP64 extra field."
+            "value" : "The required ZIP64 extra field is missing."
           }
         }
       }
@@ -468,7 +468,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Item %lld: Skipped because it has no UUID."
+            "value" : "Entry %lld: skipped because it has no UUID."
           }
         }
       }
