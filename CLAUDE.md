@@ -81,6 +81,8 @@ Two living checklists track work outside of git history; update them as part of 
 - [docs/pre-release-checklist.md](docs/pre-release-checklist.md) — release-gate status: real-device verification sessions from `docs/device-verification.md`, what's been deferred, what's still untested.
 - [docs/implementation-todo.md](docs/implementation-todo.md) — deferred feature work and known UX gaps that aren't release blockers, moved to "완료" when shipped.
 
+Longer-term product direction (subscriber-only private faith groups, shareable prayer/book-report/testimony cards with expiry and scrap) is in [docs/roadmap.md](docs/roadmap.md). It plans a self-hosted group backend, which the current privacy boundary in `docs/privacy.md` (no own server) rules out today, so read it before any work that touches sharing.
+
 ## Privacy constraints on this repo
 
 Personal Day One `.zip` exports and real export content must never be committed, included in test fixtures, or logged — tests use anonymized fixtures that only reproduce structure. `scripts/check.sh` enforces this with a scan after the tests; do not bypass it when adding import-related tests or fixtures.

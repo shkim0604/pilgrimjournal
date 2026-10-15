@@ -1,7 +1,8 @@
 # 구현 TODO (미룬 기능·개선)
 
 출시 게이트가 아닌, "나중에 만들 것"을 모아둔 문서. 실기기 검증 항목은
-`docs/pre-release-checklist.md`를 본다.
+`docs/pre-release-checklist.md`를 본다. 그룹·공유·구독 같은 장기 방향은
+`docs/roadmap.md`에 따로 둔다.
 
 ## 대기 중
 
