@@ -189,5 +189,50 @@ final class JournalDomainTests: XCTestCase {
             .diary
         )
     }
+
+    func testCarryOverLinesPerKind() {
+        let answeredAt = ISO8601DateFormatter().date(from: "2026-05-01T15:00:00Z")
+        let answered = EntryDetails(prayerStatus: .answered, answeredAt: answeredAt)
+        XCTAssertEqual(
+            answered.carryOverLines(from: .prayer, timeZoneIdentifier: "Asia/Seoul"),
+            "기도 상태: 응답됨 (2026-05-02)")
+        XCTAssertEqual(
+            EntryDetails(prayerStatus: .answered)
+                .carryOverLines(from: .prayer, timeZoneIdentifier: nil),
+            "기도 상태: 응답됨")
+        XCTAssertEqual(
+            EntryDetails(prayerStatus: .ongoing)
+                .carryOverLines(from: .prayer, timeZoneIdentifier: nil),
+            "기도 상태: 기도 중")
+        XCTAssertNil(EntryDetails().carryOverLines(from: .prayer, timeZoneIdentifier: nil))
+        XCTAssertEqual(
+            EntryDetails(scriptureReference: "요 3:16")
+                .carryOverLines(from: .bibleStudy, timeZoneIdentifier: nil),
+            "본문: 요 3:16")
+        XCTAssertEqual(
+            EntryDetails(bookTitle: "고백록", bookAuthor: "아우구스티누스")
+                .carryOverLines(from: .reading, timeZoneIdentifier: nil),
+            "책: 고백록 / 저자: 아우구스티누스")
+        XCTAssertEqual(
+            EntryDetails(bookTitle: "고백록")
+                .carryOverLines(from: .reading, timeZoneIdentifier: nil),
+            "책: 고백록")
+        XCTAssertEqual(
+            EntryDetails(bookAuthor: "아우구스티누스")
+                .carryOverLines(from: .reading, timeZoneIdentifier: nil),
+            "저자: 아우구스티누스")
+        XCTAssertEqual(
+            EntryDetails(mood: "평안").carryOverLines(from: .diary, timeZoneIdentifier: nil),
+            "기분: 평안")
+        XCTAssertNil(
+            EntryDetails(mood: "평안").carryOverLines(from: .memo, timeZoneIdentifier: nil))
+        XCTAssertNil(
+            EntryDetails(bookTitle: "  ", bookAuthor: " ")
+                .carryOverLines(from: .reading, timeZoneIdentifier: nil))
+        XCTAssertEqual(
+            EntryDetails(bookTitle: "  ", bookAuthor: "아우구스티누스")
+                .carryOverLines(from: .reading, timeZoneIdentifier: nil),
+            "저자: 아우구스티누스")
+    }
 }
 #endif

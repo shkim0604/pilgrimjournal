@@ -136,6 +136,53 @@ public struct EntryDetails: Codable, Equatable, Sendable {
         }
         return copy
     }
+
+    /// Human-readable lines for the kind-specific fields that would be lost when an entry
+    /// leaves `kind`, or nil when there is nothing to carry over.
+    public func carryOverLines(from kind: BuiltInKind, timeZoneIdentifier: String?) -> String? {
+        func clean(_ value: String?) -> String? {
+            guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines),
+                !trimmed.isEmpty
+            else { return nil }
+            return trimmed
+        }
+        var lines: [String] = []
+        switch kind {
+        case .prayer:
+            switch prayerStatus {
+            case .ongoing:
+                lines.append("기도 상태: 기도 중")
+            case .answered:
+                if let answeredAt {
+                    var calendar = Calendar(identifier: .gregorian)
+                    calendar.timeZone =
+                        timeZoneIdentifier.flatMap { TimeZone(identifier: $0) } ?? .current
+                    let formatter = DateFormatter()
+                    formatter.calendar = calendar
+                    formatter.locale = Locale(identifier: "en_US_POSIX")
+                    formatter.timeZone = calendar.timeZone
+                    formatter.dateFormat = "yyyy-MM-dd"
+                    lines.append("기도 상태: 응답됨 (\(formatter.string(from: answeredAt)))")
+                } else {
+                    lines.append("기도 상태: 응답됨")
+                }
+            case nil:
+                break
+            }
+        case .bibleStudy:
+            if let reference = clean(scriptureReference) { lines.append("본문: \(reference)") }
+        case .reading:
+            let title = clean(bookTitle).map { "책: \($0)" }
+            let author = clean(bookAuthor).map { "저자: \($0)" }
+            let joined = [title, author].compactMap { $0 }.joined(separator: " / ")
+            if !joined.isEmpty { lines.append(joined) }
+        case .diary:
+            if let mood = clean(mood) { lines.append("기분: \(mood)") }
+        case .memo, .unclassified:
+            break
+        }
+        return lines.isEmpty ? nil : lines.joined(separator: "\n")
+    }
 }
 
 public enum SyncState: Equatable, Sendable {
