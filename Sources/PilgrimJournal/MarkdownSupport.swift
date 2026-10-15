@@ -1126,6 +1126,49 @@ enum MarkdownDocumentParser {
     }
 }
 
+/// The buttons shown above the keyboard while the iPhone body is edited.
+///
+/// SwiftUI's `.toolbar(placement: .keyboard)` only attaches to SwiftUI text
+/// inputs, so the body's UIKit text view never showed it. The iPhone editor
+/// passes the same items down through the environment
+/// (`markdownKeyboardAccessory`) and the text view shows them in a
+/// `UIToolbar` of its own.
+struct MarkdownKeyboardAccessory {
+    struct Item {
+        var title: String
+        /// `nil` shows `title` as a text button.
+        var systemImage: String?
+        var action: () -> Void
+    }
+
+    var leading: [Item]
+    /// Placed after a flexible space.
+    var trailing: [Item]
+
+    var items: [Item] { leading + trailing }
+
+    /// What is on screen. The editor rebuilds this value (closures included)
+    /// on every render, so the toolbar is only rebuilt when this changes.
+    var signature: [String] {
+        leading.map(Self.key) + ["|"] + trailing.map(Self.key)
+    }
+
+    private static func key(_ item: Item) -> String {
+        "\(item.title)\u{1F}\(item.systemImage ?? "")"
+    }
+}
+
+private struct MarkdownKeyboardAccessoryKey: EnvironmentKey {
+    static var defaultValue: MarkdownKeyboardAccessory? { nil }
+}
+
+extension EnvironmentValues {
+    var markdownKeyboardAccessory: MarkdownKeyboardAccessory? {
+        get { self[MarkdownKeyboardAccessoryKey.self] }
+        set { self[MarkdownKeyboardAccessoryKey.self] = newValue }
+    }
+}
+
 struct MarkdownBodyEditor: View {
     @Binding var text: String
     var minHeight: CGFloat = 240
@@ -1136,65 +1179,20 @@ struct MarkdownBodyEditor: View {
     /// CloudKit download finishes). Lets the editor retry attachments it
     /// previously failed to load, without needing to reopen the entry.
     var attachmentRevision = 0
+    /// The Markdown menu row and the slash-command hint. The iPhone's focus
+    /// mode turns them off; the text editor itself never depends on this.
+    var showsChrome = true
     @State private var selection = NSRange(location: 0, length: 0)
     @AppStorage(EditorTextScale.storageKey) private var editorTextScale =
         EditorTextScale.defaultValue
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 10) {
-                Menu {
-                    Section("블록") {
-                        ForEach(MarkdownSlashCommand.allCases) { command in
-                            Button {
-                                text = MarkdownCommandProcessor.applying(
-                                    command,
-                                    to: text
-                                )
-                            } label: {
-                                Label(
-                                    "\(command.trigger)  \(command.title)",
-                                    systemImage: command.systemImage
-                                )
-                            }
-                        }
-                    }
-                    if selection.length > 0 {
-                        Section("선택 영역") {
-                            ForEach(MarkdownInlineFormat.allCases) { format in
-                                Button {
-                                    apply(format)
-                                } label: {
-                                    Label(format.title, systemImage: format.systemImage)
-                                }
-                            }
-                        }
-                    }
-                } label: {
-                    Label("Markdown", systemImage: "textformat")
-                }
-                .menuStyle(.borderlessButton)
-                .fixedSize()
-
-                if selection.length > 0 {
-                    Divider().frame(height: 18)
-                    ForEach(MarkdownInlineFormat.contextualCases) { format in
-                        Button {
-                            apply(format)
-                        } label: {
-                            Image(systemName: format.systemImage)
-                        }
-                        .buttonStyle(.plain)
-                        .help(format.title)
-                        .accessibilityLabel(format.title)
-                    }
-                }
-
-                Spacer()
-
-                Label("입력 즉시 서식 표시", systemImage: "sparkles")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            // Conditional siblings keep `LiveMarkdownTextEditor` at the same
+            // structural position, so toggling the chrome never re-creates
+            // the text view (and never drops keystrokes in flight).
+            if showsChrome {
+                markdownMenuRow
             }
 
             LiveMarkdownTextEditor(
@@ -1235,9 +1233,68 @@ struct MarkdownBodyEditor: View {
                 commandPalette(query: query)
             }
 
-            Text("/ 입력으로 제목, 목록, 체크리스트, 인용, 코드와 날짜 삽입")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
+            if showsChrome {
+                Text("/ 입력으로 제목, 목록, 체크리스트, 인용, 코드와 날짜 삽입")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+        }
+    }
+
+    private var markdownMenuRow: some View {
+        HStack(spacing: 10) {
+            Menu {
+                Section("블록") {
+                    ForEach(MarkdownSlashCommand.allCases) { command in
+                        Button {
+                            text = MarkdownCommandProcessor.applying(
+                                command,
+                                to: text
+                            )
+                        } label: {
+                            Label(
+                                "\(command.trigger)  \(command.title)",
+                                systemImage: command.systemImage
+                            )
+                        }
+                    }
+                }
+                if selection.length > 0 {
+                    Section("선택 영역") {
+                        ForEach(MarkdownInlineFormat.allCases) { format in
+                            Button {
+                                apply(format)
+                            } label: {
+                                Label(format.title, systemImage: format.systemImage)
+                            }
+                        }
+                    }
+                }
+            } label: {
+                Label("Markdown", systemImage: "textformat")
+            }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+
+            if selection.length > 0 {
+                Divider().frame(height: 18)
+                ForEach(MarkdownInlineFormat.contextualCases) { format in
+                    Button {
+                        apply(format)
+                    } label: {
+                        Image(systemName: format.systemImage)
+                    }
+                    .buttonStyle(.plain)
+                    .help(format.title)
+                    .accessibilityLabel(format.title)
+                }
+            }
+
+            Spacer()
+
+            Label("입력 즉시 서식 표시", systemImage: "sparkles")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -3861,6 +3918,12 @@ struct LiveMarkdownTextEditor: UIViewRepresentable {
             containerWidth: textView.textContainer.size.width
         )
         textView.typingAttributes = LiveMarkdownStyler.baseAttributes
+        // Set before the text view can become first responder, so UIKit
+        // picks it up without `reloadInputViews()`.
+        context.coordinator.updateKeyboardAccessory(
+            context.environment.markdownKeyboardAccessory,
+            on: textView
+        )
         if autoFocus {
             DispatchQueue.main.async {
                 textView.becomeFirstResponder()
@@ -3891,6 +3954,11 @@ struct LiveMarkdownTextEditor: UIViewRepresentable {
     func updateUIView(_ textView: UITextView, context: Context) {
         context.coordinator.parent = self
         context.coordinator.attachmentRevisionDidChange(to: attachmentRevision)
+        // Touches only the accessory toolbar, never the text or selection.
+        context.coordinator.updateKeyboardAccessory(
+            context.environment.markdownKeyboardAccessory,
+            on: textView
+        )
         guard !context.coordinator.isUpdating else { return }
         guard
             MarkdownInputReconciliation.canMutateTextStorage(
@@ -3962,6 +4030,53 @@ struct LiveMarkdownTextEditor: UIViewRepresentable {
 
         init(parent: LiveMarkdownTextEditor) {
             self.parent = parent
+        }
+
+        private var keyboardAccessoryActions: [() -> Void] = []
+        private var keyboardAccessorySignature: [String]?
+
+        /// Keeps the body's keyboard toolbar in step with the editor's items.
+        /// Actions are refreshed on every call (they capture the latest view
+        /// state); the bar items are rebuilt only when what's shown changes.
+        func updateKeyboardAccessory(
+            _ accessory: MarkdownKeyboardAccessory?,
+            on textView: UITextView
+        ) {
+            guard let accessory else { return }
+            keyboardAccessoryActions = accessory.items.map(\.action)
+            guard accessory.signature != keyboardAccessorySignature else { return }
+            keyboardAccessorySignature = accessory.signature
+
+            let toolbar: UIToolbar
+            if let existing = textView.inputAccessoryView as? UIToolbar {
+                toolbar = existing
+            } else {
+                toolbar = UIToolbar(frame: CGRect(x: 0, y: 0, width: 320, height: 44))
+                toolbar.autoresizingMask = .flexibleWidth
+                textView.inputAccessoryView = toolbar
+            }
+            var index = 0
+            func barItem(_ item: MarkdownKeyboardAccessory.Item) -> UIBarButtonItem {
+                let actionIndex = index
+                index += 1
+                let action = UIAction(
+                    title: item.title,
+                    image: item.systemImage.flatMap { UIImage(systemName: $0) }
+                ) { [weak self] _ in
+                    guard let self,
+                        self.keyboardAccessoryActions.indices.contains(actionIndex)
+                    else { return }
+                    self.keyboardAccessoryActions[actionIndex]()
+                }
+                let barItem = UIBarButtonItem(primaryAction: action)
+                barItem.accessibilityLabel = item.title
+                return barItem
+            }
+            toolbar.items =
+                accessory.leading.map(barItem)
+                + [.flexibleSpace()]
+                + accessory.trailing.map(barItem)
+            toolbar.sizeToFit()
         }
 
         func attachmentRevisionDidChange(to revision: Int) {

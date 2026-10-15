@@ -45,6 +45,19 @@
 
 ## 완료
 
+- **iPhone 편집기 집중 모드** — 키보드 도구막대의 버튼으로 켜고 끈다. 켜면
+  상단 바·메타데이터 칩·유형별 칸·태그·첨부·글자 수·Markdown 메뉴 줄이 사라지고
+  제목과 본문만 남는다. 키보드를 내린 상태에서는 오른쪽 위 작은 버튼으로
+  나오고, 저장에 실패하면 그 옆에 저장 오류와 "다시 저장"이 뜬다. 편집기를 열
+  때마다 평소 화면으로 시작한다(저장하지 않는 `@State`). 무엇을 보일지는
+  `EntryEditorFocusLayout`이 정하고 `EntryEditorFocusLayoutTests`가 검증한다.
+  Mac의 집중 모드(`FocusModeLayoutPolicy`)는 그대로다. 실기기 확인은
+  `docs/pre-release-checklist.md`에 남아 있다. (2026-10-15)
+  - 같이 고친 것: 키보드 도구막대가 **본문에서는 한 번도 뜬 적이 없었다.**
+    SwiftUI `.toolbar(placement: .keyboard)`는 SwiftUI 입력칸에만 붙고 본문의
+    UIKit 텍스트 뷰에는 붙지 않는다. 이제 같은 항목(`MarkdownKeyboardAccessory`)을
+    본문 텍스트 뷰의 `UIToolbar`로도 보여 준다. 390pt 폭에서 넘치지 않도록
+    "오늘" 버튼을 빼고(`/today` 명령으로 대신) "키보드 닫기"를 아이콘으로 바꿨다.
 - **첨부 다운로드 fetch 미트리거 / 업로드 진행률 세분화 / 이미지 붙여넣기**
   — openspec `improve-attachment-transfer-and-paste`. CloudKit이 특정
   레코드의 asset을 강제로 fetch하게 만드는 공개 API는 없다는 제약을 그대로

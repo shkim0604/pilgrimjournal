@@ -219,6 +219,11 @@ binding 쓰기 → `publish(_:)`가 `publishedHistory`에 기록)를 통과해�
       시뮬레이터만으로는 부족하다.
 - [ ] 도구모음 서식·slash command를 쓴 뒤에도 이어서 타이핑해 본다
       (외부 변경 경로와 입력 경로가 함께 걸리는 구간).
+- [ ] 입력 도중 키보드 도구막대로 **집중 모드를 켜고 끈 뒤** 이어서 타이핑해
+      본다. 전환은 본문 주변 뷰만 넣고 빼며 텍스트 뷰를 다시 만들지 않아야
+      한다(`EntryEditorFocusLayout`). 본문 `MarkdownBodyEditor`/
+      `LiveMarkdownTextEditor`를 `if`·`Group` 분기나 `.id()`로 감싸면 전환마다
+      새 `UITextView`가 생겨 입력 중인 글자와 캐럿을 잃는다.
 - [ ] **편집기를 막 연 직후 첫 입력이 남는지** 따로 본다 — 기존 기록과 새 기록
       각각, 본문 끝을 탭하고 **영어 한 글자**를 친 뒤 1초 기다린다. 글자가 그대로
       있고 캐럿이 그 뒤에 있어야 한다. 30초 연속 입력으로는 이 경우가 가려진다
@@ -579,6 +584,25 @@ Notion·Bear처럼 **이미지를 독립 블록으로** 다룬다: 이미지 줄
 `draw(_:)`가 그 값을 쓰게 했다. 드래그가 끝나면 `nil`로 되돌려 다시 마커
 텍스트가 유일한 출처가 된다. 첨부 크기의 출처를 새로 추가할 때는 이 세 곳
 (`draw`, `attachmentImageParagraphStyle`, 마커 텍스트)이 어긋나지 않는지 볼 것.
+
+### 2026-10-15 — iPhone 본문에는 키보드 도구막대가 뜬 적이 없었다
+
+`EntryEditorView`의 `.toolbar { ToolbarItemGroup(placement: .keyboard) }`는
+제목·유형별 칸·태그 같은 **SwiftUI 입력칸에서만** 뜬다. 본문은
+`UIViewRepresentable`의 `UITextView`라 SwiftUI가 그 도구막대를 붙이지 않는다.
+그래서 서식 버튼이 정작 본문을 쓸 때는 보이지 않았다. 집중 모드 버튼을 그
+도구막대에 넣으려다 시뮬레이터에서 발견했다.
+
+**조치:** 버튼 목록을 `MarkdownKeyboardAccessory` 하나로 모으고, SwiftUI
+도구막대와 본문 텍스트 뷰의 `inputAccessoryView`(`UIToolbar`)가 같은 목록을
+그린다. 목록은 환경값(`markdownKeyboardAccessory`)으로 iOS
+`LiveMarkdownTextEditor`에 전달된다. `updateUIView`에서 매 렌더 호출되지만
+버튼 액션만 갈아 끼우고, 보이는 내용(`signature`)이 바뀔 때만 막대를 다시
+만든다. 텍스트·선택 영역은 건드리지 않는다.
+
+**주의:** 본문 키보드에 무언가 띄우려면 SwiftUI 도구막대가 아니라 이 목록에
+추가할 것. 390pt 폭 iPhone에서는 아이콘 6개(키보드 닫기 포함)가 한계다 — 7개는
+양쪽이 잘리는 것을 iPhone 16e 시뮬레이터에서 확인했다.
 
 ### 2026-10-15 — iPhone 편집기를 연 직후 첫 입력이 지워짐 (수정, 실기기 확인 대기)
 
