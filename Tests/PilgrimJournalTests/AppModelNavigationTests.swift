@@ -934,7 +934,7 @@ final class AppModelNavigationTests: XCTestCase {
         try sourceData.write(to: sourceURL)
 
         let added = await model.addAttachment(from: sourceURL, to: entry.id)
-        XCTAssertTrue(added)
+        XCTAssertNotNil(added)
 
         let attachment = try XCTUnwrap(model.attachments(for: entry.id).first)
         XCTAssertEqual(attachment.originalName, "sample.txt")

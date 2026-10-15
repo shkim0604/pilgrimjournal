@@ -1049,7 +1049,7 @@ final class AppModel: ObservableObject {
     /// happen off the main actor; only the final SwiftData save (which must
     /// stay on the main actor) runs here.
     @discardableResult
-    func addAttachment(from url: URL, to entryID: UUID) async -> Bool {
+    func addAttachment(from url: URL, to entryID: UUID) async -> UUID? {
         let isSecurityScoped = url.startAccessingSecurityScopedResource()
         defer {
             if isSecurityScoped { url.stopAccessingSecurityScopedResource() }
@@ -1064,10 +1064,10 @@ final class AppModel: ObservableObject {
                 originalName: url.lastPathComponent,
                 mimeType: contentType?.preferredMIMEType ?? "application/octet-stream",
                 to: entryID
-            ) != nil
+            )
         } catch {
             errorMessage = error.localizedDescription
-            return false
+            return nil
         }
     }
 

@@ -375,6 +375,11 @@ enum MarkdownListIndentDirection {
     case outdent
 }
 
+enum MarkdownImageMoveDirection {
+    case up
+    case down
+}
+
 enum MarkdownCommandProcessor {
     struct ExpansionResult: Equatable {
         var text: String
@@ -618,6 +623,57 @@ enum MarkdownCommandProcessor {
         let expanded = source.replacingCharacters(in: safeSelection, with: insertion)
         let cursor = safeSelection.location + insertion.utf16.count
         return ExpansionResult(text: expanded, cursorUTF16Offset: cursor)
+    }
+
+    /// Where an image added from outside the text view (photo picker, camera,
+    /// 파일, the keyboard bar) goes: the caret the body last had, or the end
+    /// of the body when it was never focused and so has no caret yet.
+    ///
+    /// Unlike a paste, a photo arriving from a sheet never replaces a
+    /// selection — it goes after it — and never splits another image's marker,
+    /// which would turn that picture back into raw markdown.
+    static func attachmentInsertionSelection(lastCaret: NSRange?, in text: String) -> NSRange {
+        let length = (text as NSString).length
+        guard let lastCaret else { return NSRange(location: length, length: 0) }
+        var location = min(max(0, NSMaxRange(lastCaret)), length)
+        if let marker = MarkdownAttachmentImageDecoration.matches(in: text).first(where: {
+            location > $0.markerRange.location && location < NSMaxRange($0.markerRange)
+        }) {
+            location = NSMaxRange(marker.markerRange)
+        }
+        return NSRange(location: location, length: 0)
+    }
+
+    /// Moves the image whose line contains `offset` past the nearest line
+    /// with content in `direction`, by swapping the two lines. Blank lines
+    /// stay where they are, so the spacing between paragraphs survives. The
+    /// caret follows the image to the start of its new line, so ▲/▼ can be
+    /// pressed again straight away. `nil` when there is no image there or
+    /// nothing to move past.
+    static func movingAttachmentImage(
+        at offset: Int,
+        direction: MarkdownImageMoveDirection,
+        in text: String
+    ) -> ExpansionResult? {
+        guard
+            let match = MarkdownAttachmentImageDecoration.matches(in: text).first(where: {
+                offset >= $0.markerRange.location && offset <= NSMaxRange($0.markerRange)
+            })
+        else { return nil }
+        var lines = text.components(separatedBy: "\n")
+        // The marker is the whole line, so the newlines before it number its line.
+        let imageLine =
+            (text as NSString).substring(to: match.markerRange.location)
+            .components(separatedBy: "\n").count - 1
+        let step = direction == .up ? -1 : 1
+        var target = imageLine + step
+        while lines.indices.contains(target), lines[target].allSatisfy(\.isWhitespace) {
+            target += step
+        }
+        guard lines.indices.contains(target) else { return nil }
+        lines.swapAt(imageLine, target)
+        let caret = lines[..<target].reduce(0) { $0 + ($1 as NSString).length + 1 }
+        return ExpansionResult(text: lines.joined(separator: "\n"), cursorUTF16Offset: caret)
     }
 
     static func applyingKeyboardCommand(
@@ -1169,6 +1225,28 @@ extension EnvironmentValues {
     }
 }
 
+/// Where a photo the person asked to put into the body comes from.
+enum AttachmentPhotoSource {
+    case library
+    case camera
+}
+
+/// Lets views outside the body editor — the 첨부 section — put an image they
+/// just stored into the body. The editor's coordinator does the insertion,
+/// through the same `replaceExternalText` path as a pasted image, so it
+/// undoes and is recorded as the editor's own text like every other
+/// programmatic edit (see docs/known-issues.md, 편집기 입력이 씹힌다). Only the
+/// iPhone editor connects one; elsewhere `insertImage` reports `false`.
+@MainActor
+final class MarkdownImageInserter {
+    var handler: ((UUID, Data) -> Bool)?
+
+    @discardableResult
+    func insertImage(id: UUID, data: Data) -> Bool {
+        handler?(id, data) ?? false
+    }
+}
+
 struct MarkdownBodyEditor: View {
     @Binding var text: String
     var minHeight: CGFloat = 240
@@ -1182,6 +1260,10 @@ struct MarkdownBodyEditor: View {
     /// The Markdown menu row and the slash-command hint. The iPhone's focus
     /// mode turns them off; the text editor itself never depends on this.
     var showsChrome = true
+    /// iPhone only: see `MarkdownImageInserter`.
+    var imageInserter: MarkdownImageInserter?
+    /// iPhone only: the edit menu's 사진 삽입 asks for a photo through this.
+    var requestImageInsertion: ((AttachmentPhotoSource) -> Void)?
     @State private var selection = NSRange(location: 0, length: 0)
     @AppStorage(EditorTextScale.storageKey) private var editorTextScale =
         EditorTextScale.defaultValue
@@ -1195,21 +1277,13 @@ struct MarkdownBodyEditor: View {
                 markdownMenuRow
             }
 
-            LiveMarkdownTextEditor(
-                text: $text,
-                selection: $selection,
-                autoFocus: autoFocus,
-                textScale: editorTextScale,
-                storeImageAttachment: storeImageAttachment,
-                attachmentImage: attachmentImage,
-                attachmentRevision: attachmentRevision
-            )
-            .frame(
-                maxWidth: .infinity,
-                minHeight: minHeight,
-                maxHeight: .infinity
-            )
-            .accessibilityLabel("Markdown 본문")
+            liveEditor
+                .frame(
+                    maxWidth: .infinity,
+                    minHeight: minHeight,
+                    maxHeight: .infinity
+                )
+                .accessibilityLabel("Markdown 본문")
 
             Color.clear
                 .frame(width: 0, height: 0)
@@ -1294,6 +1368,23 @@ struct MarkdownBodyEditor: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
+    }
+
+    private var liveEditor: LiveMarkdownTextEditor {
+        var editor = LiveMarkdownTextEditor(
+            text: $text,
+            selection: $selection,
+            autoFocus: autoFocus,
+            textScale: editorTextScale,
+            storeImageAttachment: storeImageAttachment,
+            attachmentImage: attachmentImage,
+            attachmentRevision: attachmentRevision
+        )
+        #if os(iOS)
+        editor.imageInserter = imageInserter
+        editor.requestImageInsertion = requestImageInsertion
+        #endif
+        return editor
     }
 
     private func apply(_ format: MarkdownInlineFormat) {
@@ -2274,6 +2365,22 @@ enum MarkdownAttachmentImageDecoration {
             width: size,
             height: size
         )
+    }
+
+    /// The ▲/▼ buttons shown while the caret is on an image's line, side by
+    /// side inside its top-right corner — the opposite end from the resize
+    /// handle. Shared between `draw(_:)` and the tap hit test like
+    /// `handleRect`.
+    static func moveButtonRects(for imageRect: CGRect) -> (up: CGRect, down: CGRect) {
+        let size: CGFloat = 28
+        let inset: CGFloat = 6
+        let down = CGRect(
+            x: imageRect.maxX - inset - size,
+            y: imageRect.minY + inset,
+            width: size,
+            height: size
+        )
+        return (down.offsetBy(dx: -(size + inset), dy: 0), down)
     }
 }
 
@@ -3377,6 +3484,9 @@ private final class MarkdownUITextView: UITextView, UIGestureRecognizerDelegate 
         if gestureRecognizer === checklistTapGesture {
             return isPointOnChecklistBox?(point) ?? false
         }
+        if gestureRecognizer === attachmentMoveTapGesture {
+            return isPointOnAttachmentMoveButton?(point) ?? false
+        }
         return isPointOnAttachmentResizeHandle?(point) ?? false
     }
 
@@ -3404,6 +3514,10 @@ private final class MarkdownUITextView: UITextView, UIGestureRecognizerDelegate 
     var isPointOnChecklistBox: ((CGPoint) -> Bool)?
     var toggleChecklistItem: ((CGPoint) -> Bool)?
     private weak var checklistTapGesture: UITapGestureRecognizer?
+    /// The same split for the ▲/▼ buttons on the image under the caret.
+    var isPointOnAttachmentMoveButton: ((CGPoint) -> Bool)?
+    var moveAttachmentImage: ((CGPoint) -> Bool)?
+    private weak var attachmentMoveTapGesture: UITapGestureRecognizer?
     var beginAttachmentResize: ((CGPoint) -> Bool)?
     var continueAttachmentResize: ((CGPoint) -> Void)?
     var endAttachmentResize: ((CGPoint) -> Void)?
@@ -3417,12 +3531,14 @@ private final class MarkdownUITextView: UITextView, UIGestureRecognizerDelegate 
         super.init(frame: frame, textContainer: textContainer)
         configureAttachmentResizeGesture()
         configureChecklistTapGesture()
+        configureAttachmentMoveTapGesture()
     }
 
     required init?(coder: NSCoder) {
         super.init(coder: coder)
         configureAttachmentResizeGesture()
         configureChecklistTapGesture()
+        configureAttachmentMoveTapGesture()
     }
 
     override func layoutSubviews() {
@@ -3460,6 +3576,21 @@ private final class MarkdownUITextView: UITextView, UIGestureRecognizerDelegate 
 
     @objc private func handleChecklistTap(_ gesture: UITapGestureRecognizer) {
         _ = toggleChecklistItem?(gesture.location(in: self))
+    }
+
+    /// Same decoupling as the checklist tap: only touches on a ▲/▼ button
+    /// that is actually drawn ever reach this recognizer.
+    private func configureAttachmentMoveTapGesture() {
+        let gesture = UITapGestureRecognizer(
+            target: self, action: #selector(handleAttachmentMoveTap(_:))
+        )
+        gesture.delegate = self
+        addGestureRecognizer(gesture)
+        attachmentMoveTapGesture = gesture
+    }
+
+    @objc private func handleAttachmentMoveTap(_ gesture: UITapGestureRecognizer) {
+        _ = moveAttachmentImage?(gesture.location(in: self))
     }
 
     @objc private func handleAttachmentResizePan(_ gesture: UIPanGestureRecognizer) {
@@ -3760,7 +3891,43 @@ private final class MarkdownUITextView: UITextView, UIGestureRecognizerDelegate 
                     ? UIColor.black : UIColor.white).setStroke()
                 path.lineWidth = 1.5
                 path.stroke()
+                drawMoveButtons(for: imageMatch, in: imageRect)
             }
+        }
+    }
+
+    /// ▲/▼ only where the image can actually go — at the top of the body
+    /// there is no ▲. The hit test (`Coordinator.attachmentMoveTarget`) asks
+    /// the same question, so a button that isn't drawn never takes a tap.
+    private func drawMoveButtons(
+        for imageMatch: MarkdownAttachmentImageDecoration.Match,
+        in imageRect: CGRect
+    ) {
+        let buttons = MarkdownAttachmentImageDecoration.moveButtonRects(for: imageRect)
+        let glyphColor =
+            traitCollection.userInterfaceStyle == .dark ? UIColor.black : UIColor.white
+        let configuration = UIImage.SymbolConfiguration(pointSize: 13, weight: .semibold)
+        for (rect, direction, symbol) in [
+            (buttons.up, MarkdownImageMoveDirection.up, "chevron.up"),
+            (buttons.down, MarkdownImageMoveDirection.down, "chevron.down"),
+        ] {
+            guard
+                MarkdownCommandProcessor.movingAttachmentImage(
+                    at: imageMatch.markerRange.location, direction: direction, in: text
+                ) != nil
+            else { continue }
+            EditorPalette.label.withAlphaComponent(0.75).setFill()
+            UIBezierPath(ovalIn: rect).fill()
+            guard
+                let glyph = UIImage(systemName: symbol, withConfiguration: configuration)?
+                    .withTintColor(glyphColor, renderingMode: .alwaysOriginal)
+            else { continue }
+            glyph.draw(
+                at: CGPoint(
+                    x: rect.midX - glyph.size.width / 2,
+                    y: rect.midY - glyph.size.height / 2
+                )
+            )
         }
     }
 }
@@ -3773,6 +3940,8 @@ struct LiveMarkdownTextEditor: UIViewRepresentable {
     var storeImageAttachment: ((Data, String, String) async -> UUID?)?
     var attachmentImage: ((UUID) async -> Data?)?
     var attachmentRevision = 0
+    var imageInserter: MarkdownImageInserter?
+    var requestImageInsertion: ((AttachmentPhotoSource) -> Void)?
 
     func makeCoordinator() -> Coordinator {
         Coordinator(parent: self)
@@ -3781,6 +3950,16 @@ struct LiveMarkdownTextEditor: UIViewRepresentable {
     func makeUIView(context: Context) -> UITextView {
         let textView = MarkdownUITextView()
         context.coordinator.textView = textView
+        imageInserter?.handler = { [weak coordinator = context.coordinator] id, data in
+            coordinator?.insertAttachmentImage(id: id, imageData: data) ?? false
+        }
+        textView.isPointOnAttachmentMoveButton = {
+            [weak coordinator = context.coordinator] point in
+            coordinator?.attachmentMoveTarget(at: point) != nil
+        }
+        textView.moveAttachmentImage = { [weak coordinator = context.coordinator] point in
+            coordinator?.moveAttachmentImage(at: point) ?? false
+        }
         textView.adjustListIndentation = { [weak coordinator = context.coordinator] direction in
             coordinator?.adjustListIndentation(direction)
         }
@@ -3834,6 +4013,7 @@ struct LiveMarkdownTextEditor: UIViewRepresentable {
             right: 0
         )
         textView.text = text
+        context.coordinator.adoptInitialText(text)
         LiveMarkdownStyler.apply(
             to: textView.textStorage,
             revealing: selection,
@@ -3922,6 +4102,22 @@ struct LiveMarkdownTextEditor: UIViewRepresentable {
             )
             parent.text = newText
         }
+
+        /// The text the view opens with counts as already seen. SwiftUI's
+        /// first update after a keystroke can still carry the body from
+        /// before it — harmless for every later keystroke, whose previous
+        /// value was published, but the opening text never was. Its late echo
+        /// was taken for an external change and wiped out whatever had just
+        /// been typed. Nothing on iOS sets the body back to the opening text
+        /// while the editor is open (revision restore is macOS-only), so this
+        /// can't swallow a real external change.
+        func adoptInitialText(_ text: String) {
+            MarkdownInputReconciliation.recordPublishedText(
+                text,
+                in: &publishedHistory
+            )
+        }
+
         private var stylingTask: Task<Void, Never>?
         private var imageCache: [UUID: PlatformImage] = [:]
         private var loadingAttachmentIDs: Set<UUID> = []
@@ -3933,6 +4129,10 @@ struct LiveMarkdownTextEditor: UIViewRepresentable {
         private var resizingAttachmentID: UUID?
         private var resizeStartPoint: CGPoint = .zero
         private var resizeStartSize: CGSize = .zero
+        /// Whether the body has had a caret the person put there. Until it
+        /// has, the selection is just the initial `0` and a photo added from
+        /// outside goes to the end rather than above everything written.
+        private var hasPlacedCaret = false
 
         init(parent: LiveMarkdownTextEditor) {
             self.parent = parent
@@ -3991,6 +4191,10 @@ struct LiveMarkdownTextEditor: UIViewRepresentable {
             guard !missingAttachmentIDs.isEmpty else { return }
             missingAttachmentIDs.removeAll()
             textView?.setNeedsDisplay()
+        }
+
+        func textViewDidBeginEditing(_ textView: UITextView) {
+            hasPlacedCaret = true
         }
 
         /// Synchronous — returns the cached decoded image if present, and as
@@ -4218,6 +4422,149 @@ struct LiveMarkdownTextEditor: UIViewRepresentable {
             return CGSize(width: width, height: width * aspect)
         }
 
+        /// Puts an image stored from outside the text view (photo picker,
+        /// camera, 파일, keyboard bar) into the body on a line of its own, at
+        /// the caret the body last had — or at the end when it never had one
+        /// (see `attachmentInsertionSelection`). The same
+        /// `replaceExternalText` path as a pasted image, and the caret ends
+        /// after the image, so several photos land in the order they came.
+        @discardableResult
+        func insertAttachmentImage(id: UUID, imageData: Data) -> Bool {
+            // Mid-composition the text storage must not be rewritten — the
+            // same rule `handleImagePaste` follows.
+            guard let textView, textView.markedTextRange == nil else { return false }
+            let selection = MarkdownCommandProcessor.attachmentInsertionSelection(
+                lastCaret: hasPlacedCaret ? textView.selectedRange : nil,
+                in: textView.text
+            )
+            let displaySize = UIImage(data: imageData).map {
+                LiveMarkdownStyler.attachmentImageDisplaySize(
+                    storedWidth: $0.size.width,
+                    storedHeight: $0.size.height,
+                    containerWidth: textView.textContainer.size.width
+                )
+            }
+            let result = MarkdownCommandProcessor.insertingAttachmentImage(
+                id: id,
+                displaySize: displaySize,
+                into: textView.text,
+                selection: selection
+            )
+            replaceExternalText(
+                result.text,
+                selection: NSRange(location: result.cursorUTF16Offset, length: 0),
+                registersUndo: true
+            )
+            hasPlacedCaret = true
+            return true
+        }
+
+        /// Which ▲/▼ button is under `point`, if any. Only the image whose
+        /// line holds the caret shows its buttons — the same test `draw(_:)`
+        /// uses — and only for a direction it can move in. Pure: the tap
+        /// gesture's delegate calls it to decide whether to claim a touch.
+        func attachmentMoveTarget(
+            at point: CGPoint
+        ) -> (markerOffset: Int, direction: MarkdownImageMoveDirection)? {
+            guard let textView else { return nil }
+            let text = textView.text ?? ""
+            let caret = textView.selectedRange.location
+            let origin = CGPoint(
+                x: textView.textContainerInset.left, y: textView.textContainerInset.top
+            )
+            let layoutManager = textView.layoutManager
+            for match in MarkdownAttachmentImageDecoration.matches(in: text) {
+                let lineRange = (text as NSString).lineRange(for: match.markerRange)
+                guard caret >= lineRange.location, caret <= NSMaxRange(lineRange) else {
+                    continue
+                }
+                let glyphRange = layoutManager.glyphRange(
+                    forCharacterRange: match.markerRange, actualCharacterRange: nil
+                )
+                guard glyphRange.location < layoutManager.numberOfGlyphs else { continue }
+                let fragment = layoutManager.lineFragmentRect(
+                    forGlyphAt: glyphRange.location, effectiveRange: nil
+                )
+                let imageRect = MarkdownAttachmentImageDecoration.imageRect(
+                    origin: origin,
+                    fragment: fragment,
+                    displaySize: LiveMarkdownStyler.attachmentImageDisplaySize(
+                        storedWidth: match.storedWidth,
+                        storedHeight: match.storedHeight,
+                        containerWidth: textView.textContainer.size.width
+                    )
+                )
+                let buttons = MarkdownAttachmentImageDecoration.moveButtonRects(for: imageRect)
+                for (rect, direction) in [(buttons.up, .up), (buttons.down, .down)]
+                    as [(CGRect, MarkdownImageMoveDirection)]
+                {
+                    // A little slack around the drawn circle; the gap between
+                    // the two buttons is wider than both slacks together.
+                    guard rect.insetBy(dx: -2, dy: -2).contains(point),
+                        MarkdownCommandProcessor.movingAttachmentImage(
+                            at: match.markerRange.location, direction: direction, in: text
+                        ) != nil
+                    else { continue }
+                    return (match.markerRange.location, direction)
+                }
+            }
+            return nil
+        }
+
+        /// An ordinary text edit, so it undoes, autosaves and syncs like any
+        /// other.
+        func moveAttachmentImage(at point: CGPoint) -> Bool {
+            guard let textView, textView.markedTextRange == nil,
+                let target = attachmentMoveTarget(at: point),
+                let result = MarkdownCommandProcessor.movingAttachmentImage(
+                    at: target.markerOffset, direction: target.direction, in: textView.text
+                )
+            else { return false }
+            replaceExternalText(
+                result.text,
+                selection: NSRange(location: result.cursorUTF16Offset, length: 0),
+                registersUndo: true
+            )
+            return true
+        }
+
+        /// 사진 삽입 in the menu shown at the caret (a long press, or a tap on
+        /// the caret). Not over a selection: a photo goes after one, never
+        /// in place of it, and that menu is for acting on the selected text.
+        func textView(
+            _ textView: UITextView,
+            editMenuForTextIn range: NSRange,
+            suggestedActions: [UIMenuElement]
+        ) -> UIMenu? {
+            guard range.length == 0, let request = parent.requestImageInsertion else {
+                return nil
+            }
+            let image = UIImage(systemName: "photo")
+            let insertPhoto: UIMenuElement
+            if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                insertPhoto = UIMenu(
+                    title: "사진 삽입",
+                    image: image,
+                    children: [
+                        UIAction(
+                            title: "사진 보관함",
+                            image: UIImage(systemName: "photo.on.rectangle")
+                        ) { _ in request(.library) },
+                        UIAction(title: "촬영", image: UIImage(systemName: "camera")) { _ in
+                            request(.camera)
+                        },
+                    ]
+                )
+            } else {
+                insertPhoto = UIAction(title: "사진 삽입", image: image) { _ in
+                    request(.library)
+                }
+            }
+            // First, so it sits on the menu's first page instead of behind
+            // the ▸ after 붙여넣기 · 선택 · 전체 선택.
+            return UIMenu(children: [insertPhoto] + suggestedActions)
+        }
+
         func replaceExternalText(
             _ replacement: String,
             selection replacementSelection: NSRange,
@@ -4252,6 +4599,12 @@ struct LiveMarkdownTextEditor: UIViewRepresentable {
             // `replaceExternalText` for why.
             textView.selectedRange = safeSelection
             textView.typingAttributes = LiveMarkdownStyler.baseAttributes
+            // Images, bullets and checkboxes are painted by the view's own
+            // `draw(_:)`, which a text change alone doesn't rerun, and the
+            // selection-change redraw is skipped while `isUpdating`. Swapping
+            // two image lines changes no visible glyph at all, so without
+            // this the old pictures stayed in their old places.
+            textView.setNeedsDisplay()
             scrollCaretIntoView(textView)
             publish(replacement)
             parent.selection = safeSelection

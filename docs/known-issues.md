@@ -569,6 +569,53 @@ Notion·Bear처럼 **이미지를 독립 블록으로** 다룬다: 이미지 줄
 테스트했고, 강제는 텍스트 뷰의 `insertText`/`setMarkedText`에서 한다 — 위쪽
 입력 속성 항목과 같은 이유로 **삽입 시점**이 우회 불가능한 유일한 지점이다.
 
+### 2026-10-15 — 사진을 본문 커서 자리에 넣고 ▲▼로 옮긴다 (iPhone, 새 프로그래밍적 진입점)
+
+이전에는 붙여넣은 이미지만 본문에 들어갔고, 첨부 칸 사진·촬영 버튼으로 넣은
+사진은 목록에만 올라가 위치를 정할 방법이 없었다. 이제 iPhone 편집기에서:
+
+- 사진·촬영·파일(이미지인 것만), 키보드 도구줄 📷, 꾹 눌러 뜨는 메뉴의 사진
+  삽입이 모두 **같은 경로**로 본문에 넣는다: 첨부 칸이 저장 →
+  `MarkdownImageInserter` → `Coordinator.insertAttachmentImage` →
+  `insertingAttachmentImage` → `replaceExternalText`. 붙여넣기와 같은 경로라
+  실행취소가 되고 `publishedHistory`에 기록된다.
+- 위치는 `MarkdownCommandProcessor.attachmentInsertionSelection`이 정한다.
+  본문이 한 번도 포커스를 받지 않았으면(초기 선택 `0`은 사용자가 둔 커서가
+  아니다) **끝**, 아니면 마지막 커서. 선택 영역은 대체하지 않고 그 뒤에 넣으며,
+  다른 이미지 마커 한가운데라면 그 줄 끝으로 옮긴다(마커를 쪼개면 그 그림이
+  원본 마크다운으로 깨진다 — 위 "이미지 줄은 원자적" 항목).
+- ▲▼는 커서가 이미지 줄에 있을 때만 그려지고, 위/아래 가장 가까운 **내용 있는
+  줄**과 자리를 바꾼다(`movingAttachmentImage`). 빈 줄은 제자리라 문단 간격이
+  유지된다. 히트테스트(`attachmentMoveTarget`)는 `draw(_:)`와 같은 조건(커서
+  줄, 이동 가능한 방향)을 쓴다 — **그려지지 않은 버튼이 탭을 가로채면 안 된다.**
+  리사이즈 핸들과 달리 이 버튼은 이미지 위쪽 넓은 영역에 있어서, 조건이 어긋나면
+  이미지를 탭해 커서를 두는 동작 자체가 먹통이 된다.
+
+시뮬레이터에서 실제로 돌려 보고 찾은 두 함정(둘 다 hosted 테스트로 고정):
+
+- **실제 편집 화면에서는 삽입이 사라졌다.** 본문 편집기만 띄운 테스트는 통과했지만
+  `EntryEditorView`에서는 첨부 목록에만 남고 본문은 그대로였다. SwiftUI가 변경 직후
+  첫 업데이트에 **열 때의 본문**을 실어 보내는데, 그 값은 발행된 적이 없어 외부
+  변경으로 오인되고 삽입을 되돌렸다. 첫 키 입력이 지워지던 것과 같은 원인이며, 같은
+  수정(`Coordinator.adoptInitialText`, 브랜치 `claude/funny-cerf-e80f16`의 `a682c10`과
+  동일한 코드)을 이 브랜치에도 넣었다. **hosted 테스트는 본문 편집기 단독이 아니라
+  `EntryEditorView`로 돌려야 이런 타이밍이 드러난다**
+  (`testPhotoStaysInTheBodyOfTheRealEntryEditor`).
+- **▲▼를 눌러도 그림이 그대로였다.** 글자는 바뀌었는데 이미지·불릿·체크박스는
+  텍스트 뷰 자신의 `draw(_:)`가 그리고, 글자 변경만으로는 그게 다시 불리지 않는다.
+  평소에는 선택 변경이 `setNeedsDisplay()`를 부르지만 `replaceExternalText` 중에는
+  `isUpdating`이라 건너뛴다. 이미지 두 줄을 맞바꾸는 건 보이는 글리프가 하나도
+  안 바뀌어서 옛 그림이 그대로 남았다. 이제 `replaceExternalText`가 직접
+  `setNeedsDisplay()`를 부른다(`testMovingAnImageRedrawsThePictures`).
+
+검증: `BodyImagePlacementIOSTests`(hosted, iOS 시뮬레이터 — 위 두 건, 커서 없을 때
+끝, 피커 열기 전 커서 자리, 여러 장 순서, 삽입 직후 타이핑 보존, ▲ 이동과 실행취소,
+커서 밖 이미지의 버튼 무시, 편집 메뉴 항목)와 `MarkdownSupportTests` 순수 함수.
+테스트 모드 시뮬레이터에서 꾹 눌러 메뉴 → 사진 삽입 → 두 장, 첨부 칸 사진 버튼 →
+두 장, ▲ 이동을 눈으로 확인했다. 키보드 도구줄 📷은 시뮬레이터가 하드웨어 키보드라
+소프트 키보드가 안 떠서 보지 못했다. CI는 iOS 시뮬레이터 테스트를 돌리지 않으므로
+수동 실행이다. 실기기 확인은 `docs/pre-release-checklist.md`.
+
 ### 2026-08-15 — 이미지 리사이즈 중 그림이 옛 크기로 남아 있음
 
 핸들을 끌면 자리(문단 높이)는 실시간으로 변하는데 그려지는 그림은 그대로였다.
