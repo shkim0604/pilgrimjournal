@@ -376,8 +376,10 @@ struct PilgrimJournalApp: App {
                 }
                 .keyboardShortcut("f", modifiers: [.command, .shift])
                 .disabled(!authentication.canAccessJournal)
-            }
-            CommandMenu("보기") {
+                // Text size lives in the system View menu. A separate
+                // CommandMenu("보기") showed up as a second 보기 once the
+                // system menus became Korean.
+                Divider()
                 Button("확대") { adjustEditorTextScale(by: 0.1) }
                 .keyboardShortcut("+", modifiers: [.command])
                 Button("축소") { adjustEditorTextScale(by: -0.1) }

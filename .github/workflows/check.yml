@@ -53,3 +53,38 @@ jobs:
             -configuration Debug \
             CODE_SIGNING_ALLOWED=NO \
             build
+
+  ios-tests:
+    # `swift test` runs on macOS, which skips the `#if os(iOS)` code paths —
+    # including LiveMarkdownTextEditorIOSTests, the hosted editor tests that
+    # guard the typing release gate (docs/known-issues.md). The rest of
+    # PilgrimJournalTests passes on iOS too, so the whole target runs here.
+    name: iOS Simulator tests
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pick a simulator
+        # Simulator names change with each runner image, so take any available
+        # iPhone on the newest installed iOS runtime instead of naming one.
+        run: |
+          device=$(xcrun simctl list devices available --json | jq -r '
+            [.devices | to_entries[]
+              | select(.key | contains("SimRuntime.iOS"))
+              | {rt: (.key | capture("iOS-(?<v>[0-9-]+)$").v | split("-") | map(tonumber)), d: .value[]}
+              | select(.d.name | startswith("iPhone"))]
+            | sort_by(.rt) | last | .d | "\(.udid) \(.name)"')
+          if [ -z "$device" ] || [ "$device" = "null" ]; then
+            xcrun simctl list devices available
+            echo "::error::No available iPhone simulator"
+            exit 1
+          fi
+          echo "Using ${device#* } (${device%% *})"
+          echo "SIMULATOR_ID=${device%% *}" >> "$GITHUB_ENV"
+      - name: xcodebuild test
+        run: |
+          xcodebuild test \
+            -scheme PilgrimJournal-Package \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
+            -only-testing:PilgrimJournalTests \
+            CODE_SIGNING_ALLOWED=NO

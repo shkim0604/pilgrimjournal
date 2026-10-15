@@ -31,7 +31,13 @@ The Xcode project is stricter than `swift build` (it enforces member import visi
 xcodebuild -project PilgrimJournal/PilgrimJournal.xcodeproj -scheme PilgrimJournalApp -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build
 ```
 
-CI (`.github/workflows/check.yml`) runs `scripts/check.sh` and both unsigned Xcode builds on every PR and push to `main`, pinned to Xcode 26.2 on the `macos-26` runner. When bumping the local Xcode, bump `DEVELOPER_DIR` there too.
+`swift test` runs on macOS, so it skips `#if os(iOS)` tests such as `LiveMarkdownTextEditorIOSTests` (the hosted iPhone editor tests guarding the typing release gate). Run the app test target on an iOS Simulator for those:
+
+```sh
+xcodebuild test -scheme PilgrimJournal-Package -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:PilgrimJournalTests CODE_SIGNING_ALLOWED=NO
+```
+
+CI (`.github/workflows/check.yml`) runs `scripts/check.sh`, both unsigned Xcode builds, and that iOS Simulator test run on every PR and push to `main`. It is pinned to Xcode 26.2 on the `macos-26` runner, and the iOS job picks any available iPhone on the newest iOS runtime instead of naming a device. When bumping the local Xcode, bump `DEVELOPER_DIR` there too.
 
 Running the actual app (Simulator, Sign in with Apple, CloudKit entitlements, real-device verification) requires the full Xcode project at `PilgrimJournal/PilgrimJournal.xcodeproj` with a Developer Team signing identity. `CODE_SIGNING_ALLOWED=NO` builds only validate UI/compilation, not auth or sync.
 
@@ -62,7 +68,7 @@ Sign in with Apple (app-access auth) and CloudKit sync (iCloud account) are inde
 [docs/known-issues.md](docs/known-issues.md) tracks problems that have resurfaced more than once — read it before touching CloudKit schema or the markdown text editor. Two are load-bearing for any related change:
 
 - **CloudKit schema drift**: CloudKit's automatic schema generation only sees fields that have actually been exported with a non-nil value in Development — it does not read the SwiftData model. Adding a model or an optional property to `canonicalModels` requires manually running `initializeCloudKitSchema()` (see `Sources/JournalData/CloudKitSchemaInitializer.swift` and the command in `docs/development.md`) and deploying via CloudKit Console before release, or Production will silently reject records using the new field with no UI error.
-- **Editor input dropping (release gate)**: `LiveMarkdownTextEditor`'s `updateUIView`/`updateNSView` (`Sources/PilgrimJournal/MarkdownSupport.swift`) must not treat its own recently-published SwiftUI binding writes as external changes — doing so overwrites in-flight keystrokes. The fix uses `publishedHistory` + `MarkdownInputReconciliation.shouldApplyExternalText` to distinguish an echo from a real external change. This has regressed silently before; the release checklist in `docs/known-issues.md` (fast 30s+ mixed Korean/English typing, Release config, real iPhone soft keyboard) must be run before every TestFlight build — automated tests only cover the pure-function reconciliation logic, not real input timing.
+- **Editor input dropping (release gate)**: `LiveMarkdownTextEditor`'s `updateUIView`/`updateNSView` (`Sources/PilgrimJournal/MarkdownSupport.swift`) must not treat its own recently-published SwiftUI binding writes as external changes — doing so overwrites in-flight keystrokes. The fix uses `publishedHistory` + `MarkdownInputReconciliation.shouldApplyExternalText` to distinguish an echo from a real external change. This has regressed silently before; the release checklist in `docs/known-issues.md` (fast 30s+ mixed Korean/English typing, Release config, real iPhone soft keyboard) must be run before every TestFlight build — automated tests (the pure-function reconciliation logic, plus `LiveMarkdownTextEditorIOSTests` driving the hosted iPhone editor with `insertText`) don't cover real keyboard input timing.
 
 ## Tracking docs — keep these current
 
