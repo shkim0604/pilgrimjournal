@@ -1109,6 +1109,165 @@ final class MarkdownSupportTests: XCTestCase {
         }
     }
 
+    // A photo added from the picker, the camera or the keyboard bar goes where
+    // the caret last was; a body that was never focused has no caret yet, and
+    // the image goes after everything already written.
+    func testImageInsertionWithoutACaretGoesToTheEndOfTheBody() {
+        let text = "첫 문단\n둘째 문단"
+
+        let selection = MarkdownCommandProcessor.attachmentInsertionSelection(
+            lastCaret: nil, in: text
+        )
+
+        XCTAssertEqual(selection, NSRange(location: (text as NSString).length, length: 0))
+    }
+
+    func testImageInsertionUsesTheLastCaretWhenThereIsOne() {
+        let text = "첫 문단\n둘째 문단"
+
+        let selection = MarkdownCommandProcessor.attachmentInsertionSelection(
+            lastCaret: NSRange(location: 3, length: 0), in: text
+        )
+
+        XCTAssertEqual(selection, NSRange(location: 3, length: 0))
+    }
+
+    func testImageInsertionClampsAStaleCaretToTheBody() {
+        let selection = MarkdownCommandProcessor.attachmentInsertionSelection(
+            lastCaret: NSRange(location: 40, length: 5), in: "짧음"
+        )
+
+        XCTAssertEqual(selection, NSRange(location: 2, length: 0))
+    }
+
+    // Splitting a marker would turn the picture next to it into raw markdown,
+    // and a selection would be replaced by the photo — neither is what adding
+    // a photo from a sheet means.
+    func testImageInsertionNeverLandsInsideAnotherImageMarker() {
+        let text = "위\n\(Self.imageMarker)\n아래"
+        let markerStart = ("위\n" as NSString).length
+        let markerEnd = markerStart + (Self.imageMarker as NSString).length
+
+        let selection = MarkdownCommandProcessor.attachmentInsertionSelection(
+            lastCaret: NSRange(location: markerStart + 5, length: 0), in: text
+        )
+
+        XCTAssertEqual(selection, NSRange(location: markerEnd, length: 0))
+    }
+
+    func testImageInsertionGoesAfterASelectionInsteadOfReplacingIt() {
+        let selection = MarkdownCommandProcessor.attachmentInsertionSelection(
+            lastCaret: NSRange(location: 1, length: 2), in: "가나다라"
+        )
+
+        XCTAssertEqual(selection, NSRange(location: 3, length: 0))
+    }
+
+    // ▲/▼ swap the image line with the nearest line that has content. Blank
+    // lines stay where they are, so the spacing between paragraphs survives.
+    func testMovingAnImageUpSwapsWithThePreviousParagraphAndKeepsBlankLines() throws {
+        let marker = Self.imageMarker
+        let text = "문단1\n\n\(marker)\n\n문단2"
+        let markerStart = ("문단1\n\n" as NSString).length
+
+        let result = try XCTUnwrap(
+            MarkdownCommandProcessor.movingAttachmentImage(
+                at: markerStart, direction: .up, in: text
+            )
+        )
+
+        XCTAssertEqual(result.text, "\(marker)\n\n문단1\n\n문단2")
+        XCTAssertEqual(result.cursorUTF16Offset, 0)
+    }
+
+    func testMovingAnImageDownSwapsWithTheNextParagraph() throws {
+        let marker = Self.imageMarker
+        let text = "문단1\n\(marker)\n문단2"
+        let markerStart = ("문단1\n" as NSString).length
+
+        let result = try XCTUnwrap(
+            MarkdownCommandProcessor.movingAttachmentImage(
+                at: markerStart, direction: .down, in: text
+            )
+        )
+
+        XCTAssertEqual(result.text, "문단1\n문단2\n\(marker)")
+        XCTAssertEqual(result.cursorUTF16Offset, ("문단1\n문단2\n" as NSString).length)
+    }
+
+    func testMovingAnImageAcceptsAnyOffsetOnItsLine() throws {
+        let marker = Self.imageMarker
+        let text = "문단1\n\(marker)"
+        let markerEnd = (text as NSString).length
+
+        let result = try XCTUnwrap(
+            MarkdownCommandProcessor.movingAttachmentImage(
+                at: markerEnd, direction: .up, in: text
+            )
+        )
+
+        XCTAssertEqual(result.text, "\(marker)\n문단1")
+    }
+
+    func testMovingAnImagePastBlankOnlyLinesIsNotPossible() {
+        let marker = Self.imageMarker
+        let text = "\n  \n\(marker)\n\n"
+        let markerStart = ("\n  \n" as NSString).length
+
+        XCTAssertNil(
+            MarkdownCommandProcessor.movingAttachmentImage(
+                at: markerStart, direction: .up, in: text
+            )
+        )
+        XCTAssertNil(
+            MarkdownCommandProcessor.movingAttachmentImage(
+                at: markerStart, direction: .down, in: text
+            )
+        )
+    }
+
+    func testMovingAnImageSwapsWithANeighbouringImage() throws {
+        let first = "![](attachment:22222222-2222-2222-2222-222222222222 =300x200)"
+        let second = Self.imageMarker
+        let text = "\(first)\n\(second)"
+        let secondStart = ("\(first)\n" as NSString).length
+
+        let result = try XCTUnwrap(
+            MarkdownCommandProcessor.movingAttachmentImage(
+                at: secondStart, direction: .up, in: text
+            )
+        )
+
+        XCTAssertEqual(result.text, "\(second)\n\(first)")
+        XCTAssertEqual(MarkdownAttachmentImageDecoration.matches(in: result.text).count, 2)
+    }
+
+    func testMovingIsOnlyForImageLines() {
+        let text = "문단1\n문단2"
+
+        XCTAssertNil(
+            MarkdownCommandProcessor.movingAttachmentImage(
+                at: ("문단1\n" as NSString).length, direction: .up, in: text
+            )
+        )
+    }
+
+    func testMoveButtonsSitInsideTheImageTopRightClearOfTheResizeHandle() {
+        let image = CGRect(x: 0, y: 100, width: 300, height: 200)
+
+        let buttons = MarkdownAttachmentImageDecoration.moveButtonRects(for: image)
+        let handle = MarkdownAttachmentImageDecoration.handleRect(for: image)
+
+        XCTAssertTrue(image.contains(buttons.up))
+        XCTAssertTrue(image.contains(buttons.down))
+        XCTAssertFalse(buttons.up.intersects(buttons.down))
+        XCTAssertFalse(buttons.up.intersects(handle))
+        XCTAssertFalse(buttons.down.intersects(handle))
+        XCTAssertLessThan(buttons.up.minX, buttons.down.minX)
+        XCTAssertEqual(buttons.down.maxX, image.maxX - 6, accuracy: 0.5)
+        XCTAssertEqual(buttons.up.minY, image.minY + 6, accuracy: 0.5)
+    }
+
     #if os(macOS)
     /// Typed text has to carry the size the styler would give it, or a
     /// heading types at body size and only snaps to its real size when

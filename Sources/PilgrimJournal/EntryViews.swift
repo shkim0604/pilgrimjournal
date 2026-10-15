@@ -822,6 +822,14 @@ struct EntryEditorView: View {
     @State private var isFocusMode = false
     // See the matching field on InlineEntryEditorView (macOS).
     @State private var bodyCharacterCount: Int
+    /// Photos added with 사진/촬영/파일 or the keyboard bar go into the body
+    /// at its caret through this, not only into the 첨부 list.
+    @State private var bodyImageInserter = MarkdownImageInserter()
+    /// A photo asked for from the keyboard bar or the body's edit menu; the
+    /// 첨부 section presents the picker or camera and stores the result.
+    @State private var photoRequest: AttachmentPhotoSource?
+    /// The keyboard bar's 📷 asks 사진 보관함 or 촬영 first.
+    @State private var isChoosingPhotoSource = false
 
     private var focusLayout: EntryEditorFocusLayout {
         EntryEditorFocusLayout(isFocusMode: isFocusMode, saveState: saveState)
@@ -882,7 +890,9 @@ struct EntryEditorView: View {
                             },
                             attachmentImage: { id in model.attachmentData(for: id) },
                             attachmentRevision: model.attachmentRevision,
-                            showsChrome: focusLayout.showsMarkdownChrome
+                            showsChrome: focusLayout.showsMarkdownChrome,
+                            imageInserter: bodyImageInserter,
+                            requestImageInsertion: { photoRequest = $0 }
                         )
                         .environment(\.markdownKeyboardAccessory, keyboardAccessory)
 
@@ -892,10 +902,18 @@ struct EntryEditorView: View {
                                 .frame(height: 1)
 
                             mobileTagsEditor
-                            AttachmentEditorSection(
-                                entryID: persistedEntryID,
-                                ensureEntryID: ensurePersistedEntryID
-                            )
+                        }
+                        // Stays mounted in focus mode with its list hidden: it
+                        // presents the picker and camera for the keyboard bar's
+                        // 📷 and the body's 사진 삽입 too.
+                        AttachmentEditorSection(
+                            entryID: persistedEntryID,
+                            ensureEntryID: ensurePersistedEntryID,
+                            showsList: focusLayout.showsEntryDetails,
+                            bodyImageInserter: bodyImageInserter,
+                            photoRequest: $photoRequest
+                        )
+                        if focusLayout.showsEntryDetails {
                             mobileFooter
                         }
                     }
@@ -948,6 +966,11 @@ struct EntryEditorView: View {
         }
         .onChange(of: tagsText) { _, _ in scheduleAutosave() }
         .onChange(of: tagInputDraft) { _, _ in scheduleAutosave() }
+        .confirmationDialog("사진 넣기", isPresented: $isChoosingPhotoSource) {
+            Button("사진 보관함") { photoRequest = .library }
+            Button("촬영") { photoRequest = .camera }
+            Button("취소", role: .cancel) {}
+        }
         .confirmationDialog(
             "기록 유형을 바꾸면 일부 상세 정보가 제거됩니다.",
             isPresented: $isConfirmingTypeChange,
@@ -1161,9 +1184,15 @@ struct EntryEditorView: View {
                     setFocusMode(!isFocusMode)
                 },
             ],
+            // 📷 took 키보드 닫기's place: six is the limit, and dragging the
+            // body down already dismisses the keyboard (`.interactive`).
             trailing: [
-                .init(title: "키보드 닫기", systemImage: "keyboard.chevron.compact.down") {
-                    dismissKeyboard()
+                .init(title: "사진", systemImage: "photo") {
+                    if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                        isChoosingPhotoSource = true
+                    } else {
+                        photoRequest = .library
+                    }
                 }
             ]
         )
@@ -1461,15 +1490,6 @@ struct EntryEditorView: View {
         )
     }
 
-    private func dismissKeyboard() {
-        UIApplication.shared.sendAction(
-            #selector(UIResponder.resignFirstResponder),
-            to: nil,
-            from: nil,
-            for: nil
-        )
-    }
-
     private func applyPendingKind() {
         guard let pendingKind else { return }
         draft.kind = pendingKind
@@ -1529,6 +1549,15 @@ private struct AttachmentEditorSection: View {
     let entryID: UUID?
     let ensureEntryID: () -> UUID?
     var allowsImport = true
+    /// The iPhone's focus mode hides the list but keeps the section, so the
+    /// photo requests below still have something to present them.
+    var showsList = true
+    /// When set (iPhone editor), every image this section stores also goes
+    /// into the body at its caret; other files stay list-only.
+    var bodyImageInserter: MarkdownImageInserter?
+    /// A photo asked for from outside this section — the keyboard bar or the
+    /// body's edit menu. Presented here so it is stored the same way.
+    var photoRequest: Binding<AttachmentPhotoSource?> = .constant(nil)
     @State private var attachments: [AttachmentRecord] = []
     @State private var isImporting = false
     @State private var isPresentingPhotoPicker = false
@@ -1544,82 +1573,86 @@ private struct AttachmentEditorSection: View {
     @State private var pendingDelete: AttachmentRecord?
 
     var body: some View {
+        // The container stays even when the list is hidden: the picker,
+        // camera and file importer below hang off it.
         VStack(alignment: .leading, spacing: JournalTheme.Spacing.small) {
-            HStack {
-                Text("첨부")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(JournalTheme.inkSecondary)
-                Spacer()
-                if allowsImport {
-                    HStack(spacing: JournalTheme.Spacing.small) {
-                        Button {
-                            requireEntryThenRun { isImporting = true }
-                        } label: {
-                            Label("파일", systemImage: "paperclip")
-                        }
-                        .buttonStyle(.borderless)
-
-                        Button {
-                            requireEntryThenRun { isPresentingPhotoPicker = true }
-                        } label: {
-                            Label("사진", systemImage: "photo.on.rectangle")
-                        }
-                        .buttonStyle(.borderless)
-
-                        #if os(iOS)
-                        if UIImagePickerController.isSourceTypeAvailable(.camera) {
+            if showsList {
+                HStack {
+                    Text("첨부")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(JournalTheme.inkSecondary)
+                    Spacer()
+                    if allowsImport {
+                        HStack(spacing: JournalTheme.Spacing.small) {
                             Button {
-                                requireEntryThenRun { isPresentingCamera = true }
+                                requireEntryThenRun { isImporting = true }
                             } label: {
-                                Label("촬영", systemImage: "camera")
+                                Label("파일", systemImage: "paperclip")
                             }
                             .buttonStyle(.borderless)
-                        }
-                        #endif
-                    }
-                }
-            }
 
-            if attachments.isEmpty {
-                Text("첨부 파일 없음")
-                    .font(.caption)
-                    .foregroundStyle(JournalTheme.inkSecondary)
-            } else {
-                // Capped so a record with many attachments scrolls inside
-                // this section instead of pushing tags/footer far down the
-                // outer editor scroll view.
-                ScrollView {
-                    VStack(spacing: JournalTheme.Spacing.small) {
-                        ForEach(attachments) { attachment in
-                            HStack(spacing: JournalTheme.Spacing.small) {
-                                Image(systemName: attachmentIcon(for: attachment.mimeType))
-                                    .foregroundStyle(JournalTheme.brandPrimary)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(attachment.originalName)
-                                        .lineLimit(1)
-                                    Text(attachmentStatus(attachment))
-                                        .font(.caption2)
-                                        .foregroundStyle(
-                                            attachment.state == .failed
-                                                ? Color.red
-                                                : JournalTheme.inkSecondary
-                                        )
-                                }
-                                Spacer()
-                                attachmentAction(attachment)
-                                Button(role: .destructive) {
-                                    pendingDelete = attachment
+                            Button {
+                                requireEntryThenRun { isPresentingPhotoPicker = true }
+                            } label: {
+                                Label("사진", systemImage: "photo.on.rectangle")
+                            }
+                            .buttonStyle(.borderless)
+
+                            #if os(iOS)
+                            if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                                Button {
+                                    requireEntryThenRun { isPresentingCamera = true }
                                 } label: {
-                                    Image(systemName: "trash")
+                                    Label("촬영", systemImage: "camera")
                                 }
                                 .buttonStyle(.borderless)
-                                .accessibilityLabel("첨부 삭제")
                             }
-                            .accessibilityElement(children: .combine)
+                            #endif
                         }
                     }
                 }
-                .frame(maxHeight: 240)
+
+                if attachments.isEmpty {
+                    Text("첨부 파일 없음")
+                        .font(.caption)
+                        .foregroundStyle(JournalTheme.inkSecondary)
+                } else {
+                    // Capped so a record with many attachments scrolls inside
+                    // this section instead of pushing tags/footer far down the
+                    // outer editor scroll view.
+                    ScrollView {
+                        VStack(spacing: JournalTheme.Spacing.small) {
+                            ForEach(attachments) { attachment in
+                                HStack(spacing: JournalTheme.Spacing.small) {
+                                    Image(systemName: attachmentIcon(for: attachment.mimeType))
+                                        .foregroundStyle(JournalTheme.brandPrimary)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(attachment.originalName)
+                                            .lineLimit(1)
+                                        Text(attachmentStatus(attachment))
+                                            .font(.caption2)
+                                            .foregroundStyle(
+                                                attachment.state == .failed
+                                                    ? Color.red
+                                                    : JournalTheme.inkSecondary
+                                            )
+                                    }
+                                    Spacer()
+                                    attachmentAction(attachment)
+                                    Button(role: .destructive) {
+                                        pendingDelete = attachment
+                                    } label: {
+                                        Image(systemName: "trash")
+                                    }
+                                    .buttonStyle(.borderless)
+                                    .accessibilityLabel("첨부 삭제")
+                                }
+                                .accessibilityElement(children: .combine)
+                            }
+                        }
+                    }
+                    .frame(maxHeight: 240)
+                }
             }
         }
         .fileImporter(
@@ -1635,8 +1668,14 @@ private struct AttachmentEditorSection: View {
                     return
                 }
                 Task {
-                    if await model.addAttachment(from: url, to: targetID) {
+                    if let attachmentID = await model.addAttachment(from: url, to: targetID) {
                         attachments = model.attachments(for: targetID)
+                        if UTType(filenameExtension: url.pathExtension)?.conforms(to: .image)
+                            == true,
+                            let data = model.attachmentData(for: attachmentID)
+                        {
+                            bodyImageInserter?.insertImage(id: attachmentID, data: data)
+                        }
                     }
                 }
             } catch {
@@ -1652,6 +1691,18 @@ private struct AttachmentEditorSection: View {
         .onChange(of: photoPickerSelection) { _, newValue in
             guard !newValue.isEmpty else { return }
             importPhotoPickerSelection(newValue)
+        }
+        .onChange(of: photoRequest.wrappedValue) { _, request in
+            guard let request else { return }
+            photoRequest.wrappedValue = nil
+            switch request {
+            case .library:
+                requireEntryThenRun { isPresentingPhotoPicker = true }
+            case .camera:
+                #if os(iOS)
+                requireEntryThenRun { isPresentingCamera = true }
+                #endif
+            }
         }
         #if os(iOS)
         .fullScreenCover(isPresented: $isPresentingCamera) {
@@ -1750,12 +1801,15 @@ private struct AttachmentEditorSection: View {
                         mimeType = "image/jpeg"
                     }
                 }
-                await model.addAttachment(
+                let attachmentID = await model.addAttachment(
                     data: uploadData,
                     originalName: "\(UUID().uuidString).\(fileExtension)",
                     mimeType: mimeType,
                     to: targetID
                 )
+                if isImage, let attachmentID {
+                    bodyImageInserter?.insertImage(id: attachmentID, data: uploadData)
+                }
             }
             attachments = model.attachments(for: targetID)
             photoPickerSelection = []
@@ -1779,12 +1833,14 @@ private struct AttachmentEditorSection: View {
             } else {
                 uploadData = data
             }
-            await model.addAttachment(
+            if let attachmentID = await model.addAttachment(
                 data: uploadData,
                 originalName: "\(UUID().uuidString).jpg",
                 mimeType: "image/jpeg",
                 to: targetID
-            )
+            ) {
+                bodyImageInserter?.insertImage(id: attachmentID, data: uploadData)
+            }
             attachments = model.attachments(for: targetID)
         }
     }
