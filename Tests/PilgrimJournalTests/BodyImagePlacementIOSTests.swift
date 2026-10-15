@@ -144,6 +144,21 @@ final class BodyImagePlacementIOSTests: XCTestCase {
         XCTAssertEqual(box.text, original)
     }
 
+    /// The body is a UIKit text view, so SwiftUI's keyboard toolbar never
+    /// shows above it — only its own `inputAccessoryView` does. 📷 has to be
+    /// there; six items is the most that fits, so 키보드 닫기 made room.
+    func testBodyKeyboardBarOffersPhotoInsteadOfDismiss() throws {
+        let textView = try openEntryEditor()
+
+        let titles =
+            try XCTUnwrap(textView.inputAccessoryView as? UIToolbar).items?
+            .compactMap(\.accessibilityLabel) ?? []
+
+        XCTAssertTrue(titles.contains("사진"), "\(titles)")
+        XCTAssertFalse(titles.contains("키보드 닫기"), "\(titles)")
+        XCTAssertLessThanOrEqual(titles.count, 6)
+    }
+
     /// Images are drawn by the text view's own `draw(_:)`, which UIKit does
     /// not rerun just because the characters changed. A move that only
     /// swaps two image lines changed no glyphs anyone can see, so without an
