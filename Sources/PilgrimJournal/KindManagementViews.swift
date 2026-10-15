@@ -24,6 +24,7 @@ struct KindManagementSheet: View {
                 Section {
                     ForEach(model.kindCatalog.creatableKinds) { definition in
                         kindRow(definition)
+                            .deleteDisabled(!definition.kind.canBeDeleted)
                     }
                     .onMove(perform: moveKinds)
                     .onDelete { offsets in
@@ -143,7 +144,9 @@ struct KindManagementSheet: View {
         .accessibilityHint("이름, 색, 아이콘을 바꿉니다.")
         #if os(macOS)
         .contextMenu {
-            Button("삭제", role: .destructive) { requestDeletion(of: definition) }
+            if definition.kind.canBeDeleted {
+                Button("삭제", role: .destructive) { requestDeletion(of: definition) }
+            }
         }
         #endif
     }
@@ -163,6 +166,9 @@ struct KindManagementSheet: View {
     /// the kind's entries should go.
     private func requestDeletion(of definition: KindDefinition) {
         errorMessage = nil
+        // The domain still accepts these deletions (older builds and other
+        // devices may send them); the app just never starts one.
+        guard definition.kind.canBeDeleted else { return }
         do {
             let count = try model.entryCount(for: definition.kind)
             guard count > 0 else {

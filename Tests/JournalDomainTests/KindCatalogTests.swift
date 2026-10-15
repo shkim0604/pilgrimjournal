@@ -68,6 +68,12 @@ final class KindCatalogTests: XCTestCase {
         }
     }
 
+    func testOnlyMemoAndCustomKindsCanBeDeletedFromTheApp() {
+        XCTAssertEqual(
+            JournalKind.builtIns.filter(\.canBeDeleted), [.memo])
+        XCTAssertTrue(JournalKind.custom().canBeDeleted)
+    }
+
     func testDeleteRequiresActiveOtherTarget() throws {
         var catalog = KindCatalog()
         assertThrows(.invalidMoveTarget) {
