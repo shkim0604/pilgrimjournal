@@ -127,7 +127,36 @@ swift run ShareCardEval --json /tmp/share-card-run.json
 - **출력:** 기록별 PASS/FAIL과 검사 항목, 호출 수·지연 시간, 마지막에 요약 점수
   (검사 통과 수/전체), 항목별 정확도, 지연 중앙값·p90·첫 호출, guardrail 건너뜀 수.
   "데드라인(모델 날짜만)"과 "카드에 남은 제3자 이름"은 참고용으로 점수에서 뺀다.
-- **프롬프트를 바꾸면 `SharePrompts.version`을 올린다.** 요약과 JSON에 찍혀서 어떤
+- **일기 → 기도제목 검토 (`--prayer-requests`)**: 채점 대신, 한 페이지 분량의 지어낸 일기
+  21개(`PrayerDiaryFixtures.swift`)를 새 기도제목 프롬프트와 이전 기도 카드 프롬프트로 각각
+  돌려 나란히 출력한다. 사람이 읽고 판단하는 용도라 점수는 없다. `--json`으로 저장하면
+  검토 페이지에 그대로 넣을 수 있다.
+
+  ```sh
+  swift run ShareCardEval --prayer-requests                 # 전체 21개 (약 1분)
+  swift run ShareCardEval --prayer-requests --only camping,friend-depression
+  swift run ShareCardEval --prayer-requests --json /tmp/prayer-run.json
+  ```
+
+- **프롬프트 실험실 (`--serve`)**: 기도제목 프롬프트를 브라우저에서 직접 고쳐 돌려 보는
+  페이지. 이 Mac의 loopback(localhost)에서만 열리고, 모델도 이 Mac에서 돈다. Claude
+  데스크톱 앱에서는 `.claude/launch.json`의 `prompt-lab`으로 브라우저 패널에 연다.
+
+  ```sh
+  swift run ShareCardEval --serve                     # http://localhost:8765
+  swift run ShareCardEval --serve --log-dir /tmp/lab  # 지어낸 일기 실행 기록을 lab-runs.jsonl로
+  ```
+
+  - 지시문과 요청 템플릿(`{날짜}` `{제목}` `{본문}`)을 고치고 일기를 골라 돌리면 직전
+    실행과 나란히 나온다. 실행 기록·편집 중인 프롬프트는 브라우저 localStorage에 남는다.
+  - 결과를 "고치기"로 고쳐 저장하면 **내 말투 예시**로 쌓이고(최근 6줄), 다음 실행부터
+    지시문 끝에 "이 사용자가 직접 고친 기도제목" 블록으로 자동으로 붙는다. 앱에서 "사람이
+    고친 초안으로 프롬프트를 개인화"하는 방식을 미리 시험하는 용도.
+  - 직접 붙여 넣은 일기는 브라우저 저장소와 `--log-dir` 기록 어디에도 내용을 남기지
+    않는다. 다른 사이트에서 온 요청(`Origin`이 다른 요청)은 거부한다.
+
+- **프롬프트를 바꾸면 `SharePrompts.version`을 올린다.** 기도제목 프롬프트는
+  `SharePrompts.prayerRequestVersion`을 따로 올린다. 요약과 JSON에 찍혀서 어떤
   프롬프트의 점수인지 구분된다. 의미 있는 결과는 `docs/roadmap.md`의 성능 테스트 표에
   적는다. JSON 결과는 저장소 밖에 둔다.
 
