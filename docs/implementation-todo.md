@@ -6,6 +6,19 @@
 
 ## 대기 중
 
+- **계정 삭제 후 다른 기기를 위한 삭제 표시 record** (2026-10-16, 1.1.0 (29)에서 미룸)
+  계정 삭제(`AccountDeletionService`)는 이 기기와 iCloud만 지운다. 같은 계정으로 쓰던
+  다른 기기에 로컬 사본이 남아 있으면 그 기기에서 앱을 열 때 Core Data mirroring이
+  zone을 다시 만들고 전부 다시 올린다. 지금은 확인 화면에서 "다른 기기에서 먼저 앱을
+  삭제하세요"라고 경고만 한다. 개선안:
+  - 삭제 시 기본 zone에 `PilgrimJournalAccountDeletion` 같은 record(삭제 시각과
+    Apple 사용자 해시만)를 남기고, 앱 시작·`CKAccountChanged` 시 store를 열기 전에
+    확인해 해당 사용자의 로컬 범위를 지우고 로그아웃한다.
+  - 새로 로그인한 사용자가 binding을 만들 때 그 record를 지워야 하므로, binding
+    검사(`CloudIdentityBindingService`)와 순서를 맞춰야 한다.
+  - 새 record type이라 Development 스키마 생성과 Production 배포가 필요하다
+    (`docs/known-issues.md` "CloudKit schema drift").
+
 - **영문 현지화 남은 것** — 영어 번역(2026-10-15)과 다듬기 이후:
   - 한 단어를 여러 곳에서 써서 영어가 달라야 하는 곳은 `editor.heading`처럼 영어
     키에 한국어 `defaultValue`를 주는 방식으로 나눈다(`String(localized:

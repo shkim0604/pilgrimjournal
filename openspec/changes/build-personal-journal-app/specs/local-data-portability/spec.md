@@ -46,6 +46,33 @@ macOS와 iPhone 앱은 기록 생성·편집·검색에 네트워크 연결을 �
 - **WHEN** 앱 업데이트 전에 생성된 로컬 기록이 있는 기기에서 처음 Apple 로그인을 완료한다
 - **THEN** 시스템은 해당 데이터 범위를 처음 로그인한 Apple 사용자 식별자에 귀속하고 이후 다른 식별자에는 노출하지 않는다
 
+### Requirement: 앱 내 계정 삭제
+Sign in with Apple로 앱에 접근하는 사용자는 앱 안에서 계정과 데이터를 삭제할 수 있어야 한다(MUST). 삭제는 최종 확인 후에만 실행해야 하며(MUST), 클라우드 단계가 실패하면 로컬 데이터를 삭제해서는 안 된다(MUST NOT). 같은 기기의 다른 Apple 사용자 데이터를 삭제해서는 안 된다(MUST NOT).
+
+#### Scenario: iCloud 연결 상태의 계정 삭제
+- **WHEN** iCloud가 연결된 사용자가 설정 › Apple 로그인 › 계정 삭제에서 최종 확인을 한다
+- **THEN** 시스템은 열린 저장소를 닫고 CloudKit private database의 Apple 사용자 binding record와 mirroring zone을 삭제한 뒤 이 사용자의 로컬 범위, 범위별 설정, iCloud 키-값 노트북·유형 키, Keychain 로그인 session과 앱 잠금 항목을 삭제하고 로그인 화면에 삭제 완료와 Apple 로그인 연결 해제 경로를 안내한다
+
+#### Scenario: 클라우드 삭제 실패
+- **WHEN** 네트워크 또는 iCloud 오류로 CloudKit 삭제가 실패한다
+- **THEN** 시스템은 로컬 데이터와 로그인 상태를 그대로 두고 다시 시도 또는 기록으로 돌아가기를 제공한다
+
+#### Scenario: 다른 사용자에게 귀속된 iCloud
+- **WHEN** 현재 iCloud binding이 삭제를 요청한 사용자와 다른 Apple 사용자 해시를 가진다
+- **THEN** 시스템은 iCloud와 로컬 데이터를 모두 삭제하지 않고 오류를 표시한다
+
+#### Scenario: local-only 상태의 계정 삭제
+- **WHEN** iCloud를 사용할 수 없는 기기에서 사용자가 계정 삭제를 확인한다
+- **THEN** 시스템은 클라우드 단계를 건너뛰고 이 기기의 해당 사용자 데이터와 로그인 정보만 삭제하며, 확인 화면에서 iCloud 기록은 남는다는 사실을 미리 알린다
+
+#### Scenario: 같은 기기의 다른 Apple 사용자 데이터
+- **WHEN** 기기에 다른 Apple 사용자의 계정 범위나 그 사용자가 claim한 legacy 저장소가 있다
+- **THEN** 시스템은 해당 데이터를 남기고, 삭제 후에는 다른 Apple 사용자가 차단 없이 새로 로그인할 수 있게 한다
+
+#### Scenario: 다른 기기의 로컬 사본
+- **WHEN** 사용자가 계정 삭제 확인 화면을 연다
+- **THEN** 시스템은 다른 기기에서 먼저 앱을 삭제하지 않으면 그 기기의 로컬 사본이 iCloud에 다시 올라갈 수 있다고 경고한다
+
 ### Requirement: 시스템 iCloud 계정 사용과 계정 격리
 Apple 로그인은 앱 접근 인증에만 사용하고 앱은 기기의 시스템 iCloud 계정 상태를 별도로 관찰해야 한다(MUST). 서로 다른 Apple 로그인 사용자, iCloud 계정과 local-only 범위의 persistent store, 검색 인덱스와 pending queue는 격리되어야 한다(MUST).
 

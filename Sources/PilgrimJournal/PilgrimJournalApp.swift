@@ -149,13 +149,41 @@ struct PilgrimJournalApp: App {
             && CloudKitEntitlement.includes(
                 containerIdentifier: requestedCloudIdentifier
             )
-        let appLock =
+        let appLockStore: any SecureValueStore =
             Self.isVisualTesting
-            ? AppLockCoordinator(
-                service: AppLockService(store: InMemorySecureValueStore())
-            )
-            : AppLockCoordinator()
+            ? InMemorySecureValueStore()
+            : KeychainSecureValueStore()
+        let appLock = AppLockCoordinator(service: AppLockService(store: appLockStore))
         _appLock = StateObject(wrappedValue: appLock)
+        let isVisualTesting = Self.isVisualTesting
+        let visualTestingRoot = FileManager.default.temporaryDirectory.appending(
+            path: "PilgrimJournal-VisualTesting-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        let sessionService = AppleAuthenticationSessionService()
+        // Only a real Apple user's iCloud data is erased; the visual-testing,
+        // developer-bypass and entitlement-less builds keep the cloud step a
+        // no-op, matching how they skip the identity binding below.
+        let cloudEraser: (any CloudAccountDataErasing)? =
+            cloudKitEnabled && Self.developerSignInBypassUser == nil
+            ? CloudKitAccountDataEraser(containerIdentifier: requestedCloudIdentifier)
+            : nil
+        let accountDeleter = AccountDeletionService(
+            rootURLProvider: {
+                isVisualTesting ? visualTestingRoot : try JournalPaths.applicationRoot()
+            },
+            cloudEraser: cloudEraser,
+            sessionService: sessionService,
+            appLockStore: appLockStore,
+            standardDefaultsKeys: ["has-completed-onboarding"],
+            cloudKeyValueKeys: AppModel.cloudKeyValueKeys + [KindCatalogStore.key],
+            temporaryItems: [
+                FileManager.default.temporaryDirectory.appending(
+                    path: "AttachmentPreview",
+                    directoryHint: .isDirectory
+                )
+            ]
+        )
         let cloudIdentityChecker: any CloudIdentityBindingChecking
         if Self.isVisualTesting {
             cloudIdentityChecker = VisualTestingCloudIdentityChecker()
@@ -174,15 +202,12 @@ struct PilgrimJournalApp: App {
         }
         _authentication = StateObject(
             wrappedValue: AppleAuthenticationCoordinator(
+                service: sessionService,
                 cloudIdentityChecker: cloudIdentityChecker,
+                accountDeleter: accountDeleter,
                 bypassForVisualTesting: Self.isVisualTesting
                     || Self.developerSignInBypassUser != nil
             )
-        )
-        let isVisualTesting = Self.isVisualTesting
-        let visualTestingRoot = FileManager.default.temporaryDirectory.appending(
-            path: "PilgrimJournal-VisualTesting-\(UUID().uuidString)",
-            directoryHint: .isDirectory
         )
         _journalSession = StateObject(
             wrappedValue: JournalSessionController(
@@ -224,6 +249,18 @@ struct PilgrimJournalApp: App {
                 {
                     PrivacyShieldView()
                 }
+                if authentication.accountDeletionPhase != .idle {
+                    AccountDeletionStatusView(
+                        phase: authentication.accountDeletionPhase,
+                        retry: {
+                            Task { await authentication.deleteAccount(using: journalSession) }
+                        },
+                        returnToJournal: {
+                            authentication.dismissAccountDeletionFailure()
+                            Task { await prepareJournalSession() }
+                        }
+                    )
+                }
             }
             .environmentObject(appLock)
             .environmentObject(authentication)
@@ -235,9 +272,12 @@ struct PilgrimJournalApp: App {
             .sheet(
                 isPresented: Binding(
                     get: {
+                        // Account deletion resets onboarding while the
+                        // journal is still authenticated; don't pop it then.
                         authentication.canAccessJournal
                             && !hasCompletedOnboarding
                             && !Self.isVisualTesting
+                            && authentication.accountDeletionPhase == .idle
                     },
                     set: { _ in }
                 )
@@ -257,10 +297,17 @@ struct PilgrimJournalApp: App {
                     journalSession.deactivate()
                 }
             }
+            .onChange(of: authentication.didCompleteAccountDeletion) { _, didDelete in
+                if didDelete {
+                    appLock.resetAfterAccountDeletion()
+                }
+            }
             .onReceive(
                 NotificationCenter.default.publisher(for: .CKAccountChanged)
             ) { _ in
                 Task {
+                    // Reopening the store mid-deletion would re-upload it.
+                    guard !authentication.isDeletingAccount else { return }
                     await authentication.refreshCloudIdentityBinding()
                     guard authentication.canAccessJournal,
                         let identifier = authentication.currentUserIdentifier
@@ -481,7 +528,9 @@ struct PilgrimJournalApp: App {
     #endif
 
     private func prepareJournalSession() async {
-        guard authentication.canAccessJournal else { return }
+        guard authentication.canAccessJournal,
+            !authentication.isDeletingAccount
+        else { return }
         let identifier: String
         if Self.isVisualTesting {
             identifier = "visual-testing-user"

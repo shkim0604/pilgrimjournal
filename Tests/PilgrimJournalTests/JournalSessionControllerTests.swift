@@ -278,5 +278,85 @@ final class JournalSessionControllerTests: XCTestCase {
         XCTAssertNil(controller.activeScope)
         XCTAssertNil(controller.pendingMigration)
     }
+
+    // A pending migration keeps the local scope open while iCloud is
+    // reachable; deletion must still erase iCloud, then every scope.
+    func testAccountDeletionErasesICloudEvenWhileLocalScopeIsPending() async throws {
+        let parent = FileManager.default.temporaryDirectory.appending(
+            path: "journal-account-deletion-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        let root = parent.appending(path: "PilgrimJournal", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: parent) }
+        var location = JournalStorageLocation.localOnly
+        let controller = JournalSessionController(
+            rootURL: root,
+            cloudKitContainerIdentifier: nil,
+            storageLocationProvider: { location }
+        )
+        await controller.activate(appleUserIdentifier: "apple-user")
+        let localModel = try XCTUnwrap(controller.appModel)
+        _ = try localModel.repository.save(
+            JournalEntryDraft(kind: .memo, title: "로컬 기록"),
+            deviceID: "iPhone",
+            at: Date(timeIntervalSince1970: 10)
+        )
+        location = .iCloud(accountHash: "icloud-account-a")
+        await controller.activate(appleUserIdentifier: "apple-user", forceRefresh: true)
+        XCTAssertNotNil(controller.pendingMigration)
+
+        let sessionService = AppleAuthenticationSessionService(store: InMemorySecureValueStore())
+        let eraser = RecordingCloudEraser()
+        let coordinator = AppleAuthenticationCoordinator(
+            service: sessionService,
+            credentialChecker: AuthorizedCredentialChecker(),
+            accountDeleter: AccountDeletionService(
+                rootURLProvider: { root },
+                cloudEraser: eraser,
+                sessionService: sessionService,
+                appLockStore: InMemorySecureValueStore(),
+                preferences: IgnoredPreferences()
+            )
+        )
+        await coordinator.acceptAuthorizedUser(identifier: "apple-user")
+
+        let deleted = await coordinator.deleteAccount(using: controller)
+
+        XCTAssertTrue(deleted)
+        XCTAssertNil(controller.appModel)
+        XCTAssertEqual(eraser.identifiers, ["apple-user"])
+        let appleUserHash = JournalAccountScope(
+            appleUserIdentifier: "apple-user",
+            storageLocation: .localOnly
+        ).appleUserHash
+        let accountDirectory = JournalAccountScopeRegistry(root: root).accountDirectory(
+            appleUserHash: appleUserHash
+        )
+        XCTAssertFalse(FileManager.default.fileExists(atPath: accountDirectory.path))
+    }
+}
+
+@MainActor
+private struct AuthorizedCredentialChecker: AppleCredentialStateChecking {
+    func credentialState(for userIdentifier: String) async throws -> AppleCredentialState {
+        .authorized
+    }
+}
+
+private final class RecordingCloudEraser: CloudAccountDataErasing, @unchecked Sendable {
+    private let lock = NSLock()
+    private var recorded: [String] = []
+
+    var identifiers: [String] { lock.withLock { recorded } }
+
+    func eraseCloudData(appleUserIdentifier: String) async throws {
+        lock.withLock { recorded.append(appleUserIdentifier) }
+    }
+}
+
+private struct IgnoredPreferences: AccountPreferencesClearing {
+    func removeSuite(named suiteName: String) {}
+    func removeStandardValues(forKeys keys: [String]) {}
+    func removeCloudValues(forKeys keys: [String]) {}
 }
 #endif

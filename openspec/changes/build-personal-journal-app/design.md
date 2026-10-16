@@ -43,6 +43,8 @@ Flutter도 두 플랫폼을 지원하지만 CloudKit, background notification, i
 
 이 앱은 자체 계정 서버가 없으므로 Apple identity token을 서버 session으로 교환하지 않는다. 일시적인 네트워크 오류로 credential state를 확인할 수 없을 때는 마지막으로 승인된 Keychain session으로 오프라인 로컬 접근을 유지하고 연결 후 다시 확인한다. 로그아웃은 인증 session만 제거하며 journal 데이터는 삭제하지 않는다.
 
+계정 삭제(App Store 지침 5.1.1(v))는 로그아웃과 별개의 명시적 흐름이다. 설정 › Apple 로그인 › 계정 삭제에서 최종 확인을 받으면 열린 저장소를 닫고, iCloud가 연결된 경우 CloudKit private database의 binding record와 Core Data mirroring zone을 먼저 지운다. 클라우드 단계가 실패하면 로컬 데이터를 건드리지 않고 재시도 오류를 보인다. 성공하면 해당 Apple 사용자의 계정 범위 디렉터리, 기록 receipt, 그 사용자가 claim한 legacy 저장소, 범위별 UserDefaults suite, iCloud 키-값 노트북·유형 키, Keychain의 Apple 로그인 session과 앱 잠금 항목을 지우고 로그인 화면으로 돌아간다. 다른 Apple 사용자의 로컬 범위는 남긴다. 서버가 없으므로 Apple REST 토큰 revoke 대신 "설정 › Apple 계정 › Apple로 로그인 › Pilgrim › 사용 중단" 경로를 안내한다. 다른 기기의 로컬 사본이 다시 올라갈 수 있으므로 확인 화면에서 다른 기기의 앱을 먼저 지우라고 경고한다.
+
 업데이트 전에 생성된 기존 로컬 데이터는 해당 설치에서 처음 로그인한 Apple 사용자 식별자에 귀속한다. 다른 식별자가 로그인하면 기존 범위를 노출하거나 병합하지 않고, 사용자별 저장소 격리가 완료되기 전에는 안전하게 접근을 차단한다. Sign in with Apple은 앱 접근 identity이고 CloudKit private database 선택은 시스템 iCloud 계정이 담당하므로 두 상태를 별도로 표시하고 검증한다.
 
 Apple은 Sign in with Apple 계정과 시스템 iCloud 계정의 이메일 또는 Apple ID를 앱이 직접 비교하는 API를 제공하지 않는다. 따라서 현재 CloudKit private database의 고정 binding record에 로그인 credential의 opaque `user` 값을 앱 범위에서 SHA-256한 값만 저장한다. 빈 database는 최초 로그인 사용자에게 원자적으로 귀속하고, 기존 binding과 다른 사용자는 journal UI 진입을 차단한다. 원본 `user`, 이름과 이메일은 CloudKit에 저장하지 않는다. iCloud를 확인할 수 없는 동안은 기기 Keychain의 기존 사용자 귀속을 보안 경계로 사용해 local-only 접근만 허용한다.

@@ -111,6 +111,26 @@
         }
       }
     },
+    "iCloud의 기록은 삭제했지만 이 기기의 데이터를 모두 지우지 못했습니다. 다시 시도해 주세요. (%@)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your entries in iCloud were deleted, but not all data on this device could be removed. Please try again. (%@)"
+          }
+        }
+      }
+    },
+    "iCloud의 기록을 삭제하지 못했습니다. 이 기기의 데이터는 그대로 두었습니다. 네트워크와 iCloud 연결을 확인한 뒤 다시 시도해 주세요. (%@)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t delete your entries in iCloud. The data on this device was left untouched. Check your network and iCloud connection, then try again. (%@)"
+          }
+        }
+      }
+    },
     "revision snapshot이 없습니다." : {
       "localizations" : {
         "en" : {
@@ -151,6 +171,16 @@
         }
       }
     },
+    "기록 저장 위치를 찾지 못해 아무것도 삭제하지 않았습니다. %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t find where entries are stored, so nothing was deleted. %@"
+          }
+        }
+      }
+    },
     "기존 로컬 데이터는 다른 Apple 로그인 사용자에게 귀속되어 있습니다." : {
       "localizations" : {
         "en" : {
@@ -167,6 +197,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Passcode must be at least 6 characters."
+          }
+        }
+      }
+    },
+    "삭제할 Apple 로그인 사용자를 확인할 수 없습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t identify the Sign in with Apple user to delete."
           }
         }
       }
@@ -277,6 +317,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Immediately"
+          }
+        }
+      }
+    },
+    "현재 iCloud 저장 공간은 다른 Apple 로그인 사용자에게 연결되어 있어 아무것도 삭제하지 않았습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This iCloud storage is linked to a different Sign in with Apple user, so nothing was deleted."
           }
         }
       }

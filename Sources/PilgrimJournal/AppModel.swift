@@ -147,6 +147,9 @@ final class AppModel: ObservableObject {
 
     private static let notebookDefaultsKey = "journal-notebooks"
     private static let deletedNotebookDefaultsKey = "journal-deleted-notebooks"
+    /// The notebook keys mirrored to the iCloud key-value store, which
+    /// account deletion clears.
+    static let cloudKeyValueKeys = [notebookDefaultsKey, deletedNotebookDefaultsKey]
 
     init(
         repository: any JournalRepository,

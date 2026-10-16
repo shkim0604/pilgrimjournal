@@ -41,6 +41,22 @@ public struct JournalAccountScope: Codable, Equatable, Sendable {
         "Accounts/\(appleUserHash)/\(storageLocation.directoryName)"
     }
 
+    /// The UserDefaults suite that keeps this scope's notebook and kind
+    /// catalog preferences.
+    public var userDefaultsSuiteName: String {
+        Self.userDefaultsSuiteName(
+            appleUserHash: appleUserHash,
+            directoryName: storageLocation.directoryName
+        )
+    }
+
+    public static func userDefaultsSuiteName(
+        appleUserHash: String,
+        directoryName: String
+    ) -> String {
+        "PilgrimJournal.\(appleUserHash).\(directoryName)"
+    }
+
     public static func iCloudAccountHash(identityTokenData: Data) -> String {
         ContentHash.sha256Hex(
             "PilgrimJournal.iCloudAccount.v1\u{1F}"
@@ -173,6 +189,34 @@ public struct JournalAccountScopeRegistry: Sendable {
             ),
             to: migrationReceiptURL(from: source, to: destination)
         )
+    }
+
+    /// Every scope one Apple user has on this device: `Accounts/<hash>/`.
+    public func accountDirectory(appleUserHash: String) -> URL {
+        root.appending(path: "Accounts/\(appleUserHash)", directoryHint: .isDirectory)
+    }
+
+    /// Migration receipts kept for one Apple user: `AccountScopes/<hash>/`.
+    public func bookkeepingDirectory(appleUserHash: String) -> URL {
+        root.appending(path: "AccountScopes/\(appleUserHash)", directoryHint: .isDirectory)
+    }
+
+    /// Whether the pre-account-scope store was claimed by this Apple user.
+    /// An unreadable claim counts as someone else's, so it is never removed.
+    public func isLegacyDataClaimed(byAppleUserHash appleUserHash: String) -> Bool {
+        guard FileManager.default.fileExists(atPath: legacyClaimURL.path),
+            let claim = try? decode(LegacyClaim.self, at: legacyClaimURL)
+        else {
+            return false
+        }
+        return claim.appleUserHash == appleUserHash
+    }
+
+    /// Forgets who claimed the legacy store, so the next Apple user to sign in
+    /// is not refused as a different owner.
+    public func removeLegacyClaim() throws {
+        guard FileManager.default.fileExists(atPath: legacyClaimURL.path) else { return }
+        try FileManager.default.removeItem(at: legacyClaimURL)
     }
 
     private var legacyClaimURL: URL {
