@@ -68,5 +68,9 @@ private actor InMemoryCloudIdentityBindingStore: CloudIdentityBindingStore {
         storedHash = subjectHash
         return subjectHash
     }
+
+    func deleteBinding() async throws {
+        storedHash = nil
+    }
 }
 #endif

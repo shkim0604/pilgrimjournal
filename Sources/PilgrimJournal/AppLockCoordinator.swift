@@ -229,6 +229,21 @@ final class AppLockCoordinator: ObservableObject {
         }
     }
 
+    /// Forgets the in-memory lock state after account deletion removed the
+    /// Keychain item, so the next sign-in starts unlocked and re-reads it.
+    func resetAfterAccountDeletion() {
+        retryTask?.cancel()
+        retryTask = nil
+        configuration = AppLockConfiguration()
+        isLocked = false
+        isPrivacyShieldVisible = false
+        retryAfter = nil
+        errorMessage = nil
+        backgroundedAt = nil
+        systemAuthenticationGraceUntil = nil
+        hasBootstrapped = false
+    }
+
     private func reloadConfiguration() async {
         do {
             configuration = try await service.configuration()

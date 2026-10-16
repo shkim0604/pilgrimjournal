@@ -6,7 +6,29 @@
 
 ## 미룬 항목 (재개 필요)
 
-- [ ] **1.1.0 (28) — 심사 제출됨, 출시 전 게이트** (2026-10-15). iOS·macOS 둘 다
+- [ ] **1.1.0 (29) — App Review 반려 대응: 계정 삭제·지원 페이지** (2026-10-16,
+      브랜치 `fix/account-deletion`). 1.1.0 (28)이 2026-10-16 두 가지로 반려됐다.
+      - **5.1.1(v)**: Sign in with Apple로 계정을 만드는데 앱 안에 계정 삭제가
+        없었다. → 설정 › Apple 로그인 › `계정 삭제` 추가(`AccountDeletionService`,
+        범위와 순서는 `docs/privacy.md` "계정 삭제"). 서버가 없어 Apple 토큰
+        revoke 대신 "설정 › Apple 계정 › Apple로 로그인 › Pilgrim › 사용 중단"을
+        안내한다.
+      - **1.5**: Support URL(`…chatgpt.site/support`)이 동작하는 지원 페이지가
+        아니었다. → `site/index.html`(한·영 정적 페이지)을 만들어 공개 저장소
+        `shkim0604/pilgrim-support`의 GitHub Pages로 배포했다(2026-10-16):
+        https://shkim0604.github.io/pilgrim-support/ — 앱의
+        `SupportLinks.supportPage`에 반영. 페이지를 고치면 `site/index.html`을 그
+        저장소에 복사해 푸시한다. **App Store Connect Support URL 교체는 아직.**
+      - 자동 테스트(`AccountDeletionServiceTests`, coordinator·session 테스트)와
+        `scripts/check.sh`, 서명 없는 iOS/macOS 빌드는 통과. 빌드 번호 29.
+      - 남은 일: 실기기 세션 **B-3**(`docs/device-verification.md`, 녹화 포함) →
+        녹화와 함께 답장(`docs/app-review/2026-10-1.1.0.md` 초안) → 29 업로드·재제출.
+      - 계정 바인딩 삭제 경로를 새로 만들었으므로 완료 목록의 **B-2**(계정 전환·
+        격리)와 **C-4**(CloudKit record 삭제 수렴)를 이 빌드로 다시 돌린다.
+      - CloudKit 스키마 변경 없음(삭제만 함) — 스키마 배포 불필요.
+      - 아래 1.1.0 (28) 출시 전 게이트(편집기 입력 등)는 29에서 그대로 유효하다.
+
+- [ ] **1.1.0 (28) — 심사 반려됨(2026-10-16, 5.1.1(v)·1.5), 29로 대체** (2026-10-15). iOS·macOS 둘 다
       업로드 후 심사 제출(Xcode 계정 인증, API 키 없이 `-allowProvisioningUpdates`).
       새 아이콘·홈 화면 이름 "Pilgrim" 포함. 아카이브는 `.release/build28/`.
       1.0.1 (25) 이후 CloudKit 스키마 변경 없음. 수동 출시로 설정했으니 승인 후
@@ -261,10 +283,12 @@
       않음. 개인정보 관점에서 가장 무거운 게이트였다. *구체적 절차·기기 구성은
       기록해두지 않았으므로, 동기화나 계정 바인딩
       (`CloudIdentityBinding`/`CloudAccountMonitor`)을 손대면 다시 돌릴 것.*
+      **2026-10-16 계정 삭제가 binding 삭제를 추가해 재실행 필요** (위 1.1.0 (29)).
 - [x] **세션 C-4 — 휴지통 영구 삭제 수렴** (2026-08-15 사용자 확인, openspec
       `add-trash-permanent-delete`). canonical 타입에 대해 실제 CKRecord 삭제를
       일으키는 첫 경로였고 2대 기기에서 수렴 확인. *삭제 경로나 tombstone
-      처리를 바꾸면 다시 돌릴 것.*
+      처리를 바꾸면 다시 돌릴 것.* **2026-10-16 계정 삭제(zone 전체 삭제)가
+      새 삭제 경로라 재실행 필요** (위 1.1.0 (29)).
 - [x] 세션 S — build 15 smoke test (다중 선택, 앱 이름, iOS 목록 조작, 백업 피드백, 편집기 입력)
 - [x] 세션 A (A-1~A-4) — CloudKit 동기화 spike. SwiftData **go** 결정.
       대량 배치 성능(위 미룬 항목)만 이 결정에서 제외.

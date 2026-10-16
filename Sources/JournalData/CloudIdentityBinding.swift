@@ -45,6 +45,10 @@ public protocol CloudIdentityBindingChecking: Sendable {
 public protocol CloudIdentityBindingStore: Sendable {
     func loadSubjectHash() async throws -> String?
     func saveSubjectHashIfAbsent(_ subjectHash: String) async throws -> String
+    /// Removes the binding so the private database no longer belongs to any
+    /// Apple user. Only account deletion calls this; a missing record counts
+    /// as success.
+    func deleteBinding() async throws
 }
 
 public actor CloudIdentityBindingService: CloudIdentityBindingChecking {
@@ -127,6 +131,17 @@ public actor CloudKitIdentityBindingStore: CloudIdentityBindingStore {
                 throw CloudIdentityBindingStoreError.malformedBinding
             }
             return storedHash
+        }
+    }
+
+    public func deleteBinding() async throws {
+        try await requireAvailableAccount()
+        do {
+            _ = try await container.privateCloudDatabase.deleteRecord(
+                withID: Self.recordID
+            )
+        } catch let error as CKError where error.code == .unknownItem {
+            return
         }
     }
 

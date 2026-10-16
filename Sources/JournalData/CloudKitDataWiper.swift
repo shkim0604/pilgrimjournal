@@ -12,7 +12,8 @@ import Foundation
 ///
 /// The account binding record lives in the default zone and is deliberately
 /// left alone: it is not journal data, and removing it would unbind the
-/// CloudKit account from the Apple user that owns it.
+/// CloudKit account from the Apple user that owns it. In-app account deletion
+/// (`CloudKitAccountDataEraser`) removes the binding separately.
 public enum CloudKitDataWiper {
     /// Zone-name prefix that Core Data's CloudKit mirroring owns.
     private static let mirroringZonePrefix = "com.apple.coredata.cloudkit"

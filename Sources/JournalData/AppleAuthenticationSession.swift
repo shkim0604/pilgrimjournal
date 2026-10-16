@@ -109,6 +109,15 @@ public actor AppleAuthenticationSessionService {
         try save(state)
     }
 
+    /// Forgets everything this device remembers about Apple sign-in,
+    /// including which Apple user the local records were bound to and the
+    /// account email. Unlike `clearCurrentSession`, a different Apple user can
+    /// sign in afterwards, so only account deletion calls this — once that
+    /// user's records are gone.
+    public func deleteStoredState() throws {
+        try store.delete()
+    }
+
     private func loadState() throws -> StoredState? {
         guard let data = try store.load() else { return nil }
         guard let state = try? JSONDecoder().decode(StoredState.self, from: data),

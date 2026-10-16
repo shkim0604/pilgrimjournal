@@ -123,6 +123,26 @@ struct PrivacyInformationView: View {
                 Text("앱 잠금 비밀번호는 데이터베이스 또는 CloudKit 데이터 자체를 종단 간 암호화하는 별도 키가 아닙니다.")
                     .foregroundStyle(.secondary)
             }
+
+            Section("계정 삭제") {
+                Label("앱 안에서 삭제", systemImage: "person.crop.circle.badge.xmark")
+                Text(
+                    "설정 › Apple 로그인 › 계정 삭제에서 iCloud에 저장된 기록과 첨부, 이 기기의 데이터, 로그인 정보와 앱 잠금 설정을 삭제할 수 있습니다."
+                )
+                Text(
+                    "자체 서버가 없으므로 Apple 로그인 연결은 삭제 후 기기 설정에서 끊습니다: \(AccountDeletionGuidance.unlinkPath)"
+                )
+                .foregroundStyle(.secondary)
+            }
+
+            Section("지원") {
+                Link(destination: SupportLinks.supportPage) {
+                    Label("지원 페이지", systemImage: "safari")
+                }
+                Link(destination: SupportLinks.contactMail) {
+                    Label("이메일 문의 · \(SupportLinks.contactEmail)", systemImage: "envelope")
+                }
+            }
         }
         .navigationTitle("데이터 및 개인정보")
     }
