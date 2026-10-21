@@ -100,6 +100,10 @@ https://claude.ai/artifact/JV9krXXa9ZXz7D46JExdNq (2026-10-15, 비공개 링크)
 
 추출 방식은 아래 "요약·추출: Apple 온디바이스 모델" 참고.
 
+**1단계 (그룹 없음, 설계 검토 중):** 그룹보다 먼저, 기록 → 카드 → 시스템 공유
+시트(카카오톡, 메시지 등)로 온디바이스 추출과 카드 편집 UX를 확인한다. 앱은 아무것도
+올리지 않는다. 설계: `openspec/changes/add-share-card-phase1/`.
+
 ### 3. 공개 기간과 자동 소멸
 
 나눔은 영구 보관물이 아니라 **기한이 있는 대화**다. 기간이 끝나면 **서버에서
@@ -165,7 +169,30 @@ https://claude.ai/artifact/JV9krXXa9ZXz7D46JExdNq (2026-10-15, 비공개 링크)
 
 ## 기술 방향
 
-### 그룹 SNS 서버: 자체 백엔드 (결정)
+### 그룹 저장소: CloudKit (2026-10-21 변경)
+
+- **2026-10-21, 주인 요청으로 그룹 저장소를 자체 백엔드에서 CloudKit(iCloud
+  DB)으로 바꾼다.** 아래 "자체 백엔드 (결정)"과 비교표는 그때까지의 결정 기록으로
+  남긴다. 이 문서의 다른 절에 나오는 "서버"(서버에서 삭제, 서버로 보낸다 등)는
+  이제 그룹의 CloudKit 저장소로 읽는다.
+- 검토안: `openspec/changes/add-share-card-phase1/groups-cloudkit.md` — CKShare(만든
+  사람 private DB의 공유 zone)와 public DB + 그룹 키 암호화를 비교하고(제안:
+  CKShare), 위 기능 절의 결정 하나하나를 CloudKit이 강제할 수 있는지(유지), 앱
+  쪽에서만 지켜지는지(약화), 주인이 다시 정해야 하는지(결정)로 나눴다. 특히 **그룹
+  크기 제한 없음**(공유당 100명)과 **관리자 위임 투표**(소유권 이전 없음)는 CKShare로는
+  그대로 안 되고, 기한 삭제·초대 만료·구독자 확인·Daily Report는 앱 쪽에서만
+  지켜진다. App Review 1.2 신고·차단과 그룹을 포함한 계정 삭제도 같은 문서에 있다.
+- 서버가 없으므로 구독 확인은 각자의 기기(StoreKit)에서만 되고, Sign in with Apple
+  토큰 폐기는 지금처럼 하지 않는다.
+- **`docs/privacy.md`를 바꿔야 한다**: 지금 "public/shared CloudKit database ...
+  를 사용하지 않는다"고 적혀 있다. CKShare면 shared database를, public DB 안이면
+  public database를 쓰게 된다. 그룹 내용이 참가자들의 iCloud에 있다는 점과 공유
+  참가자 정보(iCloud 이름)가 다른 참가자에게 보일 수 있다는 점도 함께 적는다. "자체
+  기록 서버를 사용하지 않는다"는 CKShare 안에서는 그대로 지켜진다.
+- 그룹 데이터는 SwiftData CloudKit 미러링(shared DB 미지원)이 아니라 별도 어댑터
+  (`CKSyncEngine` 등)로 다룬다. 개인 기록장은 지금 저장소 그대로다.
+
+### (기록) 그룹 SNS 서버: 자체 백엔드 (2026-10-15 결정 → 2026-10-21 CloudKit으로 변경)
 
 - 그룹·글·댓글·반응(이모지·압축 사진)·초대 링크·공개 기간·관리자 투표는
   **자체 백엔드**가 맡는다. 기한 삭제, 토론 연장, 초대 링크 만료, 구독 만료 시
@@ -179,7 +206,7 @@ https://claude.ai/artifact/JV9krXXa9ZXz7D46JExdNq (2026-10-15, 비공개 링크)
 - 착수할 때 `docs/privacy.md`("자체 기록 서버를 사용하지 않는다")와 App Store
   개인정보 라벨을 함께 고쳐야 한다.
 
-#### Apple CloudKit으로 서버 없이 할 수는 없나? (검토 결과: 자체 백엔드 유지)
+#### Apple CloudKit으로 서버 없이 할 수는 없나? (2026-10-15 검토 결과: 자체 백엔드 유지 — 2026-10-21 뒤집힘, 위 "그룹 저장소: CloudKit" 참고)
 
 CloudKit은 개발자에게 사실상 무료다. private DB는 사용자 본인의 iCloud 용량을
 쓰고, public DB는 앱 활성 사용자 수에 비례해 무료 한도가 커진다(정확한 표는
