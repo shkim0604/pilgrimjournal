@@ -355,11 +355,14 @@ CI(`scripts/check.sh`, Xcode 빌드, iOS 시뮬레이터 테스트)는 모델을
 | `ShareCardImageView` | 그룹 피드 카드와 스크랩 미리보기에 같은 모양을 쓴다 |
 | 제3자 경고 | 그대로. 업로드 전에는 한 번 더 확인 |
 
-2단계가 새로 만드는 것: 자체 백엔드(그룹·글·댓글·반응·초대·기한 삭제·투표), 그룹 회원가입(표시
-이름·프로필), StoreKit 월 구독과 서버 검증, App Review 1.2 대응(신고·차단·관리자 삭제·이용약관
-동의), 서버 계정 삭제와 Sign in with Apple 토큰 폐기(서버가 생기므로 `docs/privacy.md`의 "revoke를
-하지 않는 이유"가 바뀐다), APNs·Daily Report, 스크랩 종류(canonical 모델 추가 → CloudKit 스키마
-드리프트 절차), 하단 탭 바, `docs/privacy.md`와 개인정보 라벨 개정.
+2단계가 새로 만드는 것 — 그룹 저장소는 2026-10-21 주인 요청으로 자체 백엔드에서 **CloudKit**으로
+바뀌었다. CKShare(공유 zone)와 public DB + 앱 암호화 두 안의 비교, 로드맵 요구사항별로 CloudKit이
+강제할 수 있는 것과 없는 것, 주인이 정할 것, 계정 삭제는 [`groups-cloudkit.md`](groups-cloudkit.md)에
+있다(제안: CKShare). 그 밖에: CloudKit 공유용 별도 동기화 어댑터(`CKSyncEngine` — SwiftData 미러링은
+shared DB를 지원하지 않음), 그룹 회원가입(표시 이름·프로필), StoreKit 월 구독(서버 검증 없음),
+App Review 1.2 대응(신고·차단·관리자 삭제·이용약관 동의), 그룹을 포함한 계정 삭제, 알림·Daily
+Report, 스크랩 종류(canonical 모델 추가 → CloudKit 스키마 드리프트 절차), 하단 탭 바,
+`docs/privacy.md`("public/shared CloudKit database를 사용하지 않는다")와 개인정보 라벨 개정.
 
 1단계에서 얻어 2단계 결정에 쓸 것: 초안을 얼마나 고치는지, 초안 없이 직접 쓰는 비율, 공유까지
 가는 비율. 분석 SDK가 없으므로 앱이 세지 않는다(`docs/privacy.md`) — 주인과 지인 사용자에게 직접
