@@ -2826,6 +2826,16 @@
         }
       }
     },
+    "사용 중" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Active"
+          }
+        }
+      }
+    },
     "사용 중인 태그가 없습니다." : {
       "localizations" : {
         "en" : {
@@ -3770,6 +3780,26 @@
         }
       }
     },
+    "유료 기능을 켰습니다" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium Features Unlocked"
+          }
+        }
+      }
+    },
+    "유료 코드 해제 초기화" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reset Premium Unlock"
+          }
+        }
+      }
+    },
     "유형" : {
       "localizations" : {
         "en" : {
@@ -3830,6 +3860,16 @@
         }
       }
     },
+    "유형 추가·삭제·편집은 유료 기능입니다. 코드는 입력한 기기에만 적용됩니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adding, deleting and editing types are premium features. A code applies only to the device you enter it on."
+          }
+        }
+      }
+    },
     "유형 추가·삭제·편집은 유료 버전에서 쓸 수 있습니다. 지금 있는 유형으로 기록을 쓰고 옮기는 것은 계속 할 수 있습니다." : {
       "localizations" : {
         "en" : {
@@ -3846,6 +3886,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Edit Types"
+          }
+        }
+      }
+    },
+    "유형 편집 열기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Edit Types"
           }
         }
       }
@@ -4198,6 +4248,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Previous Entry"
+          }
+        }
+      }
+    },
+    "이제 유형을 추가하고 이름·색·아이콘과 순서를 바꿀 수 있습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can now add types and change their names, colors, icons and order."
           }
         }
       }
@@ -5010,12 +5070,42 @@
         }
       }
     },
+    "코드" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Code"
+          }
+        }
+      }
+    },
     "코드 블록" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Code Block"
+          }
+        }
+      }
+    },
+    "코드 입력…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter Code…"
+          }
+        }
+      }
+    },
+    "코드가 올바르지 않습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "That code isn’t valid."
           }
         }
       }

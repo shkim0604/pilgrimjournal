@@ -15,7 +15,7 @@ struct SettingsView: View {
     @AppStorage(AppAppearance.storageKey) private var appearance =
         AppAppearance.defaultValue.rawValue
     #if DEBUG
-    @AppStorage(UnlockedFeatureAccess.simulateLockedKey) private var simulateLocked = false
+    @AppStorage(PremiumCodeFeatureAccess.simulateLockedKey) private var simulateLocked = false
     #endif
 
     var body: some View {
@@ -98,6 +98,20 @@ struct SettingsView: View {
                 NavigationLink("태그 및 Day One 분류 규칙") {
                     OrganizationSettingsView()
                 }
+            }
+            Section("유료 기능") {
+                if model.featureAccess.isPremium {
+                    LabeledContent("상태", value: String(localized: "사용 중"))
+                } else {
+                    Button {
+                        model.isPresentingPremiumNotice = true
+                    } label: {
+                        Label("코드 입력…", systemImage: "key")
+                    }
+                }
+                Text("유형 추가·삭제·편집은 유료 기능입니다. 코드는 입력한 기기에만 적용됩니다.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
             Section("데이터 관리") {
                 Button {
@@ -271,6 +285,14 @@ struct SettingsView: View {
             #if DEBUG
             Section("개발") {
                 Toggle("유료 기능 잠금 시뮬레이션", isOn: $simulateLocked)
+                if let access = model.featureAccess as? PremiumCodeFeatureAccess,
+                    access.isPremium
+                {
+                    Button("유료 코드 해제 초기화") {
+                        access.resetForTesting()
+                        model.featureAccessDidChange()
+                    }
+                }
                 Text("Debug 빌드에서만 보입니다. 켜면 유형 편집 대신 유료 안내가 뜹니다.")
                     .font(.caption)
                     .foregroundStyle(.secondary)

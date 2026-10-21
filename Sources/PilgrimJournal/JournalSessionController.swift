@@ -280,7 +280,8 @@ final class JournalSessionController: ObservableObject {
                 CloudAccountMonitor(containerIdentifier: $0)
             },
             notebookDefaults: defaults,
-            notebookCloudStore: syncedContainerIdentifier == nil ? nil : .default
+            notebookCloudStore: syncedContainerIdentifier == nil ? nil : .default,
+            featureAccess: PremiumCodeFeatureAccess()
         )
     }
 

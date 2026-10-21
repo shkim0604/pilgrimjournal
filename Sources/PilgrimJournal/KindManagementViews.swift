@@ -425,33 +425,114 @@ private struct KindRowLabel: View {
     }
 }
 
-/// Shown instead of "유형 편집" when kind management is locked.
+/// Shown instead of "유형 편집" when kind management is locked, and from
+/// Settings › 유료 기능. Entering the premium code unlocks it on this device.
 struct PremiumFeatureNoticeSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var model: AppModel
+    @State private var code = ""
+    @State private var isChecking = false
+    @State private var isRejected = false
+    @State private var isUnlocked = false
 
     var body: some View {
         VStack(spacing: JournalTheme.Spacing.regular) {
-            Image(systemName: "lock.fill")
+            Image(systemName: isUnlocked ? "checkmark.seal.fill" : "lock.fill")
                 .font(.system(size: 32, weight: .medium))
                 .foregroundStyle(JournalTheme.brandPrimary)
                 .accessibilityHidden(true)
-            Text("유료 기능")
-                .font(.title2.weight(.semibold))
-                .foregroundStyle(JournalTheme.ink)
-            Text("유형 추가·삭제·편집은 유료 버전에서 쓸 수 있습니다. 지금 있는 유형으로 기록을 쓰고 옮기는 것은 계속 할 수 있습니다.")
-                .multilineTextAlignment(.center)
-                .foregroundStyle(JournalTheme.inkSecondary)
-                .fixedSize(horizontal: false, vertical: true)
-            Button("닫기") { dismiss() }
-                .buttonStyle(.borderedProminent)
-                .tint(JournalTheme.brandPrimary)
-                .keyboardShortcut(.defaultAction)
+            if isUnlocked {
+                unlockedContent
+            } else {
+                lockedContent
+            }
         }
         .padding(JournalTheme.Spacing.large)
         .frame(maxWidth: 420)
         #if os(iOS)
-        .presentationDetents([.medium])
+        .presentationDetents([.medium, .large])
         #endif
+    }
+
+    @ViewBuilder
+    private var lockedContent: some View {
+        Text("유료 기능")
+            .font(.title2.weight(.semibold))
+            .foregroundStyle(JournalTheme.ink)
+        Text("유형 추가·삭제·편집은 유료 버전에서 쓸 수 있습니다. 지금 있는 유형으로 기록을 쓰고 옮기는 것은 계속 할 수 있습니다.")
+            .multilineTextAlignment(.center)
+            .foregroundStyle(JournalTheme.inkSecondary)
+            .fixedSize(horizontal: false, vertical: true)
+        HStack {
+            TextField("코드", text: $code)
+                .textFieldStyle(.roundedBorder)
+                .autocorrectionDisabled()
+                #if os(iOS)
+            .textInputAutocapitalization(.never)
+            // Codes are Latin letters and digits; a Korean keyboard would
+            // turn them into Hangul jamo.
+            .keyboardType(.asciiCapable)
+                #endif
+                .onSubmit(redeem)
+                .onChange(of: code) { _, _ in isRejected = false }
+            if isChecking {
+                ProgressView()
+                    .controlSize(.small)
+            } else {
+                Button("확인", action: redeem)
+                    .disabled(PremiumCode.normalized(code).isEmpty)
+                    .keyboardShortcut(.defaultAction)
+            }
+        }
+        if isRejected {
+            Text("코드가 올바르지 않습니다.")
+                .font(.caption)
+                .foregroundStyle(.red)
+        }
+        Button("닫기") { dismiss() }
+            .keyboardShortcut(.cancelAction)
+    }
+
+    @ViewBuilder
+    private var unlockedContent: some View {
+        Text("유료 기능을 켰습니다")
+            .font(.title2.weight(.semibold))
+            .foregroundStyle(JournalTheme.ink)
+        Text("이제 유형을 추가하고 이름·색·아이콘과 순서를 바꿀 수 있습니다.")
+            .multilineTextAlignment(.center)
+            .foregroundStyle(JournalTheme.inkSecondary)
+            .fixedSize(horizontal: false, vertical: true)
+        Button("유형 편집 열기") { openKindManagement() }
+            .buttonStyle(.borderedProminent)
+            .tint(JournalTheme.brandPrimary)
+            .keyboardShortcut(.defaultAction)
+        Button("닫기") { dismiss() }
+    }
+
+    private func redeem() {
+        guard !isChecking, !PremiumCode.normalized(code).isEmpty else { return }
+        isChecking = true
+        isRejected = false
+        let entered = code
+        Task {
+            let unlocked = await model.featureAccess.redeem(code: entered)
+            isChecking = false
+            if unlocked {
+                model.featureAccessDidChange()
+                isUnlocked = true
+            } else {
+                isRejected = true
+            }
+        }
+    }
+
+    /// One sheet replaces another, so wait for this one to finish closing.
+    private func openKindManagement() {
+        dismiss()
+        Task {
+            try? await Task.sleep(for: .milliseconds(450))
+            model.openKindManagement()
+        }
     }
 }
 
