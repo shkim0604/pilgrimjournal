@@ -971,6 +971,22 @@ struct EntryEditorView: View {
             Button("촬영") { photoRequest = .camera }
             Button("취소", role: .cancel) {}
         }
+        // AppModel flushes the open editor before a kind move, then asks it
+        // to reload the moved entry — the same pair as the macOS inline
+        // editor. Without them the next autosave writes the old kind and
+        // body back over the move.
+        .onReceive(
+            NotificationCenter.default.publisher(for: .saveJournalEntry)
+        ) { _ in
+            autosaveTask?.cancel()
+            _ = performAutosave()
+        }
+        .onChange(of: model.editorReloadRequest) { _, request in
+            guard let request, let id = persistedEntryID,
+                request.entryIDs.contains(id)
+            else { return }
+            resyncDraftFromRepository()
+        }
         .confirmationDialog(
             "기록 유형을 바꾸면 일부 상세 정보가 제거됩니다.",
             isPresented: $isConfirmingTypeChange,
@@ -985,6 +1001,23 @@ struct EntryEditorView: View {
         } message: {
             Text(discardedDetailLabels.joined(separator: ", "))
         }
+    }
+
+    /// See the macOS inline editor's `resyncDraftFromRepository`.
+    private func resyncDraftFromRepository() {
+        guard let id = persistedEntryID,
+            let latest = try? model.repository.entry(id: id)
+        else { return }
+        autosaveTask?.cancel()
+        let initial = latest.draft
+        draft = initial
+        tagsText = initial.visibleTags.joined(separator: ", ")
+        tagInputDraft = ""
+        lastSavedDraft = initial
+        lastSavedTagsText = tagsText
+        lastSavedTagInputDraft = tagInputDraft
+        lastSavedAt = latest.updatedAt
+        saveState = .saved
     }
 
     private var mobileMetadataBar: some View {
@@ -1044,7 +1077,11 @@ struct EntryEditorView: View {
     private var mobileMetadataSheet: some View {
         NavigationStack {
             Form {
-                Section("분류") {
+                Section(
+                    String(
+                        localized: "entryInfo.organizeSection", defaultValue: "분류",
+                        comment: "Entry info section holding the type and notebook pickers")
+                ) {
                     Picker("기록 유형", selection: kindBinding) {
                         ForEach(model.kindPickerOptions(including: draft.kind), id: \.kind) {
                             definition in
@@ -1161,7 +1198,11 @@ struct EntryEditorView: View {
     private var keyboardAccessory: MarkdownKeyboardAccessory {
         MarkdownKeyboardAccessory(
             leading: [
-                .init(title: String(localized: "제목"), systemImage: "textformat.size") {
+                .init(
+                    title: String(
+                        localized: "editor.heading", defaultValue: "제목",
+                        comment: "Markdown heading command"), systemImage: "textformat.size"
+                ) {
                     appendCommand(.h2)
                 },
                 .init(title: String(localized: "불릿"), systemImage: "list.bullet") {
@@ -2217,7 +2258,11 @@ struct BatchOrganizerView: View {
                         value: String(localized: "\(model.selectedEntryIDs.count)개")
                     )
                 }
-                Section("유형") {
+                Section(
+                    String(
+                        localized: "organize.typeSection", defaultValue: "유형",
+                        comment: "Header of the section that changes the type of selected entries")
+                ) {
                     Picker("변경할 유형", selection: $targetKind) {
                         Text("유형 유지").tag(nil as JournalKind?)
                         ForEach(model.kindPickerOptions(), id: \.kind) { definition in

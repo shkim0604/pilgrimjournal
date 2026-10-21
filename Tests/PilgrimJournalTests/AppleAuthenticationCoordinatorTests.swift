@@ -208,6 +208,156 @@ final class AppleAuthenticationCoordinatorTests: XCTestCase {
         XCTAssertTrue(coordinator.canAccessJournal)
         XCTAssertNotNil(coordinator.errorMessage)
     }
+
+    @MainActor
+    func testAccountDeletionSignsOutAndReportsCompletion() async throws {
+        let deleter = StubAccountDeleter(error: nil)
+        let coordinator = AppleAuthenticationCoordinator(
+            service: AppleAuthenticationSessionService(store: InMemorySecureValueStore()),
+            credentialChecker: StubCredentialChecker(result: .success(.authorized)),
+            accountDeleter: deleter
+        )
+        await coordinator.acceptAuthorizedUser(identifier: "apple-user")
+        XCTAssertTrue(coordinator.canAccessJournal)
+        let closed = ClosedFlag()
+
+        let deleted = await coordinator.deleteAccount(
+            storageLocation: .iCloud(accountHash: "cloud")
+        ) {
+            await closed.set()
+        }
+
+        XCTAssertTrue(deleted)
+        XCTAssertEqual(coordinator.state, .signedOut)
+        XCTAssertTrue(coordinator.didCompleteAccountDeletion)
+        XCTAssertEqual(coordinator.accountDeletionPhase, .idle)
+        XCTAssertNil(coordinator.currentUserIdentifier)
+        XCTAssertNil(coordinator.accountDisplayName)
+        let didClose = await closed.value
+        XCTAssertTrue(didClose)
+        XCTAssertEqual(
+            deleter.requests,
+            [
+                AccountDeletionRequest(
+                    appleUserIdentifier: "apple-user",
+                    storageLocation: .iCloud(accountHash: "cloud")
+                )
+            ]
+        )
+
+        // Signing in again starts over without the completion notice.
+        await coordinator.acceptAuthorizedUser(identifier: "apple-user-b")
+        XCTAssertFalse(coordinator.didCompleteAccountDeletion)
+    }
+
+    @MainActor
+    func testCloudDeletionFailureKeepsJournalAccessibleAndOffersReturn() async {
+        let deleter = StubAccountDeleter(error: AccountDeletionError.cloudDeletionFailed("offline"))
+        let coordinator = AppleAuthenticationCoordinator(
+            service: AppleAuthenticationSessionService(store: InMemorySecureValueStore()),
+            credentialChecker: StubCredentialChecker(result: .success(.authorized)),
+            accountDeleter: deleter
+        )
+        await coordinator.acceptAuthorizedUser(identifier: "apple-user")
+
+        let deleted = await coordinator.deleteAccount(
+            storageLocation: .iCloud(accountHash: "cloud")
+        ) {}
+
+        XCTAssertFalse(deleted)
+        XCTAssertEqual(coordinator.state, .authenticated(offline: false))
+        XCTAssertFalse(coordinator.didCompleteAccountDeletion)
+        guard case let .failed(_, canReturnToJournal) = coordinator.accountDeletionPhase else {
+            return XCTFail("실패 상태여야 합니다.")
+        }
+        XCTAssertTrue(canReturnToJournal)
+
+        coordinator.dismissAccountDeletionFailure()
+        XCTAssertEqual(coordinator.accountDeletionPhase, .idle)
+    }
+
+    @MainActor
+    func testLocalDeletionFailureAfterCloudEraseCannotReturnToJournal() async {
+        let deleter = StubAccountDeleter(error: AccountDeletionError.localDeletionFailed("busy"))
+        let coordinator = AppleAuthenticationCoordinator(
+            service: AppleAuthenticationSessionService(store: InMemorySecureValueStore()),
+            credentialChecker: StubCredentialChecker(result: .success(.authorized)),
+            accountDeleter: deleter
+        )
+        await coordinator.acceptAuthorizedUser(identifier: "apple-user")
+
+        await coordinator.deleteAccount(storageLocation: .iCloud(accountHash: "cloud")) {}
+
+        guard case let .failed(_, canReturnToJournal) = coordinator.accountDeletionPhase else {
+            return XCTFail("실패 상태여야 합니다.")
+        }
+        XCTAssertFalse(canReturnToJournal)
+    }
+
+    @MainActor
+    func testDeletedAccountLetsDifferentAppleUserSignInWithoutBlock() async throws {
+        let sessionService = AppleAuthenticationSessionService(store: InMemorySecureValueStore())
+        let root = FileManager.default.temporaryDirectory.appending(
+            path: "CoordinatorDeletion-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+        let coordinator = AppleAuthenticationCoordinator(
+            service: sessionService,
+            credentialChecker: StubCredentialChecker(result: .success(.authorized)),
+            accountDeleter: AccountDeletionService(
+                rootURLProvider: { root },
+                cloudEraser: nil,
+                sessionService: sessionService,
+                appLockStore: InMemorySecureValueStore(),
+                preferences: NoopPreferences()
+            )
+        )
+        await coordinator.acceptAuthorizedUser(identifier: "apple-user-a")
+
+        await coordinator.deleteAccount(storageLocation: .localOnly) {}
+        await coordinator.acceptAuthorizedUser(identifier: "apple-user-b")
+
+        XCTAssertEqual(coordinator.state, .authenticated(offline: false))
+        XCTAssertEqual(coordinator.currentUserIdentifier, "apple-user-b")
+    }
+}
+
+private final class StubAccountDeleter: AccountDeleting, @unchecked Sendable {
+    private let lock = NSLock()
+    private let error: Error?
+    private var recorded: [AccountDeletionRequest] = []
+
+    init(error: Error?) {
+        self.error = error
+    }
+
+    var requests: [AccountDeletionRequest] {
+        lock.withLock { recorded }
+    }
+
+    func deleteAccount(
+        _ request: AccountDeletionRequest,
+        closeLocalStores: @escaping @Sendable () async -> Void
+    ) async throws {
+        lock.withLock { recorded.append(request) }
+        await closeLocalStores()
+        if let error { throw error }
+    }
+}
+
+private actor ClosedFlag {
+    private(set) var value = false
+
+    func set() {
+        value = true
+    }
+}
+
+private struct NoopPreferences: AccountPreferencesClearing {
+    func removeSuite(named suiteName: String) {}
+    func removeStandardValues(forKeys keys: [String]) {}
+    func removeCloudValues(forKeys keys: [String]) {}
 }
 
 @MainActor

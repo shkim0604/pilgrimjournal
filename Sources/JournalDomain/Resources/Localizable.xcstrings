@@ -25,13 +25,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Couldn’t move %lld entry%@. It will be tried again the next time you open the app."
+                  "value" : "Couldn’t move %lld entry%@. The app will try again the next time it opens."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Couldn’t move %lld entries%@. They will be tried again the next time you open the app."
+                  "value" : "Couldn’t move %lld entries%@. The app will try again the next time it opens."
                 }
               }
             }
@@ -50,7 +50,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn’t move %lld entries and %lld classification rules%@. They will be tried again the next time you open the app."
+            "value" : "Some items couldn’t be moved (entries: %lld, classification rules: %lld)%@. The app will try again the next time it opens."
           }
         }
       }
@@ -190,7 +190,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Type names can be up to 20 characters."
+            "value" : "Type names must be 20 characters or fewer."
           }
         }
       }

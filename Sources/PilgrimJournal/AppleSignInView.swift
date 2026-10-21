@@ -42,6 +42,8 @@ struct AppleSignInView: View {
                 }
                 .multilineTextAlignment(.leading)
                 .frame(maxWidth: 440)
+            } else if authentication.didCompleteAccountDeletion {
+                AccountDeletionCompletedCard()
             } else {
                 Text(
                     "Apple 로그인은 일기 화면 접근에만 사용합니다. Apple이 제공한 이메일은 현재 계정 표시를 위해 기기 Keychain에 저장합니다."
@@ -107,6 +109,9 @@ struct AppleSignInView: View {
             )
             .font(.caption)
             .foregroundStyle(.tertiary)
+
+            Link("지원 및 문의", destination: SupportLinks.supportPage)
+                .font(.caption)
 
             Spacer()
         }

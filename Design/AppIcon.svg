@@ -1,5 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>Pilgrim — Scripture and flame</title>
+  <defs>
+    <linearGradient id="flame" x1="0" y1="158" x2="0" y2="462" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFD375"/>
+      <stop offset="1" stop-color="#EF813D"/>
+    </linearGradient>
+    <radialGradient id="halo">
+      <stop offset="0" stop-color="#FFD375" stop-opacity="0.24"/>
+      <stop offset="0.45" stop-color="#FFD375" stop-opacity="0.132"/>
+      <stop offset="0.75" stop-color="#FFD375" stop-opacity="0.038"/>
+      <stop offset="1" stop-color="#FFD375" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
   <rect width="1024" height="1024" fill="#173C36"/>
-  <path fill="#FBF8F1" d="M164 286c122-18 242 9 334 77v411c-85-55-190-81-312-67-24 3-44-16-44-40V331c0-23 9-41 22-45Zm696 0c-122-18-242 9-334 77v411c85-55 190-81 312-67 24 3 44-16 44-40V331c0-23-9-41-22-45Z"/>
-  <path fill="#D9A24A" d="M474 220h76v230l-38-31-38 31V220Z"/>
+  <!-- Soft halo behind the flame, fading completely into the background. -->
+  <ellipse cx="512" cy="338" rx="244" ry="254" fill="url(#halo)"/>
+  <!-- A single living flame, with an open counter for clarity at small sizes. -->
+  <path fill="url(#flame)" transform="translate(-61.44 -13.2) scale(1.12)" fill-rule="evenodd" d="M526 158C542 239 620 269 628 344C636 414 586 462 516 462C448 462 398 418 398 355C398 309 426 277 454 250C450 295 469 316 489 325C470 260 510 220 526 158ZM522 335C516 363 485 381 485 406C485 426 499 439 518 439C539 439 553 425 553 405C553 377 532 362 522 335Z"/>
+  <!-- Two broad pages and a separated lower edge suggest an open Bible. -->
+  <g transform="translate(40.96 52.48) scale(0.92)">
+  <path fill="#FBF8F1" d="M194 478C302 466 406 496 494 557V771C406 719 303 695 194 706C183 707 176 699 176 688V497C176 487 183 479 194 478ZM830 478C722 466 618 496 530 557V771C618 719 721 695 830 706C841 707 848 699 848 688V497C848 487 841 479 830 478Z"/>
+  <path fill="#FBF8F1" d="M176 737C292 722 406 751 494 805V841C401 784 292 758 176 774V737ZM848 737C732 722 618 751 530 805V841C623 784 732 758 848 774V737Z"/>
+  </g>
 </svg>

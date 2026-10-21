@@ -568,11 +568,16 @@ extension Notification.Name {
     static let navigateToNextJournalEntry = Notification.Name(
         "PilgrimJournal.navigateToNextEntry"
     )
+}
+#endif
+
+extension Notification.Name {
+    /// Saves the open entry editor now (⌘S on macOS, and AppModel's flush
+    /// before a kind move on both platforms).
     static let saveJournalEntry = Notification.Name(
         "PilgrimJournal.saveEntry"
     )
 }
-#endif
 
 private struct JournalSidebar: View {
     @EnvironmentObject private var model: AppModel
@@ -613,7 +618,11 @@ private struct JournalSidebar: View {
                 }
             }
 
-            Section("노트북") {
+            Section(
+                String(
+                    localized: "sidebar.notebooks", defaultValue: "노트북",
+                    comment: "Sidebar section header listing notebooks")
+            ) {
                 ForEach(model.notebooks, id: \.self) { notebook in
                     JournalSidebarItem(
                         title: notebook,

@@ -133,6 +133,11 @@ final class AppModel: ObservableObject {
     /// Set by the first `refresh()`, which runs the one full reconcile pass
     /// that later refreshes skip.
     private var hasReconciledKinds = false
+    /// True while `saveAndReturnRecord` runs. Every entry save comes from an
+    /// editor, so a reconcile reached through that save's refresh must not
+    /// flush the editor: it is the one saving, and it has not recorded the
+    /// saved entry's ID yet.
+    private var isSavingEntry = false
     private let searchCoordinator: SearchIndexCoordinator
     private let notebookDefaults: UserDefaults
     private let notebookCloudStore: NSUbiquitousKeyValueStore?
@@ -147,6 +152,9 @@ final class AppModel: ObservableObject {
 
     private static let notebookDefaultsKey = "journal-notebooks"
     private static let deletedNotebookDefaultsKey = "journal-deleted-notebooks"
+    /// The notebook keys mirrored to the iCloud key-value store, which
+    /// account deletion clears.
+    static let cloudKeyValueKeys = [notebookDefaultsKey, deletedNotebookDefaultsKey]
 
     init(
         repository: any JournalRepository,
@@ -668,6 +676,9 @@ final class AppModel: ObservableObject {
         closeEditor: Bool = true,
         selectSavedEntry: Bool = true
     ) -> JournalEntryRecord? {
+        let wasSavingEntry = isSavingEntry
+        isSavingEntry = true
+        defer { isSavingEntry = wasSavingEntry }
         do {
             var outgoing = draft
             if let notebook = outgoing.notebookName,
@@ -1963,11 +1974,12 @@ extension AppModel {
 
     /// Saves what the open editor has not saved yet, so a kind move reads the
     /// latest text and the editor has nothing stale left to write back after
-    /// it reloads. The inline editor handles the notification synchronously.
+    /// it reloads. Both editors (the macOS inline one and the iOS sheet)
+    /// handle the notification synchronously. Skipped inside an entry save,
+    /// whose editor is already saving (see `isSavingEntry`).
     private func flushOpenEditor() {
-        #if os(macOS)
+        guard !isSavingEntry else { return }
         NotificationCenter.default.post(name: .saveJournalEntry, object: nil)
-        #endif
     }
 
     /// Tells an editor showing a moved entry to reload it, records the local

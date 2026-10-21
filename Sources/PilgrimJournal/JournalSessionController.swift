@@ -21,6 +21,10 @@ final class JournalSessionController: ObservableObject {
     @Published private(set) var pendingMigration: PendingJournalScopeMigration?
     @Published private(set) var isLoading = false
     @Published var errorMessage: String?
+    /// The Apple user the journal was last opened for. Kept after
+    /// `deactivate`, so a retried account deletion still knows whose data
+    /// to remove (the developer bypass has no signed-in identifier).
+    private(set) var lastAppleUserIdentifier: String?
 
     private var rootURL: URL
     private let cloudKitContainerIdentifier: String?
@@ -85,6 +89,7 @@ final class JournalSessionController: ObservableObject {
         forceRefresh: Bool = false
     ) async {
         guard !isLoading else { return }
+        lastAppleUserIdentifier = appleUserIdentifier
         if let provider = unresolvedRootProvider {
             do {
                 let root = try provider()
@@ -171,6 +176,22 @@ final class JournalSessionController: ObservableObject {
         isLoading = false
     }
 
+    /// The storage this device would use now, read fresh rather than from
+    /// `activeScope`: a pending local-to-iCloud migration keeps the local
+    /// scope open even though the user's records also live in iCloud.
+    func currentStorageLocation() async -> JournalStorageLocation {
+        isVisualTesting ? .localOnly : await storageLocationProvider()
+    }
+
+    /// Closes the stores before account deletion removes their files. Views
+    /// still holding the old model let go once SwiftUI re-renders, so give
+    /// it a moment before the caller deletes anything.
+    func closeForAccountDeletion() async {
+        deactivate()
+        errorMessage = nil
+        try? await Task.sleep(for: .milliseconds(300))
+    }
+
     @discardableResult
     func confirmPendingMigration() -> JournalScopeMigrationResult? {
         guard let pendingMigration,
@@ -247,9 +268,7 @@ final class JournalSessionController: ObservableObject {
         importStore = InMemoryImportStore()
         #endif
 
-        let defaultsName =
-            "PilgrimJournal.\(scope.appleUserHash).\(scope.storageLocation.directoryName)"
-        let defaults = UserDefaults(suiteName: defaultsName) ?? .standard
+        let defaults = UserDefaults(suiteName: scope.userDefaultsSuiteName) ?? .standard
         return try AppModel(
             repository: repository,
             importStore: importStore,

@@ -1,7 +1,8 @@
 # 구현 TODO (미룬 기능·개선)
 
 출시 게이트가 아닌, "나중에 만들 것"을 모아둔 문서. 실기기 검증 항목은
-`docs/pre-release-checklist.md`를 본다.
+`docs/pre-release-checklist.md`를 본다. 그룹·공유·구독 같은 장기 방향은
+`docs/roadmap.md`에 따로 둔다.
 
 ## 대기 중
 
@@ -14,15 +15,27 @@
     심사에서 거절될 수 있다.
   - 이 빌드로 업데이트하면 기존 사용자도 유형 편집이 잠긴다.
 
-- **영문 현지화 다듬기** — 영어 번역(2026-10-15)에서 남긴 것:
-  - 한 키를 두 곳에서 써서 영어가 어색한 곳: "제목"(제목 칸 = Title, iPhone
-    도구줄의 제목 = Heading이어야 함), "유형"(사이드바 Types / 시트 Type),
-    "노트북"(사이드바 머리 Notebooks). 쓰는 곳마다 다른 키로 나눠야 한다.
-  - 숫자가 둘 이상인 문장("%lld개 반영 · %lld개 휴지통 · 충돌 %lld개" 등)은
-    단수형이 없어 "1 conflicts"가 나올 수 있다.
+- **계정 삭제 후 다른 기기를 위한 삭제 표시 record** (2026-10-16, 1.1.0 (29)에서 미룸)
+  계정 삭제(`AccountDeletionService`)는 이 기기와 iCloud만 지운다. 같은 계정으로 쓰던
+  다른 기기에 로컬 사본이 남아 있으면 그 기기에서 앱을 열 때 Core Data mirroring이
+  zone을 다시 만들고 전부 다시 올린다. 지금은 확인 화면에서 "다른 기기에서 먼저 앱을
+  삭제하세요"라고 경고만 한다. 개선안:
+  - 삭제 시 기본 zone에 `PilgrimJournalAccountDeletion` 같은 record(삭제 시각과
+    Apple 사용자 해시만)를 남기고, 앱 시작·`CKAccountChanged` 시 store를 열기 전에
+    확인해 해당 사용자의 로컬 범위를 지우고 로그아웃한다.
+  - 새로 로그인한 사용자가 binding을 만들 때 그 record를 지워야 하므로, binding
+    검사(`CloudIdentityBindingService`)와 순서를 맞춰야 한다.
+  - 새 record type이라 Development 스키마 생성과 Production 배포가 필요하다
+    (`docs/known-issues.md` "CloudKit schema drift").
+
+- **영문 현지화 남은 것** — 영어 번역(2026-10-15)과 다듬기 이후:
+  - 한 단어를 여러 곳에서 써서 영어가 달라야 하는 곳은 `editor.heading`처럼 영어
+    키에 한국어 `defaultValue`를 주는 방식으로 나눈다(`String(localized:
+    defaultValue:comment:)`). 숫자가 둘 이상인 문장은 "Label: %lld" 형태로 쓴다.
   - 기록 유형을 바꿀 때 본문에 덧붙는 줄(`EntryDetails.carryOverLines`)과
     가져오기 감사 기록 일부는 저장되는 데이터라 한국어로 남겼다.
-  - 실기기·Mac에서 전 화면 영어 확인은 아직. App Store 영문 설명·스크린샷도 없다.
+  - 실기기·Mac에서 전 화면 영어 확인은 아직. App Store 영문 스크린샷도 없다
+    (영문 설명은 1.1.0에서 갱신).
   - 앱 안에 언어 선택은 없다 — iOS 설정 › Pilgrim Journal › 언어, macOS 시스템
     설정 › 일반 › 언어 및 지역 › 앱에서 고른다.
 
@@ -71,6 +84,15 @@
     그 유형에 남는다.
 
 ## 완료
+
+- **유형 이동 뒤 편집기 재로드의 경계 사례 3건 (최종 리뷰에서 미룸)** —
+  (1) macOS에서 새 기록의 autosave가 refresh → 정리 작업 → 편집기 flush로
+  재진입해 같은 기록을 두 번 저장하던 것: 저장 중에는 flush를 건너뛴다
+  (`AppModel.isSavingEntry`). (2) 한글 조합 중에 도착한 재로드가 조합이 끝날 때
+  덮이던 것: 편집기가 조합이 끝날 때까지 미뤘다가 조합 글자를 얹어 적용한다
+  (`ExternalTextRebase`, `docs/known-issues.md` 참고). (3) iOS 전체 화면
+  편집기에 재로드가 없던 것: macOS 인라인 편집기처럼 flush와 재로드를 받는다.
+  실기기 확인은 `docs/pre-release-checklist.md`. (2026-10-15)
 
 - **macOS 본문 이미지 ▲▼ 이동** (2026-10-15) — iPhone과 같은 버튼과 규칙
   (`movingAttachmentImage`, `moveButtonRects`). 커서가 이미지 줄에 있으면 우측 상단에

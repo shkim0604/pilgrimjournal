@@ -187,6 +187,15 @@ binding 쓰기 → `publish(_:)`가 `publishedHistory`에 기록)를 통과해�
 이 규칙을 따르는 예시다 — 클립보드 이미지를 발견하면 `replaceExternalText`로
 삽입하고, 없으면 `super.paste(sender)`로 기본 동작에 그대로 넘긴다.
 
+**조합 중에 도착한 외부 변경 (2026-10-15):** 위 가드 때문에 IME 조합 중에는
+외부 텍스트를 적용하지 않는다. 그런데 유형 이동 뒤의 재로드(`editorReloadRequest`)
+가 조합 중에 오면, 조합이 끝날 때 옛 본문+조합 글자가 binding에 발행되어 재로드
+(본문에 붙은 전용 필드 줄)를 덮었다. 이제 Coordinator가 그 외부 값을
+`deferredExternalText`로 들고 있다가 조합이 끝나면 `ExternalTextRebase`로 조합
+글자를 얹어 `replaceExternalText`로 적용한다. 대기 중에는 조합 중 발행을
+건너뛴다 — 대기 중이 아니면 발행 경로는 예전과 같다. 메아리 판정
+(`publishedHistory`/`shouldApplyExternalText`)은 바꾸지 않았다.
+
 ### 우리 문제가 아닌 것 — 한영 전환 지연
 
 수정 후 검증에서 "한영 전환이 조금 느리다"는 관찰이 나왔다. **제목 칸에서도

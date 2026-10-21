@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pilgrim 지원 · Support</title>
+  <meta name="description" content="Pilgrim Journal 지원 페이지: 문의, 자주 묻는 질문, 계정 삭제, 개인정보. Support for Pilgrim Journal: contact, FAQ, account deletion and privacy.">
+  <meta name="color-scheme" content="light dark">
+  <style>
+    :root {
+      --bg: #f7f4ee;
+      --surface: #ffffff;
+      --ink: #2b2620;
+      --ink-secondary: #6b6258;
+      --rule: #e4ddd2;
+      --accent: #a24f1c;
+      --accent-soft: #f4e4d6;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1b1916;
+        --surface: #26231f;
+        --ink: #efe9e1;
+        --ink-secondary: #b3a99c;
+        --rule: #3a352f;
+        --accent: #f0a46c;
+        --accent-soft: #3a2a1e;
+      }
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 17px/1.65 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", "Noto Sans KR", sans-serif;
+      word-break: keep-all;
+      overflow-wrap: anywhere;
+    }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 64px; }
+    header { padding-bottom: 8px; }
+    h1 { font-size: 2rem; line-height: 1.25; margin: 0 0 8px; }
+    h2 { font-size: 1.35rem; margin: 40px 0 12px; padding-top: 16px; border-top: 1px solid var(--rule); }
+    h3 { font-size: 1.05rem; margin: 24px 0 6px; }
+    p, li { color: var(--ink); }
+    .lead { color: var(--ink-secondary); margin: 0 0 16px; }
+    .muted { color: var(--ink-secondary); }
+    a { color: var(--accent); text-underline-offset: 2px; }
+    nav.lang { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0 0; }
+    nav.lang a {
+      display: inline-block; padding: 6px 14px; border-radius: 999px;
+      background: var(--accent-soft); text-decoration: none; font-weight: 600;
+    }
+    .card {
+      background: var(--surface); border: 1px solid var(--rule); border-radius: 14px;
+      padding: 16px 18px; margin: 16px 0;
+    }
+    .contact { font-size: 1.1rem; font-weight: 600; }
+    .path {
+      display: inline-block; background: var(--accent-soft); border-radius: 8px;
+      padding: 2px 8px; font-weight: 600;
+    }
+    ol, ul { padding-left: 1.3em; }
+    li { margin: 4px 0; }
+    section.language { scroll-margin-top: 16px; }
+    hr.split { border: 0; border-top: 3px double var(--rule); margin: 56px 0 0; }
+    footer { margin-top: 48px; font-size: 0.9rem; color: var(--ink-secondary); }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Pilgrim Journal</h1>
+    <p class="lead">기도노트·성경공부·독서노트·일기를 위한 개인 기록 앱<br>A private journal for prayer notes, Bible study, reading notes and diary</p>
+    <nav class="lang" aria-label="Language">
+      <a href="#ko" hreflang="ko">한국어</a>
+      <a href="#en" hreflang="en">English</a>
+    </nav>
+  </header>
+
+  <section id="ko" class="language" lang="ko">
+    <h2>앱 소개</h2>
+    <p>Pilgrim Journal(홈 화면 이름 “Pilgrim”)은 iPhone과 Mac에서 쓰는 개인 기록 앱입니다. 기도노트, 성경공부, 독서노트, 일기와 메모를 유형별로 정리하고, Day One에서 내보낸 기록을 가져올 수 있습니다. 기록은 기기와 사용자의 iCloud 개인 저장 공간에만 저장됩니다.</p>
+
+    <h2>문의</h2>
+    <div class="card">
+      <p>질문, 오류 신고, 개인정보 요청은 이메일로 보내 주세요.</p>
+      <p class="contact"><a href="mailto:d.house0827@gmail.com">d.house0827@gmail.com</a></p>
+      <p class="muted">기록 내용이나 Day One 파일은 보내지 마세요. 앱 버전, 기기 종류와 증상만 알려 주시면 됩니다.</p>
+    </div>
+
+    <h2>자주 묻는 질문</h2>
+    <h3>iPhone과 Mac 사이에 기록이 동기화되나요?</h3>
+    <p>네. 같은 iCloud 계정에 로그인한 기기끼리 iCloud 개인 데이터베이스(CloudKit)로 자동 동기화됩니다. 동기화 데이터는 사용자의 iCloud 용량을 씁니다. iCloud를 쓸 수 없으면 이 기기에만 저장하며, 나중에 iCloud에 연결하면 설정에서 이 기기의 기록을 iCloud로 옮길지 고를 수 있습니다. 상태는 설정 › 동기화에서 볼 수 있습니다.</p>
+    <p>하나의 iCloud 저장 공간은 처음 연결한 Apple 로그인 계정에만 귀속됩니다. 다른 Apple 계정으로 로그인하면 기존 기록을 보여 주지 않고 차단합니다.</p>
+
+    <h3>Day One 기록은 어떻게 가져오나요?</h3>
+    <ol>
+      <li>Day One에서 JSON 형식으로 내보내 ZIP 파일을 만듭니다.</li>
+      <li>Mac의 Pilgrim에서 설정 › 데이터 관리 › <span class="path">Day One 가져오기…</span>를 선택합니다(메뉴 단축키 ⇧⌘I).</li>
+      <li>미리보기에서 항목 수, 중복, 경고를 확인한 뒤 가져옵니다. 규칙에 맞지 않는 기록은 ‘미분류’로 들어오며, 설정 › 정리에서 분류 규칙을 바꿀 수 있습니다.</li>
+    </ol>
+    <p>가져온 기록은 iCloud로 iPhone에도 동기화됩니다. Day One 원본 snapshot과 가져오기 기록은 가져온 Mac에만 남습니다.</p>
+
+    <h3>앱 잠금 비밀번호를 잊어버렸어요.</h3>
+    <p>잠금 화면에서 <span class="path">비밀번호를 잊으셨나요?</span>를 누르고 새 비밀번호를 입력한 뒤 기기 인증(Face ID, Touch ID 또는 기기 암호)으로 재설정하세요. 앱 잠금 비밀번호는 기기마다 따로 저장되며, 기록 자체를 암호화하는 키가 아니므로 비밀번호를 재설정해도 기록은 그대로입니다.</p>
+
+    <h2>계정 삭제</h2>
+    <div class="card">
+      <ol>
+        <li>앱에서 설정 › Apple 로그인 › <span class="path">계정 삭제</span>를 엽니다.</li>
+        <li>삭제되는 항목과 안내를 확인하고 <strong>계정 삭제</strong>를 누른 뒤 한 번 더 확인합니다.</li>
+        <li>iCloud에 저장된 모든 기록과 첨부, 이 기기의 기록과 설정, 이 기기에 저장된 Apple 로그인 정보와 앱 잠금 설정이 삭제되고 로그인 화면으로 돌아갑니다.</li>
+        <li>Apple 로그인 연결도 끊으려면 iPhone의 <span class="path">설정 › Apple 계정 › Apple로 로그인 › Pilgrim › 사용 중단</span>을 누릅니다(Mac은 시스템 설정의 같은 경로).</li>
+      </ol>
+      <p class="muted">삭제는 되돌릴 수 없습니다. 다른 iPhone이나 Mac에서도 앱을 쓰고 있다면 그 기기에서 먼저 앱을 삭제하세요. 그대로 두면 그 기기에 남은 기록이 iCloud에 다시 올라갈 수 있습니다. iCloud에 연결되지 않은 상태에서 삭제하면 이 기기의 데이터만 지워집니다.</p>
+      <p class="muted">앱을 쓸 수 없는 상황이라면 위 이메일로 요청해 주세요. Pilgrim에는 자체 서버가 없어 개발자가 사용자의 기록을 보거나 지울 수는 없으므로, 삭제 방법을 안내해 드립니다.</p>
+    </div>
+
+    <h2>개인정보 요약</h2>
+    <ul>
+      <li>기록은 기기의 로컬 저장소와 사용자의 iCloud 개인 데이터베이스에만 저장됩니다. 자체 기록 서버, 광고·분석 SDK, 공개·공유 CloudKit 데이터베이스를 쓰지 않습니다.</li>
+      <li>Apple 로그인은 앱 접근에만 씁니다. 이름은 요청하지 않으며, Apple이 준 이메일(가림 처리된 주소일 수 있음)과 사용자 식별자는 계정 표시를 위해 기기 Keychain에만 저장하고 iCloud에는 올리지 않습니다.</li>
+      <li>iCloud 저장 공간이 어느 Apple 로그인 사용자 것인지 확인하기 위해 사용자 식별자를 단방향 해시한 값 하나만 iCloud 개인 데이터베이스에 저장합니다.</li>
+      <li>노트북·유형 이름 목록은 기기 간 공유를 위해 iCloud 키-값 저장소에 둡니다. 기록 본문은 넣지 않습니다.</li>
+      <li>검색 인덱스와 Day One 원본 snapshot은 각 기기에만 남습니다.</li>
+      <li>앱 잠금 비밀번호 원문은 저장하지 않습니다. 검증값만 기기 Keychain에 저장합니다.</li>
+    </ul>
+  </section>
+
+  <hr class="split">
+
+  <section id="en" class="language" lang="en">
+    <h2>About</h2>
+    <p>Pilgrim Journal (shown as “Pilgrim” on the Home Screen) is a private journal for iPhone and Mac. Organize prayer notes, Bible study, reading notes, diary entries and memos by kind, and bring in entries exported from Day One. Your entries are stored only on your devices and in your own iCloud private storage.</p>
+
+    <h2>Contact</h2>
+    <div class="card">
+      <p>Send questions, bug reports and privacy requests by email.</p>
+      <p class="contact"><a href="mailto:d.house0827@gmail.com">d.house0827@gmail.com</a></p>
+      <p class="muted">Please don’t send journal content or Day One files. The app version, your device and what happened are enough.</p>
+    </div>
+
+    <h2>FAQ</h2>
+    <h3>Do my entries sync between iPhone and Mac?</h3>
+    <p>Yes. Devices signed in to the same iCloud account sync automatically through your iCloud private database (CloudKit), using your iCloud storage. When iCloud isn’t available, entries stay on this device; once you connect iCloud, Settings lets you choose whether to move them to iCloud. Settings › Sync shows the current status.</p>
+    <p>An iCloud storage space belongs to the first Apple account that signed in with it. If a different Apple account signs in, the app blocks access instead of showing the existing entries.</p>
+
+    <h3>How do I import from Day One?</h3>
+    <ol>
+      <li>In Day One, export your journal as JSON to get a ZIP file.</li>
+      <li>In Pilgrim on the Mac, choose Settings › Data › <span class="path">Import from Day One…</span> (⇧⌘I).</li>
+      <li>Review the counts, duplicates and warnings in the preview, then import. Entries no rule matches arrive as Unclassified; change the rules in Settings › Organize.</li>
+    </ol>
+    <p>Imported entries sync to your iPhone through iCloud. The original Day One snapshots and the import log stay on the Mac you imported on.</p>
+
+    <h3>I forgot my App Lock passcode.</h3>
+    <p>On the lock screen, tap <span class="path">Forgot Passcode?</span>, enter a new passcode, and confirm with device authentication (Face ID, Touch ID or your device passcode). The App Lock passcode is stored per device and doesn’t encrypt your entries, so resetting it keeps everything in place.</p>
+
+    <h2>Deleting your account</h2>
+    <div class="card">
+      <ol>
+        <li>In the app, open Settings › Sign in with Apple › <span class="path">Delete Account</span>.</li>
+        <li>Review what will be deleted, tap <strong>Delete Account</strong> and confirm once more.</li>
+        <li>All entries and attachments in iCloud, this device’s entries and settings, and the Apple sign-in details and App Lock settings stored on this device are deleted, and the app returns to the sign-in screen.</li>
+        <li>To also disconnect Sign in with Apple, go to <span class="path">Settings › Apple Account › Sign in with Apple › Pilgrim › Stop Using</span> on your iPhone (the same path in System Settings on a Mac).</li>
+      </ol>
+      <p class="muted">Deletion can’t be undone. If you also use the app on another iPhone or Mac, delete the app there first; otherwise the entries left on that device may upload to iCloud again. Deleting while not connected to iCloud removes this device’s data only.</p>
+      <p class="muted">If you can’t use the app, email the address above. Pilgrim has no server of its own, so the developer can’t see or delete your entries, but we’ll walk you through deleting them.</p>
+    </div>
+
+    <h2>Privacy summary</h2>
+    <ul>
+      <li>Entries are stored only on your device and in your iCloud private database. No journal server of our own, no advertising or analytics SDKs, no public or shared CloudKit database.</li>
+      <li>Sign in with Apple only controls access to the app. Your name isn’t requested. The email Apple provides (which may be a private relay address) and your user identifier are kept in this device’s Keychain to show the signed-in account, and never uploaded to iCloud.</li>
+      <li>To tell which Apple sign-in user owns an iCloud storage space, only a one-way hash of the user identifier is stored in your iCloud private database.</li>
+      <li>Notebook and kind names are kept in the iCloud key-value store so your devices share them. Entry text is never put there.</li>
+      <li>The search index and the original Day One snapshots stay on each device.</li>
+      <li>The App Lock passcode itself is never stored; only a verifier is kept in the device Keychain.</li>
+    </ul>
+  </section>
+
+  <footer>
+    <p>© 2026 Pilgrim Journal · <a href="mailto:d.house0827@gmail.com">d.house0827@gmail.com</a></p>
+  </footer>
+</main>
+</body>
+</html>

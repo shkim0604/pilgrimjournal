@@ -85,7 +85,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld restored · %lld trashed · %lld conflicts"
+            "value" : "Restored: %lld · Moved to Trash: %lld · Conflicts: %lld"
           }
         },
         "ko" : {
@@ -265,7 +265,27 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't check your Sign in with Apple status. Connect to the internet and try again."
+            "value" : "Couldn’t check your Sign in with Apple status. Connect to the internet and try again."
+          }
+        }
+      }
+    },
+    "Apple 로그인 연결 해제" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disconnect Sign in with Apple"
+          }
+        }
+      }
+    },
+    "Apple 로그인 연결도 끊으려면 다음 경로에서 ‘사용 중단’을 누르세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To disconnect Sign in with Apple too, go to the following and tap Stop Using."
           }
         }
       }
@@ -285,7 +305,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't verify your Sign in with Apple information."
+            "value" : "Couldn’t verify your Sign in with Apple information."
           }
         }
       }
@@ -325,7 +345,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sign in with Apple is used to access the app, and entries sync through the device's system iCloud private database. Use the same Apple user and iCloud account on your Mac and iPhone."
+            "value" : "Sign in with Apple is used to access the app, and entries sync through the private iCloud database of the account signed in on your device. Use the same Apple Account and iCloud account on your Mac and iPhone."
           }
         }
       }
@@ -345,7 +365,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sign in with Apple is only for accessing your journal. Entries sync separately through the device's system iCloud private database."
+            "value" : "Sign in with Apple is only for accessing your journal. Entries sync separately through the private iCloud database of the account signed in on your device."
           }
         }
       }
@@ -355,7 +375,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Waiting for CloudKit sync"
+            "value" : "Waiting to Sync with CloudKit"
           }
         }
       }
@@ -365,7 +385,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "CloudKit sync data uses your iCloud storage. Entries that stay local-only after authentication aren't sent to your other devices."
+            "value" : "CloudKit sync data uses your iCloud storage. After you sign in, entries kept only on this device aren’t sent to your other devices."
           }
         }
       }
@@ -375,7 +395,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "CloudKit sync complete: %@. Your iPhone on the same iCloud account will receive it."
+            "value" : "CloudKit sync complete: %@. Changes will appear on your iPhone signed in to the same iCloud account."
           }
         }
       }
@@ -385,7 +405,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "CloudKit sync is complete. Your iPhone on the same iCloud account will receive the changes."
+            "value" : "CloudKit sync is complete. Changes will appear on your iPhone signed in to the same iCloud account."
           }
         }
       }
@@ -415,7 +435,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The CloudKit production schema hasn't been deployed yet."
+            "value" : "The CloudKit production schema hasn’t been deployed yet."
           }
         }
       }
@@ -456,7 +476,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Import Day One Entries"
+            "value" : "Importing Day One Entries"
           }
         }
       }
@@ -496,7 +516,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Full original Day One snapshots, import audit records, and the search index stay only in local storage on the Mac that did the import."
+            "value" : "Full original Day One snapshots, import audit records, and the search index stay in local storage on the Mac used for the import."
           }
         }
       }
@@ -547,7 +567,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Import Complete on Mac"
+            "value" : "Import Complete"
           }
         }
       }
@@ -649,7 +669,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pilgrim Journal never sends your journal content to its own servers, ad servers, or analytics servers. Original Day One snapshots and the search index stay only on the Mac that did the import."
+            "value" : "Pilgrim Journal doesn’t send your journal content to any server of its own, or to ad or analytics servers. Original Day One snapshots and the search index stay only on the Mac used for the import."
           }
         }
       }
@@ -664,13 +684,59 @@
         }
       }
     },
+    "Pilgrim에는 자체 서버가 없어 Apple 로그인 연결은 기기 설정에서 끊습니다. 삭제가 끝나면 다음 경로에서 ‘사용 중단’을 누르세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pilgrim has no server of its own, so Sign in with Apple is disconnected in your device’s Settings. After the deletion, go to the following and tap Stop Using."
+          }
+        }
+      }
+    },
     "Quiet Morning" : {},
     "ZIP 안전성과 JSON 구조를 확인하고 있습니다. 아직 일기 데이터는 변경되지 않았습니다." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Checking the ZIP's safety and JSON structure. Your journal data hasn't been changed yet."
+            "value" : "Checking the ZIP’s safety and JSON structure. Your journal data hasn’t been changed yet."
+          }
+        }
+      }
+    },
+    "editor.heading" : {
+      "comment" : "Markdown heading command",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "제목"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Heading"
+          }
+        }
+      }
+    },
+    "entryInfo.organizeSection" : {
+      "comment" : "Entry info section holding the type and notebook pickers",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "분류"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Organize"
           }
         }
       }
@@ -690,7 +756,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Waiting to upload to iCloud"
+            "value" : "Waiting to Upload to iCloud"
           }
         }
       }
@@ -720,7 +786,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't verify the iCloud connection, so data stays on this device only: %@"
+            "value" : "Couldn’t verify the iCloud connection, so data stays on this device only: %@"
           }
         }
       }
@@ -730,7 +796,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Can't sync because there isn't enough iCloud storage."
+            "value" : "There isn’t enough iCloud storage to sync."
           }
         }
       }
@@ -755,6 +821,16 @@
         }
       }
     },
+    "iCloud에 저장된 모든 기록과 첨부" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All entries and attachments in iCloud"
+          }
+        }
+      }
+    },
     "iCloud에 저장됨" : {
       "localizations" : {
         "en" : {
@@ -770,7 +846,73 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't download from iCloud"
+            "value" : "Couldn’t download from iCloud"
+          }
+        }
+      }
+    },
+    "iCloud와 이 기기의 기록을 지우고 있습니다. 끝날 때까지 앱을 닫지 마세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deleting your entries from iCloud and this device. Don’t close the app until it finishes."
+          }
+        }
+      }
+    },
+    "iCloud와 이 기기의 기록이 모두 삭제되며 되돌릴 수 없습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All entries in iCloud and on this device will be deleted. This can’t be undone."
+          }
+        }
+      }
+    },
+    "iCloud의 기록은 이미 삭제되었습니다. 이 기기에 남은 데이터를 지워야 계속할 수 있습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your entries in iCloud are already deleted. The data left on this device must be removed before you can continue."
+          }
+        }
+      }
+    },
+    "organize.typeSection" : {
+      "comment" : "Header of the section that changes the type of selected entries",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "유형"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Type"
+          }
+        }
+      }
+    },
+    "sidebar.notebooks" : {
+      "comment" : "Sidebar section header listing notebooks",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "노트북"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notebooks"
           }
         }
       }
@@ -831,7 +973,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Changes to the same entry are kept as revision conflicts."
+            "value" : "Conflicting changes to the same entry are kept as separate revisions."
           }
         }
       }
@@ -976,12 +1118,72 @@
         }
       }
     },
+    "계정 삭제" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete Account"
+          }
+        }
+      }
+    },
+    "계정과 데이터가 삭제되었습니다" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your Account and Data Were Deleted"
+          }
+        }
+      }
+    },
     "계정과 동기화" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Account & Sync"
+          }
+        }
+      }
+    },
+    "계정과 모든 데이터를 삭제할까요?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete your account and all data?"
+          }
+        }
+      }
+    },
+    "계정을 삭제하는 중" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deleting Account"
+          }
+        }
+      }
+    },
+    "계정을 삭제하면 iCloud와 이 기기의 기록, 로그인 정보가 모두 지워집니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deleting your account erases your entries in iCloud and on this device, along with your sign-in details."
+          }
+        }
+      }
+    },
+    "계정을 삭제하지 못했습니다" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t Delete Account"
           }
         }
       }
@@ -1161,7 +1363,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A per-device passcode and Face ID·Touch ID hide the app’s screens and its preview in the app switcher. They don’t add end-to-end encryption with a separate password to the database or CloudKit records."
+            "value" : "A per-device passcode and Face ID or Touch ID hide the app’s screens and its preview in the app switcher. They don’t encrypt the database or CloudKit records end to end with a separate password."
           }
         }
       }
@@ -1181,7 +1383,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Prayer Status·Answered Date"
+            "value" : "Prayer Status & Answered Date"
           }
         }
       }
@@ -1191,7 +1393,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ongoing"
+            "value" : "Praying"
           }
         }
       }
@@ -1273,7 +1475,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Search Entries"
+            "value" : "Searching Entries"
           }
         }
       }
@@ -1393,7 +1595,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Edit Entry"
+            "value" : "Editing Entries"
           }
         }
       }
@@ -1414,6 +1616,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Entries and attachments are stored in the private database of the iCloud account currently signed in on this device. This storage belongs to the Sign in with Apple user who first connected it, and other users are blocked."
+          }
+        }
+      }
+    },
+    "기록으로 돌아가기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Back to Journal"
           }
         }
       }
@@ -1453,7 +1665,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Enter a name for the notebook to collect entries in."
+            "value" : "Enter a name for a notebook to group your entries."
           }
         }
       }
@@ -1543,7 +1755,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Keep Your Journal Safe and Going"
+            "value" : "Keep writing your private journal, safely"
           }
         }
       }
@@ -1593,7 +1805,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The network or CloudKit service is temporarily unstable."
+            "value" : "There’s a temporary problem with the network or CloudKit."
           }
         }
       }
@@ -1603,7 +1815,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Notes"
+            "value" : "Entries"
           }
         }
       }
@@ -1708,6 +1920,16 @@
         }
       }
     },
+    "다른 iPhone이나 Mac에서도 Pilgrim을 쓰고 있다면 그 기기에서 먼저 앱을 삭제하세요. 그대로 두면 그 기기에 남은 기록이 iCloud에 다시 올라갈 수 있습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "If you also use Pilgrim on another iPhone or Mac, delete the app there first. Otherwise the entries left on that device may upload to iCloud again."
+          }
+        }
+      }
+    },
     "다른 결과 필터를 선택해 보세요." : {
       "localizations" : {
         "en" : {
@@ -1723,7 +1945,17 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "To protect them, entries from another account aren’t opened or merged. No entries were deleted."
+            "value" : "To keep them private, entries from another account won’t be opened or merged. No entries were deleted."
+          }
+        }
+      }
+    },
+    "다른 기기에서 먼저 앱을 삭제하세요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete the App on Your Other Devices First"
           }
         }
       }
@@ -1893,7 +2125,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Delete them all at once with the Trash button in the toolbar, or change their type and tags with “Select” → “Organize”."
+            "value" : "Delete them all at once with the Trash button in the toolbar, or change their type and tags with “Select” → “Organize.”"
           }
         }
       }
@@ -1983,7 +2215,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Or switch to a different iCloud account in your device’s Settings, then tap “Check iCloud Connection Again”."
+            "value" : "Or switch to a different iCloud account in your device’s Settings, then tap “Check iCloud Connection Again.”"
           }
         }
       }
@@ -2123,7 +2355,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No problems found · Entries: %lld, revisions: %lld, attachments: %lld"
+            "value" : "No problems found · Entries: %lld, Revisions: %lld, Attachments: %lld"
           }
         },
         "ko" : {
@@ -2209,7 +2441,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restore a Backup"
+            "value" : "Restoring a Backup"
           }
         }
       }
@@ -2319,7 +2551,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Merge Restore"
+            "value" : "Restore and Merge"
           }
         }
       }
@@ -2329,7 +2561,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Merge restore complete"
+            "value" : "Restore and Merge Complete"
           }
         }
       }
@@ -2339,7 +2571,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Applying merge restore"
+            "value" : "Restoring and Merging"
           }
         }
       }
@@ -2679,7 +2911,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Delete %@"
+            "value" : "Deleted %@"
           }
         }
       }
@@ -2694,12 +2926,42 @@
         }
       }
     },
+    "삭제 전에 확인하세요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Before You Delete"
+          }
+        }
+      }
+    },
+    "삭제되는 항목" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What Gets Deleted"
+          }
+        }
+      }
+    },
     "삭제한 기록 복원하거나 영구 삭제하기" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Restoring or Permanently Deleting Entries"
+          }
+        }
+      }
+    },
+    "삭제한 기록과 첨부는 되돌릴 수 없습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deleted entries and attachments can’t be recovered."
           }
         }
       }
@@ -2968,6 +3230,36 @@
         }
       }
     },
+    "설정 › Apple 계정 › Apple로 로그인 › Pilgrim › 사용 중단" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Settings › Apple Account › Sign in with Apple › Pilgrim › Stop Using"
+          }
+        }
+      }
+    },
+    "설정 › Apple 로그인 › 계정 삭제에서 iCloud에 저장된 기록과 첨부, 이 기기의 데이터, 로그인 정보와 앱 잠금 설정을 삭제할 수 있습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In Settings › Sign in with Apple › Delete Account, you can delete your entries and attachments in iCloud, the data on this device, your sign-in details and App Lock settings."
+          }
+        }
+      }
+    },
+    "설정 › 백업 및 복원 › 전체 백업 내보내기…로 백업 파일을 만들어 두면 나중에 다시 복원할 수 있습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create a backup file with Settings › Backup & Restore › Export Full Backup… to restore it later."
+          }
+        }
+      }
+    },
     "설정 저장" : {
       "localizations" : {
         "en" : {
@@ -3168,6 +3460,16 @@
         }
       }
     },
+    "앱 안에서 삭제" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete in the App"
+          }
+        }
+      }
+    },
     "앱 잠금" : {
       "localizations" : {
         "en" : {
@@ -3193,7 +3495,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The App Lock passcode isn’t a separate key for end-to-end encrypting the database or CloudKit data."
+            "value" : "The App Lock passcode isn’t a separate key that encrypts the database or CloudKit data end to end."
           }
         }
       }
@@ -3203,7 +3505,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Use App Lock"
+            "value" : "Using App Lock"
           }
         }
       }
@@ -3233,7 +3535,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "App Lock hides titles, body text, search results, and the app switcher snapshot on this device. The passcode verifier and settings are stored only in this device’s Keychain."
+            "value" : "App Lock hides titles, body text, search results, and the app switcher preview on this device. The data used to verify your passcode, along with your lock settings, is stored only in this device’s Keychain."
           }
         }
       }
@@ -3293,7 +3595,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No entries were deleted on either side."
+            "value" : "Nothing has been deleted from either account."
           }
         }
       }
@@ -3623,7 +3925,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Answered On"
+            "value" : "Date Answered"
           }
         }
       }
@@ -3643,7 +3945,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Saved on this Mac. Uploading to CloudKit and delivering to iPhone are in progress."
+            "value" : "Saved on this Mac. Still uploading to CloudKit and syncing to iPhone."
           }
         }
       }
@@ -3673,7 +3975,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sign in with the Apple Account that first connected to this iCloud."
+            "value" : "Sign in with the Apple Account that first connected this iCloud storage."
           }
         }
       }
@@ -3684,6 +3986,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "This Device Only"
+          }
+        }
+      }
+    },
+    "이 기기에 저장된 Apple 로그인 정보와 앱 잠금 설정" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple sign-in details and App Lock settings stored on this device"
           }
         }
       }
@@ -3703,7 +4015,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Keep Storing on This Device Only"
+            "value" : "Keep on This Device Only"
           }
         }
       }
@@ -3745,7 +4057,17 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "This will be erased from this device and iCloud. This can’t be undone."
+            "value" : "This attachment will be permanently erased from this device and iCloud. This can’t be undone."
+          }
+        }
+      }
+    },
+    "이 기기의 기록, 첨부, 검색 인덱스와 기기별 설정" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entries, attachments, search index and settings on this device"
           }
         }
       }
@@ -3756,6 +4078,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "The entries on this device are linked to a different Apple Account."
+          }
+        }
+      }
+    },
+    "이 기기의 데이터만 삭제됩니다. iCloud에 저장된 기록까지 지우려면 기기에서 iCloud에 로그인한 뒤 다시 삭제하세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only the data on this device will be deleted. To delete your entries in iCloud too, sign in to iCloud on this device and delete again."
           }
         }
       }
@@ -3870,6 +4202,26 @@
         }
       }
     },
+    "이메일 문의" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Email Us"
+          }
+        }
+      }
+    },
+    "이메일 문의 · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Email Us · %@"
+          }
+        }
+      }
+    },
     "이미지를 아직 사용할 수 없음 · 동기화 대기 중" : {
       "localizations" : {
         "en" : {
@@ -3955,7 +4307,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Your journal is never sent to our own servers."
+            "value" : "Your journal is never sent to any server we operate."
           }
         }
       }
@@ -3995,7 +4347,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Formatting Appears as You Type"
+            "value" : "Formatting appears as you type"
           }
         }
       }
@@ -4006,6 +4358,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Auto-Lock"
+          }
+        }
+      }
+    },
+    "자체 서버가 없으므로 Apple 로그인 연결은 삭제 후 기기 설정에서 끊습니다: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "With no server of our own, Sign in with Apple is disconnected in your device’s Settings after deleting: %@"
           }
         }
       }
@@ -4265,7 +4627,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Organize %lld"
+            "value" : "Organize (%lld)"
           }
         }
       }
@@ -4410,6 +4772,46 @@
         }
       }
     },
+    "지금은 iCloud에 연결되어 있지 않습니다" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not Connected to iCloud"
+          }
+        }
+      }
+    },
+    "지원" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Support"
+          }
+        }
+      }
+    },
+    "지원 및 문의" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Support & Contact"
+          }
+        }
+      }
+    },
+    "지원 페이지" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Support Page"
+          }
+        }
+      }
+    },
     "집중 모드" : {
       "localizations" : {
         "en" : {
@@ -4485,7 +4887,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Before adding attachments, enter a title or body to save the entry."
+            "value" : "To add attachments, first enter a title or body text so the entry can be saved."
           }
         }
       }
@@ -4585,7 +4987,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Last restore: %lld applied, %lld moved to Trash, %lld conflicts"
+            "value" : "Last restore — Restored: %lld, Moved to Trash: %lld, Conflicts: %lld"
           }
         },
         "ko" : {
@@ -4601,7 +5003,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "If the current iCloud storage is linked to a different Apple user than the one first connected, your entries won’t open. Accounts are compared using Apple’s unique user identifier, not your email."
+            "value" : "If this iCloud storage is linked to a different Apple user than the one who first connected it, your entries won’t open. Accounts are compared using Apple’s unique user identifier, not your email."
           }
         }
       }
@@ -4883,7 +5285,17 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Display"
+            "value" : "Options"
+          }
+        }
+      }
+    },
+    "필요하면 먼저 전체 백업을 내보내세요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export a Full Backup First If You Need One"
           }
         }
       }
@@ -4953,7 +5365,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "iCloud is currently linked to a different Apple Account."
+            "value" : "This iCloud storage is linked to a different Apple Account."
           }
         }
       }
@@ -5023,7 +5435,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The current storage adapter doesn’t support restore."
+            "value" : "Restoring isn’t supported by the current storage."
           }
         }
       }
@@ -5220,13 +5632,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld entry in the Trash, along with its revision history and attachments, will be permanently erased from this device and iCloud. This can’t be undone. Wait until your other devices have synced."
+                  "value" : "%lld entry in the Trash, along with its revision history and attachments, will be permanently erased from this device and iCloud. This can’t be undone. Do this only after your other devices have synced."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld entries in the Trash, along with their revision history and attachments, will be permanently erased from this device and iCloud. This can’t be undone. Wait until your other devices have synced."
+                  "value" : "%lld entries in the Trash, along with their revision history and attachments, will be permanently erased from this device and iCloud. This can’t be undone. Do this only after your other devices have synced."
                 }
               }
             }

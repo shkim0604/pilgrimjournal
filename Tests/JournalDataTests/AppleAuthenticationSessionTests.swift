@@ -63,6 +63,25 @@ final class AppleAuthenticationSessionTests: XCTestCase {
         )
         XCTAssertEqual(signedInAgain.currentUserIdentifier, "apple-user-a")
     }
+
+    func testDeletingStoredStateLetsDifferentAppleUserSignIn() async throws {
+        let store = InMemorySecureValueStore()
+        let service = AppleAuthenticationSessionService(store: store)
+        try await service.acceptAuthorizedUser(
+            identifier: "apple-user-a",
+            email: "reader@privaterelay.appleid.com"
+        )
+
+        try await service.deleteStoredState()
+
+        let cleared = try await service.session()
+        XCTAssertEqual(cleared, AppleAuthenticationSession())
+        XCTAssertNil(store.load())
+        let session = try await service.acceptAuthorizedUser(identifier: "apple-user-b")
+        XCTAssertEqual(session.currentUserIdentifier, "apple-user-b")
+        XCTAssertEqual(session.boundUserIdentifier, "apple-user-b")
+        XCTAssertNil(session.accountEmail)
+    }
 }
 
 private final class AuthenticationFailingSecureValueStore: SecureValueStore,

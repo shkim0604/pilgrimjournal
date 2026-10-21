@@ -175,6 +175,32 @@ final class KindManagementModelTests: XCTestCase {
         XCTAssertEqual(modelB.selectedEntry?.kind, .memo)
     }
 
+    /// The editor's save refreshes, and a refresh can reconcile kinds. The
+    /// reconcile's editor flush must not save the same editor again from
+    /// inside its own save: a new entry has no ID yet at that point, so the
+    /// nested save would create a second copy of it.
+    func testReconcileInsideAnEditorSaveDoesNotSaveTheEditorAgain() throws {
+        let defaults = makeDefaults()
+        try makeModel(defaults: defaults).deleteKind(.prayer, moveTo: .memo)
+        let repository = InMemoryJournalRepository()
+        let model = try makeModel(defaults: defaults, repository: repository)
+        let draft = JournalEntryDraft(kind: .diary, body: "처음 쓰는 기록")
+        // Stands in for an open editor whose entry is not saved yet: it
+        // answers the flush by saving its draft, still without an ID.
+        let observer = NotificationCenter.default.addObserver(
+            forName: .saveJournalEntry, object: nil, queue: nil
+        ) { _ in
+            MainActor.assumeIsolated { _ = model.saveAndReturnRecord(draft, closeEditor: false) }
+        }
+        defer { NotificationCenter.default.removeObserver(observer) }
+
+        // The model's first refresh, here inside the save, reconciles kinds.
+        _ = model.saveAndReturnRecord(draft, closeEditor: false)
+
+        let saved = try repository.list(kind: nil, includeDeleted: false, limit: 100)
+        XCTAssertEqual(saved.filter { $0.body == "처음 쓰는 기록" }.count, 1)
+    }
+
     func testDeleteKindMovesTheRestWhenOneEntryFailsToSave() throws {
         let base = InMemoryJournalRepository()
         let broken = try base.save(

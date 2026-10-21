@@ -37,6 +37,15 @@ struct SettingsView: View {
                 Text("로그아웃해도 이 기기의 일기 데이터는 삭제되지 않으며, 다시 인증하기 전까지 화면만 잠깁니다.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                NavigationLink {
+                    AccountDeletionView()
+                } label: {
+                    Label("계정 삭제", systemImage: "person.crop.circle.badge.xmark")
+                        .foregroundStyle(.red)
+                }
+                Text("계정을 삭제하면 iCloud와 이 기기의 기록, 로그인 정보가 모두 지워집니다.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
             Section("동기화") {
                 LabeledContent("상태", value: syncDescription)
@@ -146,6 +155,21 @@ struct SettingsView: View {
                     AppUsageGuideView()
                 } label: {
                     Label("앱 사용법", systemImage: "questionmark.circle")
+                }
+                Link(destination: SupportLinks.supportPage) {
+                    Label("지원 페이지", systemImage: "safari")
+                }
+                Link(destination: SupportLinks.contactMail) {
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("이메일 문의")
+                            Text(SupportLinks.contactEmail)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    } icon: {
+                        Image(systemName: "envelope")
+                    }
                 }
             }
             #if os(macOS)
