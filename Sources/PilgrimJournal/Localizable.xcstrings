@@ -709,16 +709,16 @@
       "comment" : "Markdown heading command",
       "extractionState" : "extracted_with_value",
       "localizations" : {
-        "ko" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "제목"
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Heading"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "제목"
           }
         }
       }
@@ -727,16 +727,16 @@
       "comment" : "Entry info section holding the type and notebook pickers",
       "extractionState" : "extracted_with_value",
       "localizations" : {
-        "ko" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "분류"
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Organize"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "분류"
           }
         }
       }
@@ -885,16 +885,16 @@
       "comment" : "Header of the section that changes the type of selected entries",
       "extractionState" : "extracted_with_value",
       "localizations" : {
-        "ko" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "유형"
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Type"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "유형"
           }
         }
       }
@@ -903,16 +903,16 @@
       "comment" : "Sidebar section header listing notebooks",
       "extractionState" : "extracted_with_value",
       "localizations" : {
-        "ko" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "노트북"
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Notebooks"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "노트북"
           }
         }
       }
@@ -2396,6 +2396,16 @@
         }
       }
     },
+    "바꾼 언어는 앱을 다시 열면 적용됩니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The new language takes effect the next time you open the app."
+          }
+        }
+      }
+    },
     "발견한 선택 필드: %@" : {
       "localizations" : {
         "en" : {
@@ -3380,6 +3390,16 @@
         }
       }
     },
+    "시스템 설정을 고르면 기기의 언어를 따릅니다. 이 기기에만 적용됩니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose System to match your device’s language. This applies to this device only."
+          }
+        }
+      }
+    },
     "시작하기" : {
       "localizations" : {
         "en" : {
@@ -3596,6 +3616,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nothing has been deleted from either account."
+          }
+        }
+      }
+    },
+    "언어" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Language"
           }
         }
       }
@@ -4748,6 +4778,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Unfavorite"
+          }
+        }
+      }
+    },
+    "지금 다시 시작" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restart Now"
           }
         }
       }
