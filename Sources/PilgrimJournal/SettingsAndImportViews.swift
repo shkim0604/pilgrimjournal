@@ -14,6 +14,10 @@ struct SettingsView: View {
     @State private var isConfirmingSignOut = false
     @AppStorage(AppAppearance.storageKey) private var appearance =
         AppAppearance.defaultValue.rawValue
+    @State private var language = AppLanguage.current()
+    /// The language the app launched with; differs from `language` until the
+    /// app is reopened.
+    @State private var launchedLanguage = AppLanguage.current()
     #if DEBUG
     @AppStorage(PremiumCodeFeatureAccess.simulateLockedKey) private var simulateLocked = false
     #endif
@@ -141,6 +145,28 @@ struct SettingsView: View {
                 Text("시스템 설정을 고르면 기기의 라이트·다크 설정을 따릅니다. 이 기기에만 적용됩니다.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+            }
+            Section("언어") {
+                Picker("언어", selection: $language) {
+                    ForEach(AppLanguage.allCases) { option in
+                        Text(option.title).tag(option)
+                    }
+                }
+                .onChange(of: language) { _, newValue in
+                    newValue.apply()
+                }
+                if language != launchedLanguage {
+                    #if os(macOS)
+                    Button("지금 다시 시작") { AppLanguage.relaunch() }
+                    #endif
+                    Text("바꾼 언어는 앱을 다시 열면 적용됩니다.")
+                        .font(.caption)
+                        .foregroundStyle(JournalTheme.brandPrimary)
+                } else {
+                    Text("시스템 설정을 고르면 기기의 언어를 따릅니다. 이 기기에만 적용됩니다.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
             Section("보안") {
                 NavigationLink("앱 잠금") {
