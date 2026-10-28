@@ -247,6 +247,13 @@ struct ContentView: View {
         .sheet(isPresented: $model.isPresentingPremiumNotice) {
             PremiumFeatureNoticeSheet()
         }
+        #if os(iOS)
+        // 지금 동기화 reopens the store, which rebuilds this view; on iPhone
+        // it would otherwise come back on the sidebar instead of settings.
+        .onAppear {
+            if model.isPresentingSettings { preferredCompactColumn = .detail }
+        }
+        #endif
         #if os(macOS)
         // Swapping the detail column's content (switching entries, a new
         // note's autosave) makes SwiftUI write its own idea of the layout back

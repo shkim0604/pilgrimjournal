@@ -801,6 +801,16 @@
         }
       }
     },
+    "iCloud 저장소를 다시 열어 다른 기기의 변경을 바로 받아오고 이 기기의 변경을 올립니다. 잠깐 화면이 다시 그려집니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reopens the iCloud store to fetch changes from your other devices and upload this device's changes right away. The screen redraws for a moment."
+          }
+        }
+      }
+    },
     "iCloud로 데이터 이전" : {
       "localizations" : {
         "en" : {
@@ -1966,6 +1976,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Save to Another Location"
+          }
+        }
+      }
+    },
+    "다른 작업이 기록을 사용하고 있어 동기화를 다시 시작하지 못했습니다. 잠시 후 다시 시도하세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't restart sync because another task is using your journal. Try again in a moment."
           }
         }
       }
@@ -4788,6 +4808,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Restart Now"
+          }
+        }
+      }
+    },
+    "지금 동기화" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync Now"
           }
         }
       }

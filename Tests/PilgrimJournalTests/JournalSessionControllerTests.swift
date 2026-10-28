@@ -334,6 +334,112 @@ final class JournalSessionControllerTests: XCTestCase {
         )
         XCTAssertFalse(FileManager.default.fileExists(atPath: accountDirectory.path))
     }
+
+    func testManualSyncReopensTheICloudStoreAndKeepsSettingsOpen() async throws {
+        let parent = FileManager.default.temporaryDirectory.appending(
+            path: "journal-manual-sync-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        let root = parent.appending(path: "PilgrimJournal", directoryHint: .isDirectory)
+        let appleUser = "manual-sync-\(UUID().uuidString)"
+        let scope = JournalAccountScope(
+            appleUserIdentifier: appleUser,
+            storageLocation: .iCloud(accountHash: "icloud-account-a")
+        )
+        defer {
+            try? FileManager.default.removeItem(at: parent)
+            UserDefaults().removePersistentDomain(forName: scope.userDefaultsSuiteName)
+        }
+        let controller = JournalSessionController(
+            rootURL: root,
+            cloudKitContainerIdentifier: nil,
+            storageLocationProvider: { .iCloud(accountHash: "icloud-account-a") }
+        )
+        await controller.activate(appleUserIdentifier: appleUser)
+        XCTAssertTrue(controller.canReopenForSync)
+
+        weak var previousModel = controller.appModel
+        let entryID = try seedEntryAndShowSettings(in: controller)
+
+        let reopened = await controller.reopenForManualSync()
+
+        XCTAssertTrue(reopened)
+        XCTAssertFalse(controller.isReopeningForSync)
+        XCTAssertNil(previousModel)
+        let model = try XCTUnwrap(controller.appModel)
+        XCTAssertEqual(controller.activeScope, scope)
+        XCTAssertTrue(model.isPresentingSettings)
+        XCTAssertNotNil(try model.repository.entry(id: entryID))
+    }
+
+    /// A separate function so the test does not keep the old model alive
+    /// across the reopen; a local in the async test body would.
+    private func seedEntryAndShowSettings(
+        in controller: JournalSessionController
+    ) throws -> UUID {
+        let model = try XCTUnwrap(controller.appModel)
+        let entry = try model.repository.save(
+            JournalEntryDraft(kind: .memo, title: "동기화 전 기록"),
+            deviceID: "iPhone",
+            at: Date(timeIntervalSince1970: 10)
+        )
+        model.showSettings()
+        return entry.id
+    }
+
+    func testManualSyncPutsTheModelBackWhileSomethingStillHoldsIt() async throws {
+        let parent = FileManager.default.temporaryDirectory.appending(
+            path: "journal-manual-sync-held-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        let root = parent.appending(path: "PilgrimJournal", directoryHint: .isDirectory)
+        let appleUser = "manual-sync-held-\(UUID().uuidString)"
+        let scope = JournalAccountScope(
+            appleUserIdentifier: appleUser,
+            storageLocation: .iCloud(accountHash: "icloud-account-a")
+        )
+        defer {
+            try? FileManager.default.removeItem(at: parent)
+            UserDefaults().removePersistentDomain(forName: scope.userDefaultsSuiteName)
+        }
+        let controller = JournalSessionController(
+            rootURL: root,
+            cloudKitContainerIdentifier: nil,
+            storageLocationProvider: { .iCloud(accountHash: "icloud-account-a") }
+        )
+        await controller.activate(appleUserIdentifier: appleUser)
+        let held = try XCTUnwrap(controller.appModel)
+
+        let reopened = await controller.reopenForManualSync(
+            releaseTimeout: .milliseconds(200)
+        )
+
+        XCTAssertFalse(reopened)
+        XCTAssertTrue(controller.appModel === held)
+        XCTAssertEqual(controller.activeScope, scope)
+        XCTAssertNotNil(held.errorMessage)
+    }
+
+    func testManualSyncIsUnavailableForALocalOnlyScope() async throws {
+        let parent = FileManager.default.temporaryDirectory.appending(
+            path: "journal-manual-sync-local-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        let root = parent.appending(path: "PilgrimJournal", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: parent) }
+        let controller = JournalSessionController(
+            rootURL: root,
+            cloudKitContainerIdentifier: nil,
+            storageLocationProvider: { .localOnly }
+        )
+        await controller.activate(appleUserIdentifier: "apple-user")
+        let model = controller.appModel
+
+        XCTAssertFalse(controller.canReopenForSync)
+        let reopened = await controller.reopenForManualSync()
+        XCTAssertFalse(reopened)
+        XCTAssertTrue(controller.appModel === model)
+    }
 }
 
 @MainActor
