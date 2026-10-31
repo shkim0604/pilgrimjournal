@@ -54,6 +54,26 @@ struct SettingsView: View {
             Section("동기화") {
                 LabeledContent("상태", value: syncDescription)
                 LabeledContent("저장 위치", value: storageLocationDescription)
+                if journalSession.canReopenForSync {
+                    Button {
+                        // A local, not `journalSession` through self: the
+                        // task would otherwise hold this view and with it the
+                        // old model, which the reopen waits to be released.
+                        let session = journalSession
+                        Task { await session.reopenForManualSync() }
+                    } label: {
+                        Label("지금 동기화", systemImage: "arrow.triangle.2.circlepath.icloud")
+                    }
+                    .disabled(
+                        journalSession.isReopeningForSync
+                            || journalSession.isLoading
+                            || model.isWorking
+                            || model.isCloudImportInProgress
+                    )
+                    Text("iCloud 저장소를 다시 열어 다른 기기의 변경을 바로 받아오고 이 기기의 변경을 올립니다. 잠깐 화면이 다시 그려집니다.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
                 Text(
                     "기록과 첨부는 현재 시스템 iCloud의 개인 데이터베이스에 저장됩니다. 이 저장 공간은 최초 연결한 Apple 로그인 사용자에게 귀속되며 다른 사용자는 차단됩니다."
                 )
