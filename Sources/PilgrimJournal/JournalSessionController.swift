@@ -20,6 +20,7 @@ final class JournalSessionController: ObservableObject {
     @Published private(set) var activeScope: JournalAccountScope?
     @Published private(set) var pendingMigration: PendingJournalScopeMigration?
     @Published private(set) var isLoading = false
+    @Published private(set) var isReopeningForSync = false
     @Published var errorMessage: String?
     /// The Apple user the journal was last opened for. Kept after
     /// `deactivate`, so a retried account deletion still knows whose data
@@ -190,6 +191,60 @@ final class JournalSessionController: ObservableObject {
         deactivate()
         errorMessage = nil
         try? await Task.sleep(for: .milliseconds(300))
+    }
+
+    /// Whether 지금 동기화 has anything to do: an open iCloud scope that is
+    /// not waiting on a local-to-iCloud migration.
+    var canReopenForSync: Bool {
+        guard case .iCloud = activeScope?.storageLocation else { return false }
+        return pendingMigration == nil && appModel != nil
+    }
+
+    /// Reopens the iCloud store so CloudKit mirroring sets up, fetches and
+    /// uploads again, as it does at launch. SwiftData has no public "sync
+    /// now"; loading the store is what schedules a fetch.
+    ///
+    /// The old model is let go first, because two containers mirroring the
+    /// same store in one process fight over CloudKit's export and import
+    /// work. If something still holds it after `releaseTimeout`, it is put
+    /// back rather than opening a second copy of the store. Callers must not
+    /// capture the current `AppModel` across this call.
+    @discardableResult
+    func reopenForManualSync(
+        releaseTimeout: Duration = .seconds(2)
+    ) async -> Bool {
+        guard !isLoading, !isReopeningForSync, canReopenForSync,
+            let scope = activeScope,
+            let appleUserIdentifier = lastAppleUserIdentifier
+        else { return false }
+        isReopeningForSync = true
+        defer { isReopeningForSync = false }
+
+        let wasPresentingSettings = appModel?.isPresentingSettings ?? false
+        weak var previousModel = appModel
+        deactivate()
+        let clock = ContinuousClock()
+        let deadline = clock.now.advanced(by: releaseTimeout)
+        while previousModel != nil, clock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+        // Something else (an account change) already opened a store.
+        if appModel != nil { return true }
+        if let stillHeld = previousModel {
+            activeScope = scope
+            appModel = stillHeld
+            stillHeld.errorMessage = String(
+                localized: "다른 작업이 기록을 사용하고 있어 동기화를 다시 시작하지 못했습니다. 잠시 후 다시 시도하세요.")
+            return false
+        }
+
+        await activate(appleUserIdentifier: appleUserIdentifier, forceRefresh: true)
+        guard let model = appModel else { return false }
+        if wasPresentingSettings {
+            model.showSettings()
+        }
+        await model.refreshCloudAccountState()
+        return true
     }
 
     @discardableResult
