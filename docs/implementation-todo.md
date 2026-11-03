@@ -6,6 +6,23 @@
 
 ## 대기 중
 
+- **가족 공유 노트북 (진행 중, 2026-11-03 착수)** — 노트북이나 노트 하나를 iCloud
+  `CKShare`로 가족과 공유하고, 사이드바 "공유됨" 섹션에서 함께 본다(무료, 사진 포함).
+  SwiftData는 CloudKit 공유를 못 하므로, 공유는 private 기록장과 따로 공유 단위마다
+  `pilgrim-share-<uuid>` zone + zone 전체 share를 두고 `CKSyncEngine`으로 동기화한다.
+  - 끝남: 줄 단위 3-way merge(`ThreeWayTextMerge`), 엔트리 병합(`SharedEntryMerge` —
+    같은 줄 충돌은 나중 편집이 이기고 진 쪽은 이력용으로 반환), 공유 단위 타입
+    (`SharedSpaceRecord`, `SharedKindSnapshot`), `JournalSharing` 타깃의 레코드 매핑
+    (내용은 `encryptedValues`, Day One 원본 정보는 공유하지 않음)·`SharedSyncEngineHost`·
+    `SharedSpaceService`(공유 생성·수락·중지·나가기). 단위 테스트만 통과, 실제
+    CloudKit 동작은 미검증.
+  - 다음: Apple ID 2개·실기기 2대 스파이크(생성→수락→양방향 편집), 공유 단위별 로컬
+    캐시 store와 `SharedSyncStore` 구현, 앱 통합("공유됨" 섹션·공유 시트·수락
+    델리게이트), 기존 노트·노트북 이동, 상대 편집 위치 표시, 사진, 검색·백업·계정
+    삭제 경계, `docs/privacy.md`("shared DB 사용 안 함") 수정.
+  - 새 record type(`SharedEntry`, `SharedRevision`)은 Production 배포가 필요하다
+    (`docs/known-issues.md` "CloudKit schema drift").
+
 - **유료 코드 잠금의 출시 위험** (2026-10-15 도입) — 유형 편집(추가·이름
   변경·삭제·순서)은 모든 빌드에서 기본으로 잠기고, 설정 › 유료 기능이나 잠금
   안내 화면에서 코드를 넣은 기기만 열린다(`PremiumCodeFeatureAccess`, 기기별
