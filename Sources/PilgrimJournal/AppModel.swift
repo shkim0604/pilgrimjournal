@@ -128,6 +128,11 @@ final class AppModel: ObservableObject {
     let paths: JournalPaths
     let deviceID: String
     let featureAccess: any FeatureAccess
+    #if DEBUG && PILGRIM_SWIFTDATA
+    /// The family sharing spike, set for iCloud scopes only. Owned here so its sync
+    /// engines stop when the journal store closes.
+    var familySharing: FamilySharingController?
+    #endif
     private let cloudAccountMonitor: CloudAccountMonitor?
     private let kindCatalogStore: KindCatalogStore
     /// Set by the first `refresh()`, which runs the one full reconcile pass

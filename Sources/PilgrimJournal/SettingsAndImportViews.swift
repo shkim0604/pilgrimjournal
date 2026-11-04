@@ -342,6 +342,17 @@ struct SettingsView: View {
                 Text("Debug 빌드에서만 보입니다. 켜면 유형 편집 대신 유료 안내가 뜹니다.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                #if PILGRIM_SWIFTDATA
+                if let familySharing = model.familySharing {
+                    NavigationLink("가족 공유 실험") {
+                        FamilySharingDebugView(controller: familySharing)
+                    }
+                } else {
+                    Text("가족 공유 실험은 iCloud에 연결된 상태에서만 열립니다.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                #endif
             }
             #endif
         }

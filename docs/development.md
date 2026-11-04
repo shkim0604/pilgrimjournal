@@ -93,6 +93,41 @@ replace 모드로 복원한다.
 존을 지워도 **로컬 사본을 가진 기기는 다음 실행에서 존을 다시 만들고 전부
 재업로드한다.** 정말로 비우려면 모든 기기의 로컬 데이터도 같이 지워야 한다.
 
+## 가족 공유 스파이크
+
+가족 공유(`docs/implementation-todo.md` "가족 공유 노트북")의 CloudKit 공유 계층을
+UI를 만들기 전에 실기기로 확인하는 Debug 전용 화면이다. 설정 › 개발 › **가족 공유
+실험**(`Sources/PilgrimJournal/FamilySharingDebug.swift`). iCloud에 연결된 상태에서만
+열린다. Release 빌드에는 없다.
+
+준비물: **서로 다른 Apple ID로 iCloud에 로그인한 iPhone 2대**(A = 소유자, B = 가족).
+둘 다 Debug 빌드를 Xcode에서 서명해 설치한다. 시뮬레이터나 서명 없는 빌드는 iCloud
+entitlement가 없어 시작하자마자 멈춘다. 초대 화면(`UICloudSharingController`)은
+iPhone에만 있다. Mac은 아직 초대 수락 경로(`CKSharingSupported`)가 없다.
+
+| # | 할 일 | 확인할 것 |
+| --- | --- | --- |
+| 1 | A: "만들고 초대하기" → 시스템 공유 화면에서 B에게 메시지로 초대 | 기록에 "공유 만들기: 성공". 실패하면 오류 문구를 기록해 둔다 |
+| 2 | B: 메시지의 링크를 연다. 앱이 꺼져 있을 때와 잠금 화면 상태에서 각각 한 번 | B의 "공유됨"에 이름·"받음 · A 이름"이 나타남 |
+| 3 | A: 공유 안에서 노트 저장 | B 화면에 뜨기까지 걸린 시간. 공유 화면을 열어 두면 8초마다 가져온다 |
+| 4 | B: 같은 노트의 다른 줄 수정 | A에 두 수정이 모두 남음 |
+| 5 | A·B 모두 비행기 모드에서 같은 노트의 **다른 줄** 수정 → 비행기 모드 해제 | 양쪽 결과가 같고 두 수정이 모두 남음 |
+| 6 | 5번을 **같은 줄**로 반복 | 나중에 고친 쪽이 본문에 남음(진 쪽은 이력 레코드로 남아 있음 — 이력 화면은 아직 없음) |
+| 7 | A: 앱을 껐다 켜고, A의 두 번째 기기(같은 Apple ID)에서도 열기 | 공유와 노트가 다시 나타남 |
+| 8 | B: "나가기" | B에서 사라지고 A에는 그대로 |
+| 9 | A: 다시 초대한 뒤 "공유 중지" | 양쪽에서 사라짐(서버 사본 삭제) |
+
+확인할 점과 알려진 한계:
+- 소유자의 공유는 private DB의 `pilgrim-share-<uuid>` 존에 있다. 개인 기록의
+  `com.apple.coredata.cloudkit.zone`은 가족 공유 엔진이 가져오지 않는다
+  (`SharedSyncEngineHost.fetchOptions`). CloudKit Console에서 두 존이 따로 보이는지
+  확인한다.
+- 새 레코드 타입 `SharedEntry`, `SharedRevision`은 Development에서 처음 저장할 때
+  만들어진다. Production 배포 전에 Console에서 배포해야 한다.
+- 메타데이터(`Shared/SharedSync.json`)는 변경마다 통째로 다시 쓴다. 노트가 수백 개면
+  느려질 수 있다.
+- 결과는 `docs/pre-release-checklist.md`에 남긴다.
+
 ## 공유 카드 추출 평가 (온디바이스 모델)
 
 `docs/roadmap.md`의 공유 카드(기도제목·간증·독후감) 추출을 Apple 온디바이스 모델로

@@ -324,7 +324,7 @@ final class JournalSessionController: ObservableObject {
         #endif
 
         let defaults = UserDefaults(suiteName: scope.userDefaultsSuiteName) ?? .standard
-        return try AppModel(
+        let model = try AppModel(
             repository: repository,
             importStore: importStore,
             searchIndex: JournalSearchIndex(
@@ -338,6 +338,20 @@ final class JournalSessionController: ObservableObject {
             notebookCloudStore: syncedContainerIdentifier == nil ? nil : .default,
             featureAccess: PremiumCodeFeatureAccess()
         )
+        #if DEBUG && PILGRIM_SWIFTDATA
+        if let syncedContainerIdentifier, !isVisualTesting {
+            do {
+                model.familySharing = try FamilySharingController(
+                    containerIdentifier: syncedContainerIdentifier,
+                    directory: paths.root.appending(path: "Shared", directoryHint: .isDirectory),
+                    deviceID: model.deviceID
+                )
+            } catch {
+                print("Family sharing spike could not start: \(error)")
+            }
+        }
+        #endif
+        return model
     }
 
     private func migrateLegacyDataIfNeeded(

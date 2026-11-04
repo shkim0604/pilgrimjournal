@@ -74,6 +74,7 @@ let package = Package(
                 "DayOneImport",
                 "JournalSearch",
                 "JournalBackup",
+                "JournalSharing",
             ],
             // The app's String Catalog is compiled by the Xcode app target,
             // which builds these sources directly; SwiftPM builds only run
@@ -118,7 +119,7 @@ let package = Package(
         ),
         .testTarget(
             name: "JournalSharingTests",
-            dependencies: ["JournalSharing", "JournalDomain"]
+            dependencies: ["JournalSharing", "JournalDomain", "JournalData"]
         ),
         .testTarget(
             name: "DayOneImportTests",

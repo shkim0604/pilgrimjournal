@@ -9,6 +9,9 @@ public protocol SharedSyncStore: AnyObject {
     func stateSerialization(for scope: CKDatabase.Scope) -> CKSyncEngine.State.Serialization?
     func saveStateSerialization(
         _ serialization: CKSyncEngine.State.Serialization, for scope: CKDatabase.Scope)
+    /// The `pilgrim-share-*` zones this user owns. The private-database engine fetches only
+    /// these, so it never downloads the journal's own Core Data zone.
+    var ownedZoneIDs: [CKRecordZone.ID] { get }
 
     /// The record to upload for a pending save, built from the local copy on top of the
     /// last known server record, or nil when the local copy is gone.
@@ -81,8 +84,8 @@ public final class SharedSyncEngineHost {
     /// Pulls now instead of waiting for a push: used on foregrounding and while a shared
     /// entry is open, since silent pushes can be late or coalesced.
     public func fetchChanges() async throws {
-        for engine in engines.values {
-            try await engine.fetchChanges()
+        for (scope, engine) in engines {
+            try await engine.fetchChanges(fetchOptions(scope: scope))
         }
     }
 
@@ -184,6 +187,14 @@ public final class SharedSyncEngineHost {
         }
     }
 
+    fileprivate func fetchOptions(scope: CKDatabase.Scope) -> CKSyncEngine.FetchChangesOptions {
+        var options = CKSyncEngine.FetchChangesOptions()
+        if scope == .private {
+            options.scope = .zoneIDs(store.ownedZoneIDs)
+        }
+        return options
+    }
+
     private func recordToSave(_ recordID: CKRecord.ID, engine: CKSyncEngine) -> CKRecord? {
         guard let record = store.recordToSave(recordID) else {
             engine.state.remove(pendingRecordZoneChanges: [.saveRecord(recordID)])
@@ -213,5 +224,12 @@ private final class EngineDelegate: CKSyncEngineDelegate, Sendable {
         syncEngine: CKSyncEngine
     ) async -> CKSyncEngine.RecordZoneChangeBatch? {
         await host?.nextBatch(context, engine: syncEngine)
+    }
+
+    func nextFetchChangesOptions(
+        _ context: CKSyncEngine.FetchChangesContext,
+        syncEngine: CKSyncEngine
+    ) async -> CKSyncEngine.FetchChangesOptions {
+        await host?.fetchOptions(scope: scope) ?? context.options
     }
 }
