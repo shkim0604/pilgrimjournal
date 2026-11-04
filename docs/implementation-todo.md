@@ -6,14 +6,17 @@
 
 ## 대기 중
 
-- **유료 코드 잠금의 출시 위험** (2026-10-15 도입) — 유형 편집(추가·이름
-  변경·삭제·순서)은 모든 빌드에서 기본으로 잠기고, 설정 › 유료 기능이나 잠금
-  안내 화면에서 코드를 넣은 기기만 열린다(`PremiumCodeFeatureAccess`, 기기별
-  `UserDefaults`, 동기화·재설치 후 유지 안 됨). 저장소가 공개라 코드는 소스에
-  없고 솔트+PBKDF2 키만 있다(`PremiumCode.production`; 바꾸는 법은 그 주석).
-  - App Store 심사 지침 3.1.1은 인앱 결제 아닌 코드로 기능을 여는 것을 금지한다.
-    심사에서 거절될 수 있다.
-  - 이 빌드로 업데이트하면 기존 사용자도 유형 편집이 잠긴다.
+- **프리미엄 구독의 남은 일** (2026-11-04 StoreKit 전환 이후)
+  - 그룹·공유 기능(`docs/roadmap.md`)을 만들면 같은 구독 자격으로 연다.
+    `FeatureAccess`에 기능별 속성(예: `canUseGroups`)을 더하고 판단은 계속
+    `PremiumEntitlement` 한 곳에서 한다. 가족 공유(`feat/family-sharing`)는 무료로
+    두기로 했지만 막아야 하면 같은 방식이다.
+  - 서버가 없어 구독은 기기의 StoreKit만 믿는다. 그룹 백엔드가 생기면 서버에서
+    App Store Server API로 다시 검증해야 한다(로드맵 "구독자만 가입" 항목).
+  - 연간 상품·체험 기간(introductory offer)은 아직 없다. 추가하면
+    `PremiumEntitlement.productIDs`와 `PilgrimJournal.storekit`에 같이 넣는다.
+  - Mac은 macOS 15부터 "코드 사용"(오퍼 코드 시트)이 보인다. macOS 14에서는 App
+    Store 앱에서 코드를 쓰면 `Transaction.updates`로 들어온다.
 
 - **계정 삭제 후 다른 기기를 위한 삭제 표시 record** (2026-10-16, 1.1.0 (29)에서 미룸)
   계정 삭제(`AccountDeletionService`)는 이 기기와 iCloud만 지운다. 같은 계정으로 쓰던
@@ -62,9 +65,6 @@
   드래그)와 ▲▼(2026-10-15, 아래 완료 항목). 필요해지면 iPhone처럼
   `attachmentInsertionSelection` + `MarkdownImageInserter`를 macOS coordinator에
   연결하면 된다.
-- **사용자 유형 관리 — 2단계: 결제와 잠금**
-  StoreKit 결제·구매 복원을 붙이고 `FeatureAccess` 기본값을 잠김으로 바꾼다.
-  지금은 모든 빌드에서 열려 있다.
 - **유형 편집 시트의 작은 UX 빈틈**
   - 시트의 오류 메시지가 목록 맨 위에 있어 스크롤하면 보이지 않는다.
   - macOS에는 눈에 보이는 삭제 버튼이 없다(컨텍스트 메뉴·Delete 키만).
@@ -87,6 +87,19 @@
 
 ## 완료
 
+- **유료 기능을 App Store 구독으로 판매** (2026-11-04) — 유형 편집(추가·이름
+  변경·삭제·순서)은 자동 갱신 월 구독 "Pilgrim 프리미엄"(₩2,000, product ID
+  `com.dhouse.PilgrimJournal.premium.monthly`)으로만 열린다. 심사 지침 3.1.1에
+  걸리던 자체 코드 잠금(`PremiumCodeFeatureAccess`, PBKDF2 키)은 지웠고, 코드는
+  App Store 오퍼 코드(Apple 시트, "코드 사용")로 대신한다. `StoreKitFeatureAccess`가
+  `Transaction.currentEntitlements`·`Transaction.updates`로 자격을 읽고, 잠금 안내
+  시트와 설정 › 프리미엄에 가격(`Product.displayPrice`)·구독하기·구입 복원·코드
+  사용·자동 갱신 안내·이용약관/개인정보 링크(3.1.2)가 있다. 구독 중이면 설정에
+  "구독 관리". 자격 판단은 `PremiumEntitlementTests`, 로컬 구입은 scheme의
+  `PilgrimJournal.storekit`. 예전 코드로 연 기기의 `premium-unlocked` 값은 더 이상
+  읽지 않는다(코드 잠금은 1.1.0 (29) 뒤에 들어와 빌드 번호를 올린 적이 없다).
+  App Store Connect 설정과 sandbox
+  실기기 확인은 `docs/pre-release-checklist.md`.
 - **설정에서 수동 iCloud 동기화** (2026-10-28) — 설정 › 동기화 › `지금 동기화`.
   iCloud 범위가 열려 있고 로컬→iCloud 이전 대기 중이 아닐 때만 보인다. 저장소를
   다시 열어 CloudKit mirroring을 처음부터 다시 돌리는 방식이라 화면이 잠깐 다시

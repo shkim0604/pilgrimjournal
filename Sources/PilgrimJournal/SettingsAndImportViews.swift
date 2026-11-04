@@ -19,7 +19,7 @@ struct SettingsView: View {
     /// app is reopened.
     @State private var launchedLanguage = AppLanguage.current()
     #if DEBUG
-    @AppStorage(PremiumCodeFeatureAccess.simulateLockedKey) private var simulateLocked = false
+    @AppStorage(StoreKitFeatureAccess.simulateLockedKey) private var simulateLocked = false
     #endif
 
     var body: some View {
@@ -123,19 +123,16 @@ struct SettingsView: View {
                     OrganizationSettingsView()
                 }
             }
-            Section("유료 기능") {
-                if model.featureAccess.isPremium {
-                    LabeledContent("상태", value: String(localized: "사용 중"))
-                } else {
-                    Button {
-                        model.isPresentingPremiumNotice = true
-                    } label: {
-                        Label("코드 입력…", systemImage: "key")
-                    }
-                }
-                Text("유형 추가·삭제·편집은 유료 기능입니다. 코드는 입력한 기기에만 적용됩니다.")
+            Section("프리미엄") {
+                Text("유형 추가·삭제·편집은 프리미엄 기능입니다.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                if model.featureAccess.isPremium {
+                    LabeledContent("상태", value: String(localized: "구독 중"))
+                    ManageSubscriptionButton()
+                } else {
+                    PremiumPurchaseControls()
+                }
             }
             Section("데이터 관리") {
                 Button {
@@ -331,17 +328,11 @@ struct SettingsView: View {
             #if DEBUG
             Section("개발") {
                 Toggle("유료 기능 잠금 시뮬레이션", isOn: $simulateLocked)
-                if let access = model.featureAccess as? PremiumCodeFeatureAccess,
-                    access.isPremium
-                {
-                    Button("유료 코드 해제 초기화") {
-                        access.resetForTesting()
-                        model.featureAccessDidChange()
-                    }
-                }
-                Text("Debug 빌드에서만 보입니다. 켜면 유형 편집 대신 유료 안내가 뜹니다.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Text(
+                    "Debug 빌드에서만 보입니다. 켜면 구독 중이어도 유형 편집 대신 유료 안내가 뜹니다. 구입은 Xcode의 StoreKit 설정(PilgrimJournal.storekit)으로 시험하고, 구입 기록은 Xcode › Debug › StoreKit › Manage Transactions에서 지웁니다."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
             #endif
         }

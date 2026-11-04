@@ -215,7 +215,10 @@ struct PilgrimJournalApp: App {
                     isVisualTesting ? visualTestingRoot : try JournalPaths.applicationRoot()
                 },
                 cloudKitContainerIdentifier: cloudKitEnabled ? requestedCloudIdentifier : nil,
-                isVisualTesting: isVisualTesting
+                isVisualTesting: isVisualTesting,
+                // Created here, once, so it is listening to
+                // `Transaction.updates` from launch.
+                featureAccess: StoreKitFeatureAccess()
             ))
     }
 
@@ -361,6 +364,9 @@ struct PilgrimJournalApp: App {
             .onChange(of: scenePhase) { _, newPhase in
                 switch newPhase {
                 case .active:
+                    // Current entitlements drop a lapsed subscription, but
+                    // nothing announces the lapse; re-read on every return.
+                    Task { await journalSession.featureAccess.refresh() }
                     if authentication.canAccessJournal {
                         appLock.sceneDidBecomeActive()
                         Task {

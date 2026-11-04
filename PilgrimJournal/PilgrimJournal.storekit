@@ -1,0 +1,71 @@
+{
+  "identifier" : "6E0B7C2A",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+
+  ],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_locale" : "ko_KR",
+    "_storefront" : "KOR",
+    "_storeKitErrors" : [
+
+    ]
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "8F1D2C3B",
+      "localizations" : [
+        {
+          "description" : "",
+          "displayName" : "Pilgrim 프리미엄",
+          "locale" : "ko"
+        },
+        {
+          "description" : "",
+          "displayName" : "Pilgrim Premium",
+          "locale" : "en_US"
+        }
+      ],
+      "name" : "Pilgrim Premium",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "2000",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "4A6B8C0D",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "유형 추가·삭제·편집과 앞으로의 그룹 기능",
+              "displayName" : "Pilgrim 프리미엄 (월간)",
+              "locale" : "ko"
+            },
+            {
+              "description" : "Custom kinds now, group features later",
+              "displayName" : "Pilgrim Premium (Monthly)",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.dhouse.PilgrimJournal.premium.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Premium Monthly",
+          "subscriptionGroupID" : "8F1D2C3B",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

@@ -46,6 +46,25 @@ CloudKit production schema는 additive-only 정책으로 관리한다. 개발 co
 자동화 테스트 대상이지만, 실제 두 기기의 네트워크 수렴은 아래 실제 기기 관문을
 별도로 통과해야 한다.
 
+## 인앱 구입 (StoreKit)
+
+- 유료 기능은 자동 갱신 구독 하나로 판다: 구독 그룹 "Pilgrim Premium", product ID
+  `com.dhouse.PilgrimJournal.premium.monthly`(1개월, ₩2,000 / $1.99 단계).
+  App Store Connect의 ID는 `PremiumEntitlement.monthlyProductID`와 같아야 한다.
+- 접근 판단은 `FeatureAccess` 하나에서만 한다. 앱은 `StoreKitFeatureAccess`를 실행
+  때 한 번 만들어 `Transaction.updates`를 끝까지 듣고, `Transaction.currentEntitlements`
+  로 자격을 읽는다(앱이 활성화될 때마다 다시 읽어 만료를 반영). 테스트는
+  `UnlockedFeatureAccess`를 쓴다.
+- 로컬 시험: `PilgrimJournalApp` scheme의 Run이
+  `PilgrimJournal/PilgrimJournal.storekit`을 쓰므로 Xcode에서 실행하면 시뮬레이터나
+  Mac에서 App Store 없이 구입·복원이 된다. 구입 기록 삭제·환불·만료는 Xcode ›
+  Debug › StoreKit › Manage Transactions. 커맨드라인으로 직접 실행한 바이너리나
+  TestFlight는 이 파일을 쓰지 않는다(sandbox 계정 사용).
+- 설정 › 개발의 "유료 기능 잠금 시뮬레이션"(Debug 빌드만)은 구독 중이어도 잠긴
+  상태를 보여 준다.
+- App Store Connect 설정과 sandbox 실기기 확인 항목은
+  `docs/pre-release-checklist.md`.
+
 ## 저장 adapter 관문
 
 초기 adapter는 SwiftData를 사용한다. 실제 기기 spike에서 다음 조건을 모두

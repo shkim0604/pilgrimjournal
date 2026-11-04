@@ -6,6 +6,50 @@
 
 ## 미룬 항목 (재개 필요)
 
+- [ ] **프리미엄 구독(StoreKit) — App Store Connect 설정과 실기기 sandbox 구입**
+      (2026-11-04). 유형 편집은 이제 자동 갱신 월 구독으로만 열린다
+      (`StoreKitFeatureAccess`, `docs/development.md` "인앱 구입"). 자동 테스트
+      (`PremiumEntitlementTests`)·`scripts/check.sh`·서명 없는 iOS/macOS 빌드·iOS
+      시뮬레이터 테스트는 통과. Xcode StoreKit 설정 파일로 구입 화면을 직접 눌러 본
+      적은 아직 없다. **이 설정이 끝나기 전에는 이 빌드를 심사에 내지 않는다** —
+      상품이 없으면 구독 버튼이 비활성이라 유형 편집을 열 길이 없다.
+      - App Store Connect:
+        - [ ] 유료 앱 계약(Paid Applications Agreement)·세금·은행 정보가 활성인지.
+        - [ ] 구독 그룹 "Pilgrim Premium"과 자동 갱신 구독 product ID
+              `com.dhouse.PilgrimJournal.premium.monthly`(1개월). 가격은 한국
+              ₩2,000·미국 $1.99 단계(`docs/roadmap.md`). 한국어·영어 표시 이름과
+              설명, 심사용 스크린샷(잠금 안내 시트)과 심사 메모.
+        - [ ] 첫 구독은 앱 버전과 함께 심사받는다: 버전 페이지 "인앱 구입 및 구독"에
+              이 구독을 추가하고 제출.
+        - [ ] 개인정보 처리방침 URL을 넣고 앱의 `SupportLinks.privacyPolicy`(지금은
+              지원 페이지)와 같은지 확인. 지원 페이지에 개인정보 처리방침이 없으면
+              페이지를 추가하고 둘 다 바꾼다.
+        - [ ] 이용약관: 앱은 Apple 표준 EULA(`SupportLinks.termsOfUse`)로 연결한다.
+              앱 설명(또는 사용자 지정 EULA 칸)에도 이용약관 링크를 넣는다(3.1.2).
+        - [ ] 오퍼 코드(일회용 또는 사용자 지정 코드)를 이 구독에 만든다 — 사용자가
+              "코드 사용"으로 넣을 코드는 이것뿐이다.
+        - [ ] 가족 공유를 켤지 결정(앱은 가족 공유 거래도 자격으로 본다).
+      - Xcode 로컬(시뮬레이터·Mac, scheme의 `PilgrimJournal.storekit`):
+        - [ ] 잠금 안내 시트와 설정 › 프리미엄에 "Pilgrim 프리미엄 (월간)", "₩2,000 / 월"이
+              보이고, 구독하기 → 유형 편집이 바로 열리는지.
+        - [ ] Manage Transactions에서 환불·만료 → 앱으로 돌아오면 다시 잠기는지.
+        - [ ] 거래 삭제 후 구입 복원 → "복원할 구독이 없습니다", 구입 후 복원 →
+              "구입을 복원했습니다".
+        - [ ] Ask to Buy를 켜고 구입 → 승인 대기 문구 → 승인하면 시트를 닫지 않아도
+              열리는지.
+        - [ ] 영어 기기에서 문구와 "₩2,000 / month" 형태.
+      - 실기기 sandbox(iPhone·Mac, Release 구성 또는 TestFlight, 설정 › App Store ›
+        샌드박스 계정):
+        - [ ] 구입, 갱신(sandbox 1개월 = 몇 분), 자동 갱신 끄고 만료 뒤 앱 복귀 시
+              잠김.
+        - [ ] 앱 삭제 → 재설치 → 구입 복원. 같은 Apple 계정의 다른 기기(iPhone↔Mac)에서
+              구입 없이 열리는지.
+        - [ ] 구독 관리 버튼: iPhone은 시스템 구독 관리 시트, Mac은 App Store 구독 페이지.
+        - [ ] 코드 사용: iPhone·macOS 15 이상에서 Apple 오퍼 코드 시트가 뜨는지.
+              sandbox·TestFlight에서 오퍼 코드를 실제로 쓸 수 있는지는 Apple 문서로
+              확인하고, 안 되면 Xcode StoreKit 설정에 코드 오퍼를 추가해 로컬로 본다.
+              macOS 14에서는 버튼이 숨겨지는지.
+
 - [ ] **1.1.0 (29) — App Review 반려 대응: 계정 삭제·지원 페이지** (2026-10-16,
       브랜치 `fix/account-deletion`). 1.1.0 (28)이 2026-10-16 두 가지로 반려됐다.
       - **5.1.1(v)**: Sign in with Apple로 계정을 만드는데 앱 안에 계정 삭제가

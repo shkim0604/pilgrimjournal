@@ -27,6 +27,11 @@ final class JournalSessionController: ObservableObject {
     /// to remove (the developer bypass has no signed-in identifier).
     private(set) var lastAppleUserIdentifier: String?
 
+    /// Shared by every `AppModel` this controller opens: purchases belong to
+    /// the Apple ID, not to a journal scope, and the StoreKit listener must
+    /// outlive store reopens.
+    let featureAccess: any FeatureAccess
+
     private var rootURL: URL
     private let cloudKitContainerIdentifier: String?
     private let isVisualTesting: Bool
@@ -40,8 +45,10 @@ final class JournalSessionController: ObservableObject {
         rootURL: URL,
         cloudKitContainerIdentifier: String?,
         isVisualTesting: Bool = false,
-        storageLocationProvider: (() async -> JournalStorageLocation)? = nil
+        storageLocationProvider: (() async -> JournalStorageLocation)? = nil,
+        featureAccess: (any FeatureAccess)? = nil
     ) {
+        self.featureAccess = featureAccess ?? UnlockedFeatureAccess()
         self.rootURL = rootURL
         self.cloudKitContainerIdentifier = cloudKitContainerIdentifier
         self.isVisualTesting = isVisualTesting
@@ -66,20 +73,23 @@ final class JournalSessionController: ObservableObject {
     convenience init(
         rootURLProvider: @escaping () throws -> URL,
         cloudKitContainerIdentifier: String?,
-        isVisualTesting: Bool = false
+        isVisualTesting: Bool = false,
+        featureAccess: any FeatureAccess
     ) {
         do {
             self.init(
                 rootURL: try rootURLProvider(),
                 cloudKitContainerIdentifier: cloudKitContainerIdentifier,
-                isVisualTesting: isVisualTesting
+                isVisualTesting: isVisualTesting,
+                featureAccess: featureAccess
             )
         } catch {
             // Placeholder only: nothing reads it before the root resolves.
             self.init(
                 rootURL: FileManager.default.temporaryDirectory,
                 cloudKitContainerIdentifier: cloudKitContainerIdentifier,
-                isVisualTesting: isVisualTesting
+                isVisualTesting: isVisualTesting,
+                featureAccess: featureAccess
             )
             unresolvedRootProvider = rootURLProvider
         }
@@ -336,7 +346,7 @@ final class JournalSessionController: ObservableObject {
             },
             notebookDefaults: defaults,
             notebookCloudStore: syncedContainerIdentifier == nil ? nil : .default,
-            featureAccess: PremiumCodeFeatureAccess()
+            featureAccess: featureAccess
         )
     }
 

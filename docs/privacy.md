@@ -29,6 +29,10 @@
   CloudKit과 앱 백업으로 동기화하지 않는다.
 - 앱 잠금은 화면 접근을 보호하는 기능이다. journal database와 CloudKit record를
   앱 비밀번호로 종단 간 암호화하는 기능은 아니다.
+- 유료 기능(프리미엄 구독)은 App Store 인앱 구입(StoreKit 2)으로만 판다. 결제와
+  영수증은 Apple이 처리하고, 앱은 기기의 StoreKit에서 현재 구독 자격만 읽는다.
+  구입 정보를 CloudKit·자체 서버·제3자에게 보내거나 저장하지 않는다. 코드는
+  App Store 오퍼 코드뿐이며 Apple의 시스템 시트에서 입력한다.
 
 ## 계정 삭제
 

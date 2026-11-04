@@ -204,6 +204,26 @@
         }
       }
     },
+    "App Store에서 구독 정보를 불러오지 못했습니다. 네트워크를 확인하고 다시 열어 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t load subscription details from the App Store. Check your connection and open this again."
+          }
+        }
+      }
+    },
+    "App Store에서 구입을 확인하지 못했습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The App Store couldn’t verify the purchase."
+          }
+        }
+      }
+    },
     "Apple 계정 · %@…%@" : {
       "localizations" : {
         "en" : {
@@ -541,12 +561,12 @@
         }
       }
     },
-    "Debug 빌드에서만 보입니다. 켜면 유형 편집 대신 유료 안내가 뜹니다." : {
+    "Debug 빌드에서만 보입니다. 켜면 구독 중이어도 유형 편집 대신 유료 안내가 뜹니다. 구입은 Xcode의 StoreKit 설정(PilgrimJournal.storekit)으로 시험하고, 구입 기록은 Xcode › Debug › StoreKit › Manage Transactions에서 지웁니다." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Visible only in Debug builds. When on, a premium feature prompt appears instead of Edit Types."
+            "value" : "Visible only in Debug builds. When on, the premium prompt appears instead of Edit Types even while subscribed. Test purchases with Xcode’s StoreKit configuration (PilgrimJournal.storekit) and clear them in Xcode › Debug › StoreKit › Manage Transactions."
           }
         }
       }
@@ -909,6 +929,150 @@
         }
       }
     },
+    "premium.period.day" : {
+      "comment" : "Billing period in a subscription price, as in ₩2,000 / 월",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "day"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "일"
+          }
+        }
+      }
+    },
+    "premium.period.days" : {
+      "comment" : "Billing period in a subscription price, as in ₩2,000 / 월",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld days"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%lld일"
+          }
+        }
+      }
+    },
+    "premium.period.month" : {
+      "comment" : "Billing period in a subscription price, as in ₩2,000 / 월",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "month"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "월"
+          }
+        }
+      }
+    },
+    "premium.period.months" : {
+      "comment" : "Billing period in a subscription price, as in ₩2,000 / 월",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld months"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%lld개월"
+          }
+        }
+      }
+    },
+    "premium.period.week" : {
+      "comment" : "Billing period in a subscription price, as in ₩2,000 / 월",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "week"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "주"
+          }
+        }
+      }
+    },
+    "premium.period.weeks" : {
+      "comment" : "Billing period in a subscription price, as in ₩2,000 / 월",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld weeks"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%lld주"
+          }
+        }
+      }
+    },
+    "premium.period.year" : {
+      "comment" : "Billing period in a subscription price, as in ₩2,000 / 월",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "year"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "년"
+          }
+        }
+      }
+    },
+    "premium.period.years" : {
+      "comment" : "Billing period in a subscription price, as in ₩2,000 / 월",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld years"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%lld년"
+          }
+        }
+      }
+    },
     "sidebar.notebooks" : {
       "comment" : "Sidebar section header listing notebooks",
       "extractionState" : "extracted_with_value",
@@ -1004,6 +1168,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Privacy"
+          }
+        }
+      }
+    },
+    "개인정보 처리방침" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Privacy Policy"
           }
         }
       }
@@ -1288,12 +1462,102 @@
         }
       }
     },
+    "구독 관리" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manage Subscription"
+          }
+        }
+      }
+    },
+    "구독 중" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Subscribed"
+          }
+        }
+      }
+    },
+    "구독은 현재 기간이 끝나기 24시간 전까지 해지하지 않으면 자동으로 갱신됩니다. 결제는 Apple 계정으로 청구되며, App Store 계정 설정에서 관리하거나 해지할 수 있습니다. 같은 Apple 계정을 쓰는 모든 기기에 적용됩니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The subscription renews automatically unless it’s canceled at least 24 hours before the end of the current period. Payment is charged to your Apple Account, and you can manage or cancel it in your App Store account settings. It applies to every device that uses the same Apple Account."
+          }
+        }
+      }
+    },
+    "구독하기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Subscribe"
+          }
+        }
+      }
+    },
     "구분선" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Divider"
+          }
+        }
+      }
+    },
+    "구입 복원" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore Purchases"
+          }
+        }
+      }
+    },
+    "구입 승인을 기다리고 있습니다. 승인되면 자동으로 열립니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting for the purchase to be approved. Premium unlocks automatically once it is."
+          }
+        }
+      }
+    },
+    "구입을 복원하지 못했습니다: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t restore purchases: %@"
+          }
+        }
+      }
+    },
+    "구입을 복원했습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Purchases restored."
+          }
+        }
+      }
+    },
+    "구입하지 못했습니다: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t complete the purchase: %@"
           }
         }
       }
@@ -2856,16 +3120,6 @@
         }
       }
     },
-    "사용 중" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Active"
-          }
-        }
-      }
-    },
     "사용 중인 태그가 없습니다." : {
       "localizations" : {
         "en" : {
@@ -3830,26 +4084,6 @@
         }
       }
     },
-    "유료 기능을 켰습니다" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Premium Features Unlocked"
-          }
-        }
-      }
-    },
-    "유료 코드 해제 초기화" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reset Premium Unlock"
-          }
-        }
-      }
-    },
     "유형" : {
       "localizations" : {
         "en" : {
@@ -3910,22 +4144,22 @@
         }
       }
     },
-    "유형 추가·삭제·편집은 유료 기능입니다. 코드는 입력한 기기에만 적용됩니다." : {
+    "유형 추가·삭제·편집은 프리미엄 구독으로 쓸 수 있습니다. 지금 있는 유형으로 기록을 쓰고 옮기는 것은 계속 할 수 있습니다." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Adding, deleting and editing types are premium features. A code applies only to the device you enter it on."
+            "value" : "Adding, deleting, and editing types is available with a Premium subscription. You can still write entries and move them between your existing types."
           }
         }
       }
     },
-    "유형 추가·삭제·편집은 유료 버전에서 쓸 수 있습니다. 지금 있는 유형으로 기록을 쓰고 옮기는 것은 계속 할 수 있습니다." : {
+    "유형 추가·삭제·편집은 프리미엄 기능입니다." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Adding, deleting, and editing types is available in the premium version. You can still write entries and move them between your existing types."
+            "value" : "Adding, deleting, and editing types are Premium features."
           }
         }
       }
@@ -3976,6 +4210,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Date Answered"
+          }
+        }
+      }
+    },
+    "이 Apple 계정에서 복원할 구독이 없습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "There’s no subscription to restore for this Apple Account."
           }
         }
       }
@@ -4288,6 +4532,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Can’t Display Image"
+          }
+        }
+      }
+    },
+    "이용약관(EULA)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terms of Use (EULA)"
           }
         }
       }
@@ -4842,6 +5096,16 @@
         }
       }
     },
+    "지금은 App Store에 연결할 수 없습니다. 잠시 후 다시 시도하세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Can’t connect to the App Store right now. Try again in a moment."
+          }
+        }
+      }
+    },
     "지금은 iCloud에 연결되어 있지 않습니다" : {
       "localizations" : {
         "en" : {
@@ -5140,16 +5404,6 @@
         }
       }
     },
-    "코드" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Code"
-          }
-        }
-      }
-    },
     "코드 블록" : {
       "localizations" : {
         "en" : {
@@ -5160,22 +5414,12 @@
         }
       }
     },
-    "코드 입력…" : {
+    "코드 사용" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Enter Code…"
-          }
-        }
-      }
-    },
-    "코드가 올바르지 않습니다." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "That code isn’t valid."
+            "value" : "Redeem Code"
           }
         }
       }
@@ -5356,6 +5600,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Options"
+          }
+        }
+      }
+    },
+    "프리미엄" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium"
+          }
+        }
+      }
+    },
+    "프리미엄을 사용 중입니다" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium Is Active"
           }
         }
       }

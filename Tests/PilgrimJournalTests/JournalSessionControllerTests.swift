@@ -16,7 +16,8 @@ final class JournalSessionControllerTests: XCTestCase {
                     userInfo: [NSLocalizedDescriptionKey: "Application Support 없음"]
                 )
             },
-            cloudKitContainerIdentifier: nil
+            cloudKitContainerIdentifier: nil,
+            featureAccess: UnlockedFeatureAccess()
         )
 
         await controller.activate(appleUserIdentifier: "apple-user")
@@ -42,7 +43,8 @@ final class JournalSessionControllerTests: XCTestCase {
                 if attempts <= 2 { throw CocoaError(.fileNoSuchFile) }
                 return root
             },
-            cloudKitContainerIdentifier: nil
+            cloudKitContainerIdentifier: nil,
+            featureAccess: UnlockedFeatureAccess()
         )
 
         await controller.activate(appleUserIdentifier: "apple-user")

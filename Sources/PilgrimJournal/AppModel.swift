@@ -128,6 +128,7 @@ final class AppModel: ObservableObject {
     let paths: JournalPaths
     let deviceID: String
     let featureAccess: any FeatureAccess
+    private var featureAccessSubscription: AnyCancellable?
     private let cloudAccountMonitor: CloudAccountMonitor?
     private let kindCatalogStore: KindCatalogStore
     /// Set by the first `refresh()`, which runs the one full reconcile pass
@@ -173,7 +174,8 @@ final class AppModel: ObservableObject {
         self.cloudAccountMonitor = cloudAccountMonitor
         self.notebookDefaults = notebookDefaults
         self.notebookCloudStore = notebookCloudStore
-        self.featureAccess = featureAccess ?? UnlockedFeatureAccess()
+        let featureAccess = featureAccess ?? UnlockedFeatureAccess()
+        self.featureAccess = featureAccess
         kindCatalogStore = KindCatalogStore(
             defaults: notebookDefaults,
             cloudStore: notebookCloudStore
@@ -205,6 +207,11 @@ final class AppModel: ObservableObject {
             UserDefaults.standard.set(generated, forKey: "device-id")
             deviceID = generated
         }
+        // A purchase, renewal, refund or redeemed offer code can land at any
+        // time; re-render whatever reads `featureAccess`. `FeatureAccess` is
+        // main-actor isolated, so it sends on the main actor.
+        featureAccessSubscription = featureAccess.changes
+            .sink { [weak self] in self?.featureAccessDidChange() }
     }
 
     func refreshCloudAccountState() async {
@@ -1814,8 +1821,8 @@ extension AppModel {
         kindCatalog.definition(for: kind)
     }
 
-    /// `featureAccess` publishes nothing of its own; call this when what it
-    /// grants may have changed so views reading it re-render.
+    /// Re-renders views reading `featureAccess`. Its `changes` publisher
+    /// calls this; views call it too after a change they caused.
     func featureAccessDidChange() {
         objectWillChange.send()
     }
