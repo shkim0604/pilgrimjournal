@@ -3,8 +3,25 @@
 ## 식별자
 
 - 제품명: Pilgrim Journal
-- bundle identifier: `com.dhouse.PilgrimJournal`
-- CloudKit container: `iCloud.com.dhouse.PilgrimJournal`
+- bundle identifier: `com.dhouse.PilgrimJournal` (Release),
+  `com.dhouse.PilgrimJournal.debug` (Debug)
+- CloudKit container: `iCloud.com.dhouse.PilgrimJournal` (두 구성 공통. Debug 서명은
+  Development 환경만 쓴다)
+
+Debug 빌드는 설치된 릴리스 앱과 나란히 실행해도 구분되도록 bundle identifier에
+`.debug`가 붙는다(2026-11-05). 그래서 Debug 빌드는:
+
+- 앱 샌드박스 컨테이너, Keychain(앱 잠금, Apple 로그인 기록), 앱별 언어 설정이
+  릴리스 앱과 따로다. 처음 실행하면 로컬 저장소가 비어 있고, CloudKit
+  Development 환경에서 다시 받는다.
+- iCloud key-value store는 entitlements에 `com.dhouse.PilgrimJournal`로 고정돼 있어
+  **릴리스 앱과 같은 저장소를 쓴다**(노트북 목록, 유형 카탈로그). 일부러 공유하는
+  것이다(2026-11-05 결정). Debug 전용 저장소로 바꾸지 않는다.
+- 처음 서명 빌드할 때 Xcode 자동 서명이 새 App ID를 등록해야 한다(Xcode에서 한 번
+  빌드하거나 `xcodebuild … -allowProvisioningUpdates`). Apple Developer에서 그 App
+  ID의 Sign in with Apple을 기존 primary App ID 그룹에 묶고, iCloud container가
+  `iCloud.com.dhouse.PilgrimJournal`인지 확인한다. 묶지 않으면 Apple 로그인 사용자
+  식별자가 달라질 수 있고, 그러면 CloudKit 귀속 확인이 Debug 앱을 막는다.
 
 ## Xcode capability
 

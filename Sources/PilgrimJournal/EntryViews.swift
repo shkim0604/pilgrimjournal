@@ -48,15 +48,18 @@ struct InlineEntryEditorView: View {
     // `onChange(of: draft)` handler below.
     @State private var bodyCharacterCount: Int
     private let entry: JournalEntryRecord?
+    private let isFocusMode: Bool
 
     init(
         entry: JournalEntryRecord?,
+        isFocusMode: Bool,
         defaultKind: JournalKind = .diary,
         defaultNotebookName: String? = nil
     ) {
         var initial = entry?.draft ?? JournalEntryDraft(kind: defaultKind)
         if entry == nil { initial.notebookName = defaultNotebookName }
         let initialTags = initial.visibleTags.joined(separator: ", ")
+        self.isFocusMode = isFocusMode
         self.entry = entry
         _draft = State(initialValue: initial)
         _tagsText = State(initialValue: initialTags)
@@ -69,10 +72,12 @@ struct InlineEntryEditorView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            editorToolbar
-            Rectangle()
-                .fill(JournalTheme.separator)
-                .frame(height: 1)
+            if !isFocusMode {
+                editorToolbar
+                Rectangle()
+                    .fill(JournalTheme.separator)
+                    .frame(height: 1)
+            }
             HStack(spacing: 0) {
                 Spacer(minLength: 0)
                 PaperEditorSurface {
@@ -89,7 +94,9 @@ struct InlineEntryEditorView: View {
                             .focused($focusedField, equals: .title)
                             .accessibilityLabel("제목")
 
-                        typeSpecificFields
+                        if !isFocusMode {
+                            typeSpecificFields
+                        }
 
                         MarkdownBodyEditor(
                             text: $draft.body,
@@ -106,26 +113,31 @@ struct InlineEntryEditorView: View {
                                 )
                             },
                             attachmentImage: { id in model.attachmentData(for: id) },
-                            attachmentRevision: model.attachmentRevision
+                            attachmentRevision: model.attachmentRevision,
+                            showsChrome: !isFocusMode
                         )
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                        Rectangle()
-                            .fill(JournalTheme.separator)
-                            .frame(height: 1)
+                        if !isFocusMode {
+                            Rectangle()
+                                .fill(JournalTheme.separator)
+                                .frame(height: 1)
 
-                        tagsEditor
-                        AttachmentEditorSection(
-                            entryID: persistedEntryID,
-                            ensureEntryID: ensurePersistedEntryID
-                        )
-                        editorFooter
+                            tagsEditor
+                            AttachmentEditorSection(
+                                entryID: persistedEntryID,
+                                ensureEntryID: ensurePersistedEntryID
+                            )
+                            editorFooter
+                        } else if case .failed = saveState {
+                            saveStatusButton
+                        }
                     }
                 }
                 Spacer(minLength: 0)
             }
         }
-        .background(JournalTheme.canvas)
+        .background(isFocusMode ? JournalTheme.paper : JournalTheme.canvas)
         .onChange(of: draft) { _, newValue in
             bodyCharacterCount = newValue.body.count
             scheduleAutosave()
@@ -767,8 +779,7 @@ struct EntryDetailView: View {
 /// Focus mode (집중 모드) keeps only the title and the body. The body's text
 /// view is deliberately not part of this: it stays mounted in both layouts,
 /// so switching can never re-create it mid-typing and drop keystrokes (see
-/// the editor input section of docs/known-issues.md). The Mac's focus mode is
-/// a split-view layout instead; see `FocusModeLayoutPolicy`.
+/// the editor input section of docs/known-issues.md).
 struct EntryEditorFocusLayout: Equatable {
     /// 완료 and the save status pill.
     var showsNavigationBar: Bool

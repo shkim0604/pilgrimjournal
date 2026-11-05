@@ -13,7 +13,8 @@ set -eu
 
 repo_root=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
 device=${PILGRIM_SIM_DEVICE:-iPhone 17}
-bundle_id=com.dhouse.PilgrimJournal
+# Debug 구성의 bundle identifier (Release는 `.debug`가 없다).
+bundle_id=com.dhouse.PilgrimJournal.debug
 derived_data="$repo_root/.derived-data-screens"
 output_dir="$repo_root/docs/visual-regression/ios"
 mode=${1:-launch}

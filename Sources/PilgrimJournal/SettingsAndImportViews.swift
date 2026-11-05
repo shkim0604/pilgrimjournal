@@ -14,9 +14,10 @@ struct SettingsView: View {
     @State private var isConfirmingSignOut = false
     @AppStorage(AppAppearance.storageKey) private var appearance =
         AppAppearance.defaultValue.rawValue
-    #if DEBUG
-    @AppStorage(PremiumCodeFeatureAccess.simulateLockedKey) private var simulateLocked = false
-    #endif
+    @State private var language = AppLanguage.current()
+    /// The language the app launched with; differs from `language` until the
+    /// app is reopened.
+    @State private var launchedLanguage = AppLanguage.current()
 
     var body: some View {
         Form {
@@ -50,6 +51,26 @@ struct SettingsView: View {
             Section("동기화") {
                 LabeledContent("상태", value: syncDescription)
                 LabeledContent("저장 위치", value: storageLocationDescription)
+                if journalSession.canReopenForSync {
+                    Button {
+                        // A local, not `journalSession` through self: the
+                        // task would otherwise hold this view and with it the
+                        // old model, which the reopen waits to be released.
+                        let session = journalSession
+                        Task { await session.reopenForManualSync() }
+                    } label: {
+                        Label("지금 동기화", systemImage: "arrow.triangle.2.circlepath.icloud")
+                    }
+                    .disabled(
+                        journalSession.isReopeningForSync
+                            || journalSession.isLoading
+                            || model.isWorking
+                            || model.isCloudImportInProgress
+                    )
+                    Text("iCloud 저장소를 다시 열어 다른 기기의 변경을 바로 받아오고 이 기기의 변경을 올립니다. 잠깐 화면이 다시 그려집니다.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
                 Text(
                     "기록과 첨부는 현재 시스템 iCloud의 개인 데이터베이스에 저장됩니다. 이 저장 공간은 최초 연결한 Apple 로그인 사용자에게 귀속되며 다른 사용자는 차단됩니다."
                 )
@@ -89,29 +110,11 @@ struct SettingsView: View {
                 Button {
                     model.openKindManagement()
                 } label: {
-                    Label(
-                        "유형 편집",
-                        systemImage: model.featureAccess.canManageKinds
-                            ? "slider.horizontal.3" : "lock.fill"
-                    )
+                    Label("유형 편집", systemImage: "slider.horizontal.3")
                 }
                 NavigationLink("태그 및 Day One 분류 규칙") {
                     OrganizationSettingsView()
                 }
-            }
-            Section("유료 기능") {
-                if model.featureAccess.isPremium {
-                    LabeledContent("상태", value: String(localized: "사용 중"))
-                } else {
-                    Button {
-                        model.isPresentingPremiumNotice = true
-                    } label: {
-                        Label("코드 입력…", systemImage: "key")
-                    }
-                }
-                Text("유형 추가·삭제·편집은 유료 기능입니다. 코드는 입력한 기기에만 적용됩니다.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
             Section("데이터 관리") {
                 Button {
@@ -141,6 +144,28 @@ struct SettingsView: View {
                 Text("시스템 설정을 고르면 기기의 라이트·다크 설정을 따릅니다. 이 기기에만 적용됩니다.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+            }
+            Section("언어") {
+                Picker("언어", selection: $language) {
+                    ForEach(AppLanguage.allCases) { option in
+                        Text(option.title).tag(option)
+                    }
+                }
+                .onChange(of: language) { _, newValue in
+                    newValue.apply()
+                }
+                if language != launchedLanguage {
+                    #if os(macOS)
+                    Button("지금 다시 시작") { AppLanguage.relaunch() }
+                    #endif
+                    Text("바꾼 언어는 앱을 다시 열면 적용됩니다.")
+                        .font(.caption)
+                        .foregroundStyle(JournalTheme.brandPrimary)
+                } else {
+                    Text("시스템 설정을 고르면 기기의 언어를 따릅니다. 이 기기에만 적용됩니다.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
             Section("보안") {
                 NavigationLink("앱 잠금") {
@@ -282,34 +307,11 @@ struct SettingsView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             }
-            #if DEBUG
-            Section("개발") {
-                Toggle("유료 기능 잠금 시뮬레이션", isOn: $simulateLocked)
-                if let access = model.featureAccess as? PremiumCodeFeatureAccess,
-                    access.isPremium
-                {
-                    Button("유료 코드 해제 초기화") {
-                        access.resetForTesting()
-                        model.featureAccessDidChange()
-                    }
-                }
-                Text("Debug 빌드에서만 보입니다. 켜면 유형 편집 대신 유료 안내가 뜹니다.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            #endif
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
         .background(JournalTheme.canvas)
         .navigationTitle("설정")
-        #if DEBUG
-        // `featureAccess` reads the flag but publishes nothing, so tell the
-        // model to re-render the sidebar's 편집 label and gate.
-        .onChange(of: simulateLocked) { _, _ in
-            model.featureAccessDidChange()
-        }
-        #endif
         .confirmationDialog(
             "Apple 계정에서 로그아웃할까요?",
             isPresented: $isConfirmingSignOut,
