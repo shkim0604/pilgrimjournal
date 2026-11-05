@@ -23,6 +23,14 @@
         `scripts/check.sh`, 서명 없는 iOS/macOS 빌드는 통과. 빌드 번호 29.
       - 남은 일: 실기기 세션 **B-3**(`docs/device-verification.md`, 녹화 포함) →
         녹화와 함께 답장(`docs/app-review/2026-10-1.1.0.md` 초안) → 29 업로드·재제출.
+      - **macOS 29 업로드 완료** (2026-10-20, `55fcca4`에서 Release 아카이브,
+        Xcode 계정 인증 + `-allowProvisioningUpdates`). 아카이브는
+        `.release/build29/`(macOS만). 처리 완료(VALID).
+      - **2026-10-21 App Store Connect:** iOS 1.1.0 (29)는 Ready for Sale,
+        Support URL(ko·en)도 새 주소. macOS 1.1.0은 build 28 + 옛 Support URL
+        (`…chatgpt.site/support`)로 10-15 제출분이 아직 In Review였다(반려 메시지는
+        없었음). 심사에서 빼고 build 29 + 새 Support URL(ko·en)로 바꿔 재제출 →
+        **Waiting for Review**. Mac 쪽엔 반려 스레드가 없어 녹화 첨부는 하지 않았다.
       - 계정 바인딩 삭제 경로를 새로 만들었으므로 완료 목록의 **B-2**(계정 전환·
         격리)와 **C-4**(CloudKit record 삭제 수렴)를 이 빌드로 다시 돌린다.
       - CloudKit 스키마 변경 없음(삭제만 함) — 스키마 배포 불필요.
@@ -119,9 +127,10 @@
         - ⚠️ 하드웨어 키보드에서 제목 입력 중 Return이 편집기를 닫는다(완료로 동작).
           소프트 키보드에서도 그런지 확인 필요.
 
-- [ ] **성경·불꽃 아이콘 — 실기기 재검수** (2026-10-15). 기본·다크·틴트와
-      macOS 크기별 에셋을 새 디자인으로 교체했다. 이전 E-3 통과는 구 아이콘
-      기준이며, 새 빌드의 Dock/Finder와 iPhone 홈 화면/Spotlight에서 다시 확인.
+- [ ] **등잔 아이콘 — 실기기 재검수** (2026-11-03). 성경·불꽃 아이콘(2026-10-15)을
+      시편 119:105의 등잔으로 다시 바꿨다. 기본·다크·틴트와 macOS 크기별 에셋을
+      교체했다. 이전 E-3 통과는 구 아이콘 기준이며, 새 빌드의 Dock/Finder와 iPhone
+      홈 화면/Spotlight에서 다시 확인.
 
 - [ ] **리팩토링 Phase 0 — 실기기 확인** (2026-10-15, 브랜치
       `refactor/phase-0-hygiene`). 자동 테스트와 서명 없는 iOS/macOS 빌드는
