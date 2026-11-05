@@ -22,6 +22,9 @@
     통합("공유됨" 섹션·노트북 공유 메뉴·Release 빌드의 초대 수락·macOS 초대), 기존
     노트·노트북 이동, 상대 편집 위치 표시, 사진, 검색·백업·계정 삭제 경계,
     `docs/privacy.md`("shared DB 사용 안 함") 수정.
+  - 상대 편집 위치는 CloudKit으로만 표시한다(2~10초 지연, 문단 단위, 2026-11-05 결정).
+    Apple 메모 같은 실시간 커서는 Apple 전용 동기화라 다른 앱이 쓸 수 없고, SharePlay
+    실시간 커서와 자체 실시간 서버는 하지 않기로 했다.
   - 새 record type(`SharedEntry`, `SharedRevision`)은 Production 배포가 필요하다
     (`docs/known-issues.md` "CloudKit schema drift").
 
