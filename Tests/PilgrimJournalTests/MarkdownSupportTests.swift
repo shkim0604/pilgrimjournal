@@ -27,6 +27,22 @@ final class MarkdownSupportTests: XCTestCase {
 
     #if os(macOS)
     @MainActor
+    func testOpeningTextEchoAfterFirstEditStillAllowsALaterRevisionRestore() {
+        let editor = LiveMarkdownTextEditor(
+            text: .constant("원문"),
+            selection: .constant(NSRange(location: 0, length: 0)),
+            autoFocus: false,
+            textScale: 1
+        )
+        let coordinator = editor.makeCoordinator()
+        coordinator.publish("원문 수정")
+
+        XCTAssertTrue(coordinator.isOpeningTextEcho("원문", current: "원문 수정"))
+        XCTAssertFalse(coordinator.isOpeningTextEcho("원문 수정", current: "원문 수정"))
+        XCTAssertFalse(coordinator.isOpeningTextEcho("원문", current: "원문 수정"))
+    }
+
+    @MainActor
     func testNativeDelegateStylesInlineMarkdownOnClosingDelimiter() throws {
         let view = NSTextView()
         view.string = "**굵게**"

@@ -4822,6 +4822,16 @@
         }
       }
     },
+    "집중 모드 종료 (⌘⇧F)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exit Focus Mode (⌘⇧F)"
+          }
+        }
+      }
+    },
     "책 제목" : {
       "localizations" : {
         "en" : {
