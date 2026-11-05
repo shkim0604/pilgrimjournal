@@ -3062,6 +3062,7 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
         if abs(scrollView.magnification - CGFloat(textScale)) > 0.001 {
             scrollView.setMagnification(CGFloat(textScale), centeredAt: .zero)
         }
+        if context.coordinator.isOpeningTextEcho(text, current: textView.string) { return }
         guard
             MarkdownInputReconciliation.canMutateTextStorage(
                 isComposing: textView.hasMarkedText()
@@ -3182,8 +3183,23 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
             return true
         }
 
+        // A layout update can still carry the opening text after the first edit.
+        // Once SwiftUI supplies a newer value, restoring the opening revision
+        // must again be treated as an external edit.
+        private var openingText: String?
+
+        func isOpeningTextEcho(_ incoming: String, current: String) -> Bool {
+            guard let openingText else { return false }
+            if incoming != openingText {
+                self.openingText = nil
+                return false
+            }
+            return !publishedHistory.isEmpty && incoming != current
+        }
+
         init(parent: LiveMarkdownTextEditor) {
             self.parent = parent
+            openingText = parent.text
         }
 
         /// Synchronous — returns the cached decoded image if present, and as
