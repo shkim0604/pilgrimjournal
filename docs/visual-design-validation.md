@@ -100,7 +100,7 @@ xcodebuild -project PilgrimJournal/PilgrimJournal.xcodeproj \
 xcrun simctl install booted /tmp/pilgrim-sim/Build/Products/Debug-iphonesimulator/PilgrimJournal.app
 SIMCTL_CHILD_PILGRIM_VISUAL_TESTING=1 \
 SIMCTL_CHILD_PILGRIM_VISUAL_TEST_SCREEN=editor-long \
-  xcrun simctl launch booted com.dhouse.PilgrimJournal
+  xcrun simctl launch booted com.dhouse.PilgrimJournal.debug
 xcrun simctl io booted screenshot /tmp/editor-long.png
 ```
 
