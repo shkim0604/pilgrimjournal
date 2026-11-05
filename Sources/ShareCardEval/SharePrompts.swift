@@ -1,3 +1,5 @@
+import Foundation
+
 /// Every prompt the eval sends. Bump `version` whenever any of them changes so scored runs
 /// can be compared (it is printed in the summary and saved in `--json` output).
 enum SharePrompts {
@@ -147,5 +149,69 @@ enum SharePrompts {
         깨달음: (2~3문장)
         토론 질문: (1문장)
         """
+    }
+
+    // MARK: - 4. Diary → prayer requests (`--prayer-requests`)
+
+    // Replaces `prayerCard` for diaries that hold worries rather than explicit prayers: the
+    // .2 card copied whole entries and wrote the "가족, 친구, 동료" instruction into its text.
+    // 2026-10-16.1 had the examples in the prompt next to the diary; on a diary with nothing
+    // to pray for it answered with the examples' own requests. .2 moves them into the
+    // instructions and leaves only the diary in the prompt.
+    static let prayerRequestVersion = "2026-10-16.2"
+
+    static let prayerRequestInstructions = """
+        너는 개인 일기를 읽고 신앙 소그룹에 부탁할 짧은 기도제목을 쓴다.
+        일기에서 글쓴이가 걱정하거나 바라거나 앞두고 있는 일을 찾아 기도제목으로 바꾼다.
+        규칙:
+        - 기도제목은 1~3개. 한 줄에 하나씩 '- '로 시작한다.
+        - 각 줄은 '~하도록 기도해 주세요' 또는 '~을 위해 기도해 주세요'로 끝낸다.
+        - 일기 문장을 옮기지 말고 한 줄 40자 안팎으로 줄인다. 날짜가 있으면 넣는다.
+        - 다른 사람의 이름은 쓰지 않고 '친구', '동료', '아들'처럼 관계로 쓴다.
+        - 그 일기에 있는 내용만 쓴다. 아래 예시의 내용은 절대 쓰지 않는다.
+        - 기도할 만한 걱정이나 바람이 없으면 '없음'이라고만 쓴다.
+
+        형식 예시 1
+        일기: 다음 주 수요일에 이사를 간다. 짐은 반도 못 쌌고 새 동네에 아는 사람이 없어서 걱정이다.
+        답:
+        - 다음 주 수요일 이사가 사고 없이 마무리되도록 기도해 주세요
+        - 새 동네에서 좋은 이웃과 교회를 만나도록 기도해 주세요
+
+        형식 예시 2
+        일기: 동네 도서관에 가서 잡지를 읽었다. 돌아오는 길에 붕어빵을 사 먹었다. 날씨가 맑았다.
+        답:
+        없음
+        """
+
+    /// The prompt around the diary. `{날짜}`, `{제목}` and `{본문}` are filled per diary, so the
+    /// prompt lab (`--serve`) can let people edit it as plain text.
+    static let prayerRequestTemplate = """
+        일기 ({날짜}):
+        {제목}
+        {본문}
+
+        이 일기의 기도제목을 규칙대로 써라.
+        답:
+        """
+
+    static func prayerRequests(_ entry: EvalEntry) -> String {
+        fill(prayerRequestTemplate, with: entry)
+    }
+
+    static func fill(_ template: String, with entry: EvalEntry) -> String {
+        template
+            .replacingOccurrences(of: "{날짜}", with: entry.date.description)
+            .replacingOccurrences(of: "{제목}", with: entry.title)
+            .replacingOccurrences(of: "{본문}", with: entry.body)
+    }
+
+    /// The request lines of a `prayerRequests` answer; empty for "없음".
+    static func requestLines(_ answer: String) -> [String] {
+        answer.split(whereSeparator: \.isNewline).compactMap { line in
+            let text = line.trimmingCharacters(in: .whitespaces)
+            guard let first = text.first, "-•*·".contains(first) else { return nil }
+            let request = text.dropFirst().trimmingCharacters(in: .whitespaces)
+            return request.isEmpty ? nil : request
+        }
     }
 }

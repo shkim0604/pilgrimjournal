@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>기도제목 프롬프트 실험실</title>
+<style>
+/* Layout: prompt editor on the left like a workbench, runs laid out as columns on the right so one diary reads across prompt versions. */
+:root {
+  --paper: #f3f4f1; --sheet: #fbfbf8; --ink: #22261f; --ink-soft: #5d6457; --rule: #d9dcd2;
+  --accent: #3e5c4a; --accent-soft: #e2eadf; --good: #2f7a4b; --good-bg: #e0f0e4;
+  --bad: #a83a32; --bad-bg: #f6dfdc; --warn: #9a6512; --warn-bg: #f7ead2; --mark: #f2d98a;
+  --font-display: "Gowun Batang", "AppleMyungjo", "Nanum Myeongjo", serif;
+  --font-ui: "Apple SD Gothic Neo", "IBM Plex Sans KR", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #171a16; --sheet: #1f231e; --ink: #e6e9e0; --ink-soft: #a3aa9b; --rule: #343a31;
+    --accent: #9cc3a6; --accent-soft: #2a3a2f; --good: #8fd3a5; --good-bg: #213a2a;
+    --bad: #f0958c; --bad-bg: #42231f; --warn: #e8bd6d; --warn-bg: #3b311d; --mark: #6b5a1f;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--paper); color: var(--ink); font-family: var(--font-ui); font-size: 14px; line-height: 1.55; }
+.wrap { padding-inline: 18px; padding-block: 16px 40px; display: grid; grid-template-columns: minmax(320px, 430px) minmax(0, 1fr); gap: 18px; align-items: start; }
+h1 { font-family: var(--font-display); font-size: 1.45rem; margin: 0; }
+.lead { margin: 4px 0 0; color: var(--ink-soft); font-size: 0.85rem; }
+.panel { background: var(--sheet); border: 1px solid var(--rule); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.editor { position: sticky; top: 12px; display: flex; flex-direction: column; gap: 12px; max-height: calc(100vh - 24px); overflow-y: auto; }
+.label { font-size: 0.74rem; letter-spacing: 0.05em; font-weight: 600; color: var(--ink-soft); display: flex; justify-content: space-between; gap: 8px; }
+textarea, input[type="text"], select { width: 100%; font: inherit; font-size: 0.86rem; color: var(--ink); background: var(--paper); border: 1px solid var(--rule); border-radius: 8px; padding: 8px 10px; }
+textarea { resize: vertical; line-height: 1.5; }
+textarea.code { font-family: var(--font-mono); font-size: 0.8rem; }
+#instructions { min-height: 300px; }
+#template { min-height: 120px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+button { font: inherit; font-size: 0.84rem; padding: 7px 12px; border-radius: 8px; border: 1px solid var(--rule); background: var(--paper); color: var(--ink); cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--sheet); font-weight: 600; }
+button:disabled { opacity: 0.45; cursor: default; }
+button:focus-visible, textarea:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.hint { font-size: 0.78rem; color: var(--ink-soft); }
+.hint code { font-family: var(--font-mono); background: var(--accent-soft); padding: 0 4px; border-radius: 4px; }
+.meter { font-family: var(--font-mono); font-size: 0.74rem; font-variant-numeric: tabular-nums; }
+.meter.warn { color: var(--warn); }
+.examples ul { margin: 0; padding-left: 1.1em; display: flex; flex-direction: column; gap: 4px; }
+.examples li { font-size: 0.84rem; display: flex; justify-content: space-between; gap: 8px; }
+.examples li button { padding: 0 6px; font-size: 0.74rem; }
+.examples .empty { color: var(--ink-soft); font-size: 0.82rem; }
+details.preview pre { white-space: pre-wrap; font-family: var(--font-mono); font-size: 0.74rem; color: var(--ink-soft); margin: 6px 0 0; max-height: 200px; overflow: auto; }
+.picker { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 4px 10px; }
+.picker label { display: flex; gap: 6px; align-items: center; font-size: 0.84rem; min-width: 0; }
+.picker label span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.right { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.status { font-size: 0.82rem; color: var(--ink-soft); min-height: 1.3em; }
+.grid { display: flex; flex-direction: column; gap: 12px; }
+.diary-row { background: var(--sheet); border: 1px solid var(--rule); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.diary-row h3 { margin: 0; font-family: var(--font-display); font-size: 1.05rem; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.diary-row h3 small { font-family: var(--font-mono); font-size: 0.72rem; color: var(--ink-soft); font-weight: 400; }
+.points { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip { font-size: 0.76rem; padding: 2px 8px; border-radius: 6px; background: var(--accent-soft); }
+.chip.none { background: transparent; border: 1px dashed var(--rule); color: var(--ink-soft); }
+details.body summary { font-size: 0.78rem; color: var(--ink-soft); cursor: pointer; }
+details.body div { font-family: var(--font-display); white-space: pre-wrap; font-size: 0.92rem; line-height: 1.8; margin-top: 6px; max-width: 70ch; }
+mark { background: var(--mark); color: inherit; border-radius: 2px; }
+.cells { display: grid; grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr)); gap: 10px; }
+.cell { border: 1px solid var(--rule); border-radius: 8px; padding: 10px 12px; min-width: 0; background: var(--paper); }
+.cell.latest { border: 2px solid var(--accent); }
+.cell header { display: flex; justify-content: space-between; gap: 8px; font-size: 0.74rem; color: var(--ink-soft); margin-bottom: 6px; flex-wrap: wrap; }
+.cell ul { margin: 0; padding-left: 1.1em; display: flex; flex-direction: column; gap: 4px; }
+.cell li { font-size: 0.9rem; }
+.cell pre { margin: 0; white-space: pre-wrap; font-family: var(--font-ui); font-size: 0.85rem; overflow-wrap: anywhere; }
+.cell .none { color: var(--ink-soft); font-style: italic; }
+.cell .flag { margin-top: 6px; font-size: 0.76rem; color: var(--bad); }
+.cell .flag.ok { color: var(--good); }
+.cell .tools { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
+.cell .tools button { font-size: 0.76rem; padding: 4px 9px; }
+.cell textarea { margin-top: 6px; min-height: 90px; }
+.pending { color: var(--ink-soft); font-size: 0.84rem; }
+@media (max-width: 900px) {
+  .wrap { grid-template-columns: minmax(0, 1fr); }
+  .editor { position: static; max-height: none; }
+  .cells { grid-template-columns: minmax(0, 1fr); }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <aside class="editor">
+    <div>
+      <h1>기도제목 프롬프트 실험실</h1>
+      <p class="lead">이 Mac의 Apple 온디바이스 모델로 돌아갑니다. 여기 입력한 내용은 기기 밖으로 나가지 않습니다.</p>
+    </div>
+
+    <section class="panel">
+      <label class="label" for="instructions"><span>지시문 (모델의 역할·규칙·예시)</span><span class="meter" id="meter"></span></label>
+      <textarea id="instructions" class="code" spellcheck="false"></textarea>
+      <label class="label" for="template"><span>요청 (일기를 넣는 자리)</span></label>
+      <textarea id="template" class="code" spellcheck="false"></textarea>
+      <p class="hint"><code>{날짜}</code> <code>{제목}</code> <code>{본문}</code> 자리에 일기가 들어갑니다.</p>
+      <div class="row">
+        <select id="sampling" aria-label="생성 방식" style="width:auto">
+          <option value="greedy">같은 입력이면 같은 결과</option>
+          <option value="sample">매번 조금씩 다르게</option>
+        </select>
+        <button type="button" id="reset">기본 프롬프트로</button>
+      </div>
+    </section>
+
+    <section class="panel examples">
+      <div class="label"><span>내 말투 예시 (결과를 고쳐 저장한 것)</span>
+        <label style="display:flex;gap:4px;align-items:center;font-weight:500;letter-spacing:0"><input type="checkbox" id="use-examples" checked> 프롬프트에 자동 반영</label>
+      </div>
+      <div id="examples"></div>
+      <details class="preview"><summary class="hint">실제로 모델에 보내는 지시문 보기</summary><pre id="effective"></pre></details>
+    </section>
+  </aside>
+
+  <main class="right">
+    <section class="panel">
+      <div class="label"><span>돌릴 일기</span><span class="row" style="gap:6px">
+        <button type="button" data-pick="all">전체</button>
+        <button type="button" data-pick="hard">문제 많던 6개</button>
+        <button type="button" data-pick="none">해제</button>
+      </span></div>
+      <div class="picker" id="picker"></div>
+      <details>
+        <summary class="hint">직접 쓴 일기로 돌려 보기 (내용은 기록하지 않음)</summary>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">
+          <input type="text" id="custom-title" placeholder="제목">
+          <textarea id="custom-body" rows="6" placeholder="일기 본문을 붙여 넣으세요"></textarea>
+          <label class="hint" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="custom-on"> 이 일기도 함께 돌리기</label>
+        </div>
+      </details>
+      <div class="row">
+        <button type="button" class="primary" id="run">돌리기</button>
+        <button type="button" id="stop" disabled>멈추기</button>
+        <span class="status" id="status"></span>
+      </div>
+    </section>
+    <div class="grid" id="results"></div>
+  </main>
+</div>
+
+<script>
+(function () {
+  const HARD = ["son-school-fight", "faith-dryness", "retirement", "lazy-holiday", "camping", "friend-depression"];
+  const MAX_RUNS = 6;
+  const MAX_EXAMPLES = 6;
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const store = {
+    get(key, fallback) { try { const v = localStorage.getItem(key); return v == null ? fallback : JSON.parse(v); } catch (e) { return fallback; } },
+    set(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) {} },
+  };
+
+  let state = null;
+  let runs = store.get("lab-runs", []);
+  let examples = store.get("lab-examples", []);
+  let stopRequested = false;
+  let editing = null;
+
+  function highlight(text, names) {
+    let html = esc(text);
+    for (const n of names || []) if (n) html = html.split(esc(n)).join("<mark>" + esc(n) + "</mark>");
+    return html;
+  }
+
+  function effectiveInstructions() {
+    const base = $("instructions").value;
+    if (!$("use-examples").checked || !examples.length) return base;
+    const lines = examples.slice(-MAX_EXAMPLES).map((e) => "- " + e.text).join("\n");
+    return base + "\n\n이 사용자가 직접 고친 기도제목 (말투·길이·끝맺음을 따라 쓰되, 내용은 절대 베끼지 않는다):\n" + lines;
+  }
+
+  function renderMeter() {
+    const total = effectiveInstructions().length + $("template").value.length + 650;
+    const el = $("meter");
+    el.textContent = "약 " + total.toLocaleString("ko-KR") + "자 (일기 650자 가정)";
+    el.className = "meter" + (total > 3000 ? " warn" : "");
+    el.title = total > 3000 ? "모델이 한 번에 읽는 양(약 4,000토큰)에 가까워지고 있습니다." : "";
+    $("effective").textContent = effectiveInstructions();
+  }
+
+  function renderExamples() {
+    const box = $("examples");
+    if (!examples.length) {
+      box.innerHTML = '<p class="empty">아직 없습니다. 결과 칸의 "고치기"로 마음에 들게 고쳐 저장하면 여기에 쌓이고, 다음 실행부터 지시문 끝에 붙습니다.</p>';
+    } else {
+      box.innerHTML = "<ul>" + examples.map((e, i) =>
+        `<li><span>${esc(e.text)}</span><button type="button" data-del="${i}" aria-label="예시 지우기">지우기</button></li>`).join("") + "</ul>";
+    }
+    renderMeter();
+  }
+
+  function renderPicker() {
+    const picked = new Set(store.get("lab-picked", HARD));
+    $("picker").innerHTML = state.diaries.map((d) =>
+      `<label title="${esc(d.title)}"><input type="checkbox" value="${d.id}" ${picked.has(d.id) ? "checked" : ""}><span>${esc(d.title)}</span></label>`).join("");
+  }
+  function pickedIds() {
+    return [...$("picker").querySelectorAll("input:checked")].map((i) => i.value);
+  }
+
+  function cellHTML(run, diaryId, isLatest) {
+    const r = run.results[diaryId];
+    const head = `<header><span>${isLatest ? "이번 실행" : "이전 실행"} #${run.n} · ${new Date(run.at).toLocaleTimeString("ko-KR")}</span><span>${r && r.seconds != null ? r.seconds.toFixed(1) + "초" : ""}</span></header>`;
+    if (!r) return `<div class="cell${isLatest ? " latest" : ""}">${head}<p class="pending">이 실행에서는 돌리지 않음</p></div>`;
+    if (r.pending) return `<div class="cell${isLatest ? " latest" : ""}">${head}<p class="pending">모델이 쓰는 중…</p></div>`;
+    const diary = diaryFor(diaryId);
+    const names = diary ? diary.names : [];
+    let body;
+    if (r.text == null) body = `<p class="none">결과 없음 (${esc(r.outcome)})</p>`;
+    else if (r.lines.length) body = "<ul>" + r.lines.map((l) => `<li>${highlight(l, names)}</li>`).join("") + "</ul>";
+    else if (/없음/.test(r.text)) body = '<p class="none">"없음" — 기도제목을 만들지 않음</p>';
+    else body = `<pre>${highlight(r.text, names)}</pre>`;
+    const flags = [];
+    if (r.leakedNames && r.leakedNames.length) flags.push(`<div class="flag">이름이 남아 있음: ${r.leakedNames.map(esc).join(", ")}</div>`);
+    if (r.lines.length > 3) flags.push(`<div class="flag">${r.lines.length}줄 — 3줄 제한을 넘김</div>`);
+    const dup = r.lines.length - new Set(r.lines).size;
+    if (dup > 0) flags.push(`<div class="flag">같은 줄 ${dup}번 반복</div>`);
+    if (r.saved) flags.push('<div class="flag ok">고친 내용을 내 말투 예시로 저장함</div>');
+    let tools = "";
+    if (isLatest && r.text != null) {
+      const key = run.n + ":" + diaryId;
+      if (editing === key) {
+        const draft = (r.lines.length ? r.lines : [r.text.trim()]).slice(0, 3).join("\n");
+        tools = `<textarea id="edit-box" aria-label="기도제목 고치기">${esc(draft)}</textarea>
+          <div class="tools"><button type="button" class="primary" data-save="${diaryId}">저장 (내 말투 예시로)</button><button type="button" data-cancel>취소</button></div>`;
+      } else {
+        tools = `<div class="tools"><button type="button" data-edit="${diaryId}">고치기</button></div>`;
+      }
+    }
+    return `<div class="cell${isLatest ? " latest" : ""}">${head}${body}${flags.join("")}${tools}</div>`;
+  }
+
+  function diaryFor(id) {
+    if (id === "custom") return { id, title: $("custom-title").value || "직접 쓴 일기", body: $("custom-body").value, points: null, names: [] };
+    return state.diaries.find((d) => d.id === id);
+  }
+
+  function renderResults() {
+    const box = $("results");
+    if (!runs.length) {
+      box.innerHTML = '<div class="panel"><p class="hint">일기를 고르고 "돌리기"를 누르면 여기에 결과가 나옵니다. 다시 돌리면 직전 실행과 나란히 비교됩니다.</p></div>';
+      return;
+    }
+    const shown = runs.slice(-2).reverse();
+    const ids = [...new Set(shown.flatMap((r) => r.order))];
+    box.innerHTML = ids.map((id) => {
+      const d = diaryFor(id);
+      if (!d) return "";
+      const points = d.points == null ? "" : `<div class="points">${d.points.length ? d.points.map((p) => `<span class="chip">${esc(p)}</span>`).join("") : '<span class="chip none">기도할 내용 없음 — "없음"이 정답</span>'}</div>`;
+      return `<article class="diary-row">
+        <h3>${esc(d.title)} <small>${esc(id)}</small></h3>
+        ${points}
+        <details class="body"><summary>일기 보기 (${d.body.length}자)</summary><div>${highlight(d.body, d.names)}</div></details>
+        <div class="cells" style="--cols:${shown.length}">${shown.map((run, i) => cellHTML(run, id, i === 0)).join("")}</div>
+      </article>`;
+    }).join("");
+  }
+
+  async function run() {
+    const ids = pickedIds();
+    if ($("custom-on").checked && $("custom-body").value.trim()) ids.push("custom");
+    if (!ids.length) { $("status").textContent = "돌릴 일기를 하나 이상 고르세요."; return; }
+    store.set("lab-picked", pickedIds());
+    const runRecord = {
+      n: (runs.length ? runs[runs.length - 1].n : 0) + 1,
+      at: new Date().toISOString(),
+      instructions: effectiveInstructions(),
+      template: $("template").value,
+      greedy: $("sampling").value === "greedy",
+      order: ids,
+      results: {},
+    };
+    runs.push(runRecord);
+    runs = runs.slice(-MAX_RUNS);
+    editing = null;
+    stopRequested = false;
+    $("run").disabled = true;
+    $("stop").disabled = false;
+    let done = 0;
+    for (const id of ids) {
+      if (stopRequested) break;
+      runRecord.results[id] = { pending: true };
+      $("status").textContent = `${done + 1} / ${ids.length} 쓰는 중…`;
+      renderResults();
+      const d = diaryFor(id);
+      try {
+        const response = await fetch("/api/run", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            instructions: runRecord.instructions, template: runRecord.template, greedy: runRecord.greedy,
+            diary: { id: id === "custom" ? null : id, title: d.title, date: d.date || new Date().toISOString().slice(0, 10), body: d.body, names: d.names },
+          }),
+        });
+        if (!response.ok) throw new Error(await response.text());
+        runRecord.results[id] = await response.json();
+      } catch (e) {
+        runRecord.results[id] = { text: null, lines: [], outcome: "요청 실패: " + e.message };
+      }
+      done++;
+      if (id !== "custom") store.set("lab-runs", runs.map(stripCustom));
+      renderResults();
+    }
+    for (const id of ids) if (!runRecord.results[id] || runRecord.results[id].pending) delete runRecord.results[id];
+    store.set("lab-runs", runs.map(stripCustom));
+    const secs = Object.values(runRecord.results).reduce((s, r) => s + (r.seconds || 0), 0);
+    $("status").textContent = (stopRequested ? "멈춤 · " : "끝 · ") + `${done}개, 모델 시간 ${secs.toFixed(1)}초`;
+    $("run").disabled = false;
+    $("stop").disabled = true;
+    renderResults();
+  }
+
+  // A diary typed into the page is never written to browser storage.
+  function stripCustom(r) {
+    const results = Object.assign({}, r.results);
+    delete results.custom;
+    return Object.assign({}, r, { results, order: r.order.filter((id) => id !== "custom") });
+  }
+
+  function saveEdit(diaryId) {
+    const lines = $("edit-box").value.split("\n").map((l) => l.replace(/^[\s\-•*·]+/, "").trim()).filter(Boolean);
+    if (!lines.length) return;
+    for (const text of lines) examples.push({ text, from: diaryId, at: new Date().toISOString() });
+    examples = examples.slice(-MAX_EXAMPLES);
+    store.set("lab-examples", examples);
+    const latest = runs[runs.length - 1];
+    if (latest.results[diaryId]) latest.results[diaryId].saved = true;
+    editing = null;
+    store.set("lab-runs", runs.map(stripCustom));
+    renderExamples();
+    renderResults();
+    $("status").textContent = "저장했습니다. 다음 실행부터 지시문 끝에 내 말투 예시로 붙습니다.";
+  }
+
+  function persistEditor() {
+    store.set("lab-editor", { instructions: $("instructions").value, template: $("template").value, sampling: $("sampling").value });
+    renderMeter();
+  }
+
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest("button");
+    if (!t) return;
+    if (t.dataset.pick) {
+      const target = t.dataset.pick;
+      for (const box of $("picker").querySelectorAll("input")) box.checked = target === "all" || (target === "hard" && HARD.includes(box.value));
+      store.set("lab-picked", pickedIds());
+    } else if (t.dataset.edit) {
+      editing = runs[runs.length - 1].n + ":" + t.dataset.edit;
+      renderResults();
+      const box = $("edit-box");
+      if (box) box.focus();
+    } else if (t.dataset.save) {
+      saveEdit(t.dataset.save);
+    } else if (t.hasAttribute("data-cancel")) {
+      editing = null;
+      renderResults();
+    } else if (t.dataset.del) {
+      examples.splice(Number(t.dataset.del), 1);
+      store.set("lab-examples", examples);
+      renderExamples();
+    }
+  });
+  $("run").addEventListener("click", run);
+  $("stop").addEventListener("click", () => { stopRequested = true; $("status").textContent = "지금 쓰는 일기까지만 하고 멈춥니다…"; });
+  $("reset").addEventListener("click", () => {
+    $("instructions").value = state.instructions;
+    $("template").value = state.template;
+    $("sampling").value = "greedy";
+    persistEditor();
+  });
+  for (const id of ["instructions", "template", "sampling"]) $(id).addEventListener("input", persistEditor);
+  $("use-examples").addEventListener("change", renderMeter);
+  $("picker").addEventListener("change", () => store.set("lab-picked", pickedIds()));
+
+  fetch("/api/state").then((r) => r.json()).then((s) => {
+    state = s;
+    const saved = store.get("lab-editor", null);
+    $("instructions").value = saved ? saved.instructions : s.instructions;
+    $("template").value = saved ? saved.template : s.template;
+    $("sampling").value = saved ? saved.sampling : "greedy";
+    renderPicker();
+    renderExamples();
+    renderResults();
+  }).catch(() => {
+    $("status").textContent = "로컬 서버에 연결하지 못했습니다. 터미널에서 swift run ShareCardEval --serve 가 돌고 있는지 확인하세요.";
+  });
+})();
+</script>
+</body>
+</html>

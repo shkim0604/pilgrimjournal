@@ -69,6 +69,50 @@ final class DatePhraseResolverTests: XCTestCase {
         XCTAssertNil(EvalScorer.parseYesNo("잘 모르겠습니다"))
     }
 
+    func testPrayerRequestLinesParseListsAndNone() {
+        let answer = "기도제목:\n- 이사가 잘 되도록 기도해 주세요\n• 새 이웃을 만나도록\n-\n덧붙임"
+        XCTAssertEqual(
+            SharePrompts.requestLines(answer), ["이사가 잘 되도록 기도해 주세요", "새 이웃을 만나도록"])
+        XCTAssertEqual(SharePrompts.requestLines("없음"), [])
+    }
+
+    func testPrayerDiariesArePageLongWithUniqueIDs() {
+        let ids = PrayerDiaryFixtures.all.map(\.id)
+        XCTAssertEqual(Set(ids).count, ids.count)
+        for diary in PrayerDiaryFixtures.all {
+            XCTAssertGreaterThanOrEqual(diary.body.count, 500, diary.id)
+            for name in diary.names { XCTAssertTrue(diary.body.contains(name), diary.id) }
+        }
+    }
+
+    func testPromptTemplateFillsDiaryFields() {
+        let entry = PrayerDiaryFixtures.all[0].entry
+        let prompt = SharePrompts.fill("{날짜}|{제목}|{본문}", with: entry)
+        XCTAssertEqual(prompt, "\(entry.date)|\(entry.title)|\(entry.body)")
+        XCTAssertEqual(
+            SharePrompts.prayerRequests(entry),
+            SharePrompts.fill(SharePrompts.prayerRequestTemplate, with: entry))
+    }
+
+    func testHTTPRequestWaitsForTheWholeBody() {
+        let head = "POST /api/run HTTP/1.1\r\nHost: localhost\r\nContent-Length: 4\r\n\r\n"
+        XCTAssertNil(HTTPRequest(parsing: Data((head + "ab").utf8)))
+        let request = HTTPRequest(parsing: Data((head + "abcd").utf8))
+        XCTAssertEqual(request?.method, "POST")
+        XCTAssertEqual(request?.path, "/api/run")
+        XCTAssertEqual(request.map { String(decoding: $0.body, as: UTF8.self) }, "abcd")
+    }
+
+    func testHTTPRequestRejectsOtherOrigins() {
+        let request = { (origin: String) in
+            HTTPRequest(parsing: Data("GET / HTTP/1.1\r\nOrigin: \(origin)\r\n\r\n".utf8))!
+        }
+        XCTAssertTrue(request("http://localhost:8765").isSameOrigin(port: 8765))
+        XCTAssertFalse(request("https://example.com").isSameOrigin(port: 8765))
+        XCTAssertTrue(
+            HTTPRequest(parsing: Data("GET / HTTP/1.1\r\n\r\n".utf8))!.isSameOrigin(port: 1))
+    }
+
     func testNameLeaksMatchWholeASCIIWordsOnly() {
         let prose = ["card": "동료 J가 잘 쉬도록. Jesus께 맡깁니다. 민지를 위해"]
         XCTAssertEqual(EvalScorer.nameLeaks(["J", "민지"], in: prose), ["J", "민지"])
