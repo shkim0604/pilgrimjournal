@@ -5444,7 +5444,18 @@ enum ExternalTextRebase {
 
 struct MarkdownPreviewView: View {
     @EnvironmentObject private var model: AppModel
+    /// Read so a Dynamic Type change re-renders and `bodyCapHeight` follows it.
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let markdown: String
+
+    /// Cap height of the body text style, which list items render in.
+    private var bodyCapHeight: CGFloat {
+        #if os(iOS)
+        UIFont.preferredFont(forTextStyle: .body).capHeight
+        #else
+        NSFont.preferredFont(forTextStyle: .body).capHeight
+        #endif
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -5469,8 +5480,15 @@ struct MarkdownPreviewView: View {
                 .font(.body)
         case let .bullet(indentation):
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(verbatim: "•")
-                    .foregroundStyle(JournalTheme.ink)
+                // The same 6pt dot the editor draws, centred on the first
+                // line's capital letters like there. A "•" glyph sits right
+                // but renders noticeably smaller than the editor's dot.
+                Circle()
+                    .fill(JournalTheme.ink)
+                    .frame(width: 6, height: 6)
+                    .alignmentGuide(.firstTextBaseline) { dimensions in
+                        dimensions.height / 2 + bodyCapHeight / 2
+                    }
                     .accessibilityHidden(true)
                 inlineText(block.content)
             }
