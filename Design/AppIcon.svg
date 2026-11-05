@@ -8,7 +8,7 @@
   </defs>
   <rect width="1024" height="1024" fill="#173C36"/>
   <!-- Psalm 119:105: an oil lamp seen slightly from above, flame rising from the oil. -->
-  <g transform="translate(512 512) scale(1.1) translate(-512 -555)">
+  <g transform="translate(512 512) scale(1.3) translate(-512 -555)">
     <path fill="#FBF8F1" d="M272 610C272 706 392 754 512 754C632 754 752 706 752 610Z"/>
     <ellipse cx="512" cy="610" rx="240" ry="48" fill="#FBF8F1"/>
     <ellipse cx="512" cy="610" rx="208" ry="31" fill="#0F2B27"/>
