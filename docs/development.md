@@ -15,7 +15,8 @@ Debug 빌드는 설치된 릴리스 앱과 나란히 실행해도 구분되도�
   릴리스 앱과 따로다. 처음 실행하면 로컬 저장소가 비어 있고, CloudKit
   Development 환경에서 다시 받는다.
 - iCloud key-value store는 entitlements에 `com.dhouse.PilgrimJournal`로 고정돼 있어
-  **릴리스 앱과 같은 저장소를 쓴다**(노트북 목록, 유형 카탈로그).
+  **릴리스 앱과 같은 저장소를 쓴다**(노트북 목록, 유형 카탈로그). 일부러 공유하는
+  것이다(2026-11-05 결정). Debug 전용 저장소로 바꾸지 않는다.
 - 처음 서명 빌드할 때 Xcode 자동 서명이 새 App ID를 등록해야 한다(Xcode에서 한 번
   빌드하거나 `xcodebuild … -allowProvisioningUpdates`). Apple Developer에서 그 App
   ID의 Sign in with Apple을 기존 primary App ID 그룹에 묶고, iCloud container가
