@@ -1,6 +1,19 @@
 # Quiet Morning 디자인 검증
 
-## 성경·불꽃 아이콘 (2026-10-15)
+## 등잔 아이콘 (2026-11-03)
+
+- 시편 119:105("주의 말씀은 내 발에 등이요 내 길에 빛이니이다")를 담아 성경·불꽃
+  아이콘을 등잔으로 바꿨다. 살짝 위에서 본 넓은 그릇에 어두운 기름 면이 보이고,
+  그 위로 기존과 같은 모양의 불꽃이 피어오른다. 불꽃 속 구멍과 후광은 뺐다.
+- 불꽃이 그릇만큼 크면 화로나 성화대처럼 읽혀서, 불꽃은 그릇 폭의 약 40%로 줄였다.
+  받침대를 세운 안은 성화봉이나 잔처럼 보여서, 측면에서 본 기름 등잔은 지니 램프처럼
+  보여서 뺐다. 전체 덩어리는 캔버스 중앙에 두고 그릇 폭은 약 61%다(2026-11-05에 52%에서 키움).
+- 틴트 버전은 흰 불꽃이 흰 그릇 테두리와 붙지 않도록 불꽃 둘레에 배경색 외곽선을 둔다.
+- `scripts/generate_app_icons.sh`로 13개 PNG를 다시 만들었고, 모두 불투명 RGB이며
+  마스터와 기본 에셋이 일치한다. 기본·다크·틴트와 64px 축소본을 시각 검수했다.
+  실제 홈 화면·Spotlight·Dock·Finder 검수는 새 설치 빌드에서 진행한다.
+
+## 성경·불꽃 아이콘 (2026-10-15, 등잔 아이콘으로 교체됨)
 
 - 기존 초록·아이보리·금색 팔레트로 펼친 성경 위에 불꽃을 배치했다.
   불꽃 중심은 최초 시안보다 24px 아래로 옮기고 금색에서 주황색으로 이어지는
@@ -87,7 +100,7 @@ xcodebuild -project PilgrimJournal/PilgrimJournal.xcodeproj \
 xcrun simctl install booted /tmp/pilgrim-sim/Build/Products/Debug-iphonesimulator/PilgrimJournal.app
 SIMCTL_CHILD_PILGRIM_VISUAL_TESTING=1 \
 SIMCTL_CHILD_PILGRIM_VISUAL_TEST_SCREEN=editor-long \
-  xcrun simctl launch booted com.dhouse.PilgrimJournal
+  xcrun simctl launch booted com.dhouse.PilgrimJournal.debug
 xcrun simctl io booted screenshot /tmp/editor-long.png
 ```
 

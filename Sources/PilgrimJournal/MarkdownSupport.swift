@@ -1281,8 +1281,8 @@ struct MarkdownBodyEditor: View {
     /// CloudKit download finishes). Lets the editor retry attachments it
     /// previously failed to load, without needing to reopen the entry.
     var attachmentRevision = 0
-    /// The Markdown menu row and the slash-command hint. The iPhone's focus
-    /// mode turns them off; the text editor itself never depends on this.
+    /// The Markdown menu row and the slash-command hint. Focus mode hides these
+    /// while keeping the text editor mounted.
     var showsChrome = true
     /// iPhone only: see `MarkdownImageInserter`.
     var imageInserter: MarkdownImageInserter?
@@ -3062,6 +3062,7 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
         if abs(scrollView.magnification - CGFloat(textScale)) > 0.001 {
             scrollView.setMagnification(CGFloat(textScale), centeredAt: .zero)
         }
+        if context.coordinator.isOpeningTextEcho(text, current: textView.string) { return }
         guard
             MarkdownInputReconciliation.canMutateTextStorage(
                 isComposing: textView.hasMarkedText()
@@ -3182,8 +3183,23 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
             return true
         }
 
+        // A layout update can still carry the opening text after the first edit.
+        // Once SwiftUI supplies a newer value, restoring the opening revision
+        // must again be treated as an external edit.
+        private var openingText: String?
+
+        func isOpeningTextEcho(_ incoming: String, current: String) -> Bool {
+            guard let openingText else { return false }
+            if incoming != openingText {
+                self.openingText = nil
+                return false
+            }
+            return !publishedHistory.isEmpty && incoming != current
+        }
+
         init(parent: LiveMarkdownTextEditor) {
             self.parent = parent
+            openingText = parent.text
         }
 
         /// Synchronous — returns the cached decoded image if present, and as
@@ -4042,13 +4058,19 @@ private final class MarkdownUITextView: UITextView, UIGestureRecognizerDelegate 
                 forGlyphRange: glyphRange,
                 in: textContainer
             )
-            // Center on the marker glyph's own bounding box, not the line
-            // fragment rect — the fragment includes the paragraph's line
-            // spacing, which sits below the glyph, so using its midY pulls
-            // the dot down off-center from the text.
+            // TextKit includes spacing below the line in the marker bounds.
+            // Anchor the dot to the first line's baseline and visible letter height.
+            let fragment = layoutManager.lineFragmentRect(
+                forGlyphAt: glyphRange.location, effectiveRange: nil
+            )
+            let baseline = fragment.minY + layoutManager.location(forGlyphAt: glyphRange.location).y
+            let markerFont =
+                textStorage.attribute(
+                    .font, at: bulletMatch.markerRange.location, effectiveRange: nil)
+                as? UIFont ?? UIFont.preferredFont(forTextStyle: .body)
             let dot = CGRect(
                 x: origin.x + marker.midX - 3,
-                y: origin.y + marker.midY - 3,
+                y: origin.y + baseline - markerFont.capHeight / 2 - 3,
                 width: 6,
                 height: 6
             )
@@ -5422,7 +5444,18 @@ enum ExternalTextRebase {
 
 struct MarkdownPreviewView: View {
     @EnvironmentObject private var model: AppModel
+    /// Read so a Dynamic Type change re-renders and `bodyCapHeight` follows it.
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let markdown: String
+
+    /// Cap height of the body text style, which list items render in.
+    private var bodyCapHeight: CGFloat {
+        #if os(iOS)
+        UIFont.preferredFont(forTextStyle: .body).capHeight
+        #else
+        NSFont.preferredFont(forTextStyle: .body).capHeight
+        #endif
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -5447,12 +5480,16 @@ struct MarkdownPreviewView: View {
                 .font(.body)
         case let .bullet(indentation):
             HStack(alignment: .firstTextBaseline, spacing: 8) {
+                // The same 6pt dot the editor draws, centred on the first
+                // line's capital letters like there. A "•" glyph sits right
+                // but renders noticeably smaller than the editor's dot.
                 Circle()
                     .fill(JournalTheme.ink)
                     .frame(width: 6, height: 6)
                     .alignmentGuide(.firstTextBaseline) { dimensions in
-                        dimensions[VerticalAlignment.center]
+                        dimensions.height / 2 + bodyCapHeight / 2
                     }
+                    .accessibilityHidden(true)
                 inlineText(block.content)
             }
             .padding(.leading, CGFloat(indentation) * 18)

@@ -541,16 +541,6 @@
         }
       }
     },
-    "Debug 빌드에서만 보입니다. 켜면 유형 편집 대신 유료 안내가 뜹니다." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Visible only in Debug builds. When on, a premium feature prompt appears instead of Edit Types."
-          }
-        }
-      }
-    },
     "Face ID / Touch ID" : {},
     "Face ID / Touch ID 사용" : {
       "localizations" : {
@@ -2856,16 +2846,6 @@
         }
       }
     },
-    "사용 중" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Active"
-          }
-        }
-      }
-    },
     "사용 중인 태그가 없습니다." : {
       "localizations" : {
         "en" : {
@@ -3810,46 +3790,6 @@
         }
       }
     },
-    "유료 기능" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Premium Feature"
-          }
-        }
-      }
-    },
-    "유료 기능 잠금 시뮬레이션" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Simulate Locked Premium Features"
-          }
-        }
-      }
-    },
-    "유료 기능을 켰습니다" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Premium Features Unlocked"
-          }
-        }
-      }
-    },
-    "유료 코드 해제 초기화" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reset Premium Unlock"
-          }
-        }
-      }
-    },
     "유형" : {
       "localizations" : {
         "en" : {
@@ -3910,42 +3850,12 @@
         }
       }
     },
-    "유형 추가·삭제·편집은 유료 기능입니다. 코드는 입력한 기기에만 적용됩니다." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Adding, deleting and editing types are premium features. A code applies only to the device you enter it on."
-          }
-        }
-      }
-    },
-    "유형 추가·삭제·편집은 유료 버전에서 쓸 수 있습니다. 지금 있는 유형으로 기록을 쓰고 옮기는 것은 계속 할 수 있습니다." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Adding, deleting, and editing types is available in the premium version. You can still write entries and move them between your existing types."
-          }
-        }
-      }
-    },
     "유형 편집" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Edit Types"
-          }
-        }
-      }
-    },
-    "유형 편집 열기" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Open Edit Types"
           }
         }
       }
@@ -4912,6 +4822,16 @@
         }
       }
     },
+    "집중 모드 종료 (⌘⇧F)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exit Focus Mode (⌘⇧F)"
+          }
+        }
+      }
+    },
     "책 제목" : {
       "localizations" : {
         "en" : {
@@ -5140,42 +5060,12 @@
         }
       }
     },
-    "코드" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Code"
-          }
-        }
-      }
-    },
     "코드 블록" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Code Block"
-          }
-        }
-      }
-    },
-    "코드 입력…" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Enter Code…"
-          }
-        }
-      }
-    },
-    "코드가 올바르지 않습니다." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "That code isn’t valid."
           }
         }
       }

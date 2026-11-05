@@ -39,148 +39,23 @@ struct ContentView: View {
         ) {
             JournalSidebar(preferredCompactColumn: $preferredCompactColumn)
                 #if os(macOS)
-            // While focused, the system panel toggle would only fight
-            // `FocusModeLayoutPolicy`; the toolbar's own "집중 모드 종료"
-            // button is the way out.
             .toolbar(removing: isFocusMode ? .sidebarToggle : nil)
                 #endif
         } content: {
-            Group {
-                if model.isBatchSelecting {
-                    List(model.entries, selection: $model.selectedEntryIDs) { entry in
-                        EntryRow(entry: entry)
-                            .tag(entry.id)
-                    }
-                    #if os(macOS)
-                    .onDeleteCommand {
-                        requestBatchTrash()
-                    }
-                    #endif
-                } else {
-                    // macOS binds the whole selection set even outside batch
-                    // mode so shift- and command-click stay in sync with the
-                    // model. iOS keeps the single-id binding: a set binding
-                    // there swallows taps unless edit mode is active.
-                    #if os(macOS)
-                    List(selection: multipleEntrySelection) {
-                        entryListContent
-                    }
-                    .onDeleteCommand {
-                        requestBatchTrash()
-                    }
-                    #else
-                    List(selection: entrySelection) {
-                        entryListContent
-                    }
-                    #endif
-                }
+            // The timeline contributes search and actions to the window toolbar
+            // even when its split pane is hidden.
+            if isFocusMode {
+                Color.clear
+            } else {
+                timeline
             }
-            .overlay {
-                if model.entries.isEmpty && model.hasActiveSearchCriteria {
-                    JournalEmptyState(
-                        title: String(localized: "검색 결과가 없습니다"),
-                        description: String(localized: "검색어나 필터를 바꾸거나 모든 조건을 지워보세요."),
-                        systemImage: "magnifyingglass"
-                    ) {
-                        Button("검색 조건 지우기") {
-                            model.clearSearchCriteria()
-                        }
-                        .buttonStyle(.borderedProminent)
-                    }
-                } else if model.entries.isEmpty && !model.isBatchSelecting {
-                    JournalEmptyState(
-                        title: String(localized: "아직 노트가 없습니다"),
-                        description: String(localized: "위의 ‘새 노트’를 눌러 바로 작성하세요."),
-                        systemImage: "square.and.pencil"
-                    ) {}
-                    // The list still owns the 새 노트 button underneath.
-                    .allowsHitTesting(false)
-                }
-            }
-            .scrollContentBackground(.hidden)
-            .background(JournalTheme.canvas)
-            .searchable(text: $model.searchText, prompt: "기록 검색")
-            .onSubmit(of: .search) { model.refresh() }
-            .onChange(of: model.searchText) { _, _ in model.refresh() }
-            .navigationTitle(
-                model.selectedNotebookName
-                    ?? model.selectedKind.map { model.kindDefinition(for: $0).displayName }
-                    ?? String(localized: "전체 기록")
-            )
-            .toolbar {
-                if model.isBatchSelecting {
-                    Button("정리 \(model.selectedEntryIDs.count)") {
-                        model.isPresentingBatchOrganizer = true
-                    }
-                    .disabled(model.selectedEntryIDs.isEmpty)
-                    Button(role: .destructive) {
-                        requestBatchTrash()
-                    } label: {
-                        Label(
-                            "삭제 \(model.selectedEntryIDs.count)",
-                            systemImage: "trash"
-                        )
-                    }
-                    .disabled(model.selectedEntryIDs.isEmpty)
-                    Button("완료") {
-                        #if os(iOS)
-                        editMode = .inactive
-                        #endif
-                        model.endBatchSelection()
-                    }
-                } else {
-                    Button("선택") {
-                        model.beginBatchSelection()
-                        #if os(iOS)
-                        editMode = .active
-                        #endif
-                    }
-                    #if os(macOS)
-                    // Shift-click already selects a range here, so the trash
-                    // has to work without entering batch mode.
-                    Button(role: .destructive) {
-                        requestBatchTrash()
-                    } label: {
-                        Label(
-                            model.selectedEntryIDs.count > 1
-                                ? "삭제 \(model.selectedEntryIDs.count)"
-                                : "삭제",
-                            systemImage: "trash"
-                        )
-                    }
-                    .disabled(model.selectedEntryIDs.isEmpty)
-                    #endif
-                }
-                Button {
-                    model.beginNewEntry()
-                } label: {
-                    Label("새 노트", systemImage: "square.and.pencil")
-                }
-                #if os(macOS)
-                Button {
-                    setFocusMode(!isFocusMode)
-                } label: {
-                    Label(
-                        isFocusMode ? "집중 모드 종료" : "집중 모드",
-                        systemImage: isFocusMode
-                            ? "rectangle.split.3x1"
-                            : "rectangle.inset.filled"
-                    )
-                }
-                #endif
-            }
-            .navigationSplitViewColumnWidth(
-                min: JournalTheme.timelineWidth.lowerBound,
-                ideal: 330,
-                max: JournalTheme.timelineWidth.upperBound
-            )
         } detail: {
             #if os(macOS)
             Group {
                 if model.isPresentingSettings {
                     SettingsView()
                 } else if let entry = model.selectedEntry {
-                    InlineEntryEditorView(entry: entry)
+                    InlineEntryEditorView(entry: entry, isFocusMode: isFocusMode)
                         .id(entry.id)
                 } else if model.selectedEntryIDs.count > 1 {
                     JournalEmptyState(
@@ -196,6 +71,7 @@ struct ContentView: View {
                 } else if model.isPresentingEditor {
                     InlineEntryEditorView(
                         entry: nil,
+                        isFocusMode: isFocusMode,
                         defaultKind: model.defaultKindForNewEntry,
                         defaultNotebookName: model.newEntryNotebookName
                     )
@@ -206,6 +82,26 @@ struct ContentView: View {
                         description: String(localized: "왼쪽 목록에서 기록을 고르거나 새 기록을 시작하세요."),
                         systemImage: "doc.text"
                     ) {}
+                }
+            }
+            // Focus mode drops the window toolbar, so this is the visible way
+            // out next to ⌘⇧F and Escape.
+            .overlay(alignment: .topTrailing) {
+                if isFocusMode {
+                    Button {
+                        setFocusMode(false)
+                    } label: {
+                        Image(systemName: "arrow.down.right.and.arrow.up.left")
+                            .font(.callout.weight(.semibold))
+                            .foregroundStyle(JournalTheme.inkSecondary)
+                            .frame(width: 30, height: 30)
+                            .background(.ultraThinMaterial, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .help("집중 모드 종료 (⌘⇧F)")
+                    .accessibilityLabel("집중 모드 종료")
+                    .padding(JournalTheme.Spacing.regular)
+                    .transition(.opacity)
                 }
             }
             .navigationSplitViewColumnWidth(min: JournalTheme.detailMinWidth, ideal: 560)
@@ -244,9 +140,6 @@ struct ContentView: View {
         .sheet(isPresented: $model.isPresentingKindManagement) {
             KindManagementSheet()
         }
-        .sheet(isPresented: $model.isPresentingPremiumNotice) {
-            PremiumFeatureNoticeSheet()
-        }
         #if os(iOS)
         // 지금 동기화 reopens the store, which rebuilds this view; on iPhone
         // it would otherwise come back on the sidebar instead of settings.
@@ -260,7 +153,7 @@ struct ContentView: View {
         // into `columnVisibility`. Treating that as "the user reopened the
         // panels" is what made focus mode drop out while typing. Focus mode
         // owns the layout instead: undo any write-back, and leave ending it to
-        // explicit commands (toolbar button, ⌘⇧F, ⌃⌘S, Escape). With
+        // explicit commands (the exit button, ⌘⇧F, ⌃⌘S, Escape). With
         // `.doubleColumn` (see `FocusModeLayoutPolicy`) SwiftUI no longer
         // writes back at all; this is the safety net if a later macOS does.
         .onChange(of: columnVisibility) { _, newValue in
@@ -366,6 +259,138 @@ struct ContentView: View {
             }
         }
         #endif
+    }
+
+    private var timeline: some View {
+        Group {
+            if model.isBatchSelecting {
+                List(model.entries, selection: $model.selectedEntryIDs) { entry in
+                    EntryRow(entry: entry)
+                        .tag(entry.id)
+                }
+                #if os(macOS)
+                .onDeleteCommand {
+                    requestBatchTrash()
+                }
+                #else
+                // Bound on the list itself: each split-view column brings its
+                // own edit mode, so a binding set around the whole split view
+                // never reaches it and the rows stay unselectable.
+                .environment(\.editMode, $editMode)
+                #endif
+            } else {
+                // macOS binds the whole selection set even outside batch
+                // mode so shift- and command-click stay in sync with the
+                // model. iOS keeps the single-id binding: a set binding
+                // there swallows taps unless edit mode is active.
+                #if os(macOS)
+                List(selection: multipleEntrySelection) {
+                    entryListContent
+                }
+                .onDeleteCommand {
+                    requestBatchTrash()
+                }
+                #else
+                List(selection: entrySelection) {
+                    entryListContent
+                }
+                #endif
+            }
+        }
+        .overlay {
+            if model.entries.isEmpty && model.hasActiveSearchCriteria {
+                JournalEmptyState(
+                    title: String(localized: "검색 결과가 없습니다"),
+                    description: String(localized: "검색어나 필터를 바꾸거나 모든 조건을 지워보세요."),
+                    systemImage: "magnifyingglass"
+                ) {
+                    Button("검색 조건 지우기") {
+                        model.clearSearchCriteria()
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+            } else if model.entries.isEmpty && !model.isBatchSelecting {
+                JournalEmptyState(
+                    title: String(localized: "아직 노트가 없습니다"),
+                    description: String(localized: "위의 ‘새 노트’를 눌러 바로 작성하세요."),
+                    systemImage: "square.and.pencil"
+                ) {}
+                // The list still owns the 새 노트 button underneath.
+                .allowsHitTesting(false)
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .background(JournalTheme.canvas)
+        .searchable(text: $model.searchText, prompt: "기록 검색")
+        .onSubmit(of: .search) { model.refresh() }
+        .onChange(of: model.searchText) { _, _ in model.refresh() }
+        .navigationTitle(
+            model.selectedNotebookName
+                ?? model.selectedKind.map { model.kindDefinition(for: $0).displayName }
+                ?? String(localized: "전체 기록")
+        )
+        .toolbar {
+            if model.isBatchSelecting {
+                Button("정리 \(model.selectedEntryIDs.count)") {
+                    model.isPresentingBatchOrganizer = true
+                }
+                .disabled(model.selectedEntryIDs.isEmpty)
+                Button(role: .destructive) {
+                    requestBatchTrash()
+                } label: {
+                    Label(
+                        "삭제 \(model.selectedEntryIDs.count)",
+                        systemImage: "trash"
+                    )
+                }
+                .disabled(model.selectedEntryIDs.isEmpty)
+                Button("완료") {
+                    #if os(iOS)
+                    editMode = .inactive
+                    #endif
+                    model.endBatchSelection()
+                }
+            } else {
+                Button("선택") {
+                    model.beginBatchSelection()
+                    #if os(iOS)
+                    editMode = .active
+                    #endif
+                }
+                #if os(macOS)
+                // Shift-click already selects a range here, so the trash
+                // has to work without entering batch mode.
+                Button(role: .destructive) {
+                    requestBatchTrash()
+                } label: {
+                    Label(
+                        model.selectedEntryIDs.count > 1
+                            ? "삭제 \(model.selectedEntryIDs.count)"
+                            : "삭제",
+                        systemImage: "trash"
+                    )
+                }
+                .disabled(model.selectedEntryIDs.isEmpty)
+                #endif
+            }
+            Button {
+                model.beginNewEntry()
+            } label: {
+                Label("새 노트", systemImage: "square.and.pencil")
+            }
+            #if os(macOS)
+            Button {
+                setFocusMode(true)
+            } label: {
+                Label("집중 모드", systemImage: "rectangle.inset.filled")
+            }
+            #endif
+        }
+        .navigationSplitViewColumnWidth(
+            min: JournalTheme.timelineWidth.lowerBound,
+            ideal: 330,
+            max: JournalTheme.timelineWidth.upperBound
+        )
     }
 
     @ViewBuilder
