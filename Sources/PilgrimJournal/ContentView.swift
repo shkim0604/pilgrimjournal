@@ -275,6 +275,11 @@ struct ContentView: View {
                 .onDeleteCommand {
                     requestBatchTrash()
                 }
+                #else
+                // Bound on the list itself: each split-view column brings its
+                // own edit mode, so a binding set around the whole split view
+                // never reaches it and the rows stay unselectable.
+                .environment(\.editMode, $editMode)
                 #endif
             } else {
                 // macOS binds the whole selection set even outside batch
