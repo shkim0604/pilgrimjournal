@@ -4042,13 +4042,19 @@ private final class MarkdownUITextView: UITextView, UIGestureRecognizerDelegate 
                 forGlyphRange: glyphRange,
                 in: textContainer
             )
-            // Center on the marker glyph's own bounding box, not the line
-            // fragment rect — the fragment includes the paragraph's line
-            // spacing, which sits below the glyph, so using its midY pulls
-            // the dot down off-center from the text.
+            // TextKit includes spacing below the line in the marker bounds.
+            // Anchor the dot to the first line's baseline and visible letter height.
+            let fragment = layoutManager.lineFragmentRect(
+                forGlyphAt: glyphRange.location, effectiveRange: nil
+            )
+            let baseline = fragment.minY + layoutManager.location(forGlyphAt: glyphRange.location).y
+            let markerFont =
+                textStorage.attribute(
+                    .font, at: bulletMatch.markerRange.location, effectiveRange: nil)
+                as? UIFont ?? UIFont.preferredFont(forTextStyle: .body)
             let dot = CGRect(
                 x: origin.x + marker.midX - 3,
-                y: origin.y + marker.midY - 3,
+                y: origin.y + baseline - markerFont.capHeight / 2 - 3,
                 width: 6,
                 height: 6
             )
@@ -5447,12 +5453,9 @@ struct MarkdownPreviewView: View {
                 .font(.body)
         case let .bullet(indentation):
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Circle()
-                    .fill(JournalTheme.ink)
-                    .frame(width: 6, height: 6)
-                    .alignmentGuide(.firstTextBaseline) { dimensions in
-                        dimensions[VerticalAlignment.center]
-                    }
+                Text(verbatim: "•")
+                    .foregroundStyle(JournalTheme.ink)
+                    .accessibilityHidden(true)
                 inlineText(block.content)
             }
             .padding(.leading, CGFloat(indentation) * 18)
