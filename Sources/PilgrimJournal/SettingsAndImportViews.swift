@@ -18,9 +18,6 @@ struct SettingsView: View {
     /// The language the app launched with; differs from `language` until the
     /// app is reopened.
     @State private var launchedLanguage = AppLanguage.current()
-    #if DEBUG
-    @AppStorage(PremiumCodeFeatureAccess.simulateLockedKey) private var simulateLocked = false
-    #endif
 
     var body: some View {
         Form {
@@ -113,29 +110,11 @@ struct SettingsView: View {
                 Button {
                     model.openKindManagement()
                 } label: {
-                    Label(
-                        "유형 편집",
-                        systemImage: model.featureAccess.canManageKinds
-                            ? "slider.horizontal.3" : "lock.fill"
-                    )
+                    Label("유형 편집", systemImage: "slider.horizontal.3")
                 }
                 NavigationLink("태그 및 Day One 분류 규칙") {
                     OrganizationSettingsView()
                 }
-            }
-            Section("유료 기능") {
-                if model.featureAccess.isPremium {
-                    LabeledContent("상태", value: String(localized: "사용 중"))
-                } else {
-                    Button {
-                        model.isPresentingPremiumNotice = true
-                    } label: {
-                        Label("코드 입력…", systemImage: "key")
-                    }
-                }
-                Text("유형 추가·삭제·편집은 유료 기능입니다. 코드는 입력한 기기에만 적용됩니다.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
             Section("데이터 관리") {
                 Button {
@@ -328,34 +307,11 @@ struct SettingsView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             }
-            #if DEBUG
-            Section("개발") {
-                Toggle("유료 기능 잠금 시뮬레이션", isOn: $simulateLocked)
-                if let access = model.featureAccess as? PremiumCodeFeatureAccess,
-                    access.isPremium
-                {
-                    Button("유료 코드 해제 초기화") {
-                        access.resetForTesting()
-                        model.featureAccessDidChange()
-                    }
-                }
-                Text("Debug 빌드에서만 보입니다. 켜면 유형 편집 대신 유료 안내가 뜹니다.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            #endif
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
         .background(JournalTheme.canvas)
         .navigationTitle("설정")
-        #if DEBUG
-        // `featureAccess` reads the flag but publishes nothing, so tell the
-        // model to re-render the sidebar's 편집 label and gate.
-        .onChange(of: simulateLocked) { _, _ in
-            model.featureAccessDidChange()
-        }
-        #endif
         .confirmationDialog(
             "Apple 계정에서 로그아웃할까요?",
             isPresented: $isConfirmingSignOut,
