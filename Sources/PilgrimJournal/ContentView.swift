@@ -244,9 +244,6 @@ struct ContentView: View {
         .sheet(isPresented: $model.isPresentingKindManagement) {
             KindManagementSheet()
         }
-        .sheet(isPresented: $model.isPresentingPremiumNotice) {
-            PremiumFeatureNoticeSheet()
-        }
         #if os(iOS)
         // 지금 동기화 reopens the store, which rebuilds this view; on iPhone
         // it would otherwise come back on the sidebar instead of settings.
