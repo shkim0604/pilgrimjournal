@@ -9,5 +9,6 @@
 - `specs/share-card/spec.md` — 요구사항과 시나리오
 - `specs/in-app-usage-guide/spec.md` — 앱 사용법에 나눔 카드 안내 추가
 - `tasks.md` — 구현 순서
-- `groups-cloudkit.md` — (2단계 검토안) 그룹을 자체 백엔드 대신 CloudKit으로: CKShare vs public DB,
-  로드맵 요구사항 대응표, 주인이 정할 것, 계정 삭제. 1단계 구현 범위가 아니다.
+- `groups-cloudkit.md` — (2단계 검토안, **채택 안 됨**) 그룹을 자체 백엔드 대신 CloudKit으로:
+  CKShare vs public DB, 로드맵 요구사항 대응표, 주인이 정할 것, 계정 삭제. 2026-11-03에 자체 서버로
+  다시 정했다(`docs/group-server.md`). 왜 서버가 필요한지에 대한 기록으로 남긴다.

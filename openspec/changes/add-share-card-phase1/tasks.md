@@ -1,6 +1,7 @@
 ## 0. 착수 전
 
-- [ ] 0.1 design.md "Open Questions" 1~6을 주인이 정한다(특히 2 무료/유료, 5 출시 기준).
+- [ ] 0.1 design.md "Open Questions" 1~6을 주인이 정한다(특히 5 출시 기준). 2 무료/유료는
+      2026-11-05에 무료로 정했다.
 - [ ] 0.2 shkim0604/pilgrimjournal#21(일기 → 기도제목, 프롬프트 실험실)을 합친다.
 - [ ] 0.3 Foundation Models 최신 문서에서 `availability` 사유, 언어 지원 확인 API, 오류 종류,
       `prewarm`을 다시 확인한다(로드맵: "착수 시점에 최신 문서를 다시 확인").
@@ -52,7 +53,7 @@
       메뉴. 휴지통 기록에는 없음.
 - [ ] 3.6 `AppModel`(또는 `JournalSessionController`)에서 drafter를 만들어 주입한다. 테스트는 가짜
       drafter.
-- [ ] 3.7 (열린 질문 2가 유료로 나면) `FeatureAccess.canCreateShareCards`와 잠금 안내.
+- [x] 3.7 (해당 없음) 열린 질문 2가 무료로 정해져 잠금 안내를 만들지 않는다(2026-11-05).
 - [ ] 3.8 앱 문구를 `Localizable.xcstrings`에 넣고 `xcodebuild -exportLocalizations`(앱·패키지)로
       키를 갱신한 뒤 `en` 값을 채운다.
 - [ ] 3.9 `PilgrimJournalTests`: design.md "테스트"의 앱 항목.

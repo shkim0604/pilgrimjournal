@@ -19,8 +19,8 @@
   `occurredAt`, `details.bookTitle`/`bookAuthor`/`prayerStatus` 등). 기록에 시간대 필드는 없다.
 - 기록 상세 동작은 `EntryDetailView.detailActions`(`편집`, `이력`)
   (`Sources/PilgrimJournal/EntryViews.swift`).
-- 유료 기능 게이트는 `FeatureAccess`(`Sources/PilgrimJournal/FeatureAccess.swift`). 지금은
-  유형 관리만 프리미엄 코드로 잠겨 있다.
+- 유료 기능 게이트는 없다. 2026-11-05에 앱 기능을 전부 무료로 정하면서 유형 관리의 프리미엄
+  코드 잠금과 `FeatureAccess`를 뺐다(shkim0604/pilgrimjournal#28). 유료 후보는 2단계 그룹뿐이다.
 - `ShareCardEval`(실행 타깃)에 `DayDate`, `EvalCalendar`, `CalendarHints`,
   `DatePhraseResolver`, `SharePipeline`, `SharePrompts`가 있다. 실행 타깃이라 앱이 가져다 쓸 수
   없고, `EvalCalendar`는 `Asia/Seoul` 시간대를 고정해 쓴다.
@@ -287,9 +287,8 @@ VoiceOver 레이블(체크박스는 "최종 면접 공유하기"처럼 항목 �
 
 ### 9. 무료/유료
 
-열린 질문 2. 제안은 **1단계는 무료**다. 결정이 유료로 나면 `FeatureAccess`에
-`canCreateShareCards`를 추가하고 `PremiumCodeFeatureAccess`가 `isPremium`으로 답하게 한다 —
-지금 구조 그대로 들어간다.
+**무료로 정했다(2026-11-05, 열린 질문 2).** 그룹 기능만 나중에 구독으로 두고, 그 밖의 앱
+기능은 전부 무료다. 1단계에는 잠금이 없다.
 
 ## 테스트
 
@@ -355,14 +354,13 @@ CI(`scripts/check.sh`, Xcode 빌드, iOS 시뮬레이터 테스트)는 모델을
 | `ShareCardImageView` | 그룹 피드 카드와 스크랩 미리보기에 같은 모양을 쓴다 |
 | 제3자 경고 | 그대로. 업로드 전에는 한 번 더 확인 |
 
-2단계가 새로 만드는 것 — 그룹 저장소는 2026-10-21 주인 요청으로 자체 백엔드에서 **CloudKit**으로
-바뀌었다. CKShare(공유 zone)와 public DB + 앱 암호화 두 안의 비교, 로드맵 요구사항별로 CloudKit이
-강제할 수 있는 것과 없는 것, 주인이 정할 것, 계정 삭제는 [`groups-cloudkit.md`](groups-cloudkit.md)에
-있다(제안: CKShare). 그 밖에: CloudKit 공유용 별도 동기화 어댑터(`CKSyncEngine` — SwiftData 미러링은
-shared DB를 지원하지 않음), 그룹 회원가입(표시 이름·프로필), StoreKit 월 구독(서버 검증 없음),
-App Review 1.2 대응(신고·차단·관리자 삭제·이용약관 동의), 그룹을 포함한 계정 삭제, 알림·Daily
-Report, 스크랩 종류(canonical 모델 추가 → CloudKit 스키마 드리프트 절차), 하단 탭 바,
-`docs/privacy.md`("public/shared CloudKit database를 사용하지 않는다")와 개인정보 라벨 개정.
+2단계가 새로 만드는 것 — 그룹 저장소는 **자체 서버**다. 2026-10-21에 CloudKit으로 바꾸는 안을
+검토했지만([`groups-cloudkit.md`](groups-cloudkit.md), 기록으로 남김), 2026-11-03에 맥미니의 Pilgrim
+전용 서버로 다시 정했다. 설계는 `docs/group-server.md`(shkim0604/pilgrimjournal#26). 그 밖에: 그룹
+회원가입(표시 이름·프로필), StoreKit 월 구독(서버가 검증), App Review 1.2 대응(신고·차단·관리자
+삭제·이용약관 동의), 그룹을 포함한 계정 삭제, 알림·Daily Report, 스크랩 종류(canonical 모델 추가 →
+CloudKit 스키마 드리프트 절차), 하단 탭 바, `docs/privacy.md`("자체 기록 서버를 사용하지 않는다")와
+개인정보 라벨 개정.
 
 1단계에서 얻어 2단계 결정에 쓸 것: 초안을 얼마나 고치는지, 초안 없이 직접 쓰는 비율, 공유까지
 가는 비율. 분석 SDK가 없으므로 앱이 세지 않는다(`docs/privacy.md`) — 주인과 지인 사용자에게 직접
@@ -398,7 +396,7 @@ Report, 스크랩 종류(canonical 모델 추가 → CloudKit 스키마 드리�
    - **제안: (a)만.** (b)는 저장할 때마다 모델을 돌려 배터리를 쓰고, "앱이 내 일기를 읽고 있다"는
      느낌을 줄 수 있으며, 닫은 추천을 기억하려면 기기 로컬 저장(`LocalAuxiliary`)이 필요하다. iPhone
      실측과 (a) 사용 반응을 본 뒤 1.1에서 설정으로 켜는(기본 꺼짐) 배너를 검토한다.
-2. **무료일까, 유료일까?**
+2. **무료일까, 유료일까?** — **결정(2026-11-05): (a) 무료.** 앱 기능은 그룹을 빼고 전부 무료다.
    - (a) 전부 무료. (b) 전부 유료(프리미엄 코드 → 나중에 StoreKit). (c) 직접 쓰기 무료, 온디바이스
      초안만 유료.
    - **제안: (a) 무료.** 서버 비용이 없고, 1단계의 목적이 "쓰는 사람이 있나"를 확인하는 것인데 잠그면
