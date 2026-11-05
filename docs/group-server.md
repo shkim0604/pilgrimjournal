@@ -195,7 +195,7 @@ API 응답을 느리게 하지 않고, API를 다시 시작해도 예약 작업�
 
 | # | 항목 | 결정 |
 | --- | --- | --- |
-| 1 | 방향 | 개인 기록은 iCloud, 공유·SNS는 자체 서버(맥미니). PR #22의 CloudKit 검토는 기록으로 남기고 `docs/roadmap.md` 기술 방향을 다시 고친다 |
+| 1 | 방향 | 개인 기록은 iCloud, 공유·SNS는 자체 서버(맥미니). PR #22의 CloudKit 검토는 기록으로 남긴다(`groups-cloudkit.md`에 "채택 안 됨" 표시, `docs/roadmap.md` 기술 방향도 #22에서 이 문서를 가리키게 고침) |
 | 2 | 서버 언어 | Swift + Vapor |
 | 3 | DB | Pilgrim 전용 Postgres 컨테이너 |
 | 4 | 사진 저장소 | 맥미니 디스크(Docker 볼륨) |
@@ -251,8 +251,9 @@ DB 덤프와 사진 백업을 맥미니 밖에 한 벌 더 둔다. 어디에 두
 
 ## 착수 순서 (제안)
 
-1. `docs/roadmap.md`·`docs/privacy.md` 갱신(그룹은 자체 서버, 서버에 저장되는 것과
-   백업).
+1. `docs/privacy.md` 갱신(그룹은 자체 서버, 서버에 저장되는 것과 백업). `docs/roadmap.md`
+   기술 방향은 #22에서 이미 이 문서를 가리키게 고쳤다. `privacy.md`는 출시된 앱의
+   동작을 적는 문서라 서버가 실제로 생길 때 바꾼다.
 2. `server/` 뼈대: Vapor 앱 + `PilgrimAPI` 공유 패키지, `/api/health`, Postgres,
    놀담과 같은 `make dev/prod/deploy` 흐름.
 3. 맥미니: compose 프로젝트, 터널 ingress `pilgrim.delight-house.org`·
