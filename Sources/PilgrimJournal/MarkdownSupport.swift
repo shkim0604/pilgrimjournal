@@ -1281,8 +1281,8 @@ struct MarkdownBodyEditor: View {
     /// CloudKit download finishes). Lets the editor retry attachments it
     /// previously failed to load, without needing to reopen the entry.
     var attachmentRevision = 0
-    /// The Markdown menu row and the slash-command hint. The iPhone's focus
-    /// mode turns them off; the text editor itself never depends on this.
+    /// The Markdown menu row and the slash-command hint. Focus mode hides these
+    /// while keeping the text editor mounted.
     var showsChrome = true
     /// iPhone only: see `MarkdownImageInserter`.
     var imageInserter: MarkdownImageInserter?
