@@ -1,6 +1,9 @@
 import JournalDomain
 import SwiftUI
-import UniformTypeIdentifiers
+
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// Editable 기도제목 checklist with sections (카테고리) and templates, shown above
 /// the body in both entry editors.
@@ -21,6 +24,12 @@ struct PrayerTopicChecklistEditor: View {
     @State private var editingCategoryIndex: Int?
     @State private var editingCategoryName = ""
     @State private var draggingCategory: String?
+    @State private var sectionFrames: [String: CGRect] = [:]
+    /// Section midlines frozen at lift time, so the target slot is computed
+    /// against stable positions instead of frames that move mid-animation.
+    @State private var dragSlots: [(category: String, midY: CGFloat)] = []
+
+    private static let reorderSpace = "prayer-section-reorder"
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -35,10 +44,8 @@ struct PrayerTopicChecklistEditor: View {
             if categories.isEmpty {
                 addTopicRow(category: nil)
             }
-            ForEach(categories.indices, id: \.self) { index in
-                sectionHeader(index: index)
-                topicRows(category: categories[index])
-                addTopicRow(category: categories[index])
+            ForEach(categories, id: \.self) { category in
+                sectionGroup(for: category)
             }
             Button {
                 addSection()
@@ -50,6 +57,8 @@ struct PrayerTopicChecklistEditor: View {
             .foregroundStyle(.secondary)
             .padding(.top, 4)
         }
+        .coordinateSpace(name: Self.reorderSpace)
+        .onPreferenceChange(PrayerSectionFramesKey.self) { sectionFrames = $0 }
         .onChange(of: focusedCategoryIndex) { _, newValue in
             if newValue != editingCategoryIndex { commitCategoryRename() }
         }
@@ -103,9 +112,37 @@ struct PrayerTopicChecklistEditor: View {
         }
     }
 
-    private func sectionHeader(index: Int) -> some View {
-        HStack(spacing: 10) {
-            if editingCategoryIndex == index {
+    /// One section as a unit (header + its topics + add row), so the whole
+    /// block lifts and animates while it is being reordered.
+    private func sectionGroup(for category: String) -> some View {
+        let isDragging = draggingCategory == category
+        return VStack(alignment: .leading, spacing: 12) {
+            sectionHeader(for: category)
+            topicRows(category: category)
+            addTopicRow(category: category)
+        }
+        .background(
+            GeometryReader { geometry in
+                Color.clear.preference(
+                    key: PrayerSectionFramesKey.self,
+                    value: [category: geometry.frame(in: .named(Self.reorderSpace))]
+                )
+            }
+        )
+        .scaleEffect(isDragging ? 1.03 : 1)
+        .opacity(isDragging ? 0.9 : 1)
+        .shadow(
+            color: isDragging ? Color.black.opacity(0.15) : .clear,
+            radius: 10, y: 4
+        )
+        .zIndex(isDragging ? 1 : 0)
+        .animation(.easeInOut(duration: 0.15), value: isDragging)
+    }
+
+    private func sectionHeader(for category: String) -> some View {
+        let index = categories.firstIndex(of: category)
+        return HStack(spacing: 10) {
+            if let index, editingCategoryIndex == index {
                 TextField("섹션 이름", text: $editingCategoryName)
                     .textFieldStyle(.plain)
                     .font(.title3.weight(.semibold))
@@ -113,14 +150,16 @@ struct PrayerTopicChecklistEditor: View {
                     .onSubmit { commitCategoryRename() }
             } else {
                 // Plain text while not editing, so a long press starts the
-                // reorder drag instead of fighting a text field; tap to rename.
-                Text(categories.indices.contains(index) ? categories[index] : "")
+                // reorder gesture instead of fighting a text field; tap to rename.
+                Text(category)
                     .font(.title3.weight(.semibold))
-                    .onTapGesture { beginCategoryRename(at: index) }
+                    .onTapGesture {
+                        if let index { beginCategoryRename(at: index) }
+                    }
             }
             Spacer(minLength: 0)
             Button {
-                removeSection(at: index)
+                if let index { removeSection(at: index) }
             } label: {
                 Image(systemName: "xmark.circle.fill")
                     .foregroundStyle(.tertiary)
@@ -131,19 +170,65 @@ struct PrayerTopicChecklistEditor: View {
         }
         .padding(.top, 10)
         .contentShape(Rectangle())
-        .onDrag {
-            commitCategoryRename()
-            draggingCategory = categories.indices.contains(index) ? categories[index] : nil
-            return NSItemProvider(object: (draggingCategory ?? "") as NSString)
-        }
-        .onDrop(
-            of: [.text],
-            delegate: PrayerSectionReorderDelegate(
-                item: categories.indices.contains(index) ? categories[index] : "",
-                categories: $categories,
-                dragging: $draggingCategory
+        .gesture(reorderGesture(for: category))
+    }
+
+    /// Reminders-style reorder: hold until the section lifts, then slide it —
+    /// the other sections step aside as the finger crosses their midlines.
+    private func reorderGesture(for category: String) -> some Gesture {
+        LongPressGesture(minimumDuration: 0.3)
+            .sequenced(
+                before: DragGesture(
+                    minimumDistance: 0, coordinateSpace: .named(Self.reorderSpace))
             )
-        )
+            .onChanged { value in
+                guard case .second(true, let drag) = value else { return }
+                if draggingCategory != category {
+                    commitCategoryRename()
+                    draggingCategory = category
+                    dragSlots = categories.compactMap { name in
+                        sectionFrames[name].map { (category: name, midY: $0.midY) }
+                    }
+                    liftHaptic()
+                }
+                if let drag { moveDraggedSection(toPointerY: drag.location.y) }
+            }
+            .onEnded { _ in
+                draggingCategory = nil
+                dragSlots = []
+            }
+    }
+
+    private func moveDraggedSection(toPointerY pointerY: CGFloat) {
+        guard let dragging = draggingCategory,
+            let from = categories.firstIndex(of: dragging),
+            !dragSlots.isEmpty
+        else { return }
+        // Insertion slot = how many of the other sections' frozen midlines the
+        // pointer sits below. Frozen slots keep this stable while views animate.
+        let othersAbove = dragSlots.filter {
+            $0.category != dragging && $0.midY < pointerY
+        }.count
+        guard othersAbove != from else { return }
+        withAnimation(.easeInOut(duration: 0.18)) {
+            categories.move(
+                fromOffsets: IndexSet(integer: from),
+                toOffset: othersAbove > from ? othersAbove + 1 : othersAbove
+            )
+        }
+        stepHaptic()
+    }
+
+    private func liftHaptic() {
+        #if canImport(UIKit)
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        #endif
+    }
+
+    private func stepHaptic() {
+        #if canImport(UIKit)
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        #endif
     }
 
     private func beginCategoryRename(at index: Int) {
@@ -231,32 +316,13 @@ struct PrayerTopicChecklistEditor: View {
 
 }
 
-/// Reorders section headers while one is long-pressed and dragged over another.
-private struct PrayerSectionReorderDelegate: DropDelegate {
-    let item: String
-    @Binding var categories: [String]
-    @Binding var dragging: String?
+/// Section-group frames in the checklist's reorder coordinate space, used to
+/// find which section the lifted one is being dragged over.
+private struct PrayerSectionFramesKey: PreferenceKey {
+    static var defaultValue: [String: CGRect] { [:] }
 
-    func dropEntered(info: DropInfo) {
-        guard let dragging, dragging != item,
-            let from = categories.firstIndex(of: dragging),
-            let to = categories.firstIndex(of: item)
-        else { return }
-        withAnimation {
-            categories.move(
-                fromOffsets: IndexSet(integer: from),
-                toOffset: to > from ? to + 1 : to
-            )
-        }
-    }
-
-    func dropUpdated(info: DropInfo) -> DropProposal? {
-        DropProposal(operation: .move)
-    }
-
-    func performDrop(info: DropInfo) -> Bool {
-        dragging = nil
-        return true
+    static func reduce(value: inout [String: CGRect], nextValue: () -> [String: CGRect]) {
+        value.merge(nextValue()) { $1 }
     }
 }
 
