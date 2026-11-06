@@ -85,12 +85,7 @@ public final class JournalSearchIndex: @unchecked Sendable {
                 bindings: [.text(entry.id.uuidString)]
             )
             guard !entry.isDeleted else { return }
-            let details = [
-                entry.details.scriptureReference,
-                entry.details.bookTitle,
-                entry.details.bookAuthor,
-                entry.details.mood,
-            ].compactMap { $0 }.joined(separator: "\n")
+            let details = Self.detailsPayload(for: entry)
             let tagPayload = "\n" + entry.tags.joined(separator: "\n") + "\n"
             try execute(
                 """
@@ -110,6 +105,20 @@ public final class JournalSearchIndex: @unchecked Sendable {
             )
             try insertSearchMetadata(for: entry)
         }
+    }
+
+    private static func detailsPayload(for entry: JournalEntryRecord) -> String {
+        var parts = [
+            entry.details.scriptureReference,
+            entry.details.bookTitle,
+            entry.details.bookAuthor,
+            entry.details.mood,
+        ].compactMap { $0 }
+        for topic in entry.details.prayerTopics ?? [] {
+            parts.append(topic.text)
+            if let memo = topic.memo { parts.append(memo) }
+        }
+        return parts.joined(separator: "\n")
     }
 
     public func remove(id: UUID) throws {
@@ -132,12 +141,7 @@ public final class JournalSearchIndex: @unchecked Sendable {
                 try execute("DELETE FROM journal_fts")
                 try execute("DELETE FROM journal_search_meta")
                 for entry in entries where !entry.isDeleted {
-                    let details = [
-                        entry.details.scriptureReference,
-                        entry.details.bookTitle,
-                        entry.details.bookAuthor,
-                        entry.details.mood,
-                    ].compactMap { $0 }.joined(separator: "\n")
+                    let details = Self.detailsPayload(for: entry)
                     let tagPayload = "\n" + entry.tags.joined(separator: "\n") + "\n"
                     try execute(
                         """

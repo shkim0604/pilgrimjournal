@@ -175,6 +175,34 @@ final class JournalSearchTests: XCTestCase {
         )
     }
 
+    func testPrayerTopicTextAndMemoAreSearchable() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appending(path: "\(UUID().uuidString).sqlite")
+        defer {
+            try? FileManager.default.removeItem(at: url)
+            try? FileManager.default.removeItem(atPath: url.path + "-wal")
+            try? FileManager.default.removeItem(atPath: url.path + "-shm")
+        }
+        let index = try JournalSearchIndex(url: url)
+        var record = makeRecord(
+            kind: .prayer, title: "기도", body: "본문", tags: [], date: .now)
+        record.details.prayerTopics = [
+            PrayerTopic(text: "수련회 특별순서", memo: "강사님 유니크메모")
+        ]
+
+        try index.upsert(record)
+        XCTAssertEqual(
+            try index.search(JournalSearchQuery(text: "특별순서")).map(\.id), [record.id])
+        XCTAssertEqual(
+            try index.search(JournalSearchQuery(text: "유니크메모")).map(\.id), [record.id])
+        XCTAssertEqual(
+            try index.search(JournalSearchQuery(text: "순서")).map(\.id), [record.id])
+
+        try index.rebuild(from: [record])
+        XCTAssertEqual(
+            try index.search(JournalSearchQuery(text: "유니크메모")).map(\.id), [record.id])
+    }
+
     func testFiveThousandEntryRebuildAndKoreanSearchPerformance() throws {
         let url = FileManager.default.temporaryDirectory
             .appending(path: "\(UUID().uuidString).sqlite")
