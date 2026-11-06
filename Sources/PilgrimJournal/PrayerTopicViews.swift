@@ -1,5 +1,6 @@
 import JournalDomain
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Editable 기도제목 checklist with sections (카테고리) and templates, shown above
 /// the body in both entry editors.
@@ -17,6 +18,9 @@ struct PrayerTopicChecklistEditor: View {
     @FocusState private var focusedCategoryIndex: Int?
     @State private var isNamingTemplate = false
     @State private var templateName = ""
+    @State private var editingCategoryIndex: Int?
+    @State private var editingCategoryName = ""
+    @State private var draggingCategory: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -45,6 +49,9 @@ struct PrayerTopicChecklistEditor: View {
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
             .padding(.top, 4)
+        }
+        .onChange(of: focusedCategoryIndex) { _, newValue in
+            if newValue != editingCategoryIndex { commitCategoryRename() }
         }
         .alert("템플릿으로 저장", isPresented: $isNamingTemplate) {
             TextField("템플릿 이름", text: $templateName)
@@ -97,11 +104,20 @@ struct PrayerTopicChecklistEditor: View {
     }
 
     private func sectionHeader(index: Int) -> some View {
-        HStack(spacing: 6) {
-            TextField("섹션 이름", text: categoryNameBinding(index))
-                .textFieldStyle(.plain)
-                .font(.title3.weight(.semibold))
-                .focused($focusedCategoryIndex, equals: index)
+        HStack(spacing: 10) {
+            if editingCategoryIndex == index {
+                TextField("섹션 이름", text: $editingCategoryName)
+                    .textFieldStyle(.plain)
+                    .font(.title3.weight(.semibold))
+                    .focused($focusedCategoryIndex, equals: index)
+                    .onSubmit { commitCategoryRename() }
+            } else {
+                // Plain text while not editing, so a long press starts the
+                // reorder drag instead of fighting a text field; tap to rename.
+                Text(categories.indices.contains(index) ? categories[index] : "")
+                    .font(.title3.weight(.semibold))
+                    .onTapGesture { beginCategoryRename(at: index) }
+            }
             Spacer(minLength: 0)
             Button {
                 removeSection(at: index)
@@ -114,6 +130,50 @@ struct PrayerTopicChecklistEditor: View {
             .accessibilityLabel(String(localized: "섹션 삭제"))
         }
         .padding(.top, 10)
+        .contentShape(Rectangle())
+        .onDrag {
+            commitCategoryRename()
+            draggingCategory = categories.indices.contains(index) ? categories[index] : nil
+            return NSItemProvider(object: (draggingCategory ?? "") as NSString)
+        }
+        .onDrop(
+            of: [.text],
+            delegate: PrayerSectionReorderDelegate(
+                item: categories.indices.contains(index) ? categories[index] : "",
+                categories: $categories,
+                dragging: $draggingCategory
+            )
+        )
+    }
+
+    private func beginCategoryRename(at index: Int) {
+        commitCategoryRename()
+        guard categories.indices.contains(index) else { return }
+        editingCategoryIndex = index
+        editingCategoryName = categories[index]
+        focusedCategoryIndex = index
+    }
+
+    /// Applies a pending header rename in one step (topics follow the section),
+    /// so a half-typed name never merges two sections mid-edit.
+    private func commitCategoryRename() {
+        guard let index = editingCategoryIndex else { return }
+        editingCategoryIndex = nil
+        guard categories.indices.contains(index) else { return }
+        let old = categories[index]
+        let new = editingCategoryName.trimmingCharacters(in: .whitespacesAndNewlines)
+        editingCategoryName = ""
+        guard !new.isEmpty, new != old else { return }
+        categories[index] = new
+        for topicIndex in topics.indices where topics[topicIndex].category == old {
+            topics[topicIndex].category = new
+        }
+        // Same name as another section: the duplicate collapses on save, so
+        // merge the header list right away to match.
+        if categories.filter({ $0 == new }).count > 1 {
+            var seen = Set<String>()
+            categories = categories.filter { seen.insert($0).inserted }
+        }
     }
 
     @ViewBuilder
@@ -145,6 +205,7 @@ struct PrayerTopicChecklistEditor: View {
     }
 
     private func addSection() {
+        commitCategoryRename()
         // Stored, synced data stays Korean (never localized) like built-in
         // kind names — the user renames it right away via the focused field.
         let base = "새 섹션"
@@ -155,6 +216,8 @@ struct PrayerTopicChecklistEditor: View {
             counter += 1
         }
         categories.append(name)
+        editingCategoryIndex = categories.count - 1
+        editingCategoryName = name
         focusedCategoryIndex = categories.count - 1
     }
 
@@ -166,18 +229,34 @@ struct PrayerTopicChecklistEditor: View {
         }
     }
 
-    private func categoryNameBinding(_ index: Int) -> Binding<String> {
-        Binding(
-            get: { categories.indices.contains(index) ? categories[index] : "" },
-            set: { newValue in
-                guard categories.indices.contains(index) else { return }
-                let old = categories[index]
-                categories[index] = newValue
-                for topicIndex in topics.indices where topics[topicIndex].category == old {
-                    topics[topicIndex].category = newValue
-                }
-            }
-        )
+}
+
+/// Reorders section headers while one is long-pressed and dragged over another.
+private struct PrayerSectionReorderDelegate: DropDelegate {
+    let item: String
+    @Binding var categories: [String]
+    @Binding var dragging: String?
+
+    func dropEntered(info: DropInfo) {
+        guard let dragging, dragging != item,
+            let from = categories.firstIndex(of: dragging),
+            let to = categories.firstIndex(of: item)
+        else { return }
+        withAnimation {
+            categories.move(
+                fromOffsets: IndexSet(integer: from),
+                toOffset: to > from ? to + 1 : to
+            )
+        }
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        DropProposal(operation: .move)
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        dragging = nil
+        return true
     }
 }
 
