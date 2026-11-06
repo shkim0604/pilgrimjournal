@@ -60,6 +60,11 @@ final class AppModel: ObservableObject {
     /// Set when a kind deletion or reconcile rewrites entries underneath an
     /// open editor; the editor showing one of them reloads it from the store.
     @Published private(set) var editorReloadRequest: EditorReloadRequest?
+    /// Which view the 기도노트 content column shows: the note list or one of the
+    /// aggregated topic lists. Reset to `.notes` whenever the kind changes.
+    @Published private(set) var prayerScope: PrayerScope = .notes
+    @Published private(set) var ongoingPrayerItems: [PrayerTopicItem] = []
+    @Published private(set) var answeredPrayerSections: [AnsweredPrayerMonthSection] = []
     @Published private(set) var newEntryNotebookName: String?
     @Published var selectedEntryIDs = Set<UUID>()
     @Published var isBatchSelecting = false
@@ -120,6 +125,18 @@ final class AppModel: ObservableObject {
             || selectedKind != nil
             || selectedNotebookName != nil
     }
+
+    /// Text/tag/date filters only (unlike `hasActiveSearchCriteria`, which also
+    /// counts the kind/notebook selection). While these are active the timeline
+    /// shows search hits, so the prayer segments and aggregates stand down.
+    var hasActiveSearchFilters: Bool {
+        !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || !searchTags.isEmpty
+            || searchStartDate != nil
+            || searchEndDate != nil
+    }
+
+    var isPrayerKindSelected: Bool { selectedKind?.builtIn == .prayer }
 
     let repository: any JournalRepository
     let importStore: any ImportAuditStore
@@ -317,18 +334,17 @@ final class AppModel: ObservableObject {
             reconcileKinds()
         }
         do {
-            let needsSearchIndex =
-                !searchText
-                .trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                || !searchTags.isEmpty
-                || searchStartDate != nil
-                || searchEndDate != nil
+            let needsSearchIndex = hasActiveSearchFilters
             if !needsSearchIndex {
-                entries = try repository.list(
-                    kind: selectedKind,
-                    includeDeleted: false,
-                    limit: 500
-                )
+                if isPrayerKindSelected && prayerScope != .notes {
+                    entries = try allPrayerEntries()
+                } else {
+                    entries = try repository.list(
+                        kind: selectedKind,
+                        includeDeleted: false,
+                        limit: 500
+                    )
+                }
             } else {
                 let hits = try searchIndex.search(
                     JournalSearchQuery(
@@ -355,6 +371,72 @@ final class AppModel: ObservableObject {
                 }
             }
             pruneSelectionToVisibleEntries()
+            refreshPrayerAggregates()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Every prayer note, paged past the timeline's 500-entry cap, so the
+    /// aggregated topic lists cover the whole kind.
+    private func allPrayerEntries() throws -> [JournalEntryRecord] {
+        var all: [JournalEntryRecord] = []
+        var cursor: JournalTimelineCursor?
+        repeat {
+            let page = try repository.page(
+                kind: .prayer,
+                includeDeleted: false,
+                after: cursor,
+                limit: 500
+            )
+            all.append(contentsOf: page.entries)
+            cursor = page.nextCursor
+        } while cursor != nil
+        return all
+    }
+
+    private func refreshPrayerAggregates() {
+        guard isPrayerKindSelected, !hasActiveSearchFilters, prayerScope != .notes else {
+            if !ongoingPrayerItems.isEmpty { ongoingPrayerItems = [] }
+            if !answeredPrayerSections.isEmpty { answeredPrayerSections = [] }
+            return
+        }
+        switch prayerScope {
+        case .ongoing:
+            ongoingPrayerItems = PrayerTopicAggregator.ongoing(in: entries)
+            answeredPrayerSections = []
+        case .answered:
+            answeredPrayerSections = PrayerTopicAggregator.answeredByMonth(
+                in: entries, calendar: .current)
+            ongoingPrayerItems = []
+        case .notes:
+            break
+        }
+    }
+
+    func selectPrayerScope(_ scope: PrayerScope) {
+        guard prayerScope != scope else { return }
+        prayerScope = scope
+        refresh()
+    }
+
+    /// Toggles one prayer topic between 기도중 and 응답, saving behind any open
+    /// editor the same way kind moves do: flush first, then ask the editor to
+    /// reload so it cannot write the stale topic list back.
+    func setPrayerTopicStatus(entryID: UUID, topicID: UUID, status: PrayerStatus) {
+        flushOpenEditor()
+        do {
+            guard var draft = try repository.entry(id: entryID)?.draft,
+                let index = draft.details.prayerTopics?.firstIndex(where: { $0.id == topicID }),
+                draft.details.prayerTopics?[index].status != status
+            else { return }
+            draft.details.prayerTopics?[index].status = status
+            draft.details.prayerTopics?[index].answeredAt = status == .answered ? .now : nil
+            let record = try repository.save(draft, deviceID: deviceID, at: .now)
+            try searchIndex.upsert(record)
+            editorReloadRequest = EditorReloadRequest(entryIDs: [record.id])
+            markLocalMutation()
+            refresh()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -403,6 +485,7 @@ final class AppModel: ObservableObject {
 
     func selectKind(_ kind: JournalKind?) {
         selectedKind = kind
+        prayerScope = .notes
         selectedNotebookName = nil
         newEntryNotebookName = nil
         editingEntry = nil
@@ -2013,4 +2096,11 @@ extension AppModel {
 struct EditorReloadRequest: Equatable {
     let id = UUID()
     let entryIDs: Set<UUID>
+}
+
+/// The three views of the 기도노트 content column.
+enum PrayerScope: String, CaseIterable {
+    case notes
+    case ongoing
+    case answered
 }
