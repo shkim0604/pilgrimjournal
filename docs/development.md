@@ -182,23 +182,35 @@ npm test && npm run typecheck
 
 ### Mac mini 배포 (Docker + Cloudflare Tunnel)
 
-1. 저장소를 받고 `cp web/admin/.env.example web/admin/.env`. `ADMIN_ORIGIN`은
-   `https://pilgrim.delight-house.org`, `TRUST_PROXY=true`, `ADMIN_COOKIE_SECURE=true` 그대로.
+**admin/admin은 공개 문서(`.env.example`)에 있는 값이다.** 첫 로그인 전에 터널을 열면 누구든
+먼저 로그인해 비밀번호를 정하고 콘솔을 가져갈 수 있다. 그래서 첫 로그인(비밀번호 변경)은 터널을
+열기 **전에** Mac mini 로컬에서 끝낸다. bootstrap 비밀번호가 12자 미만이거나 아이디와 같으면
+서버가 시작 로그에 `WARNING`을 남긴다.
+
+1. 저장소를 받고 `cp web/admin/.env.example web/admin/.env`. 첫 로그인용으로 잠시
+   `ADMIN_ORIGIN=http://localhost:8420`, `ADMIN_COOKIE_SECURE=false`, `TRUST_PROXY=false`로 둔다.
 2. 실행: `docker compose -f web/admin/docker-compose.yml up -d --build`. 컨테이너는
    `127.0.0.1:8420`에만 열린다. 계정 DB는 `admin-data` 볼륨(`/data/admin.sqlite`).
-3. 터널 연결 — 둘 중 하나:
+3. Mac mini에서(원격이면 `ssh -L 8420:localhost:8420 <mac-mini>` 후 내 브라우저에서)
+   `http://localhost:8420/admin`을 열고 bootstrap 계정(기본 admin/admin)으로 로그인한다.
+   비밀번호 변경 화면에서 12자 이상으로 바꾼다. 계정이 생긴 뒤에는 bootstrap 값을 무시하므로
+   재시작해도 비밀번호가 되돌아가지 않는다.
+4. `.env`를 운영 값으로 되돌린다: `ADMIN_ORIGIN=https://pilgrim.delight-house.org`,
+   `ADMIN_COOKIE_SECURE=true`, `TRUST_PROXY=true`. `docker compose -f web/admin/docker-compose.yml up -d`로
+   다시 만든다(볼륨의 계정은 유지된다).
+5. 터널 연결 — 둘 중 하나:
    - 이미 Mac mini에 cloudflared가 있으면 Zero Trust › Networks › Tunnels에서 그 터널에 public
      hostname `pilgrim.delight-house.org` → `http://localhost:8420`을 추가한다.
    - compose에 포함된 cloudflared를 쓰려면 새 터널의 토큰을 `.env`의 `TUNNEL_TOKEN`에 넣고
      `--profile tunnel`로 올린 뒤 public hostname 서비스를 `http://admin:8420`으로 둔다.
-4. `https://pilgrim.delight-house.org/admin`에서 `.env`의 bootstrap 계정(기본 admin/admin)으로
-   로그인하면 비밀번호 변경 화면으로 간다. 12자 이상으로 바꿔야 다른 화면이 열린다. 계정이 생긴
-   뒤에는 bootstrap 값을 무시하므로 재시작해도 비밀번호가 되돌아가지 않는다.
-5. 업데이트: `git pull && ./scripts/admin-snapshot.sh`(macOS에서 만든 스냅샷이 커밋돼 있으면 생략)
+   그 뒤 `https://pilgrim.delight-house.org/admin`에서 바꾼 비밀번호로 로그인된다.
+6. 업데이트: `git pull && ./scripts/admin-snapshot.sh`(macOS에서 만든 스냅샷이 커밋돼 있으면 생략)
    후 `docker compose -f web/admin/docker-compose.yml up -d --build`.
 
 비밀번호를 잊으면 `docker compose -f web/admin/docker-compose.yml exec admin node -e "const {DatabaseSync}=require('node:sqlite');new DatabaseSync('/data/admin.sqlite').exec('PRAGMA foreign_keys=ON; DELETE FROM admins')"`
-후 재시작하면 bootstrap 값으로 다시 시드된다(세션도 함께 지워진다).
+후 재시작하면 bootstrap 값으로 다시 시드된다(세션도 함께 지워진다). 이때도 계정이 다시 admin/admin이
+되므로, 터널 hostname을 잠시 끄거나 3–4단계처럼 로컬에서 먼저 비밀번호를 바꾼다. `admin-data`
+볼륨을 지운 경우(`down -v`)도 마찬가지다.
 
 ### 고칠 때 같이 고칠 것
 

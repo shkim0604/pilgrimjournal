@@ -29,5 +29,11 @@ export async function ensureBootstrapAdmin(
   }
   insertAdmin(db, bootstrap.username, await hashPassword(bootstrap.password), true, now);
   log(`bootstrap: created admin "${bootstrap.username}"; password change required on first login`);
+  if ([...bootstrap.password].length < 12 || bootstrap.password === bootstrap.username) {
+    log(
+      'WARNING: the bootstrap password is weak and documented in .env.example. Log in and change it ' +
+        'before the console is reachable from the internet (see docs/development.md, 관리 콘솔).',
+    );
+  }
   return 'seeded';
 }

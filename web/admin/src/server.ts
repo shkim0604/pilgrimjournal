@@ -1,4 +1,5 @@
 import { Hono, type Context } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
 import { deleteCookie, setCookie } from 'hono/cookie';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -14,7 +15,7 @@ import {
   type AppEnv,
 } from './auth/middleware.ts';
 import { burnPasswordCheck, hashPassword, verifyPassword } from './auth/password.ts';
-import { clearFailures, isLocked, loginKey, recordFailure } from './auth/rateLimit.ts';
+import { beginAttempt, clearFailures, loginKey } from './auth/rateLimit.ts';
 import { SESSION_MAX_MS, createSession, deleteOtherSessions, deleteSession } from './auth/sessions.ts';
 import type { Config } from './config.ts';
 import { registerPages } from './pages.ts';
@@ -31,6 +32,10 @@ export type AppDeps = {
 const MIN_PASSWORD_LENGTH = 12;
 const LOGIN_FAILED = '아이디 또는 비밀번호가 올바르지 않습니다.';
 const LOCKED = '로그인 시도가 너무 많습니다. 잠시 후 다시 시도하세요.';
+const TOO_LONG = '입력이 너무 깁니다.';
+const MAX_USERNAME_LENGTH = 64;
+const MAX_PASSWORD_LENGTH = 1024;
+const MAX_BODY_BYTES = 16 * 1024;
 
 const webAdminDir = fileURLToPath(new URL('../', import.meta.url));
 
@@ -83,7 +88,12 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
   app.get('/healthz', (c) => c.text('ok'));
   app.get('/', async (c) => c.html(await readFile(join(config.repoRoot, 'site/index.html'), 'utf8')));
 
-  app.use('/admin/*', securityHeaders, originCheck(config.origin));
+  app.use(
+    '/admin/*',
+    securityHeaders,
+    bodyLimit({ maxSize: MAX_BODY_BYTES, onError: (c) => c.text('Payload Too Large', 413) }),
+    originCheck(config.origin),
+  );
 
   app.get('/admin/static/:file', async (c) => {
     const entry = Object.hasOwn(staticFiles, c.req.param('file')) ? staticFiles[c.req.param('file')] : undefined;
@@ -104,16 +114,18 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
     const body = await c.req.parseBody();
     const username = field(body, 'username').trim();
     const password = field(body, 'password');
+    // No real account has names or passwords this long; refuse before anything is stored or echoed.
+    if ([...username].length > MAX_USERNAME_LENGTH || password.length > MAX_PASSWORD_LENGTH) {
+      return c.html(loginPage({ error: TOO_LONG }), 400);
+    }
     const key = loginKey(clientIp(c, config.trustProxy), username);
 
-    if (isLocked(db, key, now())) return c.html(loginPage({ error: LOCKED, username }), 429);
+    // Counted synchronously before the scrypt await, so a concurrent burst gets at most five tries.
+    if (!beginAttempt(db, key, now())) return c.html(loginPage({ error: LOCKED, username }), 429);
 
     const admin = findAdminByUsername(db, username);
     const ok = admin ? await verifyPassword(password, admin.passwordHash) : (await burnPasswordCheck(password), false);
-    if (!admin || !ok) {
-      recordFailure(db, key, now());
-      return c.html(loginPage({ error: LOGIN_FAILED, username }), 401);
-    }
+    if (!admin || !ok) return c.html(loginPage({ error: LOGIN_FAILED, username }), 401);
 
     clearFailures(db, key);
     issueCookie(c, createSession(db, admin.id, now()));
