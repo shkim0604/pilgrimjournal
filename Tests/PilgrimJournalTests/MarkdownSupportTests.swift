@@ -318,6 +318,23 @@ final class MarkdownSupportTests: XCTestCase {
         XCTAssertEqual(storage.string, markdown)
     }
 
+    func testStrikethroughIsDrawnInLiveEditor() {
+        for markdown in ["~~취소~~", "앞 ~~취소~~ 뒤", "* ~~취소~~", "# ~~취소~~", "> ~~취소~~"] {
+            let source = markdown as NSString
+            let storage = NSTextStorage(string: markdown)
+            LiveMarkdownStyler.apply(to: storage)
+            XCTAssertEqual(
+                storage.attribute(
+                    .strikethroughStyle,
+                    at: source.range(of: "취소").location,
+                    effectiveRange: nil
+                ) as? Int,
+                NSUnderlineStyle.single.rawValue,
+                markdown
+            )
+        }
+    }
+
     func testBlockMarkdownUsesDistinctLiveEditorTreatments() {
         let markdown = "* 항목\n> 인용\n---\n```swift\nlet value = \"hello\" // note\n```"
         let source = markdown as NSString
@@ -875,6 +892,23 @@ final class MarkdownSupportTests: XCTestCase {
         )
 
         XCTAssertEqual(result.text, "1. 하나\n2. 둘")
+    }
+
+    func testStrikethroughKeyboardCommandWrapsSelection() {
+        let source = "앞 취소 뒤"
+        let selection = (source as NSString).range(of: "취소")
+        let result = MarkdownCommandProcessor.applyingKeyboardCommand(
+            .strikethrough,
+            to: source,
+            selection: selection
+        )
+
+        XCTAssertEqual(result.text, "앞 ~~취소~~ 뒤")
+        XCTAssertEqual(
+            result.selectionUTF16Range,
+            NSRange(location: selection.location + 2, length: selection.length)
+        )
+        XCTAssertTrue(MarkdownInlineFormat.contextualCases.contains(.strikethrough))
     }
 
     func testInsertingAttachmentImageOnEmptyDocumentAddsNoSurroundingNewlines() {

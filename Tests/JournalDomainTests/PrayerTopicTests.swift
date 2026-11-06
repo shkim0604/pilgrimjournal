@@ -74,6 +74,31 @@
             XCTAssertEqual(details.prayerTopics?.first?.text, "제목")
         }
 
+        func testCarryOverLinesIncludePrayerTopics() {
+            let details = EntryDetails(prayerTopics: [
+                PrayerTopic(text: "수련회 준비", status: .ongoing, memo: "11/14 강사 섭외"),
+                PrayerTopic(
+                    text: "아버지 건강", status: .answered,
+                    answeredAt: Date(timeIntervalSince1970: 0)),
+            ])
+            XCTAssertEqual(
+                details.carryOverLines(from: .prayer, timeZoneIdentifier: "Asia/Seoul"),
+                """
+                기도제목: 수련회 준비 — 기도 중
+                    메모: 11/14 강사 섭외
+                기도제목: 아버지 건강 — 응답 (1970-01-01)
+                """)
+        }
+
+        func testCarryOverLinesKeepLegacyStatusBeforeTopics() {
+            let details = EntryDetails(
+                prayerStatus: .ongoing,
+                prayerTopics: [PrayerTopic(text: "제목")])
+            XCTAssertEqual(
+                details.carryOverLines(from: .prayer, timeZoneIdentifier: nil),
+                "기도 상태: 기도 중\n기도제목: 제목 — 기도 중")
+        }
+
         func testPrayerTopicRoundTripsThroughCodable() throws {
             let topic = PrayerTopic(
                 text: "제목", status: .answered, memo: "메모",

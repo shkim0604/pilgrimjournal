@@ -176,6 +176,17 @@ public struct EntryDetails: Codable, Equatable, Sendable {
             else { return nil }
             return trimmed
         }
+        func dayFormatter() -> DateFormatter {
+            var calendar = Calendar(identifier: .gregorian)
+            calendar.timeZone =
+                timeZoneIdentifier.flatMap { TimeZone(identifier: $0) } ?? .current
+            let formatter = DateFormatter()
+            formatter.calendar = calendar
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.timeZone = calendar.timeZone
+            formatter.dateFormat = "yyyy-MM-dd"
+            return formatter
+        }
         var lines: [String] = []
         switch kind {
         case .prayer:
@@ -184,20 +195,28 @@ public struct EntryDetails: Codable, Equatable, Sendable {
                 lines.append("기도 상태: 기도 중")
             case .answered:
                 if let answeredAt {
-                    var calendar = Calendar(identifier: .gregorian)
-                    calendar.timeZone =
-                        timeZoneIdentifier.flatMap { TimeZone(identifier: $0) } ?? .current
-                    let formatter = DateFormatter()
-                    formatter.calendar = calendar
-                    formatter.locale = Locale(identifier: "en_US_POSIX")
-                    formatter.timeZone = calendar.timeZone
-                    formatter.dateFormat = "yyyy-MM-dd"
-                    lines.append("기도 상태: 응답됨 (\(formatter.string(from: answeredAt)))")
+                    lines.append("기도 상태: 응답됨 (\(dayFormatter().string(from: answeredAt)))")
                 } else {
                     lines.append("기도 상태: 응답됨")
                 }
             case nil:
                 break
+            }
+            for topic in prayerTopics ?? [] {
+                guard let text = clean(topic.text) else { continue }
+                if topic.status == .answered {
+                    if let answeredAt = topic.answeredAt {
+                        lines.append(
+                            "기도제목: \(text) — 응답 (\(dayFormatter().string(from: answeredAt)))")
+                    } else {
+                        lines.append("기도제목: \(text) — 응답")
+                    }
+                } else {
+                    lines.append("기도제목: \(text) — 기도 중")
+                }
+                if let memo = clean(topic.memo) {
+                    lines.append("    메모: \(memo)")
+                }
             }
         case .bibleStudy:
             if let reference = clean(scriptureReference) { lines.append("본문: \(reference)") }

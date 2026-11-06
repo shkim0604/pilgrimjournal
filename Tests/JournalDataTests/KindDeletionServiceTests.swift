@@ -52,6 +52,38 @@ final class KindDeletionServiceTests: XCTestCase {
         XCTAssertEqual(try repository.entry(id: diary.id), diary)
     }
 
+    func testMovePrayerEntriesFlattensTopicsIntoBody() throws {
+        let repository = InMemoryJournalRepository()
+        let prayer = try repository.save(
+            JournalEntryDraft(
+                kind: .prayer, body: "본문",
+                originalTimeZone: "Asia/Seoul",
+                details: EntryDetails(prayerTopics: [
+                    PrayerTopic(text: "수련회 준비", status: .ongoing, memo: "강사 섭외"),
+                    PrayerTopic(
+                        text: "아버지 건강", status: .answered,
+                        answeredAt: Date(timeIntervalSince1970: 0)),
+                ])),
+            deviceID: "d", at: t0)
+
+        _ = try KindDeletionService().moveEntries(
+            from: .prayer, to: .memo, repository: repository, deviceID: "d2", at: t1)
+
+        let after = try XCTUnwrap(repository.entry(id: prayer.id))
+        XCTAssertEqual(after.kind, .memo)
+        XCTAssertEqual(
+            after.body,
+            """
+            본문
+
+            ---
+            기도제목: 수련회 준비 — 기도 중
+                메모: 강사 섭외
+            기도제목: 아버지 건강 — 응답 (1970-01-01)
+            """)
+        XCTAssertEqual(after.details, EntryDetails())
+    }
+
     func testMoveSkipsTrashedEntries() throws {
         let repository = InMemoryJournalRepository()
         let entry = try repository.save(
