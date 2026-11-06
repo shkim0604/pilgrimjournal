@@ -143,6 +143,12 @@ public enum PrayerTopicAggregator {
 }
 
 extension EntryDetails {
+    /// Whether at least one prayer topic has visible text — topic-only notes
+    /// count as content for save/autosave decisions.
+    public var hasNonEmptyPrayerTopics: Bool {
+        prayerTopics?.contains { $0.text.contains { !$0.isWhitespace } } ?? false
+    }
+
     /// Ongoing/answered topic counts for list badges, or nil when the entry has no topics.
     public var prayerTopicCounts: (ongoing: Int, answered: Int)? {
         guard let topics = prayerTopics, !topics.isEmpty else { return nil }
