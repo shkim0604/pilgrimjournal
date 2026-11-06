@@ -23,6 +23,8 @@ swift test --filter JournalDomainTests
 swift test --filter JournalDomainTests.SomeTestCase/testSomeName
 ```
 
+After changing a SwiftData model or `Package.swift`, run `./scripts/admin-snapshot.sh` and commit `web/admin/snapshot/` — the admin console reads that snapshot and `scripts/check.sh` fails when it is stale. The console itself (`web/admin`, Node) is tested with `cd web/admin && npm test && npm run typecheck`; deployment is in [docs/development.md](docs/development.md) ("관리 콘솔").
+
 `./scripts/check.sh` is the full local gate: `swift format lint --strict` (config in `.swift-format`; fix with `swift format format -i --recursive Sources Tests`), build, `swift test`, `JournalChecks`, then a scan that fails if any `.zip` file or Day One-looking export is present in the repo (personal data must never be committed — see Privacy).
 
 The Xcode project is stricter than `swift build` (it enforces member import visibility), so after changing imports also build it unsigned:

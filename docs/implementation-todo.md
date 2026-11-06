@@ -6,6 +6,11 @@
 
 ## 대기 중
 
+- **관리 콘솔 Mac mini 배포** (2026-11-06, 브랜치 `feat/admin-console`) — 사용자 작업.
+  Mac mini에서 `docker compose -f web/admin/docker-compose.yml up -d --build`, Cloudflare
+  Zero Trust에 public hostname `pilgrim.delight-house.org` 등록, 첫 로그인 후 비밀번호 변경.
+  절차는 `docs/development.md` "관리 콘솔". 로컬 Docker 실행과 브라우저 확인까지는 끝났다.
+
 - **계정 삭제 후 다른 기기를 위한 삭제 표시 record** (2026-10-16, 1.1.0 (29)에서 미룸)
   계정 삭제(`AccountDeletionService`)는 이 기기와 iCloud만 지운다. 같은 계정으로 쓰던
   다른 기기에 로컬 사본이 남아 있으면 그 기기에서 앱을 열 때 Core Data mirroring이

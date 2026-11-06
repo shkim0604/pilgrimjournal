@@ -32,6 +32,25 @@ jobs:
       - name: scripts/check.sh
         run: ./scripts/check.sh
 
+  admin-console:
+    # web/admin (developer admin console). scripts/check.sh only checks its Swift snapshot is fresh.
+    name: Admin console (Node)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: web/admin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/admin/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
   xcode:
     # The Xcode project enforces member import visibility, which `swift build`
     # does not, so an import that is only "transitively" visible fails here.
