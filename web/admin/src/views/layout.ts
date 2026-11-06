@@ -32,7 +32,7 @@ export function layout(opts: { title: string; active?: Section; body: Html; nav?
             (s) => html`<a href="${s.href}"${s.id === opts.active ? html` aria-current="page"` : ''}>${s.label}</a>`,
           )}
         </nav>
-        <form class="logout" method="post" action="/admin/logout"><button type="submit">로그아웃</button></form>`
+        <form class="logout" method="post" action="/admin/logout"><button type="submit" class="link">로그아웃</button></form>`
       : ''}
   </header>
   <main>
