@@ -6,7 +6,7 @@ swift build
 swift test
 swift run JournalChecks "$@"
 
-if find . -path './.build' -prune -o -type f -name '*.zip' -print | grep -q .; then
+if find . -path './.build' -prune -o -path './web/admin/node_modules' -prune -o -type f -name '*.zip' -print | grep -q .; then
   echo "개인 ZIP으로 보이는 파일이 저장소에 있습니다." >&2
   exit 1
 fi
