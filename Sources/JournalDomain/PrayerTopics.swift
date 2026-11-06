@@ -82,7 +82,9 @@ public enum PrayerTopicAggregator {
             .flatMap { entry in
                 (entry.details.prayerTopics ?? [])
                     .filter { $0.status == .answered }
-                    .map { (date: $0.answeredAt ?? entry.updatedAt, item: item(for: $0, in: entry)) }
+                    .map {
+                        (date: $0.answeredAt ?? entry.updatedAt, item: item(for: $0, in: entry))
+                    }
             }
         let grouped = Dictionary(grouping: dated) { element in
             calendar.date(

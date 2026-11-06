@@ -376,13 +376,14 @@ enum MarkdownInlineFormat: String, CaseIterable, Identifiable {
     }
 
     static let contextualCases: [MarkdownInlineFormat] = [
-        .bold, .italic, .heading, .bullet, .quote, .link,
+        .bold, .italic, .strikethrough, .heading, .bullet, .quote, .link,
     ]
 }
 
 enum MarkdownKeyboardCommand: String {
     case bold
     case italic
+    case strikethrough
     case link
     case numberedList
     case bulletList
@@ -710,6 +711,8 @@ enum MarkdownCommandProcessor {
             return applying(MarkdownInlineFormat.bold, to: text, selection: selection)
         case .italic:
             return applying(MarkdownInlineFormat.italic, to: text, selection: selection)
+        case .strikethrough:
+            return applying(MarkdownInlineFormat.strikethrough, to: text, selection: selection)
         case .link:
             return applying(MarkdownInlineFormat.link, to: text, selection: selection)
         case .bulletList:
@@ -1389,9 +1392,15 @@ struct MarkdownBodyEditor: View {
 
             Spacer()
 
-            Label("입력 즉시 서식 표시", systemImage: "sparkles")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            // The selection buttons take this label's place: in a narrow
+            // editor column both together don't fit, and the label wrapped
+            // into a one-letter-wide column.
+            if selection.length == 0 {
+                Label("입력 즉시 서식 표시", systemImage: "sparkles")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
         }
     }
 
@@ -3994,7 +4003,23 @@ private final class MarkdownUITextView: UITextView, UIGestureRecognizerDelegate 
                 modifierFlags: [.shift],
                 action: #selector(outdentCurrentListItem)
             ),
+            // iPad/hardware keyboards: the macOS menu bar's ⌘⇧X (the
+            // `CommandMenu("Markdown")` in PilgrimJournalApp) is not
+            // available on iOS, so the text view offers it itself.
+            UIKeyCommand(
+                title: String(localized: "취소선"),
+                action: #selector(toggleStrikethrough),
+                input: "x",
+                modifierFlags: [.command, .shift]
+            ),
         ]
+    }
+
+    @objc private func toggleStrikethrough() {
+        NotificationCenter.default.post(
+            name: .applyMarkdownKeyboardCommand,
+            object: MarkdownKeyboardCommand.strikethrough.rawValue
+        )
     }
 
     @objc private func indentCurrentListItem() {

@@ -278,6 +278,8 @@ struct ContentView: View {
                 // never reaches it and the rows stay unselectable.
                 .environment(\.editMode, $editMode)
                 #endif
+            } else if showsPrayerTopicList {
+                prayerTopicList
             } else {
                 // macOS binds the whole selection set even outside batch
                 // mode so shift- and command-click stay in sync with the
@@ -297,8 +299,27 @@ struct ContentView: View {
                 #endif
             }
         }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if showsPrayerSegments {
+                prayerScopePicker
+            }
+        }
         .overlay {
-            if model.entries.isEmpty && model.hasActiveSearchCriteria {
+            if showsPrayerTopicList {
+                if model.prayerScope == .ongoing && model.ongoingPrayerItems.isEmpty {
+                    JournalEmptyState(
+                        title: String(localized: "기도 중인 기도제목이 없습니다"),
+                        description: String(localized: "노트 탭에서 노트를 열어 기도제목을 추가해 보세요."),
+                        systemImage: "heart"
+                    ) {}
+                } else if model.prayerScope == .answered && model.answeredPrayerSections.isEmpty {
+                    JournalEmptyState(
+                        title: String(localized: "아직 응답된 기도제목이 없습니다"),
+                        description: String(localized: "기도제목을 체크하면 응답일과 함께 여기에 모입니다."),
+                        systemImage: "checkmark.circle"
+                    ) {}
+                }
+            } else if model.entries.isEmpty && model.hasActiveSearchCriteria {
                 JournalEmptyState(
                     title: String(localized: "검색 결과가 없습니다"),
                     description: String(localized: "검색어나 필터를 바꾸거나 모든 조건을 지워보세요."),
@@ -391,6 +412,79 @@ struct ContentView: View {
             ideal: 330,
             max: JournalTheme.timelineWidth.upperBound
         )
+    }
+
+    private var showsPrayerSegments: Bool {
+        model.isPrayerKindSelected && !model.isBatchSelecting && !model.hasActiveSearchFilters
+    }
+
+    private var showsPrayerTopicList: Bool {
+        showsPrayerSegments && model.prayerScope != .notes
+    }
+
+    private var prayerScopePicker: some View {
+        Picker("보기", selection: prayerScopeSelection) {
+            Text("노트").tag(PrayerScope.notes)
+            Text("기도중").tag(PrayerScope.ongoing)
+            Text("응답").tag(PrayerScope.answered)
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+        .background(JournalTheme.canvas)
+    }
+
+    private var prayerScopeSelection: Binding<PrayerScope> {
+        Binding(
+            get: { model.prayerScope },
+            set: { model.selectPrayerScope($0) }
+        )
+    }
+
+    @ViewBuilder
+    private var prayerTopicList: some View {
+        switch model.prayerScope {
+        case .ongoing:
+            List {
+                ForEach(model.ongoingPrayerItems) { item in
+                    prayerTopicRow(item)
+                }
+            }
+        case .answered:
+            List {
+                ForEach(model.answeredPrayerSections) { section in
+                    Section(section.month.formatted(.dateTime.year().month())) {
+                        ForEach(section.items) { item in
+                            prayerTopicRow(item)
+                        }
+                    }
+                }
+            }
+        case .notes:
+            EmptyView()
+        }
+    }
+
+    private func prayerTopicRow(_ item: PrayerTopicItem) -> some View {
+        PrayerTopicItemRow(
+            item: item,
+            noteTitle: item.entryTitle.isEmpty
+                ? model.kindDefinition(for: .prayer).displayName
+                : item.entryTitle
+        ) {
+            model.setPrayerTopicStatus(
+                entryID: item.entryID,
+                topicID: item.topic.id,
+                status: item.topic.status == .answered ? .ongoing : .answered
+            )
+        }
+        .onTapGesture {
+            model.selectEntry(item.entryID)
+            #if os(iOS)
+            preferredCompactColumn = .detail
+            #endif
+        }
     }
 
     @ViewBuilder
@@ -833,6 +927,13 @@ private struct EntryRow: View {
 
                 HStack(spacing: JournalTheme.Spacing.small) {
                     Text(entry.occurredAt, style: .date)
+                    if entry.kind.builtIn == .prayer,
+                        let counts = entry.details.prayerTopicCounts
+                    {
+                        Text("•")
+                            .accessibilityHidden(true)
+                        Text("응답 \(counts.answered) · 기도중 \(counts.ongoing)")
+                    }
                     if let notebook = entry.notebookName {
                         Text("•")
                             .accessibilityHidden(true)

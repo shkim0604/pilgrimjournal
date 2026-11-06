@@ -454,6 +454,12 @@ struct PilgrimJournalApp: App {
             CommandMenu("Markdown") {
                 markdownCommand(String(localized: "굵게"), command: .bold, key: "b")
                 markdownCommand(String(localized: "기울임"), command: .italic, key: "i")
+                markdownCommand(
+                    String(localized: "취소선"),
+                    command: .strikethrough,
+                    key: "x",
+                    modifiers: [.command, .shift]
+                )
                 markdownCommand(String(localized: "링크"), command: .link, key: "k")
                 Divider()
                 markdownCommand(

@@ -310,29 +310,7 @@ struct InlineEntryEditorView: View {
     private var typeSpecificFields: some View {
         switch draft.kind.builtIn {
         case .prayer?:
-            HStack {
-                Picker(
-                    "기도 상태",
-                    selection: Binding(
-                        get: { draft.details.prayerStatus ?? .ongoing },
-                        set: { draft.details.prayerStatus = $0 }
-                    )
-                ) {
-                    Text("기도 중").tag(PrayerStatus.ongoing)
-                    Text("응답됨").tag(PrayerStatus.answered)
-                }
-                .pickerStyle(.menu)
-                if draft.details.prayerStatus == .answered {
-                    DatePicker(
-                        "응답일",
-                        selection: Binding(
-                            get: { draft.details.answeredAt ?? .now },
-                            set: { draft.details.answeredAt = $0 }
-                        ),
-                        displayedComponents: .date
-                    )
-                }
-            }
+            PrayerTopicChecklistEditor(topics: prayerTopicsBinding)
         case .bibleStudy?:
             TextField("성경 구절", text: optionalBinding(\.scriptureReference))
                 .journalMetadataField()
@@ -377,14 +355,22 @@ struct InlineEntryEditorView: View {
         )
     }
 
+    private var prayerTopicsBinding: Binding<[PrayerTopic]> {
+        Binding(
+            get: { draft.details.prayerTopics ?? [] },
+            set: { draft.details.prayerTopics = $0.isEmpty ? nil : $0 }
+        )
+    }
+
     private var discardedDetailLabels: [String] {
         var labels: [String] = []
         guard let pendingKind else { return labels }
         let details = draft.details
         if pendingKind != .prayer,
             details.prayerStatus != nil || details.answeredAt != nil
+                || !(details.prayerTopics ?? []).isEmpty
         {
-            labels.append(String(localized: "기도 상태·응답일"))
+            labels.append(String(localized: "기도제목·기도 상태"))
         }
         if pendingKind != .bibleStudy,
             !(details.scriptureReference ?? "").isEmpty
@@ -745,11 +731,8 @@ struct EntryDetailView: View {
     private var typeDetails: some View {
         switch entry.kind.builtIn {
         case .prayer?:
-            if let status = entry.details.prayerStatus {
-                Label(
-                    status == .answered ? "응답됨" : "기도 중",
-                    systemImage: status == .answered ? "checkmark.circle" : "heart"
-                )
+            if let topics = entry.details.prayerTopics, !topics.isEmpty {
+                PrayerTopicReadOnlyList(topics: topics)
             }
         case .bibleStudy?:
             if let reference = entry.details.scriptureReference, !reference.isEmpty {
@@ -1271,26 +1254,7 @@ struct EntryEditorView: View {
     private var typeSpecificFields: some View {
         switch draft.kind.builtIn {
         case .prayer?:
-            Picker(
-                "기도 상태",
-                selection: Binding(
-                    get: { draft.details.prayerStatus ?? .ongoing },
-                    set: { draft.details.prayerStatus = $0 }
-                )
-            ) {
-                Text("기도 중").tag(PrayerStatus.ongoing)
-                Text("응답됨").tag(PrayerStatus.answered)
-            }
-            if draft.details.prayerStatus == .answered {
-                DatePicker(
-                    "응답일",
-                    selection: Binding(
-                        get: { draft.details.answeredAt ?? .now },
-                        set: { draft.details.answeredAt = $0 }
-                    ),
-                    displayedComponents: .date
-                )
-            }
+            PrayerTopicChecklistEditor(topics: prayerTopicsBinding)
         case .bibleStudy?:
             TextField(
                 "성경 구절",
@@ -1318,6 +1282,13 @@ struct EntryEditorView: View {
         Binding(
             get: { draft.details[keyPath: keyPath] ?? "" },
             set: { draft.details[keyPath: keyPath] = $0.isEmpty ? nil : $0 }
+        )
+    }
+
+    private var prayerTopicsBinding: Binding<[PrayerTopic]> {
+        Binding(
+            get: { draft.details.prayerTopics ?? [] },
+            set: { draft.details.prayerTopics = $0.isEmpty ? nil : $0 }
         )
     }
 
@@ -1349,8 +1320,9 @@ struct EntryEditorView: View {
         let details = draft.details
         if pendingKind != .prayer,
             details.prayerStatus != nil || details.answeredAt != nil
+                || !(details.prayerTopics ?? []).isEmpty
         {
-            labels.append(String(localized: "기도 상태·응답일"))
+            labels.append(String(localized: "기도제목·기도 상태"))
         }
         if pendingKind != .bibleStudy,
             !(details.scriptureReference ?? "").isEmpty
