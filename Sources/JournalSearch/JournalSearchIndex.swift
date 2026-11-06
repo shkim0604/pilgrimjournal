@@ -117,6 +117,8 @@ public final class JournalSearchIndex: @unchecked Sendable {
         for topic in entry.details.prayerTopics ?? [] {
             parts.append(topic.text)
             if let memo = topic.memo { parts.append(memo) }
+            if let category = topic.category { parts.append(category) }
+            if let answerNote = topic.answerNote { parts.append(answerNote) }
         }
         return parts.joined(separator: "\n")
     }

@@ -34,7 +34,13 @@ public struct PrayerTemplateCatalog: Codable, Equatable, Sendable {
     public var templates: [PrayerNoteTemplate]
 
     public init(templates: [PrayerNoteTemplate] = []) {
-        self.templates = templates
+        self.templates = Self.canonicalized(templates)
+    }
+
+    /// One canonical array order (by id), so equality is stable no matter in
+    /// which order templates were saved or merged on each device.
+    private static func canonicalized(_ templates: [PrayerNoteTemplate]) -> [PrayerNoteTemplate] {
+        templates.sorted { $0.id.uuidString < $1.id.uuidString }
     }
 
     /// Templates to offer in pickers: not deleted, sorted by name.
@@ -70,6 +76,7 @@ public struct PrayerTemplateCatalog: Codable, Equatable, Sendable {
         let template = PrayerNoteTemplate(
             name: trimmedName, categories: cleanedCategories, updatedAt: date)
         templates.append(template)
+        templates = Self.canonicalized(templates)
         return template
     }
 
@@ -91,10 +98,7 @@ public struct PrayerTemplateCatalog: Codable, Equatable, Sendable {
                 byID[template.id] = template
             }
         }
-        let merged = byID.values.sorted {
-            ($0.id.uuidString, $0.updatedAt) < ($1.id.uuidString, $1.updatedAt)
-        }
-        return PrayerTemplateCatalog(templates: merged)
+        return PrayerTemplateCatalog(templates: Array(byID.values))
     }
 
     private static func winner(

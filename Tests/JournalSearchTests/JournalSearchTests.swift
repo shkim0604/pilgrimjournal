@@ -187,7 +187,10 @@ final class JournalSearchTests: XCTestCase {
         var record = makeRecord(
             kind: .prayer, title: "기도", body: "본문", tags: [], date: .now)
         record.details.prayerTopics = [
-            PrayerTopic(text: "수련회 특별순서", memo: "강사님 유니크메모")
+            PrayerTopic(text: "수련회 특별순서", memo: "강사님 유니크메모"),
+            PrayerTopic(
+                text: "응답된 제목", status: .answered, answeredAt: .now,
+                category: "독특한섹션", answerOutcome: .yes, answerNote: "희귀한응답메모"),
         ]
 
         try index.upsert(record)
@@ -197,6 +200,10 @@ final class JournalSearchTests: XCTestCase {
             try index.search(JournalSearchQuery(text: "유니크메모")).map(\.id), [record.id])
         XCTAssertEqual(
             try index.search(JournalSearchQuery(text: "순서")).map(\.id), [record.id])
+        XCTAssertEqual(
+            try index.search(JournalSearchQuery(text: "독특한섹션")).map(\.id), [record.id])
+        XCTAssertEqual(
+            try index.search(JournalSearchQuery(text: "희귀한응답메모")).map(\.id), [record.id])
 
         try index.rebuild(from: [record])
         XCTAssertEqual(

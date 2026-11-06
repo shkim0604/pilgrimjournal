@@ -310,7 +310,8 @@ struct InlineEntryEditorView: View {
     private var typeSpecificFields: some View {
         switch draft.kind.builtIn {
         case .prayer?:
-            PrayerTopicChecklistEditor(topics: prayerTopicsBinding)
+            PrayerTopicChecklistEditor(
+                topics: prayerTopicsBinding, categories: prayerCategoriesBinding)
         case .bibleStudy?:
             TextField("성경 구절", text: optionalBinding(\.scriptureReference))
                 .journalMetadataField()
@@ -362,6 +363,13 @@ struct InlineEntryEditorView: View {
         )
     }
 
+    private var prayerCategoriesBinding: Binding<[String]> {
+        Binding(
+            get: { draft.details.prayerCategories ?? [] },
+            set: { draft.details.prayerCategories = $0.isEmpty ? nil : $0 }
+        )
+    }
+
     private var discardedDetailLabels: [String] {
         var labels: [String] = []
         guard let pendingKind else { return labels }
@@ -369,6 +377,7 @@ struct InlineEntryEditorView: View {
         if pendingKind != .prayer,
             details.prayerStatus != nil || details.answeredAt != nil
                 || !(details.prayerTopics ?? []).isEmpty
+                || !(details.prayerCategories ?? []).isEmpty
         {
             labels.append(String(localized: "기도제목·기도 상태"))
         }
@@ -732,7 +741,9 @@ struct EntryDetailView: View {
         switch entry.kind.builtIn {
         case .prayer?:
             if let topics = entry.details.prayerTopics, !topics.isEmpty {
-                PrayerTopicReadOnlyList(topics: topics)
+                PrayerTopicReadOnlyList(
+                    topics: topics,
+                    categories: entry.details.prayerCategories ?? [])
             }
         case .bibleStudy?:
             if let reference = entry.details.scriptureReference, !reference.isEmpty {
@@ -1254,7 +1265,8 @@ struct EntryEditorView: View {
     private var typeSpecificFields: some View {
         switch draft.kind.builtIn {
         case .prayer?:
-            PrayerTopicChecklistEditor(topics: prayerTopicsBinding)
+            PrayerTopicChecklistEditor(
+                topics: prayerTopicsBinding, categories: prayerCategoriesBinding)
         case .bibleStudy?:
             TextField(
                 "성경 구절",
@@ -1292,6 +1304,13 @@ struct EntryEditorView: View {
         )
     }
 
+    private var prayerCategoriesBinding: Binding<[String]> {
+        Binding(
+            get: { draft.details.prayerCategories ?? [] },
+            set: { draft.details.prayerCategories = $0.isEmpty ? nil : $0 }
+        )
+    }
+
     private var kindBinding: Binding<JournalKind> {
         Binding(
             get: { draft.kind },
@@ -1321,6 +1340,7 @@ struct EntryEditorView: View {
         if pendingKind != .prayer,
             details.prayerStatus != nil || details.answeredAt != nil
                 || !(details.prayerTopics ?? []).isEmpty
+                || !(details.prayerCategories ?? []).isEmpty
         {
             labels.append(String(localized: "기도제목·기도 상태"))
         }
