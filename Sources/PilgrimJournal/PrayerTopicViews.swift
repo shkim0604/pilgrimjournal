@@ -12,6 +12,8 @@ struct PrayerTopicChecklistEditor: View {
     @Binding var categories: [String]
     @EnvironmentObject private var model: AppModel
     @FocusState private var focusedTopicID: UUID?
+    @FocusState private var focusedMemoID: UUID?
+    @FocusState private var focusedAnswerNoteID: UUID?
     @FocusState private var focusedCategoryIndex: Int?
     @State private var isNamingTemplate = false
     @State private var templateName = ""
@@ -120,6 +122,8 @@ struct PrayerTopicChecklistEditor: View {
                 PrayerTopicEditorRow(
                     topic: $topic,
                     focusedTopicID: $focusedTopicID,
+                    focusedMemoID: $focusedMemoID,
+                    focusedAnswerNoteID: $focusedAnswerNoteID,
                     onDelete: { topics.removeAll { $0.id == topic.id } }
                 )
             }
@@ -179,6 +183,8 @@ struct PrayerTopicChecklistEditor: View {
 private struct PrayerTopicEditorRow: View {
     @Binding var topic: PrayerTopic
     var focusedTopicID: FocusState<UUID?>.Binding
+    var focusedMemoID: FocusState<UUID?>.Binding
+    var focusedAnswerNoteID: FocusState<UUID?>.Binding
     let onDelete: () -> Void
 
     var body: some View {
@@ -205,33 +211,65 @@ private struct PrayerTopicEditorRow: View {
                     .focused(focusedTopicID, equals: topic.id)
                     .strikethrough(topic.status == .answered)
                     .foregroundStyle(topic.status == .answered ? .secondary : .primary)
-                TextField("메모", text: memoBinding, axis: .vertical)
-                    .textFieldStyle(.plain)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                // 행은 기본적으로 "[] 제목" 한 줄 — 메모 칸은 내용이 있을 때만
+                // 보이고, 없으면 오른쪽의 메모 버튼으로 꺼낸다.
+                if topic.memo != nil {
+                    TextField("메모", text: memoBinding, axis: .vertical)
+                        .textFieldStyle(.plain)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .focused(focusedMemoID, equals: topic.id)
+                }
                 if topic.status == .answered {
-                    HStack(spacing: 6) {
-                        Picker("응답 결과", selection: outcomeBinding) {
-                            ForEach(PrayerAnswerOutcome.allCases, id: \.self) { outcome in
-                                Text(verbatim: outcome.carryOverLabel).tag(outcome)
-                            }
+                    Picker("응답 결과", selection: outcomeBinding) {
+                        ForEach(PrayerAnswerOutcome.allCases, id: \.self) { outcome in
+                            Text(verbatim: outcome.carryOverLabel).tag(outcome)
                         }
-                        .pickerStyle(.segmented)
-                        .labelsHidden()
-                        .fixedSize()
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .fixedSize()
+                    HStack(spacing: 10) {
                         if let answeredAt = topic.answeredAt {
                             Text("응답 \(answeredAt, format: .dateTime.year().month().day())")
                                 .font(.caption)
                                 .foregroundStyle(.green)
+                                .lineLimit(1)
+                        }
+                        if topic.answerNote == nil {
+                            Button {
+                                topic.answerNote = ""
+                                focusedAnswerNoteID.wrappedValue = topic.id
+                            } label: {
+                                Label("응답 메모", systemImage: "plus.bubble")
+                                    .font(.caption)
+                                    .lineLimit(1)
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(.secondary)
                         }
                     }
-                    TextField("응답 메모", text: answerNoteBinding, axis: .vertical)
-                        .textFieldStyle(.plain)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    if topic.answerNote != nil {
+                        TextField("응답 메모", text: answerNoteBinding, axis: .vertical)
+                            .textFieldStyle(.plain)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .focused(focusedAnswerNoteID, equals: topic.id)
+                    }
                 }
             }
             Spacer(minLength: 0)
+            if topic.memo == nil {
+                Button {
+                    topic.memo = ""
+                    focusedMemoID.wrappedValue = topic.id
+                } label: {
+                    Image(systemName: "note.text.badge.plus")
+                        .foregroundStyle(.tertiary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(String(localized: "메모 추가"))
+            }
             Button(role: .destructive, action: onDelete) {
                 Image(systemName: "xmark.circle.fill")
                     .foregroundStyle(.tertiary)
@@ -241,17 +279,19 @@ private struct PrayerTopicEditorRow: View {
         }
     }
 
+    // While the field is visible, keep empty text as "" (not nil) so the field
+    // doesn't vanish mid-edit; validation turns "" into nil on save.
     private var memoBinding: Binding<String> {
         Binding(
             get: { topic.memo ?? "" },
-            set: { topic.memo = $0.isEmpty ? nil : $0 }
+            set: { topic.memo = $0 }
         )
     }
 
     private var answerNoteBinding: Binding<String> {
         Binding(
             get: { topic.answerNote ?? "" },
-            set: { topic.answerNote = $0.isEmpty ? nil : $0 }
+            set: { topic.answerNote = $0 }
         )
     }
 

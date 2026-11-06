@@ -5918,6 +5918,16 @@
           }
         }
       }
+    },
+    "메모 추가" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add memo"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"
