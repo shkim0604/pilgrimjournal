@@ -94,7 +94,9 @@ struct InlineEntryEditorView: View {
                             .focused($focusedField, equals: .title)
                             .accessibilityLabel("제목")
 
-                        if !isFocusMode {
+                        // A prayer note keeps its 기도제목 checklist in focus
+                        // mode — the checklist is part of the writing itself.
+                        if !isFocusMode || draft.kind.builtIn == .prayer {
                             typeSpecificFields
                         }
 
@@ -779,8 +781,11 @@ struct EntryDetailView: View {
 struct EntryEditorFocusLayout: Equatable {
     /// 완료 and the save status pill.
     var showsNavigationBar: Bool
-    /// Metadata chips, type-specific fields, tags, attachments and footer.
+    /// Metadata chips, tags, attachments and footer.
     var showsEntryDetails: Bool
+    /// The kind-specific block above the body. A prayer note keeps its
+    /// 기도제목 checklist even in focus mode — the checklist IS the writing.
+    var showsTypeSpecificFields: Bool
     /// The body editor's Markdown menu row and its slash-command hint.
     var showsMarkdownChrome: Bool
     /// The corner button that leaves focus mode while the keyboard is down.
@@ -788,9 +793,10 @@ struct EntryEditorFocusLayout: Equatable {
     /// A failed save must stay visible once the status pill is hidden.
     var showsSaveFailure: Bool
 
-    init(isFocusMode: Bool, saveState: EditorSaveState) {
+    init(isFocusMode: Bool, saveState: EditorSaveState, isPrayerNote: Bool = false) {
         showsNavigationBar = !isFocusMode
         showsEntryDetails = !isFocusMode
+        showsTypeSpecificFields = !isFocusMode || isPrayerNote
         showsMarkdownChrome = !isFocusMode
         showsExitButton = isFocusMode
         if isFocusMode, case .failed = saveState {
@@ -839,7 +845,11 @@ struct EntryEditorView: View {
     @State private var isChoosingPhotoSource = false
 
     private var focusLayout: EntryEditorFocusLayout {
-        EntryEditorFocusLayout(isFocusMode: isFocusMode, saveState: saveState)
+        EntryEditorFocusLayout(
+            isFocusMode: isFocusMode,
+            saveState: saveState,
+            isPrayerNote: draft.kind.builtIn == .prayer
+        )
     }
 
     init(
@@ -878,7 +888,7 @@ struct EntryEditorView: View {
                             .foregroundStyle(JournalTheme.ink)
                             .accessibilityLabel("제목")
 
-                        if focusLayout.showsEntryDetails {
+                        if focusLayout.showsTypeSpecificFields {
                             typeSpecificFields
                         }
 
