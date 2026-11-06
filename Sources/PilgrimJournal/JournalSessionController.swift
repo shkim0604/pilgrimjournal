@@ -338,16 +338,19 @@ final class JournalSessionController: ObservableObject {
             notebookCloudStore: syncedContainerIdentifier == nil ? nil : .default,
             featureAccess: PremiumCodeFeatureAccess()
         )
-        #if DEBUG && PILGRIM_SWIFTDATA
+        #if PILGRIM_SWIFTDATA
         if let syncedContainerIdentifier, !isVisualTesting {
             do {
-                model.familySharing = try FamilySharingController(
+                let sharing = try FamilySharingController(
                     containerIdentifier: syncedContainerIdentifier,
                     directory: paths.root.appending(path: "Shared", directoryHint: .isDirectory),
                     deviceID: model.deviceID
                 )
+                sharing.onChange = { [weak model] in model?.sharedSpacesDidChange() }
+                sharing.onError = { [weak model] message in model?.errorMessage = message }
+                model.familySharing = sharing
             } catch {
-                print("Family sharing spike could not start: \(error)")
+                model.errorMessage = error.localizedDescription
             }
         }
         #endif

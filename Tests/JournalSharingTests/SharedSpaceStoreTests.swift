@@ -138,6 +138,48 @@ final class SharedSpaceStoreTests: XCTestCase {
         XCTAssertEqual(enqueued.map(\.recordName), [merged.currentRevisionID.uuidString])
     }
 
+    func testEditorSaveBasedOnAnOlderRevisionKeepsTheRemoteChange() throws {
+        let store = try makeStore()
+        let space = makeSpace(in: store)
+        let original = try store.save(
+            JournalEntryDraft(kind: .prayer, title: "11월", body: "1. 아빠 건강\n2. 동생 수능"),
+            kind: kind, in: space.id)
+        for id in enqueued { store.didSave(try XCTUnwrap(store.recordToSave(id))) }
+        _ = store.applyFetched(
+            remoteRecord(original, in: space, body: "1. 아빠 건강\n2. 동생 수능 평안", updatedAt: .now))
+
+        // The editor opened before the remote change and only touched line 1.
+        var edit = original.draft
+        edit.body = "1. 아빠 건강 회복\n2. 동생 수능"
+        let saved = try store.save(
+            edit, kind: kind, in: space.id, basedOn: original.currentRevisionID)
+
+        XCTAssertEqual(saved.body, "1. 아빠 건강 회복\n2. 동생 수능 평안")
+    }
+
+    func testImportedEntryKeepsItsHistoryAndQueuesEverything() throws {
+        let store = try makeStore()
+        let space = makeSpace(in: store)
+        let source = InMemoryJournalRepository()
+        let first = try source.save(
+            JournalEntryDraft(kind: .prayer, title: "기도", body: "처음"), deviceID: "d", at: .now)
+        var draft = first.draft
+        draft.body = "고침"
+        let second = try source.save(draft, deviceID: "d", at: .now)
+        let revisions = try source.revisions(entryID: first.id)
+
+        try store.importEntry(second, revisions: revisions, kind: kind, into: space.id)
+
+        let cache = try store.cache(for: space.id)
+        XCTAssertEqual(try cache.entry(id: first.id), second)
+        XCTAssertEqual(try cache.revisions(entryID: first.id).count, 2)
+        XCTAssertEqual(
+            Set(enqueued.map(\.recordName)),
+            Set([first.id.uuidString] + revisions.map(\.id.uuidString)))
+        XCTAssertEqual(store.spaceID(containing: first.id), space.id)
+        XCTAssertNil(store.spaceID(containing: UUID()))
+    }
+
     func testSaveConfirmationKeepsUnsentFlagWhenEditedInFlight() throws {
         let store = try makeStore()
         let space = makeSpace(in: store)

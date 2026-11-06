@@ -71,18 +71,96 @@ public final class SharedSpaceStore: SharedSyncStore {
 
     // MARK: Local edits
 
+    /// Saves an edit made on this device. `baseRevisionID` is the revision the editor
+    /// started from: if someone else's change arrived since, the edit is merged into it
+    /// instead of overwriting it (their version stays in the history either way).
     @discardableResult
     public func save(
         _ draft: JournalEntryDraft,
+        kind: SharedKindSnapshot?,
+        in spaceID: UUID,
+        basedOn baseRevisionID: UUID? = nil,
+        at date: Date = .now
+    ) throws -> JournalEntryRecord {
+        guard let zoneID = zoneID(for: spaceID) else { throw JournalError.entryNotFound }
+        let cache = try cache(for: spaceID)
+        var outgoing = draft
+        if let id = draft.id, let baseRevisionID,
+            let current = try cache.entry(id: id),
+            current.currentRevisionID != baseRevisionID,
+            let base = try cache.revisions(entryID: id).first(where: { $0.id == baseRevisionID })
+        {
+            outgoing =
+                SharedEntryMerge.merge(
+                    base: base.snapshot,
+                    local: draft,
+                    localStamp: SharedEditStamp(updatedAt: date, deviceID: deviceID),
+                    remote: current.draft,
+                    remoteStamp: SharedEditStamp(
+                        updatedAt: current.updatedAt, deviceID: current.modifiedByDeviceID)
+                ).draft
+            outgoing.id = id
+        }
+        let saved = try cache.save(outgoing, deviceID: deviceID, at: date)
+        markUnsent(saved, kind: kind, zoneID: zoneID)
+        commit()
+        return saved
+    }
+
+    /// Moves an existing entry into a space with its full history, as the owner shares a
+    /// notebook or a single entry. Everything is queued for upload.
+    public func importEntry(
+        _ entry: JournalEntryRecord,
+        revisions: [EntryRevisionRecord],
         kind: SharedKindSnapshot,
+        into spaceID: UUID
+    ) throws {
+        guard let zoneID = zoneID(for: spaceID) else { throw JournalError.entryNotFound }
+        let cache = try cache(for: spaceID)
+        for revision in revisions {
+            try cache.importRevision(revision)
+            metadata.records[revision.id.uuidString] = RecordState(
+                type: .revision(entryID: entry.id), hasUnsentChanges: true,
+                zoneName: zoneID.zoneName)
+        }
+        try cache.upsertSynced(entry)
+        markUnsent(entry, kind: kind, zoneID: zoneID)
+        onEnqueue?(revisions.map { SharedRecordMapper.recordID(for: $0.id, in: zoneID) }, [])
+        commit()
+    }
+
+    /// Restores an older revision as a new edit, so it syncs like any other change.
+    @discardableResult
+    public func restoreRevision(
+        entryID: UUID,
+        revisionID: UUID,
+        kind: SharedKindSnapshot?,
         in spaceID: UUID,
         at date: Date = .now
     ) throws -> JournalEntryRecord {
         guard let zoneID = zoneID(for: spaceID) else { throw JournalError.entryNotFound }
-        let saved = try cache(for: spaceID).save(draft, deviceID: deviceID, at: date)
-        markUnsent(saved, kind: kind, zoneID: zoneID)
+        let restored = try cache(for: spaceID).restore(
+            entryID: entryID, revisionID: revisionID, deviceID: deviceID, at: date)
+        markUnsent(restored, kind: kind, zoneID: zoneID)
         commit()
-        return saved
+        return restored
+    }
+
+    /// The label shared entries carry for `kind`, for kinds this device doesn't know.
+    public func kindSnapshot(for kind: JournalKind) -> SharedKindSnapshot? {
+        metadata.records.values.lazy.compactMap(\.kind).first { $0.kind == kind }
+    }
+
+    /// The space holding `entryID`, if it is a shared entry at all.
+    public func spaceID(containing entryID: UUID) -> UUID? {
+        for state in metadata.spaces {
+            if let cache = try? provider.cache(for: state.space),
+                (try? cache.entry(id: entryID)) != nil
+            {
+                return state.space.id
+            }
+        }
+        return nil
     }
 
     public func moveToTrash(entryID: UUID, in spaceID: UUID, at date: Date = .now) throws {
@@ -99,12 +177,13 @@ public final class SharedSpaceStore: SharedSyncStore {
         commit()
     }
 
+    /// `kind` nil keeps the label the entry already has (a kind this device doesn't know).
     private func markUnsent(
-        _ entry: JournalEntryRecord, kind: SharedKindSnapshot, zoneID: CKRecordZone.ID
+        _ entry: JournalEntryRecord, kind: SharedKindSnapshot?, zoneID: CKRecordZone.ID
     ) {
         var entryState = metadata.records[entry.id.uuidString] ?? RecordState(type: .entry)
         entryState.hasUnsentChanges = true
-        entryState.kind = kind
+        if let kind { entryState.kind = kind }
         entryState.zoneName = zoneID.zoneName
         metadata.records[entry.id.uuidString] = entryState
         metadata.records[entry.currentRevisionID.uuidString] = RecordState(

@@ -32,6 +32,13 @@ struct ContentView: View {
         #endif
     }
 
+    private var listTitle: String {
+        model.selectedSharedSpaceTitle
+            ?? model.selectedNotebookName
+            ?? model.selectedKind.map { model.kindDefinition(for: $0).displayName }
+            ?? String(localized: "전체 기록")
+    }
+
     var body: some View {
         NavigationSplitView(
             columnVisibility: $columnVisibility,
@@ -102,11 +109,7 @@ struct ContentView: View {
             .searchable(text: $model.searchText, prompt: "기록 검색")
             .onSubmit(of: .search) { model.refresh() }
             .onChange(of: model.searchText) { _, _ in model.refresh() }
-            .navigationTitle(
-                model.selectedNotebookName
-                    ?? model.selectedKind.map { model.kindDefinition(for: $0).displayName }
-                    ?? String(localized: "전체 기록")
-            )
+            .navigationTitle(listTitle)
             .toolbar {
                 if model.isBatchSelecting {
                     Button("정리 \(model.selectedEntryIDs.count)") {
@@ -241,6 +244,9 @@ struct ContentView: View {
         .sheet(isPresented: $model.isPresentingTrash) {
             TrashView()
         }
+        #if PILGRIM_SWIFTDATA
+        .modifier(SharedSpacesContentModifier())
+        #endif
         .sheet(isPresented: $model.isPresentingKindManagement) {
             KindManagementSheet()
         }
@@ -593,6 +599,7 @@ private struct JournalSidebar: View {
     @State private var isCreatingNotebook = false
     @State private var newNotebookName = ""
     @State private var notebookPendingDeletion: String?
+    @State private var notebookPendingShare: String?
 
     var body: some View {
         List {
@@ -603,6 +610,7 @@ private struct JournalSidebar: View {
                     accent: JournalTheme.brandPrimary,
                     isSelected: model.selectedKind == nil
                         && model.selectedNotebookName == nil
+                        && model.selectedSharedSpaceID == nil
                 ) {
                     selectKind(nil)
                 }
@@ -640,6 +648,13 @@ private struct JournalSidebar: View {
                         selectNotebook(notebook)
                     }
                     .contextMenu {
+                        if model.canShare {
+                            Button {
+                                notebookPendingShare = notebook
+                            } label: {
+                                Label("공유…", systemImage: "person.crop.circle.badge.plus")
+                            }
+                        }
                         Button("노트북 삭제", role: .destructive) {
                             notebookPendingDeletion = notebook
                         }
@@ -659,6 +674,15 @@ private struct JournalSidebar: View {
                 }
                 .buttonStyle(.plain)
             }
+
+            #if PILGRIM_SWIFTDATA
+            if let sharing = model.familySharing {
+                SharedSpacesSidebarSection(
+                    sharing: sharing,
+                    preferredCompactColumn: $preferredCompactColumn
+                )
+            }
+            #endif
 
             Section {
                 JournalSidebarItem(
@@ -699,6 +723,26 @@ private struct JournalSidebar: View {
             }
         } message: {
             Text("문서는 삭제하지 않고 ‘노트북 없음’으로 이동합니다.")
+        }
+        .confirmationDialog(
+            "노트북을 공유할까요?",
+            isPresented: Binding(
+                get: { notebookPendingShare != nil },
+                set: { if !$0 { notebookPendingShare = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("공유하고 초대하기") {
+                if let notebook = notebookPendingShare {
+                    Task { await model.shareNotebook(named: notebook) }
+                }
+                notebookPendingShare = nil
+            }
+            Button("취소", role: .cancel) {
+                notebookPendingShare = nil
+            }
+        } message: {
+            Text("노트북의 기록이 ‘공유됨’으로 옮겨집니다. 초대한 사람은 함께 보고 고칠 수 있고, 공유를 끝내면 다시 내 노트북으로 돌아옵니다.")
         }
         .navigationTitle("Pilgrim Journal")
         #if os(iOS)
@@ -831,6 +875,13 @@ private struct EntryRowWithActions: View {
         EntryRow(entry: entry)
             .contextMenu {
                 Button("편집") { edit() }
+                if model.canShare, model.sharedSpaceID(for: entry.id) == nil {
+                    Button {
+                        Task { await model.shareEntry(entry) }
+                    } label: {
+                        Label("공유…", systemImage: "person.crop.circle.badge.plus")
+                    }
+                }
                 Button("휴지통으로 이동", role: .destructive) {
                     model.moveToTrash(entry)
                 }
