@@ -97,6 +97,7 @@ public struct EntryDetails: Codable, Equatable, Sendable {
     public var bookTitle: String?
     public var bookAuthor: String?
     public var mood: String?
+    public var prayerTopics: [PrayerTopic]?
 
     public init(
         prayerStatus: PrayerStatus? = nil,
@@ -104,7 +105,8 @@ public struct EntryDetails: Codable, Equatable, Sendable {
         scriptureReference: String? = nil,
         bookTitle: String? = nil,
         bookAuthor: String? = nil,
-        mood: String? = nil
+        mood: String? = nil,
+        prayerTopics: [PrayerTopic]? = nil
     ) {
         self.prayerStatus = prayerStatus
         self.answeredAt = answeredAt
@@ -112,6 +114,7 @@ public struct EntryDetails: Codable, Equatable, Sendable {
         self.bookTitle = bookTitle
         self.bookAuthor = bookAuthor
         self.mood = mood
+        self.prayerTopics = prayerTopics
     }
 
     public func validated(for kind: JournalKind) throws -> EntryDetails {
@@ -122,29 +125,46 @@ public struct EntryDetails: Codable, Equatable, Sendable {
             copy.bookTitle = nil
             copy.bookAuthor = nil
             copy.mood = nil
-            if copy.prayerStatus == nil { copy.prayerStatus = .ongoing }
             if copy.prayerStatus != .answered { copy.answeredAt = nil }
+            copy.prayerTopics = Self.sanitizedTopics(copy.prayerTopics)
         case .bibleStudy:
             copy.prayerStatus = nil
             copy.answeredAt = nil
             copy.bookTitle = nil
             copy.bookAuthor = nil
             copy.mood = nil
+            copy.prayerTopics = nil
         case .reading:
             copy.prayerStatus = nil
             copy.answeredAt = nil
             copy.scriptureReference = nil
             copy.mood = nil
+            copy.prayerTopics = nil
         case .diary:
             copy.prayerStatus = nil
             copy.answeredAt = nil
             copy.scriptureReference = nil
             copy.bookTitle = nil
             copy.bookAuthor = nil
+            copy.prayerTopics = nil
         case .memo, .unclassified, nil:
             copy = EntryDetails()
         }
         return copy
+    }
+
+    private static func sanitizedTopics(_ topics: [PrayerTopic]?) -> [PrayerTopic]? {
+        guard let topics else { return nil }
+        let cleaned = topics.compactMap { topic -> PrayerTopic? in
+            var copy = topic
+            copy.text = topic.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !copy.text.isEmpty else { return nil }
+            copy.memo = topic.memo?.trimmingCharacters(in: .whitespacesAndNewlines)
+            if copy.memo?.isEmpty == true { copy.memo = nil }
+            if copy.status != .answered { copy.answeredAt = nil }
+            return copy
+        }
+        return cleaned.isEmpty ? nil : cleaned
     }
 
     /// Human-readable lines for the kind-specific fields that would be lost when an entry
