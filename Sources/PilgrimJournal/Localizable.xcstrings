@@ -3200,6 +3200,16 @@
         }
       }
     },
+    "새 섹션" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New section"
+          }
+        }
+      }
+    },
     "새 태그 이름" : {
       "localizations" : {
         "en" : {
@@ -3450,6 +3460,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sage"
+          }
+        }
+      }
+    },
+    "섹션 삭제" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete section"
+          }
+        }
+      }
+    },
+    "섹션 이름" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Section name"
+          }
+        }
+      }
+    },
+    "섹션 추가" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add section"
           }
         }
       }
@@ -4006,16 +4046,46 @@
     },
     "응답 %lld · 기도중 %lld" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Answered %lld · Praying %lld"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "new",
             "value" : "응답 %1$lld · 기도중 %2$lld"
           }
-        },
+        }
+      }
+    },
+    "응답 결과" : {
+      "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Answered %lld · Praying %lld"
+            "value" : "Answer outcome"
+          }
+        }
+      }
+    },
+    "응답 메모" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Answer memo"
+          }
+        }
+      }
+    },
+    "응답 메모: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Answer memo: %@"
           }
         }
       }
@@ -5333,6 +5403,16 @@
         }
       }
     },
+    "템플릿" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Templates"
+          }
+        }
+      }
+    },
     "템플릿 UUID" : {
       "localizations" : {
         "en" : {
@@ -5343,12 +5423,52 @@
         }
       }
     },
+    "템플릿 삭제" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete template"
+          }
+        }
+      }
+    },
+    "템플릿 이름" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Template name"
+          }
+        }
+      }
+    },
     "템플릿 제목" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Template Title"
+          }
+        }
+      }
+    },
+    "템플릿에서 시작" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start from template"
+          }
+        }
+      }
+    },
+    "템플릿으로 저장" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save as template"
           }
         }
       }
@@ -5493,6 +5613,16 @@
         }
       }
     },
+    "현재 구성을 템플릿으로 저장" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save current layout as template"
+          }
+        }
+      }
+    },
     "현재 데이터 교체" : {
       "localizations" : {
         "en" : {
@@ -5539,6 +5669,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A safety backup of your current data is created first, then entries not in the backup are moved to Trash."
+          }
+        }
+      }
+    },
+    "현재 섹션 구성을 이름 붙여 저장합니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saves the current section layout under a name."
           }
         }
       }
