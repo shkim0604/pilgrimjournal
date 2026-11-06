@@ -1,0 +1,155 @@
+{
+  "commits": [
+    {
+      "date": "2026-11-06T10:42:55-05:00",
+      "hash": "e1efe84",
+      "subject": "feat(admin): Hono server with login, forced password change and security headers"
+    },
+    {
+      "date": "2026-11-06T10:39:08-05:00",
+      "hash": "a106686",
+      "subject": "feat(admin): persistent login failure lockout"
+    },
+    {
+      "date": "2026-11-06T10:38:21-05:00",
+      "hash": "b9f4477",
+      "subject": "feat(admin): hashed server-side sessions with idle and absolute expiry"
+    },
+    {
+      "date": "2026-11-06T10:37:39-05:00",
+      "hash": "372b667",
+      "subject": "feat(admin): admin account store and env-based bootstrap seed"
+    },
+    {
+      "date": "2026-11-06T10:36:58-05:00",
+      "hash": "a8d4136",
+      "subject": "feat(admin): scrypt password hashing"
+    },
+    {
+      "date": "2026-11-06T10:36:14-05:00",
+      "hash": "7069173",
+      "subject": "feat(admin): scaffold console package with config and SQLite schema"
+    },
+    {
+      "date": "2026-11-06T10:30:33-05:00",
+      "hash": "6a36543",
+      "subject": "docs(plan): admin console implementation plan"
+    },
+    {
+      "date": "2026-11-06T10:13:27-05:00",
+      "hash": "2623306",
+      "subject": "docs(spec): developer admin console design"
+    },
+    {
+      "date": "2026-11-06T05:56:37+09:00",
+      "hash": "d3d85d0",
+      "subject": "Mac focus mode: title and body only, bullet alignment, opening-text echo guard (#29)"
+    },
+    {
+      "date": "2026-11-06T05:54:53+09:00",
+      "hash": "4e8765e",
+      "subject": "feat(brand): replace the book-and-flame icon with an oil lamp (#25)"
+    },
+    {
+      "date": "2026-11-06T05:53:36+09:00",
+      "hash": "5da315c",
+      "subject": "chore(build): give Debug builds the com.dhouse.PilgrimJournal.debug bundle ID (#30)"
+    },
+    {
+      "date": "2026-11-06T05:53:32+09:00",
+      "hash": "d193b4b",
+      "subject": "feat(kinds): make kind editing free again (#28)"
+    },
+    {
+      "date": "2026-11-04T00:17:57+09:00",
+      "hash": "97b9a23",
+      "subject": "feat(sync): add a manual 지금 동기화 button to settings (#24)"
+    },
+    {
+      "date": "2026-10-25T21:19:30+09:00",
+      "hash": "8fea642",
+      "subject": "feat(settings): choose the app language (System, 한국어, English) (#23)"
+    },
+    {
+      "date": "2026-10-21T23:11:54+09:00",
+      "hash": "dbb310b",
+      "subject": "feat(premium): lock kind editing until a premium code is entered (#13)"
+    },
+    {
+      "date": "2026-10-21T23:03:57+09:00",
+      "hash": "152795e",
+      "subject": "fix(editor): close three reload edge cases left by user-managed kinds (#18)"
+    },
+    {
+      "date": "2026-10-17T02:59:46+09:00",
+      "hash": "55fcca4",
+      "subject": "feat(account): in-app account deletion and support page (1.1.0 build 29) (#20)"
+    },
+    {
+      "date": "2026-10-16T00:19:03+09:00",
+      "hash": "2fdfe35",
+      "subject": "fix(l10n): polish the English localization (#19)"
+    },
+    {
+      "date": "2026-10-15T22:55:07+09:00",
+      "hash": "208e8a5",
+      "subject": "docs: roadmap, ShareCardEval, and new-icon records (#17)"
+    },
+    {
+      "date": "2026-10-15T20:24:23+09:00",
+      "hash": "202138c",
+      "subject": "feat(brand): use the new flame-and-book app icon (1.1.0 build 28) (#16)"
+    },
+    {
+      "date": "2026-10-15T19:45:02+09:00",
+      "hash": "282bb76",
+      "subject": "feat(brand): show the app as \"Pilgrim\" and light a flame on the icon (#15)"
+    },
+    {
+      "date": "2026-10-15T18:41:33+09:00",
+      "hash": "102b614",
+      "subject": "build: bump to 1.1.0 (26) (#14)"
+    },
+    {
+      "date": "2026-10-15T17:50:51+09:00",
+      "hash": "196928c",
+      "subject": "feat(l10n): add English localization (#12)"
+    },
+    {
+      "date": "2026-10-15T17:46:38+09:00",
+      "hash": "1053c8d",
+      "subject": "feat(kinds): keep the four core kinds from being deleted (#11)"
+    },
+    {
+      "date": "2026-10-15T17:09:29+09:00",
+      "hash": "b550eeb",
+      "subject": "feat(settings): move kind editing from the sidebar into Settings (#10)"
+    },
+    {
+      "date": "2026-10-15T17:09:23+09:00",
+      "hash": "fb72f57",
+      "subject": "feat(macos): move a body image up or down with ▲▼ (#9)"
+    },
+    {
+      "date": "2026-10-15T16:56:02+09:00",
+      "hash": "e2a1240",
+      "subject": "feat(settings): add system/light/dark appearance option (#8)"
+    },
+    {
+      "date": "2026-10-15T16:21:12+09:00",
+      "hash": "f5b2a00",
+      "subject": "Merge pull request #7 from shkim0604/feat/ios-photo-placement"
+    },
+    {
+      "date": "2026-10-15T16:18:38+09:00",
+      "hash": "59a38cf",
+      "subject": "Merge remote-tracking branch 'origin/main' into merge/photos"
+    },
+    {
+      "date": "2026-10-15T16:17:37+09:00",
+      "hash": "c5cd872",
+      "subject": "Merge pull request #6 from shkim0604/feat/ios-editor-focus-mode"
+    }
+  ],
+  "generatedAt": "2026-11-06T15:44:09+00:00"
+}

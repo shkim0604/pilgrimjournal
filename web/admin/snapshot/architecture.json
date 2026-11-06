@@ -1,0 +1,154 @@
+{
+  "targets": [
+    {
+      "dependencies": [
+        "JournalData"
+      ],
+      "kind": "executable",
+      "linkedFrameworks": [],
+      "name": "AdminSnapshot"
+    },
+    {
+      "dependencies": [
+        "JournalDomain"
+      ],
+      "kind": "library",
+      "linkedFrameworks": [],
+      "name": "DayOneImport"
+    },
+    {
+      "dependencies": [
+        "DayOneImport",
+        "JournalData",
+        "JournalDomain"
+      ],
+      "kind": "test",
+      "linkedFrameworks": [],
+      "name": "DayOneImportTests"
+    },
+    {
+      "dependencies": [
+        "DayOneImport",
+        "JournalDomain"
+      ],
+      "kind": "library",
+      "linkedFrameworks": [],
+      "name": "JournalBackup"
+    },
+    {
+      "dependencies": [
+        "DayOneImport",
+        "JournalBackup",
+        "JournalData",
+        "JournalDomain"
+      ],
+      "kind": "test",
+      "linkedFrameworks": [],
+      "name": "JournalBackupTests"
+    },
+    {
+      "dependencies": [
+        "DayOneImport",
+        "JournalBackup",
+        "JournalData",
+        "JournalDomain",
+        "JournalSearch"
+      ],
+      "kind": "executable",
+      "linkedFrameworks": [],
+      "name": "JournalChecks"
+    },
+    {
+      "dependencies": [
+        "JournalDomain"
+      ],
+      "kind": "library",
+      "linkedFrameworks": [
+        "CloudKit",
+        "CryptoKit",
+        "LocalAuthentication",
+        "Security"
+      ],
+      "name": "JournalData"
+    },
+    {
+      "dependencies": [
+        "JournalData",
+        "JournalDomain"
+      ],
+      "kind": "test",
+      "linkedFrameworks": [],
+      "name": "JournalDataTests"
+    },
+    {
+      "dependencies": [],
+      "kind": "library",
+      "linkedFrameworks": [],
+      "name": "JournalDomain"
+    },
+    {
+      "dependencies": [
+        "JournalDomain"
+      ],
+      "kind": "test",
+      "linkedFrameworks": [],
+      "name": "JournalDomainTests"
+    },
+    {
+      "dependencies": [
+        "JournalDomain"
+      ],
+      "kind": "library",
+      "linkedFrameworks": [
+        "sqlite3"
+      ],
+      "name": "JournalSearch"
+    },
+    {
+      "dependencies": [
+        "JournalDomain",
+        "JournalSearch"
+      ],
+      "kind": "test",
+      "linkedFrameworks": [],
+      "name": "JournalSearchTests"
+    },
+    {
+      "dependencies": [
+        "DayOneImport",
+        "JournalBackup",
+        "JournalData",
+        "JournalDomain",
+        "JournalSearch"
+      ],
+      "kind": "executable",
+      "linkedFrameworks": [
+        "AuthenticationServices"
+      ],
+      "name": "PilgrimJournal"
+    },
+    {
+      "dependencies": [
+        "JournalData",
+        "PilgrimJournal"
+      ],
+      "kind": "test",
+      "linkedFrameworks": [],
+      "name": "PilgrimJournalTests"
+    },
+    {
+      "dependencies": [],
+      "kind": "executable",
+      "linkedFrameworks": [],
+      "name": "ShareCardEval"
+    },
+    {
+      "dependencies": [
+        "ShareCardEval"
+      ],
+      "kind": "test",
+      "linkedFrameworks": [],
+      "name": "ShareCardEvalTests"
+    }
+  ]
+}

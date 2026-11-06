@@ -7,6 +7,9 @@ public enum JournalContainerFactory {
 
     public static let localModels = PilgrimJournalSchemaV1.localModels
 
+    /// The versioned schema's identifier as text, e.g. "1.0.0" (read by the admin console snapshot).
+    public static let schemaVersionString = "\(PilgrimJournalSchemaV1.versionIdentifier)"
+
     @MainActor
     public static func make(
         inMemory: Bool = false,
