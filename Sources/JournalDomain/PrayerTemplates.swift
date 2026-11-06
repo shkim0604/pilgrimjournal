@@ -1,7 +1,7 @@
 import Foundation
 
 /// A named, user-saved section layout (카테고리 구성) for new prayer notes,
-/// e.g. "가족 기도" = 감사/성훈/정원/중보.
+/// e.g. "가족 기도" = 감사/가족/교회/중보.
 public struct PrayerNoteTemplate: Codable, Equatable, Hashable, Identifiable, Sendable {
     public var id: UUID
     public var name: String
@@ -110,6 +110,14 @@ public struct PrayerTemplateCatalog: Codable, Equatable, Sendable {
         if lhs.isDeleted != rhs.isDeleted {
             return lhs.isDeleted ? lhs : rhs
         }
-        return lhs.name >= rhs.name ? lhs : rhs
+        if lhs.name != rhs.name {
+            return lhs.name > rhs.name ? lhs : rhs
+        }
+        // Same timestamp, state and name but different content (e.g. two
+        // devices edited within the ISO8601 whole-second window): pick by the
+        // content itself so both devices converge instead of ping-ponging.
+        let lhsContent = lhs.categories.joined(separator: "\u{1F}")
+        let rhsContent = rhs.categories.joined(separator: "\u{1F}")
+        return lhsContent >= rhsContent ? lhs : rhs
     }
 }

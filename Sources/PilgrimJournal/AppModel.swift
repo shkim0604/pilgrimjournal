@@ -412,15 +412,37 @@ final class AppModel: ObservableObject {
         }
         switch prayerScope {
         case .ongoing:
-            ongoingPrayerItems = PrayerTopicAggregator.ongoing(in: entries)
-            answeredPrayerSections = []
+            let items = PrayerTopicAggregator.ongoing(in: entries)
+            if items != ongoingPrayerItems { ongoingPrayerItems = items }
+            if !answeredPrayerSections.isEmpty { answeredPrayerSections = [] }
         case .answered:
-            answeredPrayerSections = PrayerTopicAggregator.answeredByMonth(
+            let sections = PrayerTopicAggregator.answeredByMonth(
                 in: entries, calendar: .current)
-            ongoingPrayerItems = []
+            if sections != answeredPrayerSections { answeredPrayerSections = sections }
+            if !ongoingPrayerItems.isEmpty { ongoingPrayerItems = [] }
         case .notes:
             break
         }
+    }
+
+    /// While a 기도중/응답 scope is showing, an editor autosave of one prayer
+    /// note only needs that record swapped into the already-loaded array —
+    /// repaging the whole kind on every autosave tick would stall typing in
+    /// the macOS "aggregate list + inline editor" layout. Returns false when
+    /// a full `refresh()` is still required.
+    private func applySavedPrayerRecordInPlace(_ record: JournalEntryRecord) -> Bool {
+        guard isPrayerKindSelected, prayerScope != .notes, !hasActiveSearchFilters,
+            record.kind == .prayer, record.deletedAt == nil,
+            selectedNotebookName == nil
+        else { return false }
+        if let index = entries.firstIndex(where: { $0.id == record.id }) {
+            entries[index] = record
+        } else {
+            entries.append(record)
+            entries.sort { $0.occurredAt > $1.occurredAt }
+        }
+        refreshPrayerAggregates()
+        return true
     }
 
     func selectPrayerScope(_ scope: PrayerScope) {
@@ -680,6 +702,12 @@ final class AppModel: ObservableObject {
     func beginBatchSelection() {
         selectedEntryIDs = selectedEntryID.map { Set([$0]) } ?? []
         isBatchSelecting = true
+        // Batch mode always acts on the note list; leaving an aggregate scope
+        // also drops the uncapped all-prayer-notes array it loaded.
+        if prayerScope != .notes {
+            prayerScope = .notes
+            refresh()
+        }
     }
 
     func endBatchSelection() {
@@ -820,7 +848,9 @@ final class AppModel: ObservableObject {
                 isPresentingEditor = false
             }
             markLocalMutation()
-            refresh()
+            if !applySavedPrayerRecordInPlace(record) {
+                refresh()
+            }
             return record
         } catch {
             errorMessage = error.localizedDescription
@@ -832,7 +862,7 @@ final class AppModel: ObservableObject {
         let hasContent =
             !draft.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             || !draft.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            || draft.details.hasNonEmptyPrayerTopics
+            || draft.details.hasPrayerChecklistContent
         guard hasContent || draft.id != nil else { return }
         if let id = draft.id {
             // A trashed entry still exists (`entry(id:)` returns it, marked

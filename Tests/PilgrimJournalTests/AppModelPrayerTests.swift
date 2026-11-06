@@ -94,6 +94,36 @@ final class AppModelPrayerTests: XCTestCase {
         XCTAssertEqual(saved.first?.details.prayerTopics?.first?.text, "제목")
     }
 
+    func testAutosaveOnExitKeepsSectionOnlyPrayerNote() throws {
+        model.autosaveOnEditorExit(
+            JournalEntryDraft(
+                kind: .prayer,
+                details: EntryDetails(prayerCategories: ["감사", "중보"])))
+        let saved = try repository.list(kind: .prayer, includeDeleted: false, limit: 10)
+        XCTAssertEqual(saved.count, 1)
+        XCTAssertEqual(saved.first?.details.prayerCategories, ["감사", "중보"])
+    }
+
+    func testBatchSelectionReturnsToNotesScope() throws {
+        try savePrayerNote(title: "노트", topics: [PrayerTopic(text: "제목")])
+        model.selectKind(.prayer)
+        model.selectPrayerScope(.ongoing)
+        model.beginBatchSelection()
+        XCTAssertEqual(model.prayerScope, .notes)
+    }
+
+    func testAutosaveInOngoingScopeUpdatesAggregates() throws {
+        let saved = try savePrayerNote(title: "노트", topics: [PrayerTopic(text: "하나")])
+        model.selectKind(.prayer)
+        model.selectPrayerScope(.ongoing)
+        XCTAssertEqual(model.ongoingPrayerItems.count, 1)
+
+        var draft = try XCTUnwrap(repository.entry(id: saved.id)).draft
+        draft.details.prayerTopics?.append(PrayerTopic(text: "둘"))
+        _ = model.saveAndReturnRecord(draft, closeEditor: false, selectSavedEntry: false)
+        XCTAssertEqual(model.ongoingPrayerItems.map(\.topic.text), ["하나", "둘"])
+    }
+
     func testPrayerScopeResetsOnKindChange() throws {
         model.selectKind(.prayer)
         model.selectPrayerScope(.ongoing)

@@ -48,7 +48,7 @@ final class PrayerTemplateCatalogTests: XCTestCase {
         let shared = try XCTUnwrap(mine.upsert(name: "가족", categories: ["감사"], at: t0))
         var theirs = mine
 
-        _ = mine.upsert(name: "가족", categories: ["감사", "성훈"], at: t1)
+        _ = mine.upsert(name: "가족", categories: ["감사", "가족"], at: t1)
         theirs.delete(id: shared.id, at: t2)
         _ = theirs.upsert(name: "새벽", categories: ["말씀"], at: t0)
 
@@ -62,6 +62,18 @@ final class PrayerTemplateCatalogTests: XCTestCase {
             at: Date(
                 timeIntervalSince1970: 1_700_300_000))
         XCTAssertEqual(revived.activeTemplates.map(\.name), ["가족", "새벽"])
+    }
+
+    func testMergeConvergesOnEqualTimestampsWithDifferentCategories() throws {
+        var mine = PrayerTemplateCatalog()
+        _ = try XCTUnwrap(mine.upsert(name: "가족", categories: ["감사"], at: t0))
+        var theirs = mine
+
+        _ = mine.upsert(name: "가족", categories: ["감사", "하나"], at: t1)
+        _ = theirs.upsert(name: "가족", categories: ["감사", "둘"], at: t1)
+
+        let merged = mine.merged(with: theirs)
+        XCTAssertEqual(merged, theirs.merged(with: mine))
     }
 
     func testCatalogRoundTripsThroughCodable() throws {

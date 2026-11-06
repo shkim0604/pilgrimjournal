@@ -140,10 +140,13 @@ struct PrayerTopicChecklistEditor: View {
     }
 
     private func addSection() {
-        var name = String(localized: "새 섹션")
+        // Stored, synced data stays Korean (never localized) like built-in
+        // kind names — the user renames it right away via the focused field.
+        let base = "새 섹션"
+        var name = base
         var counter = 2
         while categories.contains(name) {
-            name = String(localized: "새 섹션") + " \(counter)"
+            name = base + " \(counter)"
             counter += 1
         }
         categories.append(name)

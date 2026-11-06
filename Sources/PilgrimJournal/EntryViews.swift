@@ -543,7 +543,7 @@ struct InlineEntryEditorView: View {
         let hasContent =
             draft.title.contains { !$0.isWhitespace }
             || draft.body.contains { !$0.isWhitespace }
-            || draft.details.hasNonEmptyPrayerTopics
+            || draft.details.hasPrayerChecklistContent
         guard hasContent || persistedEntryID != nil || draft.id != nil else {
             autosaveTask?.cancel()
             saveState = .saved
@@ -588,7 +588,7 @@ struct InlineEntryEditorView: View {
         let hasContent =
             draft.title.contains { !$0.isWhitespace }
             || draft.body.contains { !$0.isWhitespace }
-            || draft.details.hasNonEmptyPrayerTopics
+            || draft.details.hasPrayerChecklistContent
         guard force || hasContent || persistedEntryID != nil || draft.id != nil else {
             autosaveTask?.cancel()
             saveState = .saved
@@ -1447,7 +1447,7 @@ struct EntryEditorView: View {
         let hasContent =
             draft.title.contains { !$0.isWhitespace }
             || draft.body.contains { !$0.isWhitespace }
-            || draft.details.hasNonEmptyPrayerTopics
+            || draft.details.hasPrayerChecklistContent
         guard hasContent || persistedEntryID != nil || draft.id != nil else {
             autosaveTask?.cancel()
             saveState = .saved
@@ -1490,7 +1490,7 @@ struct EntryEditorView: View {
         let hasContent =
             draft.title.contains { !$0.isWhitespace }
             || draft.body.contains { !$0.isWhitespace }
-            || draft.details.hasNonEmptyPrayerTopics
+            || draft.details.hasPrayerChecklistContent
         guard force || hasContent || persistedEntryID != nil || draft.id != nil else {
             autosaveTask?.cancel()
             saveState = .saved

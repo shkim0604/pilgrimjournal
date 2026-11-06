@@ -149,6 +149,13 @@ extension EntryDetails {
         prayerTopics?.contains { $0.text.contains { !$0.isWhitespace } } ?? false
     }
 
+    /// Topics or section headers: a note holding only a template's section
+    /// layout is still content the user means to keep.
+    public var hasPrayerChecklistContent: Bool {
+        hasNonEmptyPrayerTopics
+            || prayerCategories?.contains { $0.contains { !$0.isWhitespace } } ?? false
+    }
+
     /// Ongoing/answered topic counts for list badges, or nil when the entry has no topics.
     public var prayerTopicCounts: (ongoing: Int, answered: Int)? {
         guard let topics = prayerTopics, !topics.isEmpty else { return nil }

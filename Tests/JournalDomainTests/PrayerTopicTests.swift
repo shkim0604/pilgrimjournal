@@ -78,16 +78,16 @@ final class PrayerTopicTests: XCTestCase {
     func testCategoriesAreNormalizedAndCollectTopicCategories() throws {
         let details = EntryDetails(
             prayerTopics: [
-                PrayerTopic(text: "가족 제목", category: " 성훈 "),
+                PrayerTopic(text: "가족 제목", category: " 가족 "),
                 PrayerTopic(text: "감사 제목", category: "감사"),
                 PrayerTopic(text: "무소속 제목", category: "   "),
             ],
             prayerCategories: ["  감사 ", "", "감사", "중보"]
         )
         let validated = try details.validated(for: .prayer)
-        XCTAssertEqual(validated.prayerCategories, ["감사", "중보", "성훈"])
+        XCTAssertEqual(validated.prayerCategories, ["감사", "중보", "가족"])
         let topics = try XCTUnwrap(validated.prayerTopics)
-        XCTAssertEqual(topics[0].category, "성훈")
+        XCTAssertEqual(topics[0].category, "가족")
         XCTAssertEqual(topics[1].category, "감사")
         XCTAssertNil(topics[2].category)
     }
@@ -96,9 +96,9 @@ final class PrayerTopicTests: XCTestCase {
         let empty = EntryDetails(prayerCategories: [" ", ""])
         XCTAssertNil(try empty.validated(for: .prayer).prayerCategories)
 
-        let sectionsOnly = EntryDetails(prayerCategories: ["감사", "정원"])
+        let sectionsOnly = EntryDetails(prayerCategories: ["감사", "교회"])
         XCTAssertEqual(
-            try sectionsOnly.validated(for: .prayer).prayerCategories, ["감사", "정원"])
+            try sectionsOnly.validated(for: .prayer).prayerCategories, ["감사", "교회"])
     }
 
     func testCategoriesAreStrippedForOtherKinds() throws {
@@ -136,6 +136,13 @@ final class PrayerTopicTests: XCTestCase {
         XCTAssertThrowsError(try emptyTopics.validated(manual: true)) { error in
             XCTAssertEqual(error as? JournalError, .emptyContent)
         }
+    }
+
+    func testPrayerNoteWithOnlySectionsCountsAsContent() throws {
+        let draft = JournalEntryDraft(
+            kind: .prayer,
+            details: EntryDetails(prayerCategories: ["감사"]))
+        XCTAssertNoThrow(try draft.validated(manual: true))
     }
 
     func testLegacyDetailsBlobWithoutTopicsDecodes() throws {
