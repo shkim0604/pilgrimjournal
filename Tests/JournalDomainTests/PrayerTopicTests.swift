@@ -59,6 +59,71 @@ final class PrayerTopicTests: XCTestCase {
         XCTAssertNil(try details.validated(for: JournalKind(id: "custom-A")).prayerTopics)
     }
 
+    func testAnswerDetailsAreSanitized() throws {
+        let details = EntryDetails(prayerTopics: [
+            PrayerTopic(
+                text: "기다리는 제목", status: .answered, answeredAt: .now,
+                answerOutcome: .wait, answerNote: "  더 기다리라 하심  "),
+            PrayerTopic(
+                text: "기도중인 제목", status: .ongoing,
+                answerOutcome: .yes, answerNote: "지워져야 함"),
+        ])
+        let topics = try XCTUnwrap(try details.validated(for: .prayer).prayerTopics)
+        XCTAssertEqual(topics[0].answerOutcome, .wait)
+        XCTAssertEqual(topics[0].answerNote, "더 기다리라 하심")
+        XCTAssertNil(topics[1].answerOutcome)
+        XCTAssertNil(topics[1].answerNote)
+    }
+
+    func testCategoriesAreNormalizedAndCollectTopicCategories() throws {
+        let details = EntryDetails(
+            prayerTopics: [
+                PrayerTopic(text: "가족 제목", category: " 성훈 "),
+                PrayerTopic(text: "감사 제목", category: "감사"),
+                PrayerTopic(text: "무소속 제목", category: "   "),
+            ],
+            prayerCategories: ["  감사 ", "", "감사", "중보"]
+        )
+        let validated = try details.validated(for: .prayer)
+        XCTAssertEqual(validated.prayerCategories, ["감사", "중보", "성훈"])
+        let topics = try XCTUnwrap(validated.prayerTopics)
+        XCTAssertEqual(topics[0].category, "성훈")
+        XCTAssertEqual(topics[1].category, "감사")
+        XCTAssertNil(topics[2].category)
+    }
+
+    func testEmptyCategoryListNormalizesToNilButKeepsEmptySections() throws {
+        let empty = EntryDetails(prayerCategories: [" ", ""])
+        XCTAssertNil(try empty.validated(for: .prayer).prayerCategories)
+
+        let sectionsOnly = EntryDetails(prayerCategories: ["감사", "정원"])
+        XCTAssertEqual(
+            try sectionsOnly.validated(for: .prayer).prayerCategories, ["감사", "정원"])
+    }
+
+    func testCategoriesAreStrippedForOtherKinds() throws {
+        let details = EntryDetails(prayerCategories: ["감사"])
+        XCTAssertNil(try details.validated(for: .diary).prayerCategories)
+        XCTAssertNil(try details.validated(for: .bibleStudy).prayerCategories)
+    }
+
+    func testCarryOverLinesIncludeCategoryAndAnswerDetails() {
+        let details = EntryDetails(prayerTopics: [
+            PrayerTopic(
+                text: "아버지 건강", status: .answered,
+                answeredAt: Date(timeIntervalSince1970: 0),
+                category: "감사", answerOutcome: .yes, answerNote: "검사 정상"),
+            PrayerTopic(text: "이사", status: .answered, answerOutcome: .wait),
+        ])
+        XCTAssertEqual(
+            details.carryOverLines(from: .prayer, timeZoneIdentifier: "Asia/Seoul"),
+            """
+            기도제목(감사): 아버지 건강 — 응답(Yes) (1970-01-01)
+                응답 메모: 검사 정상
+            기도제목: 이사 — 응답(Wait)
+            """)
+    }
+
     func testLegacyDetailsBlobWithoutTopicsDecodes() throws {
         let data = Data(#"{"prayerStatus":"answered","answeredAt":100}"#.utf8)
         let details = try JSONDecoder().decode(EntryDetails.self, from: data)

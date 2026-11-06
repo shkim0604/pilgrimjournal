@@ -13,6 +13,12 @@ public struct PrayerTopic: Codable, Equatable, Hashable, Identifiable, Sendable 
     public var memo: String?
     public var answeredAt: Date?
     public var createdAt: Date?
+    /// Section (카테고리) this topic belongs to inside its note, e.g. 감사·중보·가족 이름.
+    public var category: String?
+    /// How the prayer was answered; only meaningful while `status == .answered`.
+    public var answerOutcome: PrayerAnswerOutcome?
+    /// Free-form note about the answer (응답 메모), separate from the request `memo`.
+    public var answerNote: String?
 
     public init(
         id: UUID = UUID(),
@@ -20,7 +26,10 @@ public struct PrayerTopic: Codable, Equatable, Hashable, Identifiable, Sendable 
         status: PrayerStatus = .ongoing,
         memo: String? = nil,
         answeredAt: Date? = nil,
-        createdAt: Date? = nil
+        createdAt: Date? = nil,
+        category: String? = nil,
+        answerOutcome: PrayerAnswerOutcome? = nil,
+        answerNote: String? = nil
     ) {
         self.id = id
         self.text = text
@@ -28,6 +37,25 @@ public struct PrayerTopic: Codable, Equatable, Hashable, Identifiable, Sendable 
         self.memo = memo
         self.answeredAt = answeredAt
         self.createdAt = createdAt
+        self.category = category
+        self.answerOutcome = answerOutcome
+        self.answerNote = answerNote
+    }
+}
+
+/// How an answered prayer topic was answered: 주심(Yes) / 아니오(No) / 기다려라(Wait).
+public enum PrayerAnswerOutcome: String, Codable, CaseIterable, Sendable {
+    case yes
+    case no
+    case wait
+
+    /// Stored-data label used when flattening topics into body text on kind moves.
+    public var carryOverLabel: String {
+        switch self {
+        case .yes: return "Yes"
+        case .no: return "No"
+        case .wait: return "Wait"
+        }
     }
 }
 
