@@ -12,12 +12,16 @@ final class AppModelPrayerTests: XCTestCase {
     private var root: URL!
     private var repository: InMemoryJournalRepository!
     private var model: AppModel!
+    private var defaultsSuiteName = ""
+    private var defaults: UserDefaults!
 
     override func setUp() async throws {
         root = FileManager.default.temporaryDirectory.appending(
             path: "pilgrim-prayer-\(UUID().uuidString)",
             directoryHint: .isDirectory
         )
+        defaultsSuiteName = "pilgrim-prayer-tests-\(UUID().uuidString)"
+        defaults = UserDefaults(suiteName: defaultsSuiteName)!
         let paths = JournalPaths(root: root)
         try paths.prepare()
         repository = InMemoryJournalRepository()
@@ -30,13 +34,16 @@ final class AppModelPrayerTests: XCTestCase {
             paths: paths,
             cloudAccountMonitor: CloudAccountMonitor(
                 containerIdentifier: "iCloud.test.PilgrimJournal"
-            )
+            ),
+            notebookDefaults: defaults
         )
     }
 
     override func tearDown() async throws {
         model = nil
         repository = nil
+        defaults.removePersistentDomain(forName: defaultsSuiteName)
+        defaults = nil
         if let root { try? FileManager.default.removeItem(at: root) }
     }
 
@@ -51,6 +58,30 @@ final class AppModelPrayerTests: XCTestCase {
                 kind: .prayer, title: title, occurredAt: date,
                 details: EntryDetails(prayerTopics: topics)),
             deviceID: "test", at: date)
+    }
+
+    func testPrayerTemplatesSaveAndDelete() throws {
+        model.savePrayerTemplate(name: " 가족 기도 ", categories: [" 감사 ", "중보", ""])
+        XCTAssertEqual(model.prayerTemplates.map(\.name), ["가족 기도"])
+        XCTAssertEqual(model.prayerTemplates.first?.categories, ["감사", "중보"])
+
+        let id = try XCTUnwrap(model.prayerTemplates.first?.id)
+        model.deletePrayerTemplate(id: id)
+        XCTAssertTrue(model.prayerTemplates.isEmpty)
+    }
+
+    func testAnsweringFromListDefaultsOutcomeToYes() throws {
+        let topic = PrayerTopic(text: "제목")
+        let saved = try savePrayerNote(title: "노트", topics: [topic])
+
+        model.setPrayerTopicStatus(entryID: saved.id, topicID: topic.id, status: .answered)
+        let answered = try XCTUnwrap(repository.entry(id: saved.id))
+        XCTAssertEqual(answered.details.prayerTopics?.first?.answerOutcome, .yes)
+
+        model.setPrayerTopicStatus(entryID: saved.id, topicID: topic.id, status: .ongoing)
+        let reverted = try XCTUnwrap(repository.entry(id: saved.id))
+        XCTAssertNil(reverted.details.prayerTopics?.first?.answerOutcome)
+        XCTAssertNil(reverted.details.prayerTopics?.first?.answerNote)
     }
 
     func testPrayerScopeResetsOnKindChange() throws {

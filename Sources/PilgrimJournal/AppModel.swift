@@ -65,6 +65,8 @@ final class AppModel: ObservableObject {
     @Published private(set) var prayerScope: PrayerScope = .notes
     @Published private(set) var ongoingPrayerItems: [PrayerTopicItem] = []
     @Published private(set) var answeredPrayerSections: [AnsweredPrayerMonthSection] = []
+    /// User-saved section layouts (이름 붙인 템플릿) offered when a prayer note is empty.
+    @Published private(set) var prayerTemplates: [PrayerNoteTemplate] = []
     @Published private(set) var newEntryNotebookName: String?
     @Published var selectedEntryIDs = Set<UUID>()
     @Published var isBatchSelecting = false
@@ -145,6 +147,7 @@ final class AppModel: ObservableObject {
     let deviceID: String
     private let cloudAccountMonitor: CloudAccountMonitor?
     private let kindCatalogStore: KindCatalogStore
+    private let prayerTemplateStore: PrayerTemplateStore
     /// Set by the first `refresh()`, which runs the one full reconcile pass
     /// that later refreshes skip.
     private var hasReconciledKinds = false
@@ -192,6 +195,11 @@ final class AppModel: ObservableObject {
             cloudStore: notebookCloudStore
         )
         kindCatalog = kindCatalogStore.catalog
+        prayerTemplateStore = PrayerTemplateStore(
+            defaults: notebookDefaults,
+            cloudStore: notebookCloudStore
+        )
+        prayerTemplates = prayerTemplateStore.catalog.activeTemplates
         searchCoordinator = SearchIndexCoordinator(index: searchIndex)
         notebookCloudStore?.synchronize()
         let initialDeletedNotebookNames = Self.mergedNotebookNames(
@@ -328,6 +336,7 @@ final class AppModel: ObservableObject {
 
     func refresh() {
         mergeNotebookCatalogFromCloud()
+        mergePrayerTemplatesFromCloud()
         let kindCatalogChanged = mergeKindCatalogFromCloud()
         if kindCatalogChanged || !hasReconciledKinds {
             hasReconciledKinds = true
@@ -420,6 +429,28 @@ final class AppModel: ObservableObject {
         refresh()
     }
 
+    func savePrayerTemplate(name: String, categories: [String]) {
+        var catalog = prayerTemplateStore.catalog
+        guard catalog.upsert(name: name, categories: categories, at: .now) != nil else {
+            return
+        }
+        prayerTemplateStore.save(catalog)
+        prayerTemplates = prayerTemplateStore.catalog.activeTemplates
+    }
+
+    func deletePrayerTemplate(id: UUID) {
+        var catalog = prayerTemplateStore.catalog
+        catalog.delete(id: id, at: .now)
+        prayerTemplateStore.save(catalog)
+        prayerTemplates = prayerTemplateStore.catalog.activeTemplates
+    }
+
+    private func mergePrayerTemplatesFromCloud() {
+        prayerTemplateStore.mergeFromCloud()
+        let active = prayerTemplateStore.catalog.activeTemplates
+        if active != prayerTemplates { prayerTemplates = active }
+    }
+
     /// Toggles one prayer topic between 기도중 and 응답, saving behind any open
     /// editor the same way kind moves do: flush first, then ask the editor to
     /// reload so it cannot write the stale topic list back.
@@ -430,8 +461,16 @@ final class AppModel: ObservableObject {
                 let index = draft.details.prayerTopics?.firstIndex(where: { $0.id == topicID }),
                 draft.details.prayerTopics?[index].status != status
             else { return }
-            draft.details.prayerTopics?[index].status = status
-            draft.details.prayerTopics?[index].answeredAt = status == .answered ? .now : nil
+            var topic = draft.details.prayerTopics?[index] ?? PrayerTopic(text: "")
+            topic.status = status
+            topic.answeredAt = status == .answered ? .now : nil
+            if status == .answered {
+                topic.answerOutcome = topic.answerOutcome ?? .yes
+            } else {
+                topic.answerOutcome = nil
+                topic.answerNote = nil
+            }
+            draft.details.prayerTopics?[index] = topic
             let record = try repository.save(draft, deviceID: deviceID, at: .now)
             try searchIndex.upsert(record)
             editorReloadRequest = EditorReloadRequest(entryIDs: [record.id])
