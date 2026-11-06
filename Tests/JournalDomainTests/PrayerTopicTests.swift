@@ -124,6 +124,20 @@ final class PrayerTopicTests: XCTestCase {
             """)
     }
 
+    func testPrayerNoteWithOnlyTopicsCountsAsContent() throws {
+        let draft = JournalEntryDraft(
+            kind: .prayer,
+            details: EntryDetails(prayerTopics: [PrayerTopic(text: "제목")]))
+        XCTAssertNoThrow(try draft.validated(manual: true))
+
+        let emptyTopics = JournalEntryDraft(
+            kind: .prayer,
+            details: EntryDetails(prayerTopics: [PrayerTopic(text: "   ")]))
+        XCTAssertThrowsError(try emptyTopics.validated(manual: true)) { error in
+            XCTAssertEqual(error as? JournalError, .emptyContent)
+        }
+    }
+
     func testLegacyDetailsBlobWithoutTopicsDecodes() throws {
         let data = Data(#"{"prayerStatus":"answered","answeredAt":100}"#.utf8)
         let details = try JSONDecoder().decode(EntryDetails.self, from: data)

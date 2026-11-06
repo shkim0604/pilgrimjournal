@@ -829,9 +829,13 @@ final class AppModel: ObservableObject {
     }
 
     func autosaveOnEditorExit(_ draft: JournalEntryDraft) {
+        let hasTopics = (draft.details.prayerTopics ?? []).contains {
+            !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
         let hasContent =
             !draft.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             || !draft.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || hasTopics
         guard hasContent || draft.id != nil else { return }
         if let id = draft.id {
             // A trashed entry still exists (`entry(id:)` returns it, marked

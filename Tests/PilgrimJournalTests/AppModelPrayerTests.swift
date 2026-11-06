@@ -84,6 +84,16 @@ final class AppModelPrayerTests: XCTestCase {
         XCTAssertNil(reverted.details.prayerTopics?.first?.answerNote)
     }
 
+    func testAutosaveOnExitKeepsTopicOnlyPrayerNote() throws {
+        model.autosaveOnEditorExit(
+            JournalEntryDraft(
+                kind: .prayer,
+                details: EntryDetails(prayerTopics: [PrayerTopic(text: "제목")])))
+        let saved = try repository.list(kind: .prayer, includeDeleted: false, limit: 10)
+        XCTAssertEqual(saved.count, 1)
+        XCTAssertEqual(saved.first?.details.prayerTopics?.first?.text, "제목")
+    }
+
     func testPrayerScopeResetsOnKindChange() throws {
         model.selectKind(.prayer)
         model.selectPrayerScope(.ongoing)

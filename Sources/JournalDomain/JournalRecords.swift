@@ -53,8 +53,11 @@ public struct JournalEntryDraft: Codable, Equatable, Sendable {
                 }.filter { !$0.isEmpty })
         ).sorted()
         if manual && kind.isUnclassified { throw JournalError.invalidManualKind }
-        if copy.title.isEmpty && copy.body.isEmpty { throw JournalError.emptyContent }
         copy.details = try details.validated(for: kind)
+        let hasTopics = !(copy.details.prayerTopics ?? []).isEmpty
+        if copy.title.isEmpty && copy.body.isEmpty && !hasTopics {
+            throw JournalError.emptyContent
+        }
         return copy
     }
 }
