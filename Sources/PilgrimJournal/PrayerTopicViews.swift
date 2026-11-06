@@ -19,7 +19,7 @@ struct PrayerTopicChecklistEditor: View {
     @State private var templateName = ""
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("기도제목")
                     .font(.caption)
@@ -44,6 +44,7 @@ struct PrayerTopicChecklistEditor: View {
             }
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
+            .padding(.top, 4)
         }
         .alert("템플릿으로 저장", isPresented: $isNamingTemplate) {
             TextField("템플릿 이름", text: $templateName)
@@ -99,7 +100,7 @@ struct PrayerTopicChecklistEditor: View {
         HStack(spacing: 6) {
             TextField("섹션 이름", text: categoryNameBinding(index))
                 .textFieldStyle(.plain)
-                .font(.subheadline.weight(.semibold))
+                .font(.title3.weight(.semibold))
                 .focused($focusedCategoryIndex, equals: index)
             Spacer(minLength: 0)
             Button {
@@ -112,7 +113,7 @@ struct PrayerTopicChecklistEditor: View {
             .buttonStyle(.plain)
             .accessibilityLabel(String(localized: "섹션 삭제"))
         }
-        .padding(.top, 6)
+        .padding(.top, 10)
     }
 
     @ViewBuilder
@@ -205,9 +206,13 @@ private struct PrayerTopicEditorRow: View {
                     topic.answerOutcome = .yes
                 }
             }
-            VStack(alignment: .leading, spacing: 2) {
-                TextField("기도제목", text: $topic.text, axis: .vertical)
+            VStack(alignment: .leading, spacing: 4) {
+                // Single-line on purpose: the vertical-axis field re-measured
+                // itself on focus, so a freshly added row's caret rendered too
+                // low and then jumped up.
+                TextField("기도제목", text: $topic.text)
                     .textFieldStyle(.plain)
+                    .submitLabel(.done)
                     .focused(focusedTopicID, equals: topic.id)
                     .strikethrough(topic.status == .answered)
                     .foregroundStyle(topic.status == .answered ? .secondary : .primary)
@@ -277,6 +282,7 @@ private struct PrayerTopicEditorRow: View {
             .buttonStyle(.plain)
             .accessibilityLabel(String(localized: "기도제목 삭제"))
         }
+        .padding(.vertical, 3)
     }
 
     // While the field is visible, keep empty text as "" (not nil) so the field
@@ -309,12 +315,12 @@ struct PrayerTopicReadOnlyList: View {
     let categories: [String]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 10) {
             rows(for: nil)
             ForEach(categories, id: \.self) { category in
                 Text(category)
-                    .font(.subheadline.weight(.semibold))
-                    .padding(.top, 4)
+                    .font(.title3.weight(.semibold))
+                    .padding(.top, 8)
                 rows(for: category)
             }
         }
