@@ -117,6 +117,9 @@ struct PrayerTopicChecklistEditor: View {
     private func sectionGroup(for category: String) -> some View {
         let isDragging = draggingCategory == category
         return VStack(alignment: .leading, spacing: 12) {
+            if category != categories.first || topics.contains(where: { $0.category == nil }) {
+                Divider()
+            }
             sectionHeader(for: category)
             topicRows(category: category)
             addTopicRow(category: category)
@@ -463,6 +466,9 @@ struct PrayerTopicReadOnlyList: View {
         VStack(alignment: .leading, spacing: 10) {
             rows(for: nil)
             ForEach(categories, id: \.self) { category in
+                if category != categories.first || topics.contains(where: { $0.category == nil }) {
+                    Divider()
+                }
                 Text(category)
                     .font(.title3.weight(.semibold))
                     .padding(.top, 8)
