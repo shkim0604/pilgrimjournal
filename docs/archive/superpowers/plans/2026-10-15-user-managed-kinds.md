@@ -1,5 +1,7 @@
 # 사용자가 관리하는 기록 유형 — 구현 계획
 
+> 아카이브됨(2026-11-06). 실행이 끝난 계획이다(체크박스는 갱신되지 않았다). `FeatureAccess` 유료 게이트는 2026-11-05에 제거됐다(#28).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 고정 enum인 기록 유형을 사용자가 추가·삭제·이름·색·아이콘·순서 변경·되살리기할 수 있게 하고, 이 편집을 유료 게이트(`FeatureAccess`) 하나 뒤에 둔다.
