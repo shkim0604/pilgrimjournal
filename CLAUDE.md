@@ -1,93 +1,59 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code in this repository.
 
 ## Project
 
-Pilgrim Journal — a local-first journal app for Apple platforms (iOS 17+, macOS 14+) that imports Day One entries and organizes them into user-manageable kinds (defaults: prayer notes (기도노트), Bible study (성경공부), reading notes (독서노트), diary (일기) and memo (메모)); imported entries no rule matches stay unclassified (미분류). Sign in with Apple gates app access (no name requested; the email scope is requested only to show the signed-in account and is kept in the device Keychain, never in CloudKit); sync uses the device's system iCloud account via CloudKit private database — these are deliberately separate concerns (see Privacy below).
+Pilgrim Journal — a local-first journal app for iOS 17+ / macOS 14+. It imports Day One exports and sorts entries into user-manageable kinds (defaults 기도노트, 성경공부, 독서노트, 일기, 메모; unmatched imports stay 미분류). Sign in with Apple gates app access (email kept only in the device Keychain); sync uses the device's iCloud account through the CloudKit private database. The two are deliberately independent — see [docs/privacy.md](docs/privacy.md).
 
 ## Commands
 
-Shared code lives in a Swift Package, so domain/import/search/backup logic can be built and tested with just macOS Command Line Tools — no Xcode required:
-
 ```sh
 swift build
-swift test
-swift run JournalChecks       # additional runtime checks (see Sources/JournalChecks)
+swift test                                   # or: swift test --filter JournalDomainTests[.Case/testName]
+swift run JournalChecks                      # scriptable runtime checks
+./scripts/check.sh                           # full local gate (below)
 ```
 
-Run a single test target or test:
+- `scripts/check.sh` = `swift format lint --strict` (fix: `swift format format -i --recursive Sources Tests`), build, tests, `JournalChecks`, admin-snapshot freshness, and a scan that fails on any `.zip` or Day One-looking export.
+- The Xcode project enforces member import visibility, so after changing imports also run `xcodebuild -project PilgrimJournal/PilgrimJournal.xcodeproj -scheme PilgrimJournalApp -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build`.
+- `swift test` skips `#if os(iOS)` tests (e.g. `LiveMarkdownTextEditorIOSTests`). Run them with `xcodebuild test -scheme PilgrimJournal-Package -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:PilgrimJournalTests -testLanguage ko -testRegion KR CODE_SIGNING_ALLOWED=NO`.
+- After changing a SwiftData model or `Package.swift` targets, run `./scripts/admin-snapshot.sh` and commit `web/admin/snapshot/`. The console itself: `cd web/admin && npm test && npm run typecheck`.
+- CI (`.github/workflows/check.yml`) runs all of the above on every PR and push to `main`, pinned to Xcode 26.2 on `macos-26`; bump `DEVELOPER_DIR` there when bumping local Xcode.
+- Signing, Sign in with Apple, CloudKit and real devices need the Xcode project with a Developer Team; unsigned builds only prove compilation. CloudKit tooling (schema deploy, wipe, login bypass via env vars on a directly-run debug binary), release archiving (never inside an iCloud-synced folder) and the admin console deploy are in [docs/development.md](docs/development.md).
 
-```sh
-swift test --filter JournalDomainTests
-swift test --filter JournalDomainTests.SomeTestCase/testSomeName
-```
-
-After changing a SwiftData model or `Package.swift`, run `./scripts/admin-snapshot.sh` and commit `web/admin/snapshot/` — the admin console reads that snapshot and `scripts/check.sh` fails when it is stale. The console itself (`web/admin`, Node) is tested with `cd web/admin && npm test && npm run typecheck`; deployment is in [docs/development.md](docs/development.md) ("관리 콘솔").
-
-`./scripts/check.sh` is the full local gate: `swift format lint --strict` (config in `.swift-format`; fix with `swift format format -i --recursive Sources Tests`), build, `swift test`, `JournalChecks`, then a scan that fails if any `.zip` file or Day One-looking export is present in the repo (personal data must never be committed — see Privacy).
-
-The Xcode project is stricter than `swift build` (it enforces member import visibility), so after changing imports also build it unsigned:
-
-```sh
-xcodebuild -project PilgrimJournal/PilgrimJournal.xcodeproj -scheme PilgrimJournalApp -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build
-```
-
-`swift test` runs on macOS, so it skips `#if os(iOS)` tests such as `LiveMarkdownTextEditorIOSTests` (the hosted iPhone editor tests guarding the typing release gate). Run the app test target on an iOS Simulator for those:
-
-```sh
-xcodebuild test -scheme PilgrimJournal-Package -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:PilgrimJournalTests -testLanguage ko -testRegion KR CODE_SIGNING_ALLOWED=NO
-```
-
-### Localization (Korean source, English translation)
-
-The UI is Korean-first; the Korean text itself is the localization key and English lives in String Catalogs: `Sources/PilgrimJournal/Localizable.xcstrings` (app, main bundle; excluded from SwiftPM and compiled by the Xcode app target), `Sources/<Library>/Resources/Localizable.xcstrings` (libraries, `String(localized: "…", bundle: .module)`), and `PilgrimJournal/PilgrimJournal/InfoPlist.xcstrings` (permission texts). New user-visible text must go through `Text("…")`-style `LocalizedStringKey` literals or `String(localized:)`; never localize stored or synced data (Day One matching, import-audit records, kind names in the catalog). Built-in kind names are stored in Korean and translated only for display (`KindDefinition.displayName` / `storedName(for:)`). Command-line SwiftPM copies catalogs without compiling them, so `swift test` sees Korean; Xcode builds do compile them, which is why the iOS Simulator test run pins `-testLanguage ko`. After adding strings, `xcodebuild -exportLocalizations -project PilgrimJournal/PilgrimJournal.xcodeproj -localizationPath <dir> -exportLanguage en` (and the same without `-project` in the package root for the libraries) refreshes the catalogs' keys; then fill in the missing `en` values.
-
-CI (`.github/workflows/check.yml`) runs `scripts/check.sh`, both unsigned Xcode builds, and that iOS Simulator test run on every PR and push to `main`. It is pinned to Xcode 26.2 on the `macos-26` runner, and the iOS job picks any available iPhone on the newest iOS runtime instead of naming a device. When bumping the local Xcode, bump `DEVELOPER_DIR` there too.
-
-Running the actual app (Simulator, Sign in with Apple, CloudKit entitlements, real-device verification) requires the full Xcode project at `PilgrimJournal/PilgrimJournal.xcodeproj` with a Developer Team signing identity. `CODE_SIGNING_ALLOWED=NO` builds only validate UI/compilation, not auth or sync.
-
-CloudKit debug tooling (schema deploy, data wipe, login-gate bypass) is documented in [docs/development.md](docs/development.md) under "CloudKit 운영 도구" — these run via env vars on a directly-invoked debug binary (not `open`, which drops env vars).
-
-Release archiving must happen outside the `~/Documents` iCloud-synced path (extended attributes break codesign); see the full procedure in [docs/development.md](docs/development.md).
+**Localization:** Korean text is the key; English lives in String Catalogs (`Sources/PilgrimJournal/Localizable.xcstrings`, `Sources/<Library>/Resources/Localizable.xcstrings`, `PilgrimJournal/PilgrimJournal/InfoPlist.xcstrings`). User-visible text goes through `Text("…")` / `String(localized:)`; never localize stored or synced data (built-in kind names are stored in Korean, translated via `KindDefinition.displayName`). Procedure in docs/development.md ("로컬라이제이션").
 
 ## Architecture
 
-The app is split into a domain-first Swift Package with adapter targets, so platform concerns (SwiftData, CloudKit, UIKit) stay swappable behind protocols:
+Domain-first Swift Package; platform concerns sit behind protocols.
 
-- **JournalDomain** — pure domain types and logic, no platform dependencies. `JournalRepository`/`BackupRestoreRepository`/`AttachmentRepository` protocols define the storage contract; `RevisionResolver`, `ClassificationEngine`, `ClassificationRuleResolver` are deterministic conflict-resolution logic shared by every adapter (last-write-wins by timestamp, then deviceID, then UUID as tiebreakers — see `JournalRepository.swift`). `KindCatalog` holds the user-manageable kind definitions (create/rename/recolour/reorder/delete-with-move-target/restore built-ins) with a deterministic merge; `KindDeletionService`/`KindReconciler` move entries off deleted kinds.
-- **JournalData** — the SwiftData + CloudKit adapter (current storage implementation). `JournalContainerFactory` builds a `ModelContainer` with two configurations: a `Canonical` store (CloudKit-synced) and a `LocalAuxiliary` store (device-only, never synced — used for search index state, import audit, etc.). Also owns `AppLockService` (Keychain-backed passcode/biometric gate, in `AppLockSecurity.swift`), `CloudIdentityBindingService`/`CloudAccountMonitor` (binds a private CloudKit database to one Apple Sign-In identity via a one-way hash, blocking the UI if a different Apple user opens the same iCloud storage), and `CloudKitSchemaInitializer` (see known-issues below for why this exists).
-- **DayOneImport** — parses and safely extracts Day One `.zip` exports (`SafeZipArchive`, `DayOneArchiveAnalyzer`) into domain drafts. Also holds the shared ZIP primitives (`StoredZipWriter`, `ZipChecksum`) that backups and `JournalChecks` write with.
-- **JournalSearch** — local SQLite/FTS5 search index (trigram tokenizer where available, `unicode61` fallback, `LIKE` fallback for ≤2-char queries). Fully derived data: never included in CloudKit sync or backups, rebuilt from the canonical store on integrity mismatch. Details in [docs/search.md](docs/search.md).
-- **JournalBackup** — export/import of full local backups (depends on both JournalDomain and DayOneImport).
-- **PilgrimJournal** — the SwiftUI app executable, composing all the above. `AppModel` is the central `@MainActor` `ObservableObject` driving the UI; `AppLockCoordinator`/`AppleAuthenticationCoordinator` gate access before the journal UI mounts.
-- **JournalChecks** — a small executable for scriptable runtime verification (used by `scripts/check.sh`), separate from `swift test`.
-- **ShareCardEval** — a re-runnable eval of the roadmap's share-card extraction on Apple's on-device Foundation Models, over synthetic fixtures. Needs macOS 26 + Apple Intelligence, so it is deliberately not in `scripts/check.sh`/CI; usage in [docs/development.md](docs/development.md) ("공유 카드 추출 평가").
-- **AdminSnapshot** — writes the SwiftData schema of both stores to `web/admin/snapshot/schema.json` (via `scripts/admin-snapshot.sh`, which also writes the target graph and recent commits).
-- **`web/admin`** (not a Swift target) — the developer admin console at `pilgrim.delight-house.org/admin`: Node + Hono + `node:sqlite`, Docker on the Mac mini behind Cloudflare Tunnel. Read-only views of the snapshot, tracking docs and app flows; it stores only the admin account hash and sessions, never user data. The first admin is seeded from `ADMIN_BOOTSTRAP_*` env vars and must change the password on first login.
+- **JournalDomain** — pure types and logic. `JournalRepository`/`BackupRestoreRepository`/`AttachmentRepository` are the storage contract; `RevisionResolver`, `ClassificationEngine`, `ClassificationRuleResolver` resolve conflicts deterministically (timestamp → deviceID → UUID). `KindCatalog` + `KindDeletionService`/`KindReconciler` manage kinds. Prayer topics (`PrayerTopic`, `PrayerTopicAggregator`, `PrayerTemplateCatalog`) ride inside the entry's `EntryDetails.detailsData` JSON blob, so they needed no CloudKit schema change.
+- **JournalData** — SwiftData + CloudKit adapter (decided; kept behind the protocol). `JournalContainerFactory` builds a CloudKit-synced `Canonical` store and a device-only `LocalAuxiliary` store. Per-account files live under `JournalAccountScope` (`Accounts/<hash>/`). Also `AppLockService` (Keychain passcode/biometrics), `CloudIdentityBindingService`/`CloudAccountMonitor`, `CloudKitSchemaInitializer`, `AccountDeletionService`.
+- **iCloud key-value store** — a second sync channel next to CloudKit: `KindCatalogStore`, `PrayerTemplateStore`, the notebook catalog. Any new key must also be removed by account deletion. Debug builds use the `.debug` bundle ID but share the release KVS.
+- **JournalSharing** — family sharing: each shared notebook or entry gets its own `pilgrim-share-<uuid>` zone, shared with `CKShare` and synced by `CKSyncEngine` (`SharedSpaceStore`, `SharedSyncEngineHost`) beside SwiftData.
+- **DayOneImport** — safe Day One `.zip` parsing (`SafeZipArchive`, `DayOneArchiveAnalyzer`) plus shared ZIP primitives (`StoredZipWriter`, `ZipChecksum`).
+- **JournalSearch** — local SQLite/FTS5 index, fully derived and never synced or backed up ([docs/search.md](docs/search.md)).
+- **JournalBackup** — full local backup export/import.
+- **PilgrimJournal** — the SwiftUI app. `AppModel` (central `@MainActor` model), `JournalSessionController` (opens stores, manual sync), `AppLockCoordinator`/`AppleAuthenticationCoordinator` gate the UI.
+- **JournalChecks**, **ShareCardEval** (on-device model eval, macOS 26 only, not in CI), **AdminSnapshot** (writes `web/admin/snapshot/`).
+- **`web/admin`** — read-only developer console (Node + Hono, Mac mini + Cloudflare Tunnel). It parses the tracking docs: keep top-level `- [ ]` lines in the checklist and `- **제목**` lines under `## 대기 중` in the todo.
 
-Storage adapters are intentionally provisional: the domain protocol is the stable contract, and `docs/development.md` lists concrete real-device conditions (background convergence between two devices, offline concurrent-edit revision preservation, delete tombstone + restore, external attachment upload, large-import responsiveness) that the SwiftData adapter must pass. If any fails, the plan is to swap in an `NSPersistentCloudKitContainer` adapter without touching JournalDomain.
+Some app files are very large (`MarkdownSupport.swift`, `EntryViews.swift`, `AppModel.swift`): locate symbols with `git grep -n` and read ranges instead of whole files.
 
-### Sync and identity model
+## Rules that have bitten before
 
-Sign in with Apple (app-access auth) and CloudKit sync (iCloud account) are independent — a user can be authenticated but running fully local-only if iCloud is unavailable. On first cloud connection, the private CloudKit database is bound to a SHA-256 hash of the Apple Sign-In opaque user ID; if a different Apple account later opens the same iCloud storage, the journal UI is blocked rather than merging data. See [docs/privacy.md](docs/privacy.md) for the full boundary (no public/shared CloudKit DB, no analytics/ad SDKs, app-lock password is never stored — only a salted verifier).
+Read [docs/known-issues.md](docs/known-issues.md) before touching CloudKit models or the markdown editor. The two load-bearing ones:
 
-## Known recurring issues
+- **CloudKit schema drift** — adding a model or optional property to `canonicalModels` requires running `initializeCloudKitSchema()` and deploying in CloudKit Console before release; Production silently rejects unknown fields.
+- **Editor input echo (release gate)** — `LiveMarkdownTextEditor`'s `updateUIView`/`updateNSView` must not treat its own published binding writes as external changes (`publishedHistory` + `MarkdownInputReconciliation.shouldApplyExternalText`). Run the [real-device typing gate](docs/known-issues.md#에디터-입력-릴리스-게이트) before every TestFlight build.
 
-[docs/known-issues.md](docs/known-issues.md) tracks problems that have resurfaced more than once — read it before touching CloudKit schema or the markdown text editor. Two are load-bearing for any related change:
+## Docs
 
-- **CloudKit schema drift**: CloudKit's automatic schema generation only sees fields that have actually been exported with a non-nil value in Development — it does not read the SwiftData model. Adding a model or an optional property to `canonicalModels` requires manually running `initializeCloudKitSchema()` (see `Sources/JournalData/CloudKitSchemaInitializer.swift` and the command in `docs/development.md`) and deploying via CloudKit Console before release, or Production will silently reject records using the new field with no UI error.
-- **Editor input dropping (release gate)**: `LiveMarkdownTextEditor`'s `updateUIView`/`updateNSView` (`Sources/PilgrimJournal/MarkdownSupport.swift`) must not treat its own recently-published SwiftUI binding writes as external changes — doing so overwrites in-flight keystrokes. The fix uses `publishedHistory` + `MarkdownInputReconciliation.shouldApplyExternalText` to distinguish an echo from a real external change. This has regressed silently before; the release checklist in `docs/known-issues.md` (fast 30s+ mixed Korean/English typing, Release config, real iPhone soft keyboard) must be run before every TestFlight build — automated tests (the pure-function reconciliation logic, plus `LiveMarkdownTextEditorIOSTests` driving the hosted iPhone editor with `insertText`) don't cover real keyboard input timing.
-
-## Tracking docs — keep these current
-
-Two living checklists track work outside of git history; update them as part of any session that touches their subject matter, don't let them go stale:
-
-- [docs/pre-release-checklist.md](docs/pre-release-checklist.md) — release-gate status: real-device verification sessions from `docs/device-verification.md`, what's been deferred, what's still untested.
-- [docs/implementation-todo.md](docs/implementation-todo.md) — deferred feature work and known UX gaps that aren't release blockers, moved to "완료" when shipped.
-
-Longer-term product direction (subscriber-only private faith groups, shareable prayer/book-report/testimony cards with expiry and scrap) is in [docs/roadmap.md](docs/roadmap.md). It plans a self-hosted group backend, which the current privacy boundary in `docs/privacy.md` (no own server) rules out today, so read it before any work that touches sharing.
+- Living tracking docs — update them in any session that touches their subject: [docs/pre-release-checklist.md](docs/pre-release-checklist.md) (open release-gate items only) and [docs/implementation-todo.md](docs/implementation-todo.md) (deferred work; recent "완료").
+- [docs/roadmap.md](docs/roadmap.md) — product direction (private faith groups, share cards); read before sharing work. Feature specs go in `openspec/changes/`.
+- `docs/archive/` and `openspec/changes/archive/` are history; don't read them by default.
 
 ## Privacy constraints on this repo
 
-Personal Day One `.zip` exports and real export content must never be committed, included in test fixtures, or logged — tests use anonymized fixtures that only reproduce structure. `scripts/check.sh` enforces this with a scan after the tests; do not bypass it when adding import-related tests or fixtures.
+Personal Day One exports and real export content must never be committed, used as fixtures, or logged; tests use anonymized structural fixtures. Do not bypass the `scripts/check.sh` scan.
