@@ -1,9 +1,16 @@
 # 개인정보 처리 경계
 
 - 기록은 기기 로컬 저장소와 사용자의 CloudKit 개인 데이터베이스에만 저장한다.
-- 노트북 이름 목록(삭제한 이름 포함)은 기기 간 공유를 위해 iCloud 키-값 저장소에도
-  둔다. 기록 본문은 여기에 넣지 않는다.
-- public/shared CloudKit database, 광고, 분석 SDK와 자체 기록 서버를 사용하지 않는다.
+  사용자가 직접 공유한 노트북·기록만 예외다(아래).
+- 노트북 이름 목록(삭제한 이름 포함), 유형 카탈로그, 기도 템플릿은 기기 간 공유를
+  위해 iCloud 키-값 저장소에도 둔다. 기록 본문은 여기에 넣지 않는다.
+- public CloudKit database, 광고, 분석 SDK와 자체 기록 서버를 사용하지 않는다.
+- 공유는 사용자가 노트북이나 기록 하나를 골라 **공유…**로 초대한 iCloud 사용자에게만
+  한다(CKShare, `share.publicPermission = .none`). 공유한 것은 소유자 개인
+  데이터베이스의 `pilgrim-share-<uuid>` zone으로 옮겨지고, 초대받은 사람은 자기 shared
+  database로 받는다. 제목·본문·태그·유형별 내용·이력은 `encryptedValues`로 종단 간
+  암호화하고, Day One 원본 필드는 공유 record에 넣지 않는다. 사진이 든 기록은 아직
+  공유할 수 없다. 공유를 끝내면 zone을 지워 모두의 서버 사본이 사라진다.
 - CloudKit 동기화 데이터는 사용자의 iCloud 용량을 사용한다.
 - 개발자 관리 콘솔(`web/admin`)은 스키마·패키지 구조·저장소 문서만 보여 주며 사용자 기록,
   Apple 로그인 식별자, 이메일, iCloud 정보를 받거나 저장하지 않는다. 콘솔이 저장하는 것은
@@ -54,7 +61,9 @@ App Store 심사 지침 5.1.1(v)에 따라 앱 안에서 계정을 삭제할 수
    `LocalAuxiliary.store`, `journal-local.json`)와 `legacy-claim.json`,
    `tmp/AttachmentPreview/`. 같은 기기의 다른 Apple 사용자 데이터는 남긴다.
 4. 이 사용자의 저장 범위별 UserDefaults suite를 지우고, iCloud 범위였다면 iCloud
-   키-값 저장소의 노트북·유형 목록 키를 지운다.
+   키-값 저장소의 키 네 개를 지운다: 노트북 목록(`journal-notebooks`), 삭제한 노트북
+   목록(`journal-deleted-notebooks`), 유형 카탈로그(`journal-kind-catalog`), 기도
+   템플릿(`journal-prayer-templates`).
 5. 마지막으로 Keychain의 Apple 로그인 session(귀속 사용자와 이메일 포함)과 앱 잠금
    항목을 지우고, 첫 실행 안내를 다시 보이도록 되돌린 뒤 로그인 화면으로 돌아간다.
 
@@ -69,4 +78,6 @@ Apple 측 연결을 끊는 방법을 안내한다.
 다시 올라갈 수 있다. 삭제 확인 화면에서 다른 기기의 앱을 먼저 지우라고 안내하며,
 다른 기기가 스스로 지우게 하는 삭제 표시 record는 후속 과제다
 (`docs/implementation-todo.md`). iCloud에 연결되지 않은 상태에서 삭제하면 이 기기
-데이터만 지워지며 화면에서 그 사실을 알린다.
+데이터만 지워지며 화면에서 그 사실을 알린다. 2단계는 `com.apple.coredata.cloudkit*`
+zone만 지우므로, 사용자가 공유한 `pilgrim-share-*` zone과 받은 공유는 계정 삭제 후에도
+iCloud에 남는다(이 기기의 공유 캐시는 3단계에서 지워진다).
