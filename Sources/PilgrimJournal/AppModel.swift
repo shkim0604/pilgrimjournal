@@ -126,6 +126,21 @@ final class AppModel: ObservableObject {
     let searchIndex: JournalSearchIndex
     let paths: JournalPaths
     let deviceID: String
+    #if PILGRIM_SWIFTDATA
+    /// Shared notebooks, set for iCloud scopes only. Owned here so its sync engines stop
+    /// when the journal store closes.
+    var familySharing: FamilySharingController?
+    #endif
+    /// The shared notebook shown in the list instead of a kind or notebook.
+    @Published var selectedSharedSpaceID: UUID?
+    /// The shared notebook a new entry goes into, captured when the editor opened.
+    var newEntrySharedSpaceID: UUID?
+    /// For each open shared entry, the revision its editor started from, so a save
+    /// merges with changes that arrived meanwhile instead of overwriting them.
+    var sharedEditBases: [UUID: UUID] = [:]
+    /// True while this device writes to a shared notebook, so the store's change
+    /// callback is not mistaken for another member's edit.
+    var isApplyingLocalSharedEdit = false
     private let cloudAccountMonitor: CloudAccountMonitor?
     private let kindCatalogStore: KindCatalogStore
     /// Set by the first `refresh()`, which runs the one full reconcile pass
@@ -316,6 +331,10 @@ final class AppModel: ObservableObject {
             hasReconciledKinds = true
             reconcileKinds()
         }
+        if let selectedSharedSpaceID {
+            refreshSharedSpaceEntries(selectedSharedSpaceID)
+            return
+        }
         do {
             let needsSearchIndex =
                 !searchText
@@ -364,7 +383,7 @@ final class AppModel: ObservableObject {
     ///
     /// The list highlight only covers visible rows, so a stale id would arm the
     /// trash button for a note the user cannot see.
-    private func pruneSelectionToVisibleEntries() {
+    func pruneSelectionToVisibleEntries() {
         let visible = Set(entries.map(\.id))
         selectedEntryIDs.formIntersection(visible)
         if let selectedEntryID, !visible.contains(selectedEntryID) {
@@ -398,12 +417,14 @@ final class AppModel: ObservableObject {
         searchEndDate = nil
         selectedKind = nil
         selectedNotebookName = nil
+        selectedSharedSpaceID = nil
         refresh()
     }
 
     func selectKind(_ kind: JournalKind?) {
         selectedKind = kind
         selectedNotebookName = nil
+        selectedSharedSpaceID = nil
         newEntryNotebookName = nil
         editingEntry = nil
         isPresentingEditor = false
@@ -415,6 +436,7 @@ final class AppModel: ObservableObject {
     func selectNotebook(_ name: String) {
         selectedKind = nil
         selectedNotebookName = name
+        selectedSharedSpaceID = nil
         newEntryNotebookName = nil
         editingEntry = nil
         isPresentingEditor = false
@@ -476,23 +498,7 @@ final class AppModel: ObservableObject {
                 cursor = page.nextCursor
             } while cursor != nil
 
-            notebooks.removeAll {
-                $0.caseInsensitiveCompare(notebook) == .orderedSame
-            }
-            if !Self.containsNotebook(notebook, in: deletedNotebookNames) {
-                deletedNotebookNames.append(notebook)
-            }
-            if selectedNotebookName?.caseInsensitiveCompare(notebook)
-                == .orderedSame
-            {
-                selectedNotebookName = nil
-            }
-            if newEntryNotebookName?.caseInsensitiveCompare(notebook)
-                == .orderedSame
-            {
-                newEntryNotebookName = nil
-            }
-            persistNotebookCatalog()
+            forgetNotebook(notebook)
             markLocalMutation()
             refresh()
             selectedEntryID = entries.first?.id
@@ -503,11 +509,36 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// Drops a notebook name from the catalog (and keeps it from coming back from
+    /// iCloud) without touching entries; the caller has already moved them.
+    func forgetNotebook(_ notebook: String) {
+        notebooks.removeAll {
+            $0.caseInsensitiveCompare(notebook) == .orderedSame
+        }
+        if !Self.containsNotebook(notebook, in: deletedNotebookNames) {
+            deletedNotebookNames.append(notebook)
+        }
+        if selectedNotebookName?.caseInsensitiveCompare(notebook)
+            == .orderedSame
+        {
+            selectedNotebookName = nil
+        }
+        if newEntryNotebookName?.caseInsensitiveCompare(notebook)
+            == .orderedSame
+        {
+            newEntryNotebookName = nil
+        }
+        persistNotebookCatalog()
+    }
+
     func beginNewEntry() {
         editingEntry = nil
         selectedEntryID = nil
         selectedEntryIDs.removeAll()
         newEntryNotebookName = selectedNotebookName
+        // Captured now rather than read at save time: the new-note editor still saves
+        // on its way out after the sidebar selection has already moved on.
+        newEntrySharedSpaceID = selectedSharedSpaceID
         editorSessionID = UUID()
         isPresentingEditor = true
         // The macOS detail column checks settings first, so leaving this set
@@ -675,6 +706,12 @@ final class AppModel: ObservableObject {
         let wasSavingEntry = isSavingEntry
         isSavingEntry = true
         defer { isSavingEntry = wasSavingEntry }
+        if let spaceID = sharedSpaceID(for: draft.id)
+            ?? (draft.id == nil ? newEntrySharedSpaceID : nil)
+        {
+            return saveShared(
+                draft, in: spaceID, closeEditor: closeEditor, selectSavedEntry: selectSavedEntry)
+        }
         do {
             var outgoing = draft
             if let notebook = outgoing.notebookName,
@@ -720,7 +757,7 @@ final class AppModel: ObservableObject {
             // autosave — otherwise a purge followed by closing an editor
             // that still had the old draft open would silently recreate
             // the entry.
-            guard let current = try? repository.entry(id: id), !current.isDeleted else {
+            guard let current = entryRecord(id: id), !current.isDeleted else {
                 return
             }
         }
@@ -729,10 +766,19 @@ final class AppModel: ObservableObject {
 
     func isEntryDeleted(_ entryID: UUID?) -> Bool {
         guard let entryID else { return false }
-        return (try? repository.entry(id: entryID))?.isDeleted == true
+        return entryRecord(id: entryID)?.isDeleted == true
+    }
+
+    /// The entry with `id`, from a shared notebook or the private journal.
+    func entryRecord(id: UUID) -> JournalEntryRecord? {
+        sharedEntry(id: id) ?? (try? repository.entry(id: id)) ?? nil
     }
 
     func moveToTrash(_ entry: JournalEntryRecord) {
+        if let spaceID = sharedSpaceID(for: entry.id) {
+            moveSharedEntriesToTrash([entry.id], in: spaceID)
+            return
+        }
         do {
             try repository.moveToTrash(entryID: entry.id, deviceID: deviceID, at: .now)
             if selectedEntryID == entry.id {
@@ -753,6 +799,11 @@ final class AppModel: ObservableObject {
     func moveSelectedEntriesToTrash() -> Bool {
         let entryIDs = selectedEntryIDs
         guard !entryIDs.isEmpty else { return false }
+        if let spaceID = selectedSharedSpaceID {
+            moveSharedEntriesToTrash(entryIDs, in: spaceID)
+            endBatchSelection()
+            return true
+        }
 
         var movedEntryIDs = Set<UUID>()
         do {
@@ -960,6 +1011,7 @@ final class AppModel: ObservableObject {
 
     func revisions(for entryID: UUID) -> [EntryRevisionRecord] {
         do {
+            if let shared = try sharedRevisions(for: entryID) { return shared }
             return try repository.revisions(entryID: entryID)
         } catch {
             errorMessage = error.localizedDescription
@@ -968,6 +1020,10 @@ final class AppModel: ObservableObject {
     }
 
     func restoreRevision(entryID: UUID, revisionID: UUID) {
+        if let spaceID = sharedSpaceID(for: entryID) {
+            restoreSharedRevision(entryID: entryID, revisionID: revisionID, in: spaceID)
+            return
+        }
         do {
             let restored = try repository.restore(
                 entryID: entryID,
@@ -985,7 +1041,7 @@ final class AppModel: ObservableObject {
     }
 
     func attachments(for entryID: UUID?) -> [AttachmentRecord] {
-        guard let entryID,
+        guard let entryID, sharedSpaceID(for: entryID) == nil,
             let attachmentRepository = repository as? any AttachmentRepository
         else {
             return []
@@ -1123,6 +1179,10 @@ final class AppModel: ObservableObject {
         mimeType: String,
         to entryID: UUID
     ) async -> UUID? {
+        guard sharedSpaceID(for: entryID) == nil else {
+            errorMessage = String(localized: "공유 노트북에는 아직 사진을 넣을 수 없습니다.")
+            return nil
+        }
         guard let attachmentRepository = repository as? any AttachmentRepository else {
             errorMessage = String(localized: "이 저장소에서는 첨부 파일을 사용할 수 없습니다.")
             return nil
@@ -1617,7 +1677,7 @@ final class AppModel: ObservableObject {
         )
     }
 
-    private func markLocalMutation() {
+    func markLocalMutation() {
         switch syncState {
         case .localOnly, .unavailable:
             break
@@ -1807,7 +1867,7 @@ extension AppModel {
     }
 
     func kindDefinition(for kind: JournalKind) -> KindDefinition {
-        kindCatalog.definition(for: kind)
+        sharedKindDefinition(for: kind) ?? kindCatalog.definition(for: kind)
     }
 
     func openKindManagement() {
@@ -1963,9 +2023,15 @@ extension AppModel {
     /// it reloads. Both editors (the macOS inline one and the iOS sheet)
     /// handle the notification synchronously. Skipped inside an entry save,
     /// whose editor is already saving (see `isSavingEntry`).
-    private func flushOpenEditor() {
+    func flushOpenEditor() {
         guard !isSavingEntry else { return }
         NotificationCenter.default.post(name: .saveJournalEntry, object: nil)
+    }
+
+    /// Tells any editor showing one of `entryIDs` to reload it from the store.
+    func requestEditorReload(_ entryIDs: Set<UUID>) {
+        guard !entryIDs.isEmpty else { return }
+        editorReloadRequest = EditorReloadRequest(entryIDs: entryIDs)
     }
 
     /// Tells an editor showing a moved entry to reload it, records the local

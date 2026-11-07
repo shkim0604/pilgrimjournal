@@ -7,7 +7,8 @@ import SwiftData
 public final class SwiftDataJournalRepository:
     JournalRepository,
     AttachmentRepository,
-    BackupRestoreRepository
+    BackupRestoreRepository,
+    SharedEntryCache
 {
     public let container: ModelContainer
     private let context: ModelContext
@@ -511,6 +512,44 @@ public final class SwiftDataJournalRepository:
             context.rollback()
             throw error
         }
+    }
+
+    public func upsertSynced(_ entry: JournalEntryRecord) throws {
+        let entity = try findEntry(id: entry.id) ?? JournalEntryEntity()
+        entity.stableID = entry.id
+        entity.kindRaw = entry.kind.rawValue
+        entity.title = entry.title
+        entity.body = entry.body
+        entity.occurredAt = entry.occurredAt
+        entity.originalTimeZone = entry.originalTimeZone
+        entity.tagsData = try encoder.encode(entry.tags)
+        entity.isStarred = entry.isStarred
+        entity.isPinned = entry.isPinned
+        entity.detailsData = try encoder.encode(entry.details)
+        entity.sourceUUID = entry.sourceUUID
+        entity.sourceMetadata = entry.sourceMetadata
+        entity.currentRevisionID = entry.currentRevisionID
+        entity.updatedAt = entry.updatedAt
+        entity.modifiedByDeviceID = entry.modifiedByDeviceID
+        entity.deletedAt = entry.deletedAt
+        if entity.modelContext == nil { context.insert(entity) }
+        try saveIfNeeded()
+    }
+
+    public func removeSynced(entryID: UUID) throws {
+        let identifier = entryID
+        let revisions = try context.fetch(
+            FetchDescriptor<EntryRevisionEntity>(
+                predicate: #Predicate { revision in revision.entryID == identifier }
+            ))
+        let attachments = try context.fetch(
+            FetchDescriptor<AttachmentEntity>(
+                predicate: #Predicate { attachment in attachment.entryID == identifier }
+            ))
+        for revision in revisions { context.delete(revision) }
+        for attachment in attachments { context.delete(attachment) }
+        if let entity = try findEntry(id: entryID) { context.delete(entity) }
+        try saveIfNeeded()
     }
 
     private func saveIfNeeded() throws {
