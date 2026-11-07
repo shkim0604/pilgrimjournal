@@ -1,0 +1,155 @@
+{
+  "commits": [
+    {
+      "date": "2026-11-06T11:10:12-05:00",
+      "hash": "8afa76b",
+      "subject": "fix(admin): close lockout races, group IPv6 by /64, cap login body, local-first bootstrap"
+    },
+    {
+      "date": "2026-11-06T10:58:50-05:00",
+      "hash": "d245380",
+      "subject": "fix(admin): style the header logout as a link, not a primary button"
+    },
+    {
+      "date": "2026-11-06T10:55:00-05:00",
+      "hash": "e8f3c54",
+      "subject": "docs(claude): describe AdminSnapshot and web/admin in the architecture list"
+    },
+    {
+      "date": "2026-11-06T10:54:38-05:00",
+      "hash": "776068e",
+      "subject": "chore(admin): CI job and docs for the admin console"
+    },
+    {
+      "date": "2026-11-06T10:53:33-05:00",
+      "hash": "550150b",
+      "subject": "feat(admin): Docker image and compose with optional Cloudflare Tunnel"
+    },
+    {
+      "date": "2026-11-06T10:51:04-05:00",
+      "hash": "74161be",
+      "subject": "feat(admin): dashboard, database, architecture and flow pages"
+    },
+    {
+      "date": "2026-11-06T10:49:18-05:00",
+      "hash": "4663dbe",
+      "subject": "feat(admin): snapshot loader and tracking-doc parsers"
+    },
+    {
+      "date": "2026-11-06T10:48:51-05:00",
+      "hash": "aa2bc95",
+      "subject": "feat(admin): AdminSnapshot schema/architecture export with check.sh freshness gate"
+    },
+    {
+      "date": "2026-11-06T10:42:55-05:00",
+      "hash": "e1efe84",
+      "subject": "feat(admin): Hono server with login, forced password change and security headers"
+    },
+    {
+      "date": "2026-11-06T10:39:08-05:00",
+      "hash": "a106686",
+      "subject": "feat(admin): persistent login failure lockout"
+    },
+    {
+      "date": "2026-11-06T10:38:21-05:00",
+      "hash": "b9f4477",
+      "subject": "feat(admin): hashed server-side sessions with idle and absolute expiry"
+    },
+    {
+      "date": "2026-11-06T10:37:39-05:00",
+      "hash": "372b667",
+      "subject": "feat(admin): admin account store and env-based bootstrap seed"
+    },
+    {
+      "date": "2026-11-06T10:36:58-05:00",
+      "hash": "a8d4136",
+      "subject": "feat(admin): scrypt password hashing"
+    },
+    {
+      "date": "2026-11-06T10:36:14-05:00",
+      "hash": "7069173",
+      "subject": "feat(admin): scaffold console package with config and SQLite schema"
+    },
+    {
+      "date": "2026-11-06T10:30:33-05:00",
+      "hash": "6a36543",
+      "subject": "docs(plan): admin console implementation plan"
+    },
+    {
+      "date": "2026-11-06T10:13:27-05:00",
+      "hash": "2623306",
+      "subject": "docs(spec): developer admin console design"
+    },
+    {
+      "date": "2026-11-06T05:56:37+09:00",
+      "hash": "d3d85d0",
+      "subject": "Mac focus mode: title and body only, bullet alignment, opening-text echo guard (#29)"
+    },
+    {
+      "date": "2026-11-06T05:54:53+09:00",
+      "hash": "4e8765e",
+      "subject": "feat(brand): replace the book-and-flame icon with an oil lamp (#25)"
+    },
+    {
+      "date": "2026-11-06T05:53:36+09:00",
+      "hash": "5da315c",
+      "subject": "chore(build): give Debug builds the com.dhouse.PilgrimJournal.debug bundle ID (#30)"
+    },
+    {
+      "date": "2026-11-06T05:53:32+09:00",
+      "hash": "d193b4b",
+      "subject": "feat(kinds): make kind editing free again (#28)"
+    },
+    {
+      "date": "2026-11-04T00:17:57+09:00",
+      "hash": "97b9a23",
+      "subject": "feat(sync): add a manual 지금 동기화 button to settings (#24)"
+    },
+    {
+      "date": "2026-10-25T21:19:30+09:00",
+      "hash": "8fea642",
+      "subject": "feat(settings): choose the app language (System, 한국어, English) (#23)"
+    },
+    {
+      "date": "2026-10-21T23:11:54+09:00",
+      "hash": "dbb310b",
+      "subject": "feat(premium): lock kind editing until a premium code is entered (#13)"
+    },
+    {
+      "date": "2026-10-21T23:03:57+09:00",
+      "hash": "152795e",
+      "subject": "fix(editor): close three reload edge cases left by user-managed kinds (#18)"
+    },
+    {
+      "date": "2026-10-17T02:59:46+09:00",
+      "hash": "55fcca4",
+      "subject": "feat(account): in-app account deletion and support page (1.1.0 build 29) (#20)"
+    },
+    {
+      "date": "2026-10-16T00:19:03+09:00",
+      "hash": "2fdfe35",
+      "subject": "fix(l10n): polish the English localization (#19)"
+    },
+    {
+      "date": "2026-10-15T22:55:07+09:00",
+      "hash": "208e8a5",
+      "subject": "docs: roadmap, ShareCardEval, and new-icon records (#17)"
+    },
+    {
+      "date": "2026-10-15T20:24:23+09:00",
+      "hash": "202138c",
+      "subject": "feat(brand): use the new flame-and-book app icon (1.1.0 build 28) (#16)"
+    },
+    {
+      "date": "2026-10-15T19:45:02+09:00",
+      "hash": "282bb76",
+      "subject": "feat(brand): show the app as \"Pilgrim\" and light a flame on the icon (#15)"
+    },
+    {
+      "date": "2026-10-15T18:41:33+09:00",
+      "hash": "102b614",
+      "subject": "build: bump to 1.1.0 (26) (#14)"
+    }
+  ],
+  "generatedAt": "2026-11-07T03:09:46+00:00"
+}

@@ -5,6 +5,9 @@
   둔다. 기록 본문은 여기에 넣지 않는다.
 - public/shared CloudKit database, 광고, 분석 SDK와 자체 기록 서버를 사용하지 않는다.
 - CloudKit 동기화 데이터는 사용자의 iCloud 용량을 사용한다.
+- 개발자 관리 콘솔(`web/admin`)은 스키마·패키지 구조·저장소 문서만 보여 주며 사용자 기록,
+  Apple 로그인 식별자, 이메일, iCloud 정보를 받거나 저장하지 않는다. 콘솔이 저장하는 것은
+  관리자 계정 해시와 세션뿐이다.
 - 개인 Day One ZIP과 원문은 source control, test snapshot, test log에 넣지 않는다.
 - 실제 샘플 검증 출력은 export version, 항목 수와 구조 경고 수로 제한한다.
 - 검색 인덱스와 전체 Day One source snapshot은 기기 로컬 데이터다.

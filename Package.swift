@@ -21,6 +21,7 @@ let package = Package(
         .executable(name: "PilgrimJournal", targets: ["PilgrimJournal"]),
         .executable(name: "JournalChecks", targets: ["JournalChecks"]),
         .executable(name: "ShareCardEval", targets: ["ShareCardEval"]),
+        .executable(name: "AdminSnapshot", targets: ["AdminSnapshot"]),
     ],
     targets: [
         .target(
@@ -102,6 +103,15 @@ let package = Package(
         // is behind `canImport(FoundationModels)` / macOS 26 checks) but only runs on an Apple
         // Intelligence Mac, so scripts/check.sh and CI never run it.
         .executableTarget(name: "ShareCardEval"),
+        // Exports the SwiftData schema for the developer admin console (web/admin). Run via
+        // scripts/admin-snapshot.sh; scripts/check.sh fails when the committed snapshot is stale.
+        .executableTarget(
+            name: "AdminSnapshot",
+            dependencies: ["JournalData"],
+            swiftSettings: [
+                swiftDataDefine,
+            ]
+        ),
         .testTarget(
             name: "ShareCardEvalTests",
             dependencies: ["ShareCardEval"]

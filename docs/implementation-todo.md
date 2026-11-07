@@ -6,6 +6,11 @@
 
 ## 대기 중
 
+- **관리 콘솔 Mac mini 배포** (2026-11-06, 브랜치 `feat/admin-console`) — 사용자 작업.
+  Mac mini에서 `docker compose -f web/admin/docker-compose.yml up -d --build`, Cloudflare
+  Zero Trust에 public hostname `pilgrim.delight-house.org` 등록, 첫 로그인 후 비밀번호 변경.
+  절차는 `docs/development.md` "관리 콘솔". 로컬 Docker 실행과 브라우저 확인까지는 끝났다.
+
 - **가족 공유 노트북 (진행 중, 2026-11-03 착수)** — 노트북이나 노트 하나를 iCloud
   `CKShare`로 가족과 공유하고, 사이드바 "공유됨" 섹션에서 함께 본다(무료, 사진 포함).
   SwiftData는 CloudKit 공유를 못 하므로, 공유는 private 기록장과 따로 공유 단위마다

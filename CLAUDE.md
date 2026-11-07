@@ -23,6 +23,8 @@ swift test --filter JournalDomainTests
 swift test --filter JournalDomainTests.SomeTestCase/testSomeName
 ```
 
+After changing a SwiftData model or `Package.swift`, run `./scripts/admin-snapshot.sh` and commit `web/admin/snapshot/` — the admin console reads that snapshot and `scripts/check.sh` fails when it is stale. The console itself (`web/admin`, Node) is tested with `cd web/admin && npm test && npm run typecheck`; deployment is in [docs/development.md](docs/development.md) ("관리 콘솔").
+
 `./scripts/check.sh` is the full local gate: `swift format lint --strict` (config in `.swift-format`; fix with `swift format format -i --recursive Sources Tests`), build, `swift test`, `JournalChecks`, then a scan that fails if any `.zip` file or Day One-looking export is present in the repo (personal data must never be committed — see Privacy).
 
 The Xcode project is stricter than `swift build` (it enforces member import visibility), so after changing imports also build it unsigned:
@@ -61,6 +63,8 @@ The app is split into a domain-first Swift Package with adapter targets, so plat
 - **PilgrimJournal** — the SwiftUI app executable, composing all the above. `AppModel` is the central `@MainActor` `ObservableObject` driving the UI; `AppLockCoordinator`/`AppleAuthenticationCoordinator` gate access before the journal UI mounts.
 - **JournalChecks** — a small executable for scriptable runtime verification (used by `scripts/check.sh`), separate from `swift test`.
 - **ShareCardEval** — a re-runnable eval of the roadmap's share-card extraction on Apple's on-device Foundation Models, over synthetic fixtures. Needs macOS 26 + Apple Intelligence, so it is deliberately not in `scripts/check.sh`/CI; usage in [docs/development.md](docs/development.md) ("공유 카드 추출 평가").
+- **AdminSnapshot** — writes the SwiftData schema of both stores to `web/admin/snapshot/schema.json` (via `scripts/admin-snapshot.sh`, which also writes the target graph and recent commits).
+- **`web/admin`** (not a Swift target) — the developer admin console at `pilgrim.delight-house.org/admin`: Node + Hono + `node:sqlite`, Docker on the Mac mini behind Cloudflare Tunnel. Read-only views of the snapshot, tracking docs and app flows; it stores only the admin account hash and sessions, never user data. The first admin is seeded from `ADMIN_BOOTSTRAP_*` env vars and must change the password on first login.
 
 Storage adapters are intentionally provisional: the domain protocol is the stable contract, and `docs/development.md` lists concrete real-device conditions (background convergence between two devices, offline concurrent-edit revision preservation, delete tombstone + restore, external attachment upload, large-import responsiveness) that the SwiftData adapter must pass. If any fails, the plan is to swap in an `NSPersistentCloudKitContainer` adapter without touching JournalDomain.
 
