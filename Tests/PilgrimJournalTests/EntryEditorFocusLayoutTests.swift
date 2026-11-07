@@ -21,6 +21,21 @@ final class EntryEditorFocusLayoutTests: XCTestCase {
         XCTAssertFalse(layout.showsSaveFailure)
     }
 
+    func testFocusModeKeepsThePrayerChecklist() {
+        let prayer = EntryEditorFocusLayout(
+            isFocusMode: true, saveState: .saved, isPrayerNote: true)
+        XCTAssertTrue(prayer.showsTypeSpecificFields)
+        XCTAssertFalse(prayer.showsEntryDetails)
+
+        let diary = EntryEditorFocusLayout(
+            isFocusMode: true, saveState: .saved, isPrayerNote: false)
+        XCTAssertFalse(diary.showsTypeSpecificFields)
+
+        let normal = EntryEditorFocusLayout(
+            isFocusMode: false, saveState: .saved, isPrayerNote: false)
+        XCTAssertTrue(normal.showsTypeSpecificFields)
+    }
+
     func testSavingIsNotSurfacedInFocusMode() {
         let layout = EntryEditorFocusLayout(isFocusMode: true, saveState: .saving)
         XCTAssertFalse(layout.showsSaveFailure)

@@ -103,6 +103,27 @@
 
 ## 완료
 
+- **기도노트 기도제목 체크리스트 + 응답/기도중 모아보기 + 섹션·템플릿** (2026-11-06) —
+  기도제목을 `EntryDetails.prayerTopics`(`detailsData` JSON 블롭 안의 배열)로
+  저장해 CloudKit 스키마 변경 없이 동기화·리비전·백업·유형 이동(평탄화)을
+  그대로 탄다. 노트 단위 `prayerStatus`/`answeredAt` 피커는 UI에서 제거하고
+  (저장된 레거시 값은 보존, `validated(for:)`의 `.ongoing` 기본값 주입도 제거)
+  기도제목 단위 상태로 일원화. 기도노트 유형 선택 시 콘텐츠 열 상단에
+  노트/기도중/응답 세그먼트가 생기고, 기도중·응답 탭은 전체 기도노트를
+  페이징으로 읽어 `PrayerTopicAggregator`로 집계(응답은 응답일 기준 월별,
+  없으면 `updatedAt` 폴백), 목록에서 바로 체크해 토글할 수 있다(열린 편집기와의
+  경합은 유형 이동과 같은 `flushOpenEditor` + `editorReloadRequest` 패턴).
+  확장: ① 노트 안 자유 **섹션**(감사/가족 이름/중보…, 빈 섹션 허용 —
+  `EntryDetails.prayerCategories` + `PrayerTopic.category`), ② **응답 세분화**
+  Yes/No/Wait(`answerOutcome`, 기본 Yes, Wait도 응답 탭) + 응답 메모(`answerNote`),
+  ③ **이름 붙인 템플릿**(`PrayerTemplateCatalog`/`PrayerTemplateStore`,
+  유형 카탈로그와 같은 UserDefaults+iCloud KV 저장·tombstone LWW 병합, 계정
+  삭제가 지우는 KV 키 목록에 포함) — 에디터의 템플릿 메뉴에서 시작·저장·삭제.
+  검색 인덱스 `details` 컬럼에 제목·메모·섹션명·응답 메모 포함. 로드맵의
+  기도제목 공유 카드를 위해 `PrayerTopic`에 기한(`deadline`) 필드를 나중에
+  추가할 수 있게 optional 디코딩 호환을 테스트로 고정해 둠(구현은 안 함).
+  실기기 확인(타이핑 게이트 재실행 포함)은 `docs/pre-release-checklist.md`.
+
 - **유형 편집 무료화** (2026-11-05) — #13의 유료 코드 잠금(`PremiumCodeFeatureAccess`,
   잠금 안내 시트, 설정 › 유료 기능, Debug 잠금 시뮬레이션)과 `FeatureAccess`를 뺐다.
   유형 편집은 모든 사용자에게 열린다. 지금은 모든 기능이 무료이고, 나중에 유료로

@@ -2,6 +2,46 @@
   "sourceLanguage" : "ko",
   "strings" : {
     "" : {},
+    "‘%@’ 태그를 모든 기록에서 제거할까요?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove the tag “%@” from all entries?"
+          }
+        }
+      }
+    },
+    "‘%@’을(를) 삭제할까요?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete “%@”?"
+          }
+        }
+      }
+    },
+    "‘백업에서 복원…’을 선택하고 병합 또는 현재 데이터 교체 방식을 고르세요. 교체 복원은 현재 상태의 안전 백업을 먼저 만든 뒤 진행합니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose “Restore from Backup…”, then choose whether to merge with or replace your current data. Replacing first creates a safety backup of your current data."
+          }
+        }
+      }
+    },
+    "/ 입력으로 제목, 목록, 체크리스트, 인용, 코드와 날짜 삽입" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Type / to insert headings, lists, checklists, quotes, code, and dates"
+          }
+        }
+      }
+    },
     "#%@" : {},
     "%@  %@" : {
       "localizations" : {
@@ -194,16 +234,7 @@
         }
       }
     },
-    "/ 입력으로 제목, 목록, 체크리스트, 인용, 코드와 날짜 삽입" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Type / to insert headings, lists, checklists, quotes, code, and dates"
-          }
-        }
-      }
-    },
+    "•" : {},
     "Apple 계정 · %@…%@" : {
       "localizations" : {
         "en" : {
@@ -440,6 +471,7 @@
         }
       }
     },
+    "Day One export %@" : {},
     "Day One ZIP을 선택하세요" : {
       "localizations" : {
         "en" : {
@@ -450,7 +482,6 @@
         }
       }
     },
-    "Day One export %@" : {},
     "Day One 가져오기" : {
       "localizations" : {
         "en" : {
@@ -541,160 +572,6 @@
         }
       }
     },
-    "Face ID / Touch ID" : {},
-    "Face ID / Touch ID 사용" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Use Face ID / Touch ID"
-          }
-        }
-      }
-    },
-    "Mac 가져오기 완료" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Import Complete"
-          }
-        }
-      }
-    },
-    "Mac 데이터 관리" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Managing Data on Mac"
-          }
-        }
-      }
-    },
-    "Mac 설정의 백업 및 복원에서 ‘전체 백업 내보내기…’를 선택하세요. 생성된 백업 파일에는 기록, 수정 이력, 휴지통 정보, 분류 규칙과 첨부가 포함됩니다." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "In Settings on your Mac, go to Backup & Restore and choose “Export Full Backup…”. The backup file includes entries, revision history, Trash, classification rules, and attachments."
-          }
-        }
-      }
-    },
-    "Mac에만 남는 데이터" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Data Kept Only on Mac"
-          }
-        }
-      }
-    },
-    "Markdown" : {},
-    "Markdown 명령" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Markdown Commands"
-          }
-        }
-      }
-    },
-    "Markdown 본문" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Markdown Body"
-          }
-        }
-      }
-    },
-    "Markdown 서식" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Markdown Formatting"
-          }
-        }
-      }
-    },
-    "Pilgrim Journal" : {},
-    "Pilgrim Journal 앱 잠금 비밀번호를 재설정하세요." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reset your Pilgrim Journal App Lock passcode."
-          }
-        }
-      }
-    },
-    "Pilgrim Journal 잠금" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Unlock Pilgrim Journal"
-          }
-        }
-      }
-    },
-    "Pilgrim Journal 잠김" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pilgrim Journal is locked"
-          }
-        }
-      }
-    },
-    "Pilgrim Journal은 일기 내용을 자체 서버, 광고 서버 또는 분석 서버로 보내지 않습니다. Day One 원본 snapshot과 검색 인덱스는 가져온 Mac에만 둡니다." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pilgrim Journal doesn’t send your journal content to any server of its own, or to ad or analytics servers. Original Day One snapshots and the search index stay only on the Mac used for the import."
-          }
-        }
-      }
-    },
-    "Pilgrim Journal의 기록을 여세요." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Open your Pilgrim Journal entries."
-          }
-        }
-      }
-    },
-    "Pilgrim에는 자체 서버가 없어 Apple 로그인 연결은 기기 설정에서 끊습니다. 삭제가 끝나면 다음 경로에서 ‘사용 중단’을 누르세요." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pilgrim has no server of its own, so Sign in with Apple is disconnected in your device’s Settings. After the deletion, go to the following and tap Stop Using."
-          }
-        }
-      }
-    },
-    "Quiet Morning" : {},
-    "ZIP 안전성과 JSON 구조를 확인하고 있습니다. 아직 일기 데이터는 변경되지 않았습니다." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Checking the ZIP’s safety and JSON structure. Your journal data hasn’t been changed yet."
-          }
-        }
-      }
-    },
     "editor.heading" : {
       "comment" : "Markdown heading command",
       "extractionState" : "extracted_with_value",
@@ -727,6 +604,17 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "분류"
+          }
+        }
+      }
+    },
+    "Face ID / Touch ID" : {},
+    "Face ID / Touch ID 사용" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use Face ID / Touch ID"
           }
         }
       }
@@ -881,6 +769,77 @@
         }
       }
     },
+    "Mac 가져오기 완료" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import Complete"
+          }
+        }
+      }
+    },
+    "Mac 데이터 관리" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Managing Data on Mac"
+          }
+        }
+      }
+    },
+    "Mac 설정의 백업 및 복원에서 ‘전체 백업 내보내기…’를 선택하세요. 생성된 백업 파일에는 기록, 수정 이력, 휴지통 정보, 분류 규칙과 첨부가 포함됩니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In Settings on your Mac, go to Backup & Restore and choose “Export Full Backup…”. The backup file includes entries, revision history, Trash, classification rules, and attachments."
+          }
+        }
+      }
+    },
+    "Mac에만 남는 데이터" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Data Kept Only on Mac"
+          }
+        }
+      }
+    },
+    "Markdown" : {},
+    "Markdown 명령" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Markdown Commands"
+          }
+        }
+      }
+    },
+    "Markdown 본문" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Markdown Body"
+          }
+        }
+      }
+    },
+    "Markdown 서식" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Markdown Formatting"
+          }
+        }
+      }
+    },
     "organize.typeSection" : {
       "comment" : "Header of the section that changes the type of selected entries",
       "extractionState" : "extracted_with_value",
@@ -899,6 +858,68 @@
         }
       }
     },
+    "Pilgrim Journal" : {},
+    "Pilgrim Journal 앱 잠금 비밀번호를 재설정하세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reset your Pilgrim Journal App Lock passcode."
+          }
+        }
+      }
+    },
+    "Pilgrim Journal 잠금" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unlock Pilgrim Journal"
+          }
+        }
+      }
+    },
+    "Pilgrim Journal 잠김" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pilgrim Journal is locked"
+          }
+        }
+      }
+    },
+    "Pilgrim Journal은 일기 내용을 자체 서버, 광고 서버 또는 분석 서버로 보내지 않습니다. Day One 원본 snapshot과 검색 인덱스는 가져온 Mac에만 둡니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pilgrim Journal doesn’t send your journal content to any server of its own, or to ad or analytics servers. Original Day One snapshots and the search index stay only on the Mac used for the import."
+          }
+        }
+      }
+    },
+    "Pilgrim Journal의 기록을 여세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open your Pilgrim Journal entries."
+          }
+        }
+      }
+    },
+    "Pilgrim에는 자체 서버가 없어 Apple 로그인 연결은 기기 설정에서 끊습니다. 삭제가 끝나면 다음 경로에서 ‘사용 중단’을 누르세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pilgrim has no server of its own, so Sign in with Apple is disconnected in your device’s Settings. After the deletion, go to the following and tap Stop Using."
+          }
+        }
+      }
+    },
+    "Quiet Morning" : {},
     "sidebar.notebooks" : {
       "comment" : "Sidebar section header listing notebooks",
       "extractionState" : "extracted_with_value",
@@ -917,37 +938,16 @@
         }
       }
     },
-    "‘%@’ 태그를 모든 기록에서 제거할까요?" : {
+    "ZIP 안전성과 JSON 구조를 확인하고 있습니다. 아직 일기 데이터는 변경되지 않았습니다." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Remove the tag “%@” from all entries?"
+            "value" : "Checking the ZIP’s safety and JSON structure. Your journal data hasn’t been changed yet."
           }
         }
       }
     },
-    "‘%@’을(를) 삭제할까요?" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Delete “%@”?"
-          }
-        }
-      }
-    },
-    "‘백업에서 복원…’을 선택하고 병합 또는 현재 데이터 교체 방식을 고르세요. 교체 복원은 현재 상태의 안전 백업을 먼저 만든 뒤 진행합니다." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choose “Restore from Backup…”, then choose whether to merge with or replace your current data. Replacing first creates a safety backup of your current data."
-          }
-        }
-      }
-    },
-    "•" : {},
     "가져오기" : {
       "localizations" : {
         "en" : {
@@ -979,6 +979,7 @@
       }
     },
     "개발" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1479,6 +1480,7 @@
       }
     },
     "기도 상태" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1489,6 +1491,7 @@
       }
     },
     "기도 상태·응답일" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1499,11 +1502,22 @@
       }
     },
     "기도 중" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Praying"
+          }
+        }
+      }
+    },
+    "기도 중인 기도제목이 없습니다" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No prayer topics in progress"
           }
         }
       }
@@ -1534,6 +1548,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Prayer Notes can track prayer status and the date it was answered, Bible Study a passage, Reading Notes a book and author, and Diary your mood. Use Memo for quick notes."
+          }
+        }
+      }
+    },
+    "기도제목" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prayer topics"
+          }
+        }
+      }
+    },
+    "기도제목 삭제" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete prayer topic"
+          }
+        }
+      }
+    },
+    "기도제목 추가" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add prayer topic"
+          }
+        }
+      }
+    },
+    "기도제목·기도 상태" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prayer topics & status"
+          }
+        }
+      }
+    },
+    "기도제목을 체크하면 응답일과 함께 여기에 모입니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check off a prayer topic and it will appear here with its answer date."
+          }
+        }
+      }
+    },
+    "기도중" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Praying"
+          }
+        }
+      }
+    },
+    "기도중으로 되돌리기: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mark as praying again: %@"
           }
         }
       }
@@ -1976,6 +2060,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Entries"
+          }
+        }
+      }
+    },
+    "노트 탭에서 노트를 열어 기도제목을 추가해 보세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open a note in the Notes tab to add a prayer topic."
           }
         }
       }
@@ -2776,6 +2870,16 @@
         }
       }
     },
+    "보기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View"
+          }
+        }
+      }
+    },
     "보라색" : {
       "localizations" : {
         "en" : {
@@ -3286,6 +3390,16 @@
         }
       }
     },
+    "새 섹션" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New section"
+          }
+        }
+      }
+    },
     "새 태그 이름" : {
       "localizations" : {
         "en" : {
@@ -3540,6 +3654,36 @@
         }
       }
     },
+    "섹션 삭제" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete section"
+          }
+        }
+      }
+    },
+    "섹션 이름" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Section name"
+          }
+        }
+      }
+    },
+    "섹션 추가" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add section"
+          }
+        }
+      }
+    },
     "수정 이력" : {
       "localizations" : {
         "en" : {
@@ -3646,6 +3790,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "No Entries Yet"
+          }
+        }
+      }
+    },
+    "아직 응답된 기도제목이 없습니다" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No answered prayer topics yet"
           }
         }
       }
@@ -4060,7 +4214,7 @@
         }
       }
     },
-    "응답됨" : {
+    "응답" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4070,12 +4224,100 @@
         }
       }
     },
+    "응답 %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Answered %@"
+          }
+        }
+      }
+    },
+    "응답 %lld · 기도중 %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Answered %lld · Praying %lld"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "응답 %1$lld · 기도중 %2$lld"
+          }
+        }
+      }
+    },
+    "응답 결과" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Answer outcome"
+          }
+        }
+      }
+    },
+    "응답 메모" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Answer memo"
+          }
+        }
+      }
+    },
+    "응답 메모: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Answer memo: %@"
+          }
+        }
+      }
+    },
+    "응답됨" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Answered"
+          }
+        }
+      }
+    },
+    "응답으로 표시: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mark as answered: %@"
+          }
+        }
+      }
+    },
     "응답일" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Date Answered"
+          }
+        }
+      }
+    },
+    "이 iCloud를 처음 연결한 Apple 계정으로 로그인하세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sign in with the Apple Account that first connected this iCloud storage."
           }
         }
       }
@@ -4116,16 +4358,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Saved on this Mac, but iCloud isn’t available: %@"
-          }
-        }
-      }
-    },
-    "이 iCloud를 처음 연결한 Apple 계정으로 로그인하세요." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sign in with the Apple Account that first connected this iCloud storage."
           }
         }
       }
@@ -4403,6 +4635,7 @@
       }
     },
     "이제 유형을 추가하고 이름·색·아이콘과 순서를 바꿀 수 있습니다." : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4472,22 +4705,22 @@
         }
       }
     },
-    "일부 기록 동기화에 실패했습니다." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Some entries failed to sync."
-          }
-        }
-      }
-    },
     "일부 기록 동기화에 실패했습니다: %@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Some entries failed to sync: %@"
+          }
+        }
+      }
+    },
+    "일부 기록 동기화에 실패했습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Some entries failed to sync."
           }
         }
       }
@@ -5370,6 +5603,16 @@
         }
       }
     },
+    "템플릿" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Templates"
+          }
+        }
+      }
+    },
     "템플릿 UUID" : {
       "localizations" : {
         "en" : {
@@ -5380,12 +5623,52 @@
         }
       }
     },
+    "템플릿 삭제" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete template"
+          }
+        }
+      }
+    },
+    "템플릿 이름" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Template name"
+          }
+        }
+      }
+    },
     "템플릿 제목" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Template Title"
+          }
+        }
+      }
+    },
+    "템플릿에서 시작" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start from template"
+          }
+        }
+      }
+    },
+    "템플릿으로 저장" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save as template"
           }
         }
       }
@@ -5530,6 +5813,16 @@
         }
       }
     },
+    "현재 구성을 템플릿으로 저장" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save current layout as template"
+          }
+        }
+      }
+    },
     "현재 데이터 교체" : {
       "localizations" : {
         "en" : {
@@ -5576,6 +5869,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A safety backup of your current data is created first, then entries not in the backup are moved to Trash."
+          }
+        }
+      }
+    },
+    "현재 섹션 구성을 이름 붙여 저장합니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saves the current section layout under a name."
           }
         }
       }
@@ -5812,6 +6115,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Trash Is Empty"
+          }
+        }
+      }
+    },
+    "메모 추가" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add memo"
           }
         }
       }

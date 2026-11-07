@@ -94,7 +94,9 @@ struct InlineEntryEditorView: View {
                             .focused($focusedField, equals: .title)
                             .accessibilityLabel("제목")
 
-                        if !isFocusMode {
+                        // A prayer note keeps its 기도제목 checklist in focus
+                        // mode — the checklist is part of the writing itself.
+                        if !isFocusMode || draft.kind.builtIn == .prayer {
                             typeSpecificFields
                         }
 
@@ -310,29 +312,8 @@ struct InlineEntryEditorView: View {
     private var typeSpecificFields: some View {
         switch draft.kind.builtIn {
         case .prayer?:
-            HStack {
-                Picker(
-                    "기도 상태",
-                    selection: Binding(
-                        get: { draft.details.prayerStatus ?? .ongoing },
-                        set: { draft.details.prayerStatus = $0 }
-                    )
-                ) {
-                    Text("기도 중").tag(PrayerStatus.ongoing)
-                    Text("응답됨").tag(PrayerStatus.answered)
-                }
-                .pickerStyle(.menu)
-                if draft.details.prayerStatus == .answered {
-                    DatePicker(
-                        "응답일",
-                        selection: Binding(
-                            get: { draft.details.answeredAt ?? .now },
-                            set: { draft.details.answeredAt = $0 }
-                        ),
-                        displayedComponents: .date
-                    )
-                }
-            }
+            PrayerTopicChecklistEditor(
+                topics: prayerTopicsBinding, categories: prayerCategoriesBinding)
         case .bibleStudy?:
             TextField("성경 구절", text: optionalBinding(\.scriptureReference))
                 .journalMetadataField()
@@ -377,14 +358,30 @@ struct InlineEntryEditorView: View {
         )
     }
 
+    private var prayerTopicsBinding: Binding<[PrayerTopic]> {
+        Binding(
+            get: { draft.details.prayerTopics ?? [] },
+            set: { draft.details.prayerTopics = $0.isEmpty ? nil : $0 }
+        )
+    }
+
+    private var prayerCategoriesBinding: Binding<[String]> {
+        Binding(
+            get: { draft.details.prayerCategories ?? [] },
+            set: { draft.details.prayerCategories = $0.isEmpty ? nil : $0 }
+        )
+    }
+
     private var discardedDetailLabels: [String] {
         var labels: [String] = []
         guard let pendingKind else { return labels }
         let details = draft.details
         if pendingKind != .prayer,
             details.prayerStatus != nil || details.answeredAt != nil
+                || !(details.prayerTopics ?? []).isEmpty
+                || !(details.prayerCategories ?? []).isEmpty
         {
-            labels.append(String(localized: "기도 상태·응답일"))
+            labels.append(String(localized: "기도제목·기도 상태"))
         }
         if pendingKind != .bibleStudy,
             !(details.scriptureReference ?? "").isEmpty
@@ -548,6 +545,7 @@ struct InlineEntryEditorView: View {
         let hasContent =
             draft.title.contains { !$0.isWhitespace }
             || draft.body.contains { !$0.isWhitespace }
+            || draft.details.hasPrayerChecklistContent
         guard hasContent || persistedEntryID != nil || draft.id != nil else {
             autosaveTask?.cancel()
             saveState = .saved
@@ -592,6 +590,7 @@ struct InlineEntryEditorView: View {
         let hasContent =
             draft.title.contains { !$0.isWhitespace }
             || draft.body.contains { !$0.isWhitespace }
+            || draft.details.hasPrayerChecklistContent
         guard force || hasContent || persistedEntryID != nil || draft.id != nil else {
             autosaveTask?.cancel()
             saveState = .saved
@@ -745,11 +744,10 @@ struct EntryDetailView: View {
     private var typeDetails: some View {
         switch entry.kind.builtIn {
         case .prayer?:
-            if let status = entry.details.prayerStatus {
-                Label(
-                    status == .answered ? "응답됨" : "기도 중",
-                    systemImage: status == .answered ? "checkmark.circle" : "heart"
-                )
+            if let topics = entry.details.prayerTopics, !topics.isEmpty {
+                PrayerTopicReadOnlyList(
+                    topics: topics,
+                    categories: entry.details.prayerCategories ?? [])
             }
         case .bibleStudy?:
             if let reference = entry.details.scriptureReference, !reference.isEmpty {
@@ -783,8 +781,11 @@ struct EntryDetailView: View {
 struct EntryEditorFocusLayout: Equatable {
     /// 완료 and the save status pill.
     var showsNavigationBar: Bool
-    /// Metadata chips, type-specific fields, tags, attachments and footer.
+    /// Metadata chips, tags, attachments and footer.
     var showsEntryDetails: Bool
+    /// The kind-specific block above the body. A prayer note keeps its
+    /// 기도제목 checklist even in focus mode — the checklist IS the writing.
+    var showsTypeSpecificFields: Bool
     /// The body editor's Markdown menu row and its slash-command hint.
     var showsMarkdownChrome: Bool
     /// The corner button that leaves focus mode while the keyboard is down.
@@ -792,9 +793,10 @@ struct EntryEditorFocusLayout: Equatable {
     /// A failed save must stay visible once the status pill is hidden.
     var showsSaveFailure: Bool
 
-    init(isFocusMode: Bool, saveState: EditorSaveState) {
+    init(isFocusMode: Bool, saveState: EditorSaveState, isPrayerNote: Bool = false) {
         showsNavigationBar = !isFocusMode
         showsEntryDetails = !isFocusMode
+        showsTypeSpecificFields = !isFocusMode || isPrayerNote
         showsMarkdownChrome = !isFocusMode
         showsExitButton = isFocusMode
         if isFocusMode, case .failed = saveState {
@@ -843,7 +845,11 @@ struct EntryEditorView: View {
     @State private var isChoosingPhotoSource = false
 
     private var focusLayout: EntryEditorFocusLayout {
-        EntryEditorFocusLayout(isFocusMode: isFocusMode, saveState: saveState)
+        EntryEditorFocusLayout(
+            isFocusMode: isFocusMode,
+            saveState: saveState,
+            isPrayerNote: draft.kind.builtIn == .prayer
+        )
     }
 
     init(
@@ -882,7 +888,7 @@ struct EntryEditorView: View {
                             .foregroundStyle(JournalTheme.ink)
                             .accessibilityLabel("제목")
 
-                        if focusLayout.showsEntryDetails {
+                        if focusLayout.showsTypeSpecificFields {
                             typeSpecificFields
                         }
 
@@ -1271,26 +1277,8 @@ struct EntryEditorView: View {
     private var typeSpecificFields: some View {
         switch draft.kind.builtIn {
         case .prayer?:
-            Picker(
-                "기도 상태",
-                selection: Binding(
-                    get: { draft.details.prayerStatus ?? .ongoing },
-                    set: { draft.details.prayerStatus = $0 }
-                )
-            ) {
-                Text("기도 중").tag(PrayerStatus.ongoing)
-                Text("응답됨").tag(PrayerStatus.answered)
-            }
-            if draft.details.prayerStatus == .answered {
-                DatePicker(
-                    "응답일",
-                    selection: Binding(
-                        get: { draft.details.answeredAt ?? .now },
-                        set: { draft.details.answeredAt = $0 }
-                    ),
-                    displayedComponents: .date
-                )
-            }
+            PrayerTopicChecklistEditor(
+                topics: prayerTopicsBinding, categories: prayerCategoriesBinding)
         case .bibleStudy?:
             TextField(
                 "성경 구절",
@@ -1318,6 +1306,20 @@ struct EntryEditorView: View {
         Binding(
             get: { draft.details[keyPath: keyPath] ?? "" },
             set: { draft.details[keyPath: keyPath] = $0.isEmpty ? nil : $0 }
+        )
+    }
+
+    private var prayerTopicsBinding: Binding<[PrayerTopic]> {
+        Binding(
+            get: { draft.details.prayerTopics ?? [] },
+            set: { draft.details.prayerTopics = $0.isEmpty ? nil : $0 }
+        )
+    }
+
+    private var prayerCategoriesBinding: Binding<[String]> {
+        Binding(
+            get: { draft.details.prayerCategories ?? [] },
+            set: { draft.details.prayerCategories = $0.isEmpty ? nil : $0 }
         )
     }
 
@@ -1349,8 +1351,10 @@ struct EntryEditorView: View {
         let details = draft.details
         if pendingKind != .prayer,
             details.prayerStatus != nil || details.answeredAt != nil
+                || !(details.prayerTopics ?? []).isEmpty
+                || !(details.prayerCategories ?? []).isEmpty
         {
-            labels.append(String(localized: "기도 상태·응답일"))
+            labels.append(String(localized: "기도제목·기도 상태"))
         }
         if pendingKind != .bibleStudy,
             !(details.scriptureReference ?? "").isEmpty
@@ -1453,6 +1457,7 @@ struct EntryEditorView: View {
         let hasContent =
             draft.title.contains { !$0.isWhitespace }
             || draft.body.contains { !$0.isWhitespace }
+            || draft.details.hasPrayerChecklistContent
         guard hasContent || persistedEntryID != nil || draft.id != nil else {
             autosaveTask?.cancel()
             saveState = .saved
@@ -1495,6 +1500,7 @@ struct EntryEditorView: View {
         let hasContent =
             draft.title.contains { !$0.isWhitespace }
             || draft.body.contains { !$0.isWhitespace }
+            || draft.details.hasPrayerChecklistContent
         guard force || hasContent || persistedEntryID != nil || draft.id != nil else {
             autosaveTask?.cancel()
             saveState = .saved

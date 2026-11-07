@@ -97,6 +97,11 @@ public struct EntryDetails: Codable, Equatable, Sendable {
     public var bookTitle: String?
     public var bookAuthor: String?
     public var mood: String?
+    public var prayerTopics: [PrayerTopic]?
+    /// Ordered section names (카테고리) of a prayer note's checklist. Sections may be
+    /// empty (no topics yet), so the order lives here rather than being derived
+    /// from the topics.
+    public var prayerCategories: [String]?
 
     public init(
         prayerStatus: PrayerStatus? = nil,
@@ -104,7 +109,9 @@ public struct EntryDetails: Codable, Equatable, Sendable {
         scriptureReference: String? = nil,
         bookTitle: String? = nil,
         bookAuthor: String? = nil,
-        mood: String? = nil
+        mood: String? = nil,
+        prayerTopics: [PrayerTopic]? = nil,
+        prayerCategories: [String]? = nil
     ) {
         self.prayerStatus = prayerStatus
         self.answeredAt = answeredAt
@@ -112,6 +119,8 @@ public struct EntryDetails: Codable, Equatable, Sendable {
         self.bookTitle = bookTitle
         self.bookAuthor = bookAuthor
         self.mood = mood
+        self.prayerTopics = prayerTopics
+        self.prayerCategories = prayerCategories
     }
 
     public func validated(for kind: JournalKind) throws -> EntryDetails {
@@ -122,29 +131,78 @@ public struct EntryDetails: Codable, Equatable, Sendable {
             copy.bookTitle = nil
             copy.bookAuthor = nil
             copy.mood = nil
-            if copy.prayerStatus == nil { copy.prayerStatus = .ongoing }
             if copy.prayerStatus != .answered { copy.answeredAt = nil }
+            copy.prayerTopics = Self.sanitizedTopics(copy.prayerTopics)
+            copy.prayerCategories = Self.sanitizedCategories(
+                copy.prayerCategories, topics: copy.prayerTopics)
         case .bibleStudy:
             copy.prayerStatus = nil
             copy.answeredAt = nil
             copy.bookTitle = nil
             copy.bookAuthor = nil
             copy.mood = nil
+            copy.prayerTopics = nil
+            copy.prayerCategories = nil
         case .reading:
             copy.prayerStatus = nil
             copy.answeredAt = nil
             copy.scriptureReference = nil
             copy.mood = nil
+            copy.prayerTopics = nil
+            copy.prayerCategories = nil
         case .diary:
             copy.prayerStatus = nil
             copy.answeredAt = nil
             copy.scriptureReference = nil
             copy.bookTitle = nil
             copy.bookAuthor = nil
+            copy.prayerTopics = nil
+            copy.prayerCategories = nil
         case .memo, .unclassified, nil:
             copy = EntryDetails()
         }
         return copy
+    }
+
+    private static func sanitizedTopics(_ topics: [PrayerTopic]?) -> [PrayerTopic]? {
+        guard let topics else { return nil }
+        let cleaned = topics.compactMap { topic -> PrayerTopic? in
+            var copy = topic
+            copy.text = topic.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !copy.text.isEmpty else { return nil }
+            copy.memo = topic.memo?.trimmingCharacters(in: .whitespacesAndNewlines)
+            if copy.memo?.isEmpty == true { copy.memo = nil }
+            copy.category = topic.category?.trimmingCharacters(in: .whitespacesAndNewlines)
+            if copy.category?.isEmpty == true { copy.category = nil }
+            copy.answerNote = topic.answerNote?.trimmingCharacters(in: .whitespacesAndNewlines)
+            if copy.answerNote?.isEmpty == true { copy.answerNote = nil }
+            if copy.status != .answered {
+                copy.answeredAt = nil
+                copy.answerOutcome = nil
+                copy.answerNote = nil
+            }
+            return copy
+        }
+        return cleaned.isEmpty ? nil : cleaned
+    }
+
+    /// Trims and de-duplicates the section list, then appends any topic categories
+    /// it does not contain yet (first-appearance order), so every topic's section
+    /// has a header to live under.
+    private static func sanitizedCategories(
+        _ categories: [String]?, topics: [PrayerTopic]?
+    ) -> [String]? {
+        var cleaned: [String] = []
+        for name in categories ?? [] {
+            let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty && !cleaned.contains(trimmed) { cleaned.append(trimmed) }
+        }
+        for topic in topics ?? [] {
+            if let category = topic.category, !cleaned.contains(category) {
+                cleaned.append(category)
+            }
+        }
+        return cleaned.isEmpty ? nil : cleaned
     }
 
     /// Human-readable lines for the kind-specific fields that would be lost when an entry
@@ -156,6 +214,17 @@ public struct EntryDetails: Codable, Equatable, Sendable {
             else { return nil }
             return trimmed
         }
+        func dayFormatter() -> DateFormatter {
+            var calendar = Calendar(identifier: .gregorian)
+            calendar.timeZone =
+                timeZoneIdentifier.flatMap { TimeZone(identifier: $0) } ?? .current
+            let formatter = DateFormatter()
+            formatter.calendar = calendar
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.timeZone = calendar.timeZone
+            formatter.dateFormat = "yyyy-MM-dd"
+            return formatter
+        }
         var lines: [String] = []
         switch kind {
         case .prayer:
@@ -164,20 +233,35 @@ public struct EntryDetails: Codable, Equatable, Sendable {
                 lines.append("기도 상태: 기도 중")
             case .answered:
                 if let answeredAt {
-                    var calendar = Calendar(identifier: .gregorian)
-                    calendar.timeZone =
-                        timeZoneIdentifier.flatMap { TimeZone(identifier: $0) } ?? .current
-                    let formatter = DateFormatter()
-                    formatter.calendar = calendar
-                    formatter.locale = Locale(identifier: "en_US_POSIX")
-                    formatter.timeZone = calendar.timeZone
-                    formatter.dateFormat = "yyyy-MM-dd"
-                    lines.append("기도 상태: 응답됨 (\(formatter.string(from: answeredAt)))")
+                    lines.append("기도 상태: 응답됨 (\(dayFormatter().string(from: answeredAt)))")
                 } else {
                     lines.append("기도 상태: 응답됨")
                 }
             case nil:
                 break
+            }
+            for topic in prayerTopics ?? [] {
+                guard let text = clean(topic.text) else { continue }
+                let label =
+                    clean(topic.category).map { "기도제목(\($0))" } ?? "기도제목"
+                if topic.status == .answered {
+                    var state = "응답"
+                    if let outcome = topic.answerOutcome {
+                        state += "(\(outcome.carryOverLabel))"
+                    }
+                    if let answeredAt = topic.answeredAt {
+                        state += " (\(dayFormatter().string(from: answeredAt)))"
+                    }
+                    lines.append("\(label): \(text) — \(state)")
+                } else {
+                    lines.append("\(label): \(text) — 기도 중")
+                }
+                if let memo = clean(topic.memo) {
+                    lines.append("    메모: \(memo)")
+                }
+                if topic.status == .answered, let note = clean(topic.answerNote) {
+                    lines.append("    응답 메모: \(note)")
+                }
             }
         case .bibleStudy:
             if let reference = clean(scriptureReference) { lines.append("본문: \(reference)") }

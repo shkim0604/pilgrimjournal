@@ -376,13 +376,14 @@ enum MarkdownInlineFormat: String, CaseIterable, Identifiable {
     }
 
     static let contextualCases: [MarkdownInlineFormat] = [
-        .bold, .italic, .heading, .bullet, .quote, .link,
+        .bold, .italic, .strikethrough, .heading, .bullet, .quote, .link,
     ]
 }
 
 enum MarkdownKeyboardCommand: String {
     case bold
     case italic
+    case strikethrough
     case link
     case numberedList
     case bulletList
@@ -710,6 +711,8 @@ enum MarkdownCommandProcessor {
             return applying(MarkdownInlineFormat.bold, to: text, selection: selection)
         case .italic:
             return applying(MarkdownInlineFormat.italic, to: text, selection: selection)
+        case .strikethrough:
+            return applying(MarkdownInlineFormat.strikethrough, to: text, selection: selection)
         case .link:
             return applying(MarkdownInlineFormat.link, to: text, selection: selection)
         case .bulletList:
@@ -1389,9 +1392,15 @@ struct MarkdownBodyEditor: View {
 
             Spacer()
 
-            Label("입력 즉시 서식 표시", systemImage: "sparkles")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            // The selection buttons take this label's place: in a narrow
+            // editor column both together don't fit, and the label wrapped
+            // into a one-letter-wide column.
+            if selection.length == 0 {
+                Label("입력 즉시 서식 표시", systemImage: "sparkles")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
         }
     }
 
@@ -1598,25 +1607,30 @@ enum LiveMarkdownStyler {
         guard fullRange.length > 0 else { return }
         storage.beginEditing()
         storage.setAttributes(baseAttributes, range: fullRange)
+        let revealed = revealedInlineSpans(in: storage.string, selection: selection)
 
         applyInlineStyle(
             regex: MarkdownPatterns.boldAsterisks,
             trait: .bold,
+            revealed: revealed,
             storage: storage
         )
         applyInlineStyle(
             regex: MarkdownPatterns.boldUnderscores,
             trait: .bold,
+            revealed: revealed,
             storage: storage
         )
         applyInlineStyle(
             regex: MarkdownPatterns.italicAsterisk,
             trait: .italic,
+            revealed: revealed,
             storage: storage
         )
         applyInlineStyle(
             regex: MarkdownPatterns.italicUnderscore,
             trait: .italic,
+            revealed: revealed,
             storage: storage
         )
         applyRegex(MarkdownPatterns.strikethrough, to: storage) { match in
@@ -1625,7 +1639,7 @@ enum LiveMarkdownStyler {
                 value: NSUnderlineStyle.single.rawValue,
                 range: match.range(at: 1)
             )
-            fadeMarkers(in: match, groups: [0], excluding: [1], storage: storage)
+            styleInlineMarkers(in: match, revealed: revealed, storage: storage)
         }
         applyRegex(MarkdownPatterns.highlight, to: storage) { match in
             storage.addAttribute(
@@ -1633,7 +1647,7 @@ enum LiveMarkdownStyler {
                 value: EditorPalette.highlight,
                 range: match.range(at: 1)
             )
-            fadeMarkers(in: match, groups: [0], excluding: [1], storage: storage)
+            styleInlineMarkers(in: match, revealed: revealed, storage: storage)
         }
         applyRegex(MarkdownPatterns.inlineCode, to: storage) { match in
             storage.addAttributes(
@@ -1642,7 +1656,7 @@ enum LiveMarkdownStyler {
                     .backgroundColor: EditorPalette.secondaryLabel
                         .withAlphaComponent(0.12),
                 ], range: match.range(at: 1))
-            fadeMarkers(in: match, groups: [0], excluding: [1], storage: storage)
+            styleInlineMarkers(in: match, revealed: revealed, storage: storage)
         }
         applyRegex(MarkdownPatterns.link, to: storage) { match in
             storage.addAttributes(
@@ -1862,9 +1876,71 @@ enum LiveMarkdownStyler {
         case italic
     }
 
+    /// Inline formats whose markers (`**`, `*`, `__`, `_`, `~~`, `==`, `` ` ``)
+    /// are hidden like heading and list prefixes, and shown dimmed only while
+    /// the caret or selection touches that span, so they can still be edited.
+    /// Links are not among them: hiding `](url)` would leave the URL
+    /// unreachable.
+    static let revealableInlinePatterns: [NSRegularExpression] = [
+        MarkdownPatterns.boldAsterisks,
+        MarkdownPatterns.boldUnderscores,
+        MarkdownPatterns.italicAsterisk,
+        MarkdownPatterns.italicUnderscore,
+        MarkdownPatterns.strikethrough,
+        MarkdownPatterns.highlight,
+        MarkdownPatterns.inlineCode,
+    ]
+
+    /// The whole ranges (markers included) of the revealable inline spans
+    /// the selection touches. A caret counts when it sits anywhere from just
+    /// before the opening marker to just after the closing one. None of the
+    /// patterns crosses a newline, so only the selection's own lines are
+    /// searched — the editors call this on every caret move.
+    static func revealedInlineSpans(in text: String, selection: NSRange?) -> Set<NSRange> {
+        guard let selection else { return [] }
+        let source = text as NSString
+        let location = min(max(0, selection.location), source.length)
+        let length = min(max(0, selection.length), source.length - location)
+        let safeSelection = NSRange(location: location, length: length)
+        let lines = source.lineRange(for: safeSelection)
+        var spans = Set<NSRange>()
+        for regex in revealableInlinePatterns {
+            for match in regex.matches(in: text, range: lines) {
+                let span = match.range
+                let touches =
+                    length == 0
+                    ? location >= span.location && location <= NSMaxRange(span)
+                    : NSIntersectionRange(safeSelection, span).length > 0
+                if touches { spans.insert(span) }
+            }
+        }
+        return spans
+    }
+
+    /// Hides an inline span's markers, or dims them while the span is
+    /// revealed (see `revealedInlineSpans`).
+    private static func styleInlineMarkers(
+        in match: NSTextCheckingResult,
+        revealed: Set<NSRange>,
+        storage: NSTextStorage
+    ) {
+        guard !revealed.contains(match.range) else {
+            fadeMarkers(in: match, groups: [0], excluding: [1], storage: storage)
+            return
+        }
+        for range in subtract(match.range(at: 1), from: match.range) where range.length > 0 {
+            storage.addAttributes(
+                [
+                    .font: hiddenMarkerFont,
+                    .foregroundColor: PlatformColor.clear,
+                ], range: range)
+        }
+    }
+
     private static func applyInlineStyle(
         regex: NSRegularExpression,
         trait: FontTrait,
+        revealed: Set<NSRange>,
         storage: NSTextStorage
     ) {
         applyRegex(regex, to: storage) { match in
@@ -1880,12 +1956,7 @@ enum LiveMarkdownStyler {
                 value: font(currentFont, adding: trait),
                 range: contentRange
             )
-            fadeMarkers(
-                in: match,
-                groups: [0],
-                excluding: [1],
-                storage: storage
-            )
+            styleInlineMarkers(in: match, revealed: revealed, storage: storage)
         }
     }
 
@@ -3098,6 +3169,8 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
         weak var textView: NSTextView?
         private(set) var publishedHistory: [Int] = []
         private var stylingTask: Task<Void, Never>?
+        /// The inline spans whose markers the caret last revealed.
+        private var revealedInlineSpans: Set<NSRange> = []
         private var imageCache: [UUID: PlatformImage] = [:]
         private var loadingAttachmentIDs: Set<UUID> = []
         /// Attachments whose data wasn't available (not yet downloaded from
@@ -3598,6 +3671,20 @@ struct LiveMarkdownTextEditor: NSViewRepresentable {
             // invisible until the next styling pass. Restore before typing.
             textView.typingAttributes = LiveMarkdownStyler.baseAttributes
             textView.needsDisplay = true
+            restyleIfRevealedSpansChanged(in: textView, selection: selection)
+        }
+
+        /// Inline markers show only while the caret touches their span, so a
+        /// caret move into or out of one needs a styling pass. It goes through
+        /// the same debounced `scheduleStyling` typing uses — never a
+        /// synchronous restyle here, which could land between keystrokes.
+        private func restyleIfRevealedSpansChanged(in textView: NSTextView, selection: NSRange) {
+            let spans = LiveMarkdownStyler.revealedInlineSpans(
+                in: textView.string, selection: selection
+            )
+            guard spans != revealedInlineSpans else { return }
+            revealedInlineSpans = spans
+            scheduleStyling(for: textView)
         }
 
         @discardableResult
@@ -3994,7 +4081,23 @@ private final class MarkdownUITextView: UITextView, UIGestureRecognizerDelegate 
                 modifierFlags: [.shift],
                 action: #selector(outdentCurrentListItem)
             ),
+            // iPad/hardware keyboards: the macOS menu bar's ⌘⇧X (the
+            // `CommandMenu("Markdown")` in PilgrimJournalApp) is not
+            // available on iOS, so the text view offers it itself.
+            UIKeyCommand(
+                title: String(localized: "취소선"),
+                action: #selector(toggleStrikethrough),
+                input: "x",
+                modifierFlags: [.command, .shift]
+            ),
         ]
+    }
+
+    @objc private func toggleStrikethrough() {
+        NotificationCenter.default.post(
+            name: .applyMarkdownKeyboardCommand,
+            object: MarkdownKeyboardCommand.strikethrough.rawValue
+        )
     }
 
     @objc private func indentCurrentListItem() {
@@ -4487,6 +4590,8 @@ struct LiveMarkdownTextEditor: UIViewRepresentable {
         /// has, the selection is just the initial `0` and a photo added from
         /// outside goes to the end rather than above everything written.
         private var hasPlacedCaret = false
+        /// The inline spans whose markers the caret last revealed.
+        private var revealedInlineSpans: Set<NSRange> = []
 
         init(parent: LiveMarkdownTextEditor) {
             self.parent = parent
@@ -5054,6 +5159,14 @@ struct LiveMarkdownTextEditor: UIViewRepresentable {
             // invisible until the next styling pass.
             textView.typingAttributes = LiveMarkdownStyler.baseAttributes
             textView.setNeedsDisplay()
+            // See the macOS coordinator's `restyleIfRevealedSpansChanged`.
+            let spans = LiveMarkdownStyler.revealedInlineSpans(
+                in: textView.text, selection: selection
+            )
+            if spans != revealedInlineSpans {
+                revealedInlineSpans = spans
+                scheduleStyling(for: textView)
+            }
         }
 
         func adjustListIndentation(_ direction: MarkdownListIndentDirection) {

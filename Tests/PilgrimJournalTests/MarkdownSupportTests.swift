@@ -318,6 +318,57 @@ final class MarkdownSupportTests: XCTestCase {
         XCTAssertEqual(storage.string, markdown)
     }
 
+    func testStrikethroughIsDrawnInLiveEditor() {
+        for markdown in ["~~취소~~", "앞 ~~취소~~ 뒤", "* ~~취소~~", "# ~~취소~~", "> ~~취소~~"] {
+            let source = markdown as NSString
+            let storage = NSTextStorage(string: markdown)
+            LiveMarkdownStyler.apply(to: storage)
+            XCTAssertEqual(
+                storage.attribute(
+                    .strikethroughStyle,
+                    at: source.range(of: "취소").location,
+                    effectiveRange: nil
+                ) as? Int,
+                NSUnderlineStyle.single.rawValue,
+                markdown
+            )
+        }
+    }
+
+    func testInlineMarkersAreHiddenUntilCaretTouchesTheirSpan() {
+        let markdown = "앞 **굵게** ~~취소~~ 뒤"
+        let source = markdown as NSString
+        let boldMarker = source.range(of: "**").location
+        let strikeMarker = source.range(of: "~~").location
+        let storage = NSTextStorage(string: markdown)
+
+        LiveMarkdownStyler.apply(to: storage)
+        for location in [boldMarker, strikeMarker] {
+            XCTAssertEqual(
+                storage.attribute(.foregroundColor, at: location, effectiveRange: nil)
+                    as? NSColor,
+                .clear
+            )
+        }
+
+        // Caret just inside the bold span: only its markers come back, dimmed.
+        LiveMarkdownStyler.apply(
+            to: storage,
+            revealing: NSRange(location: boldMarker + 3, length: 0)
+        )
+        XCTAssertEqual(
+            storage.attribute(.foregroundColor, at: boldMarker, effectiveRange: nil)
+                as? NSColor,
+            .tertiaryLabelColor
+        )
+        XCTAssertEqual(
+            storage.attribute(.foregroundColor, at: strikeMarker, effectiveRange: nil)
+                as? NSColor,
+            .clear
+        )
+        XCTAssertEqual(storage.string, markdown)
+    }
+
     func testBlockMarkdownUsesDistinctLiveEditorTreatments() {
         let markdown = "* 항목\n> 인용\n---\n```swift\nlet value = \"hello\" // note\n```"
         let source = markdown as NSString
@@ -875,6 +926,47 @@ final class MarkdownSupportTests: XCTestCase {
         )
 
         XCTAssertEqual(result.text, "1. 하나\n2. 둘")
+    }
+
+    func testRevealedInlineSpansFollowCaretAndSelection() {
+        let markdown = "가 ~~취소~~ 나\n**굵게**"
+        let source = markdown as NSString
+        let strike = source.range(of: "~~취소~~")
+        let bold = source.range(of: "**굵게**")
+
+        func spans(_ location: Int, _ length: Int = 0) -> Set<NSRange> {
+            LiveMarkdownStyler.revealedInlineSpans(
+                in: markdown, selection: NSRange(location: location, length: length))
+        }
+        // Caret right before the opening and right after the closing marker
+        // both count; one character outside does not.
+        XCTAssertEqual(spans(strike.location), [strike])
+        XCTAssertEqual(spans(NSMaxRange(strike)), [strike])
+        XCTAssertEqual(spans(strike.location - 1), [])
+        XCTAssertEqual(spans(NSMaxRange(strike) + 1), [])
+        XCTAssertEqual(spans(bold.location + 3), [bold])
+        // A selection spanning both lines reveals both.
+        XCTAssertEqual(
+            spans(strike.location + 3, NSMaxRange(bold) - strike.location - 3), [strike, bold])
+        XCTAssertEqual(
+            LiveMarkdownStyler.revealedInlineSpans(in: markdown, selection: nil), [])
+    }
+
+    func testStrikethroughKeyboardCommandWrapsSelection() {
+        let source = "앞 취소 뒤"
+        let selection = (source as NSString).range(of: "취소")
+        let result = MarkdownCommandProcessor.applyingKeyboardCommand(
+            .strikethrough,
+            to: source,
+            selection: selection
+        )
+
+        XCTAssertEqual(result.text, "앞 ~~취소~~ 뒤")
+        XCTAssertEqual(
+            result.selectionUTF16Range,
+            NSRange(location: selection.location + 2, length: selection.length)
+        )
+        XCTAssertTrue(MarkdownInlineFormat.contextualCases.contains(.strikethrough))
     }
 
     func testInsertingAttachmentImageOnEmptyDocumentAddsNoSurroundingNewlines() {
