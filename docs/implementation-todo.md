@@ -29,15 +29,6 @@
   - 새 record type(`SharedEntry`, `SharedRevision`)은 Production 배포가 필요하다
     (`docs/known-issues.md` "CloudKit schema drift").
 
-- **유료 코드 잠금의 출시 위험** (2026-10-15 도입) — 유형 편집(추가·이름
-  변경·삭제·순서)은 모든 빌드에서 기본으로 잠기고, 설정 › 유료 기능이나 잠금
-  안내 화면에서 코드를 넣은 기기만 열린다(`PremiumCodeFeatureAccess`, 기기별
-  `UserDefaults`, 동기화·재설치 후 유지 안 됨). 저장소가 공개라 코드는 소스에
-  없고 솔트+PBKDF2 키만 있다(`PremiumCode.production`; 바꾸는 법은 그 주석).
-  - App Store 심사 지침 3.1.1은 인앱 결제 아닌 코드로 기능을 여는 것을 금지한다.
-    심사에서 거절될 수 있다.
-  - 이 빌드로 업데이트하면 기존 사용자도 유형 편집이 잠긴다.
-
 - **계정 삭제 후 다른 기기를 위한 삭제 표시 record** (2026-10-16, 1.1.0 (29)에서 미룸)
   계정 삭제(`AccountDeletionService`)는 이 기기와 iCloud만 지운다. 같은 계정으로 쓰던
   다른 기기에 로컬 사본이 남아 있으면 그 기기에서 앱을 열 때 Core Data mirroring이
@@ -85,9 +76,6 @@
   드래그)와 ▲▼(2026-10-15, 아래 완료 항목). 필요해지면 iPhone처럼
   `attachmentInsertionSelection` + `MarkdownImageInserter`를 macOS coordinator에
   연결하면 된다.
-- **사용자 유형 관리 — 2단계: 결제와 잠금**
-  StoreKit 결제·구매 복원을 붙이고 `FeatureAccess` 기본값을 잠김으로 바꾼다.
-  지금은 모든 빌드에서 열려 있다.
 - **유형 편집 시트의 작은 UX 빈틈**
   - 시트의 오류 메시지가 목록 맨 위에 있어 스크롤하면 보이지 않는다.
   - macOS에는 눈에 보이는 삭제 버튼이 없다(컨텍스트 메뉴·Delete 키만).
@@ -109,6 +97,13 @@
     그 유형에 남는다.
 
 ## 완료
+
+- **유형 편집 무료화** (2026-11-05) — #13의 유료 코드 잠금(`PremiumCodeFeatureAccess`,
+  잠금 안내 시트, 설정 › 유료 기능, Debug 잠금 시뮬레이션)과 `FeatureAccess`를 뺐다.
+  유형 편집은 모든 사용자에게 열린다. 지금은 모든 기능이 무료이고, 나중에 유료로
+  할 후보는 그룹 공유뿐이다(`docs/roadmap.md`). 잠금이 들어간 빌드는 출시된 적이
+  없다(1.1.0 (29)는 #13 이전 커밋). 그때 코드를 넣은 기기에 남는 `premium-unlocked`
+  `UserDefaults` 값은 이제 아무도 읽지 않는다.
 
 - **설정에서 수동 iCloud 동기화** (2026-10-28) — 설정 › 동기화 › `지금 동기화`.
   iCloud 범위가 열려 있고 로컬→iCloud 이전 대기 중이 아닐 때만 보인다. 저장소를

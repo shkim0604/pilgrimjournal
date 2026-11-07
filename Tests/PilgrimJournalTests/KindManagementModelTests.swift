@@ -7,11 +7,6 @@ import JournalSearch
 import XCTest
 
 @MainActor
-private final class LockedFeatureAccess: FeatureAccess {
-    var canManageKinds: Bool { false }
-}
-
-@MainActor
 final class KindManagementModelTests: XCTestCase {
     private var root: URL!
 
@@ -33,8 +28,7 @@ final class KindManagementModelTests: XCTestCase {
     private func makeModel(
         defaults: UserDefaults? = nil,
         repository: any JournalRepository = InMemoryJournalRepository(),
-        cloudAccountMonitor: CloudAccountMonitor? = nil,
-        featureAccess: (any FeatureAccess)? = nil
+        cloudAccountMonitor: CloudAccountMonitor? = nil
     ) throws -> AppModel {
         let paths = JournalPaths(root: root.appending(path: UUID().uuidString))
         try paths.prepare()
@@ -44,8 +38,7 @@ final class KindManagementModelTests: XCTestCase {
             searchIndex: JournalSearchIndex(url: paths.search.appending(path: "index.sqlite")),
             paths: paths,
             cloudAccountMonitor: cloudAccountMonitor,
-            notebookDefaults: defaults ?? makeDefaults(),
-            featureAccess: featureAccess
+            notebookDefaults: defaults ?? makeDefaults()
         )
     }
 
@@ -246,22 +239,12 @@ final class KindManagementModelTests: XCTestCase {
         XCTAssertEqual(model.unknownKinds, [unknown])
     }
 
-    func testLockedAccessShowsPremiumNoticeInsteadOfEditor() throws {
-        let model = try makeModel(featureAccess: LockedFeatureAccess())
-
-        model.openKindManagement()
-
-        XCTAssertTrue(model.isPresentingPremiumNotice)
-        XCTAssertFalse(model.isPresentingKindManagement)
-    }
-
-    func testUnlockedAccessOpensKindManagement() throws {
+    func testOpenKindManagementPresentsEditorWithoutAnyUnlock() throws {
         let model = try makeModel()
 
         model.openKindManagement()
 
         XCTAssertTrue(model.isPresentingKindManagement)
-        XCTAssertFalse(model.isPresentingPremiumNotice)
     }
 
     func testBackupRoundTripRestoresKindCatalog() async throws {

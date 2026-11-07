@@ -335,8 +335,7 @@ final class JournalSessionController: ObservableObject {
                 CloudAccountMonitor(containerIdentifier: $0)
             },
             notebookDefaults: defaults,
-            notebookCloudStore: syncedContainerIdentifier == nil ? nil : .default,
-            featureAccess: PremiumCodeFeatureAccess()
+            notebookCloudStore: syncedContainerIdentifier == nil ? nil : .default
         )
         #if PILGRIM_SWIFTDATA
         if let syncedContainerIdentifier, !isVisualTesting {

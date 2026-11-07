@@ -94,7 +94,6 @@ final class AppModel: ObservableObject {
     /// (e.g. a kind created on another device whose catalog has not arrived).
     @Published private(set) var unknownKinds: [JournalKind] = []
     @Published var isPresentingKindManagement = false
-    @Published var isPresentingPremiumNotice = false
 
     var selectedEntry: JournalEntryRecord? {
         guard let selectedEntryID else { return nil }
@@ -127,7 +126,6 @@ final class AppModel: ObservableObject {
     let searchIndex: JournalSearchIndex
     let paths: JournalPaths
     let deviceID: String
-    let featureAccess: any FeatureAccess
     #if PILGRIM_SWIFTDATA
     /// Shared notebooks, set for iCloud scopes only. Owned here so its sync engines stop
     /// when the journal store closes.
@@ -178,8 +176,7 @@ final class AppModel: ObservableObject {
         paths: JournalPaths,
         cloudAccountMonitor: CloudAccountMonitor?,
         notebookDefaults: UserDefaults = .standard,
-        notebookCloudStore: NSUbiquitousKeyValueStore? = nil,
-        featureAccess: (any FeatureAccess)? = nil
+        notebookCloudStore: NSUbiquitousKeyValueStore? = nil
     ) {
         self.repository = repository
         self.importStore = importStore
@@ -188,7 +185,6 @@ final class AppModel: ObservableObject {
         self.cloudAccountMonitor = cloudAccountMonitor
         self.notebookDefaults = notebookDefaults
         self.notebookCloudStore = notebookCloudStore
-        self.featureAccess = featureAccess ?? UnlockedFeatureAccess()
         kindCatalogStore = KindCatalogStore(
             defaults: notebookDefaults,
             cloudStore: notebookCloudStore
@@ -1874,18 +1870,8 @@ extension AppModel {
         sharedKindDefinition(for: kind) ?? kindCatalog.definition(for: kind)
     }
 
-    /// `featureAccess` publishes nothing of its own; call this when what it
-    /// grants may have changed so views reading it re-render.
-    func featureAccessDidChange() {
-        objectWillChange.send()
-    }
-
     func openKindManagement() {
-        if featureAccess.canManageKinds {
-            isPresentingKindManagement = true
-        } else {
-            isPresentingPremiumNotice = true
-        }
+        isPresentingKindManagement = true
     }
 
     /// Entries of `kind` outside the trash — the ones a deletion would move.
