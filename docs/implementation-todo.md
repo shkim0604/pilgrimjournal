@@ -11,6 +11,29 @@
   Zero Trust에 public hostname `pilgrim.delight-house.org` 등록, 첫 로그인 후 비밀번호 변경.
   절차는 `docs/development.md` "관리 콘솔". 로컬 Docker 실행과 브라우저 확인까지는 끝났다.
 
+- **가족 공유 노트북 (진행 중, 2026-11-03 착수)** — 노트북이나 노트 하나를 iCloud
+  `CKShare`로 가족과 공유하고, 사이드바 "공유됨" 섹션에서 함께 본다(무료, 사진 포함).
+  SwiftData는 CloudKit 공유를 못 하므로, 공유는 private 기록장과 따로 공유 단위마다
+  `pilgrim-share-<uuid>` zone + zone 전체 share를 두고 `CKSyncEngine`으로 동기화한다.
+  - 끝남: 줄 단위 3-way merge(`ThreeWayTextMerge`), 엔트리 병합(`SharedEntryMerge` —
+    같은 줄 충돌은 나중 편집이 이기고 진 쪽은 이력용으로 반환), 공유 단위 타입
+    (`SharedSpaceRecord`, `SharedKindSnapshot`), `JournalSharing` 타깃의 레코드 매핑
+    (내용은 `encryptedValues`, Day One 원본 정보는 공유하지 않음)·`SharedSyncEngineHost`·
+    `SharedSpaceService`(공유 생성·수락·중지·나가기), 공유 단위별 SwiftData 캐시
+    (`SwiftDataSharedEntryCacheProvider`)와 동기화 상태·병합을 맡는 `SharedSpaceStore`,
+    실제 화면(노트북·기록의 "공유…" 메뉴, 사이드바 "공유됨", 공유 노트북 열기·편집·
+    새 노트, 공유 끝내기·나가기·내 기록장에 복사, 열려 있는 편집기와 원격 변경 병합,
+    iOS 초대 수락 `CKSharingSupported`). 단위·시뮬레이터 테스트만 통과, 실제 CloudKit
+    동작은 미검증.
+  - 다음: 실기기 2대 확인(`docs/development.md` "공유 노트북 실기기 확인"), 상대 편집
+    위치 표시, 사진, 공유 노트 휴지통, macOS 초대 수락, 참여자 이름 표시("엄마가 수정"),
+    검색·백업·계정 삭제 경계, `docs/privacy.md`("shared DB 사용 안 함") 수정.
+  - 상대 편집 위치는 CloudKit으로만 표시한다(2~10초 지연, 문단 단위, 2026-11-05 결정).
+    Apple 메모 같은 실시간 커서는 Apple 전용 동기화라 다른 앱이 쓸 수 없고, SharePlay
+    실시간 커서와 자체 실시간 서버는 하지 않기로 했다.
+  - 새 record type(`SharedEntry`, `SharedRevision`)은 Production 배포가 필요하다
+    (`docs/known-issues.md` "CloudKit schema drift").
+
 - **계정 삭제 후 다른 기기를 위한 삭제 표시 record** (2026-10-16, 1.1.0 (29)에서 미룸)
   계정 삭제(`AccountDeletionService`)는 이 기기와 iCloud만 지운다. 같은 계정으로 쓰던
   다른 기기에 로컬 사본이 남아 있으면 그 기기에서 앱을 열 때 Core Data mirroring이

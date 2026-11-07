@@ -324,7 +324,7 @@ final class JournalSessionController: ObservableObject {
         #endif
 
         let defaults = UserDefaults(suiteName: scope.userDefaultsSuiteName) ?? .standard
-        return try AppModel(
+        let model = try AppModel(
             repository: repository,
             importStore: importStore,
             searchIndex: JournalSearchIndex(
@@ -337,6 +337,23 @@ final class JournalSessionController: ObservableObject {
             notebookDefaults: defaults,
             notebookCloudStore: syncedContainerIdentifier == nil ? nil : .default
         )
+        #if PILGRIM_SWIFTDATA
+        if let syncedContainerIdentifier, !isVisualTesting {
+            do {
+                let sharing = try FamilySharingController(
+                    containerIdentifier: syncedContainerIdentifier,
+                    directory: paths.root.appending(path: "Shared", directoryHint: .isDirectory),
+                    deviceID: model.deviceID
+                )
+                sharing.onChange = { [weak model] in model?.sharedSpacesDidChange() }
+                sharing.onError = { [weak model] message in model?.errorMessage = message }
+                model.familySharing = sharing
+            } catch {
+                model.errorMessage = error.localizedDescription
+            }
+        }
+        #endif
+        return model
     }
 
     private func migrateLegacyDataIfNeeded(

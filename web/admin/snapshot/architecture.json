@@ -115,11 +115,32 @@
     },
     {
       "dependencies": [
+        "JournalDomain"
+      ],
+      "kind": "library",
+      "linkedFrameworks": [
+        "CloudKit"
+      ],
+      "name": "JournalSharing"
+    },
+    {
+      "dependencies": [
+        "JournalData",
+        "JournalDomain",
+        "JournalSharing"
+      ],
+      "kind": "test",
+      "linkedFrameworks": [],
+      "name": "JournalSharingTests"
+    },
+    {
+      "dependencies": [
         "DayOneImport",
         "JournalBackup",
         "JournalData",
         "JournalDomain",
-        "JournalSearch"
+        "JournalSearch",
+        "JournalSharing"
       ],
       "kind": "executable",
       "linkedFrameworks": [

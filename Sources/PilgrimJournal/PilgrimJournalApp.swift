@@ -25,6 +25,14 @@ struct PilgrimJournalApp: App {
     @StateObject private var journalSession: JournalSessionController
     @StateObject private var appLock: AppLockCoordinator
     @StateObject private var authentication: AppleAuthenticationCoordinator
+    #if PILGRIM_SWIFTDATA
+    // Receives shared-notebook invitations opened from Messages or Mail.
+    #if os(iOS)
+    @UIApplicationDelegateAdaptor(FamilySharingAppDelegate.self) private var sharingDelegate
+    #else
+    @NSApplicationDelegateAdaptor(FamilySharingAppDelegate.self) private var sharingDelegate
+    #endif
+    #endif
 
     private static var isVisualTesting: Bool {
         #if DEBUG

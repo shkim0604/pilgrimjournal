@@ -641,7 +641,7 @@ struct InlineEntryEditorView: View {
     /// content but the open editor keeps showing (and saving) the old draft.
     private func resyncDraftFromRepository() {
         guard let id = persistedEntryID ?? entry?.id,
-            let latest = try? model.repository.entry(id: id)
+            let latest = model.entryRecord(id: id)
         else { return }
         autosaveTask?.cancel()
         let initial = latest.draft
@@ -1017,7 +1017,7 @@ struct EntryEditorView: View {
     /// See the macOS inline editor's `resyncDraftFromRepository`.
     private func resyncDraftFromRepository() {
         guard let id = persistedEntryID,
-            let latest = try? model.repository.entry(id: id)
+            let latest = model.entryRecord(id: id)
         else { return }
         autosaveTask?.cancel()
         let initial = latest.draft

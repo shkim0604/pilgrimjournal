@@ -26,6 +26,10 @@ export const MODULES: Record<string, ModuleInfo> = {
     role: '로컬 SQLite FTS5 검색 인덱스. 파생 데이터라 동기화·백업하지 않고 불일치 시 다시 만든다.',
     keyTypes: ['trigram / unicode61 tokenizer', 'LIKE fallback (2자 이하)'],
   },
+  JournalSharing: {
+    role: '노트북·기록을 iCloud CKShare로 가족과 공유. SwiftData와 따로, 공유 단위마다 pilgrim-share zone을 두고 CKSyncEngine으로 동기화한다.',
+    keyTypes: ['SharedSyncEngineHost', 'SharedSpaceService', 'SharedSpaceStore', 'ThreeWayTextMerge', 'SharedEntryMerge'],
+  },
   JournalBackup: {
     role: '전체 로컬 백업 내보내기·가져오기.',
     keyTypes: ['BackupRestoreRepository'],
@@ -59,6 +63,8 @@ export const STORAGE_DIAGRAM = `flowchart LR
   end
   subgraph icloud ["사용자의 iCloud"]
     privatedb[("CloudKit private DB")]
+    sharezones[("private DB의 pilgrim-share zone: 내가 공유한 것")]
+    shareddb[("CloudKit shared DB: 공유받은 것")]
     kvs[("iCloud KVS: 노트북·유형 이름 목록")]
   end
   app --> canonical
@@ -66,4 +72,6 @@ export const STORAGE_DIAGRAM = `flowchart LR
   app --> search
   app --> keychain
   app --> kvs
-  canonical -- "mirroring" --> privatedb`;
+  canonical -- "mirroring" --> privatedb
+  app -- "CKSyncEngine" --> sharezones
+  app -- "CKSyncEngine" --> shareddb`;

@@ -5,7 +5,8 @@ import JournalDomain
 public final class InMemoryJournalRepository:
     JournalRepository,
     AttachmentRepository,
-    BackupRestoreRepository
+    BackupRestoreRepository,
+    SharedEntryCache
 {
     private struct PersistenceSnapshot: Codable {
         var entries: [JournalEntryRecord]
@@ -385,6 +386,18 @@ public final class InMemoryJournalRepository:
             try? persist()
             throw error
         }
+    }
+
+    public func upsertSynced(_ entry: JournalEntryRecord) throws {
+        entries[entry.id] = entry
+        try persist()
+    }
+
+    public func removeSynced(entryID: UUID) throws {
+        entries[entryID] = nil
+        revisionStorage[entryID] = nil
+        attachmentStorage = attachmentStorage.filter { $0.value.record.entryID != entryID }
+        try persist()
     }
 
     private func persist() throws {
