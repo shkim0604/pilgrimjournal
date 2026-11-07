@@ -68,8 +68,12 @@ export const FLOWS: Flow[] = [
   close --> cloud{"iCloud 연결됨?"}
   cloud -- "예" --> mine{"binding이 이 사용자 것?"}
   mine -- "아니오" --> stop["아무것도 지우지 않음"]
-  mine -- "예" --> zones["2. binding record와 CloudKit zone 삭제"]
-  zones -- "실패" --> retry["오류 표시, 로컬 데이터 유지"]
+  mine -- "예" --> unbind["2a. binding record 삭제"]
+  unbind --> leave["2b. 받은 공유에서 나가기 (shared DB의 zone 전체 share 삭제)"]
+  leave --> zones["2c. 개인 DB의 기본 zone 밖 zone 전체 삭제 (기록 zone + 내가 공유한 pilgrim-share-*)"]
+  unbind -- "실패" --> retry["오류 표시(남은 개수·원인), 로컬 데이터 유지"]
+  leave -- "실패·일부 실패" --> retry
+  zones -- "실패·일부 실패" --> retry
   zones -- "성공" --> files
   cloud -- "아니오" --> files["3. 이 사용자의 로컬 파일 삭제 (이 기기만)"]
   files --> defaults["4. UserDefaults suite와 iCloud KVS 키 삭제"]

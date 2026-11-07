@@ -63,24 +63,39 @@ public protocol CloudAccountDataErasing: Sendable {
     func eraseCloudData(appleUserIdentifier: String) async throws
 }
 
-/// Deletes the account binding record, then the Core Data mirroring zones.
+/// Deletes the account binding record, leaves the family spaces other users
+/// shared with this one, then deletes every zone of the private database: the
+/// Core Data mirroring zones and the `pilgrim-share-*` zones this user shared
+/// (which ends those shares for every participant).
 ///
 /// The binding goes first on purpose. If the zones then fail to delete, the
 /// journal reopens with every record intact and the binding is written again
 /// on the next check. The reverse order could leave the zones gone while the
 /// app reopens the local store, which re-creates them and re-uploads
 /// everything.
+///
+/// Leaving received spaces comes before the zone deletion because it only
+/// drops this user's access to other people's copies. If it fails, the user's
+/// own journal and shared notebooks are still whole in iCloud. The zone
+/// deletion goes last: once an owned shared zone is gone, reopening the
+/// journal drops that space's local cache too.
 public struct CloudKitAccountDataEraser: CloudAccountDataErasing {
     private let bindingStore: any CloudIdentityBindingStore
-    private let wipeJournalZones: @Sendable () async throws -> [String]
+    private let leaveAcceptedShares: @Sendable () async throws -> [String]
+    private let wipeAccountZones: @Sendable () async throws -> [String]
 
     public init(containerIdentifier: String) {
         self.init(
             bindingStore: CloudKitIdentityBindingStore(
                 containerIdentifier: containerIdentifier
             ),
-            wipeJournalZones: {
-                try await CloudKitDataWiper.wipePrivateData(
+            leaveAcceptedShares: {
+                try await CloudKitDataWiper.leaveAcceptedShares(
+                    containerIdentifier: containerIdentifier
+                )
+            },
+            wipeAccountZones: {
+                try await CloudKitDataWiper.wipeAccountZones(
                     containerIdentifier: containerIdentifier
                 )
             }
@@ -89,12 +104,18 @@ public struct CloudKitAccountDataEraser: CloudAccountDataErasing {
 
     public init(
         bindingStore: any CloudIdentityBindingStore,
-        wipeJournalZones: @escaping @Sendable () async throws -> [String]
+        leaveAcceptedShares: @escaping @Sendable () async throws -> [String],
+        wipeAccountZones: @escaping @Sendable () async throws -> [String]
     ) {
         self.bindingStore = bindingStore
-        self.wipeJournalZones = wipeJournalZones
+        self.leaveAcceptedShares = leaveAcceptedShares
+        self.wipeAccountZones = wipeAccountZones
     }
 
+    /// Any failure, including `CloudKitWipeError` for single zones or shares
+    /// that did not delete, reaches `AccountDeletionService` as
+    /// `cloudDeletionFailed`, so nothing on this device is removed and the
+    /// user can retry; a retry repeats every step.
     public func eraseCloudData(appleUserIdentifier: String) async throws {
         let ownHash = CloudIdentityBindingService.subjectHash(for: appleUserIdentifier)
         if let storedHash = try await bindingStore.loadSubjectHash(),
@@ -103,7 +124,8 @@ public struct CloudKitAccountDataEraser: CloudAccountDataErasing {
             throw AccountDeletionError.cloudAccountOwnedByDifferentUser
         }
         try await bindingStore.deleteBinding()
-        _ = try await wipeJournalZones()
+        _ = try await leaveAcceptedShares()
+        _ = try await wipeAccountZones()
     }
 }
 
