@@ -65,8 +65,10 @@ CloudKit production schema는 additive-only 정책으로 관리한다. 개발 co
 
 ## 저장 adapter 관문
 
-초기 adapter는 SwiftData를 사용한다. 실제 기기 spike에서 다음 조건을 모두
-통과해야 한다.
+adapter는 SwiftData를 쓴다. 실제 기기 spike(`docs/device-verification.md` 세션 A)에서
+SwiftData **go**로 결정했다(`docs/pre-release-checklist.md`). 대량 배치 성능만 그
+결정에서 빠졌다. 아래 조건은 이제 회귀 기준이다 — 동기화·삭제·첨부 경로를 바꾸면
+다시 확인한다.
 
 - 같은 계정의 두 기기에서 background 수렴
 - 오프라인 동시 편집 revision 보존
@@ -74,13 +76,40 @@ CloudKit production schema는 additive-only 정책으로 관리한다. 개발 co
 - 외부 저장 첨부 업로드와 지연 다운로드
 - 대량 Day One import 후 앱 응답성 유지
 
-하나라도 충족하지 못하면 도메인 protocol은 유지하고
+어느 조건이 깨져 고칠 수 없으면 도메인 protocol은 유지하고
 `NSPersistentCloudKitContainer` adapter로 교체한다.
+
+## 로컬라이제이션
+
+UI는 한국어가 원문이고, 한국어 문장 자체가 로컬라이제이션 키다. 영어는 String
+Catalog에 있다.
+
+| 파일 | 대상 |
+| --- | --- |
+| `Sources/PilgrimJournal/Localizable.xcstrings` | 앱(main bundle). SwiftPM에서 빠져 있고 Xcode 앱 target이 컴파일한다 |
+| `Sources/<Library>/Resources/Localizable.xcstrings` | 라이브러리. `String(localized: "…", bundle: .module)` |
+| `PilgrimJournal/PilgrimJournal/InfoPlist.xcstrings` | 권한 설명 문구 |
+
+- 새 사용자 문구는 `Text("…")` 같은 `LocalizedStringKey` 리터럴이나
+  `String(localized:)`로 쓴다.
+- 저장·동기화되는 데이터는 번역하지 않는다(Day One 매칭, import 감사 기록, 카탈로그의
+  유형 이름). 기본 유형 이름은 한국어로 저장하고 화면에서만 번역한다
+  (`KindDefinition.displayName` / `storedName(for:)`).
+- 명령줄 SwiftPM은 catalog를 컴파일하지 않고 복사만 하므로 `swift test`는 한국어를
+  본다. Xcode 빌드는 컴파일하므로 iOS Simulator 테스트는 `-testLanguage ko`로 고정한다.
+- 문구를 추가한 뒤 키를 갱신하고 빠진 `en` 값을 채운다.
+
+  ```sh
+  xcodebuild -exportLocalizations -project PilgrimJournal/PilgrimJournal.xcodeproj \
+    -localizationPath <dir> -exportLanguage en   # 앱
+  xcodebuild -exportLocalizations -localizationPath <dir> -exportLanguage en   # 패키지 루트에서, 라이브러리
+  ```
 
 ## CloudKit 운영 도구
 
-Debug 빌드는 환경 변수 두 개로 앱 대신 관리 작업을 수행하고 종료한다. 둘 다
-**Apple 로그인 앞에서** 돌기 때문에 Touch ID를 쓸 수 없는 원격 세션에서도 쓸 수
+Debug 빌드는 아래 환경 변수로 앱 대신 관리 작업을 수행한다. 스키마 배포·삭제
+변수는 작업 뒤 종료하고, `PILGRIM_DEV_APPLE_USER`는 로그인 게이트만 건너뛴 채 앱을
+연다. 모두 **Apple 로그인 앞에서** 돌기 때문에 Touch ID를 쓸 수 없는 원격 세션에서도 쓸 수
 있다. 실행 파일을 직접 부른다 — `open`은 환경 변수를 전달하지 않는다.
 
 ```bash
@@ -130,7 +159,7 @@ iCloud에 연결된 상태에서만 메뉴가 보인다.
 | 4 | B: 같은 노트의 다른 줄 수정, A는 그 노트를 연 채로 대기 | A의 편집기에 두 수정이 모두 보임 |
 | 5 | A·B 모두 비행기 모드에서 같은 노트의 **다른 줄** 수정 → 비행기 모드 해제 | 양쪽 결과가 같고 두 수정이 모두 남음 |
 | 6 | 5번을 **같은 줄**로 반복 | 나중에 고친 쪽이 본문에 남고, 진 쪽은 이력에 있음 |
-| 7 | A: 타이핑 중에 B가 같은 노트를 고침 (30초 이상 빠른 한영 혼용) | 입력이 사라지지 않음 (`docs/known-issues.md` 편집기 체크리스트) |
+| 7 | A: 타이핑 중에 B가 같은 노트를 고침 (30초 이상 빠른 한영 혼용) | 입력이 사라지지 않음 ([에디터 입력 릴리스 게이트](known-issues.md#에디터-입력-릴리스-게이트)) |
 | 8 | A: 앱을 껐다 켜고, A의 두 번째 기기(같은 Apple ID)에서도 열기 | 공유와 노트가 다시 나타남 |
 | 9 | B: 나가기… → 내 기록장에 복사하고 나가기 | B의 노트북에 사본이 생기고 "공유됨"에서 사라짐. A는 그대로 |
 | 10 | A: 공유 끝내기… | A의 노트북으로 기록이 돌아오고(이력 포함), 다른 사람 화면에서 사라짐 |
@@ -194,7 +223,7 @@ swift run ShareCardEval --json /tmp/share-card-run.json
 데이터베이스(SwiftData 스키마), 아키텍처(SwiftPM 타깃 그래프·모듈 설명·저장 위치),
 앱 플로우(Mermaid 흐름도)를 보는 개발자 전용 읽기 전용 콘솔이다. 사용자 기록·Apple 식별자·
 이메일·iCloud 정보는 받지도 저장하지도 않는다(`docs/privacy.md`). 설계는
-`docs/superpowers/specs/2026-11-06-admin-console-design.md`.
+`docs/archive/superpowers/specs/2026-11-06-admin-console-design.md`.
 
 ### 스냅샷
 
@@ -281,14 +310,16 @@ npm test && npm run typecheck
 
 ### iCloud 동기화 폴더에서 archive 하지 않기
 
-저장소가 `~/Documents` 아래에 있고 이 경로는 iCloud Drive file provider가
-관리한다. 빌드 산출물에 `com.apple.FinderInfo`와
+iCloud Drive가 동기화하는 폴더(예: "데스크탑 및 문서 폴더" 동기화를 켠 `~/Documents`,
+`~/Desktop`)는 file provider가 관리한다. 그 안에서 archive 하면 빌드 산출물에
+`com.apple.FinderInfo`와
 `com.apple.fileprovider.fpfs#P` 확장 속성이 계속 다시 붙고, codesign은
 `resource fork, Finder information, or similar detritus not allowed`로
 실패한다. 소스에 `xattr -cr`를 돌려도 빌드 중 다시 붙으므로 근본 해결이 아니다.
 
-**archive와 derived data는 동기화되지 않는 경로에 만든다.** 서명이 끝난
-아카이브를 `.release/`로 복사하는 것은 안전하다.
+**archive와 derived data는 동기화되지 않는 경로(아래처럼 `mktemp -d`)에 만든다.**
+저장소는 지금 `~/Developments` 아래라 동기화 밖이지만, 저장소 위치와 상관없이 이렇게
+한다. 서명이 끝난 아카이브를 `.release/`로 복사하는 것은 안전하다.
 
 ### 절차
 
@@ -317,18 +348,9 @@ npm test && npm run typecheck
 
 4. 아카이브의 `CFBundleVersion`이 의도한 빌드 번호인지 확인한 뒤
    `.release/build<N>/`으로 복사한다. `.release/`는 Git에서 무시된다.
-5. `PilgrimJournal/AppStoreExportOptions.plist`로 export·upload 한다.
-
-   ```sh
-   xcodebuild -exportArchive \
-     -archivePath "$BUILD_ROOT/PilgrimJournal-iOS.xcarchive" \
-     -exportOptionsPlist PilgrimJournal/AppStoreExportOptions.plist \
-     -exportPath "$BUILD_ROOT/export-iOS"
-   ```
-
-   **이 저장소에서는 API 키 인증이 실제로 통하는 경로다.** build 13을 이 방식으로
-   두 플랫폼 모두 업로드했다. Xcode에 Apple 계정이 없어도 되고,
-   `-allowProvisioningUpdates`가 Apple Distribution 인증서까지 처리한다.
+5. `PilgrimJournal/AppStoreExportOptions.plist`로 export·upload 한다. **지금 쓰는 경로는
+   Xcode 계정 인증이다.** build 28·29를 이 방식으로 올렸다. Xcode → Settings →
+   Accounts에 App Store Connect 권한이 있는 Apple 계정이 있어야 한다.
 
    ```sh
    for platform in iOS macOS; do
@@ -336,16 +358,22 @@ npm test && npm run typecheck
        -archivePath "$BUILD_ROOT/PilgrimJournal-$platform.xcarchive" \
        -exportOptionsPlist PilgrimJournal/AppStoreExportOptions.plist \
        -exportPath "$BUILD_ROOT/export-$platform" \
-       -allowProvisioningUpdates \
+       -allowProvisioningUpdates
+   done
+   ```
+
+   **대안: App Store Connect API 키.** Xcode에 Apple 계정이 없어도 된다(build 13을 이
+   방식으로 올렸다). 위 명령에 다음 세 옵션을 더한다.
+
+   ```sh
        -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_<KEYID>.p8 \
        -authenticationKeyID <KEYID> \
        -authenticationKeyIssuerID "$ASC_ISSUER_ID"
-   done
    ```
 
    Issuer ID는 App Store Connect → 사용자 및 액세스 → 통합 →
    App Store Connect API 상단의 UUID다. **저장소에 커밋하지 않는다.**
-   `.p8` 키도 마찬가지로 `~/.appstoreconnect/private_keys/`에만 둔다.
+   `.p8` 키도 `~/.appstoreconnect/private_keys/`에만 둔다.
 
    #### `Failed to Use Accounts`가 나오면
 
@@ -354,24 +382,8 @@ npm test && npm run typecheck
 
    - `Failed to find an account with App Store Connect access for team ...`
      → **Xcode에 App Store Connect 권한이 있는 Apple 계정이 없다.** Mac 잠금과
-     무관하다. `xcodebuild`는 계정을 추가할 수 없으므로 아래 둘 중 하나가 필요하다.
-     - Xcode → Settings → Accounts에 Apple 계정을 추가한다, 또는
-     - App Store Connect API 키로 인증한다. 키는
-       `~/.appstoreconnect/private_keys/AuthKey_<KEYID>.p8`에 둔다.
-
-       ```sh
-       xcodebuild -exportArchive \
-         -archivePath "$BUILD_ROOT/PilgrimJournal-iOS.xcarchive" \
-         -exportOptionsPlist PilgrimJournal/AppStoreExportOptions.plist \
-         -exportPath "$BUILD_ROOT/export-iOS" \
-         -allowProvisioningUpdates \
-         -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_<KEYID>.p8 \
-         -authenticationKeyID <KEYID> \
-         -authenticationKeyIssuerID <ISSUER_UUID>
-       ```
-
-       Issuer ID는 App Store Connect → 사용자 및 액세스 → 통합 →
-       App Store Connect API 상단에 있는 UUID다. **저장소에 커밋하지 않는다.**
+     무관하다. `xcodebuild`는 계정을 추가할 수 없으므로 Xcode → Settings →
+     Accounts에 계정을 추가하거나 위 API 키 대안을 쓴다.
    - Keychain 접근 거부가 로그에 보이면 → 그때가 Mac 잠금 문제다. 잠금을 풀고
      다시 실행한다.
 

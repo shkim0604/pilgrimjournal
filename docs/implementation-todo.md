@@ -32,7 +32,7 @@
     Apple 메모 같은 실시간 커서는 Apple 전용 동기화라 다른 앱이 쓸 수 없고, SharePlay
     실시간 커서와 자체 실시간 서버는 하지 않기로 했다.
   - 새 record type(`SharedEntry`, `SharedRevision`)은 Production 배포가 필요하다
-    (`docs/known-issues.md` "CloudKit schema drift").
+    (`docs/known-issues.md` "CloudKit 스키마 드리프트").
 
 - **계정 삭제 후 다른 기기를 위한 삭제 표시 record** (2026-10-16, 1.1.0 (29)에서 미룸)
   계정 삭제(`AccountDeletionService`)는 이 기기와 iCloud만 지운다. 같은 계정으로 쓰던
@@ -45,7 +45,7 @@
   - 새로 로그인한 사용자가 binding을 만들 때 그 record를 지워야 하므로, binding
     검사(`CloudIdentityBindingService`)와 순서를 맞춰야 한다.
   - 새 record type이라 Development 스키마 생성과 Production 배포가 필요하다
-    (`docs/known-issues.md` "CloudKit schema drift").
+    (`docs/known-issues.md` "CloudKit 스키마 드리프트").
 
 - **영문 현지화 남은 것** — 영어 번역(2026-10-15)과 다듬기 이후:
   - 한 단어를 여러 곳에서 써서 영어가 달라야 하는 곳은 `editor.heading`처럼 영어
@@ -63,8 +63,7 @@
 - **지난 백업 목록 화면**
   지금은 백업을 파일 하나(`.journalbackup`)로 내보내기만 하고, 앱은 그
   기록을 전혀 안 남긴다(`AppModel.lastBackupExportMessage`는 가장 최근 것
-  하나만 잠깐 담는 휘발성 문자열, 영속 저장 없음 — `AppModel.swift:79,1072`
-  `prepareBackup()`). 복원할 때도 그냥 Finder 파일 선택 창만 뜬다.
+  하나만 잠깐 담는 휘발성 문자열, 영속 저장 없음 — `AppModel.prepareBackup()`). 복원할 때도 그냥 Finder 파일 선택 창만 뜬다.
   설정 → 백업 및 복원에 **최근 3개를 보여주고, "전체 보기" 버튼으로 나머지도
   볼 수 있는 목록 화면**을 추가한다. 구현하려면:
   - 내보내기 성공 시마다 메타데이터(파일명, 저장 시각, 항목 수, 저장 위치
@@ -100,6 +99,28 @@
   - Day One 가져오기 뒤에는 정리 작업을 돌리지 않는다. 가져온 기록이 삭제된
     유형으로 분류되면(예: 아직 정리되지 않은 다른 기기의 규칙) 다음 정리 시점까지
     그 유형에 남는다.
+
+- **편집기 구조 개편 (편집 세션·증분 스타일링)** — 2026-09-26 계획
+  ([`archive/editor-refactoring-plan.md`](archive/editor-refactoring-plan.md))의
+  1단계(재현 기준·데이터 보존, 인라인 구분자 즉시 스타일링)만 끝났다. 남은 것:
+  - 2단계 편집 상태 분리: `EditorSession`(문서 ID·초안·revision·저장 상태)과
+    `EditorTransaction`(변경 범위·치환 문자열·선택·명령 출처). 본문 해시 이력
+    (`publishedHistory`) 대신 문서 ID와 변경 버전/출처로 echo와 외부 변경을 가른다.
+    조합 중에는 텍스트 저장소·선택을 재작성하지 않는다.
+  - 3단계 변경 범위 중심 스타일링: 바뀐 문단만 갱신, 코드 펜스처럼 여러 줄에
+    걸치면 안정되는 블록까지 넓힌다. 전체 문서 스타일링은 초기 로드·전체 교체로
+    제한하고, 비동기 결과는 revision이 같을 때만 반영.
+  - 4단계 저장·검색을 입력 경로에서 분리: 양 플랫폼 자동저장을 공통 저장 조정자로,
+    revision별 직렬화(오래된 저장 완료가 최신을 saved로 바꾸지 못하게), 검색 인덱스
+    실패를 저장 성공과 구분해 재시도, 저장마다 전체 재조회 대신 변경 레코드 반영.
+  - 각 단계마다 [에디터 입력 릴리스 게이트](known-issues.md#에디터-입력-릴리스-게이트)를
+    다시 돌린다. 5단계의 파일 분할은 아래 항목으로 따로 한다.
+
+- **앱 레이어 파일 분할 (동작 변경 없음)** — `MarkdownSupport.swift`,
+  `AppModel.swift`, `EntryViews.swift`, `ContentView.swift`, `PilgrimJournalApp.swift`를
+  구조만 나눈다(브랜치 `refactor/split-app-layer`, 파일 하나당 커밋 하나). 편집기
+  입력 경로는 글자 그대로 옮긴다. 이 문서 정리(`docs/cleanup`)가 끝난 뒤 시작한다.
+  옮긴 뒤엔 실기기 타이핑 게이트를 다시 통과해야 한다.
 
 ## 완료
 
@@ -177,64 +198,5 @@
     UIKit 텍스트 뷰에는 붙지 않는다. 이제 같은 항목(`MarkdownKeyboardAccessory`)을
     본문 텍스트 뷰의 `UIToolbar`로도 보여 준다. 390pt 폭에서 넘치지 않도록
     "오늘" 버튼을 빼고(`/today` 명령으로 대신) "키보드 닫기"를 아이콘으로 바꿨다.
-- **첨부 다운로드 fetch 미트리거 / 업로드 진행률 세분화 / 이미지 붙여넣기**
-  — openspec `improve-attachment-transfer-and-paste`. CloudKit이 특정
-  레코드의 asset을 강제로 fetch하게 만드는 공개 API는 없다는 제약을 그대로
-  받아들이고, 다운로드 버튼은 타임아웃(잠정 25초) 후 재시도 UI로 바꿈 — CloudKit
-  import가 실제로 진행 중이면(`AppModel.isCloudImportInProgress`) 타임아웃을
-  미룸. `AttachmentTransferState`에 `.uploading`을 추가하고,
-  `NSPersistentCloudKitContainer.eventChangedNotification`이 이미 보내지만
-  버려지고 있던 "작업 시작" 신호(`completedAt == nil`)를 살려 "대기 중"과
-  "전송 중"을 구분함(`AppModel.handleCloudSyncStoreEvent`). 클립보드 이미지
-  붙여넣기는 "첨부 추가"와 같은 `AttachmentFileStore`/`AttachmentRepository`
-  경로로 저장하고 본문에 `![](attachment:id)` 마크다운을 삽입함(macOS/iOS
-  `paste(_:)` 오버라이드 → 기존에 안전하다고 검증된
-  `Coordinator.replaceExternalText` 경로로 삽입) — 라이브 에디터에서는 원시
-  텍스트로 보이고, 보기 모드(`MarkdownPreviewView`)에서 실제 이미지로
-  렌더링됨. (2026-08-12)
 
-- **라이브 에디터 내 인라인 리사이즈 가능한 이미지** — 위 항목에서 범위
-  제외했던 것을 사용자 요청으로 이어서 구현함. 문자 치환 없이
-  `LiveMarkdownStyler`의 "저장되는 마크다운 문자를 절대 바꾸지 않는다"
-  불변조건을 지키면서, 이미지 마커 줄에 `NSParagraphStyle.minimumLineHeight`
-  /`maximumLineHeight`로 높이를 예약하고(기존 `separatorParagraphStyle`
-  패턴 재사용) `draw(_:)`가 그 자리에 디코드된 이미지를 직접 합성하는
-  방식으로 해결함. 크기는 `![](attachment:id =WxH)`로 텍스트 자체에
-  인코딩(별도 메타데이터 저장소 없음). 커서가 이미지 줄에 있을 때만 보이는
-  리사이즈 핸들을 드래그하면 가로세로 비율 고정으로 크기가 바뀌고, 놓는
-  순간 한 번만 `Coordinator.replaceExternalText`로 `=WxH`를 확정함(드래그
-  중에는 attribute만 바꿔 `textDidChange` 재진입 위험 없음). macOS는
-  `mouseDown`/`mouseDragged`/`mouseUp` 오버라이드, iOS는 `UITextView`의
-  내장 제스처와 충돌하지 않도록 `UIPanGestureRecognizer` +
-  `UIGestureRecognizerDelegate` 히트테스트로 구현. 이미지 데이터는
-  `draw(_:)`에서 동기 호출하지 않고, 첨부 전체를 스캔하던 기존
-  `allAttachments()` 대신 새로 추가한 단일 조회
-  `AttachmentRepository.attachment(id:)`로 Coordinator가 캐시하며 비동기
-  로드함. `dirtyRect` 교차 검사로 화면 밖 이미지는 합성하지 않아 편집기
-  입력 씹힘 회귀와 같은 `draw(_:)` 경로의 비용 증가를 최소화함 —
-  실기기 검증은 `docs/pre-release-checklist.md`로 미룸 (2026-08-12)
-
-- **`entry(sourceUUID:)`의 fetchLimit 500이 대량 가져오기에서 중복 판정을
-  놓칠 수 있던 버그** — `SwiftDataJournalRepository.entry(sourceUUID:)`가
-  `fetchLimit = 500`을 건 채 정렬 없이 조회해, 가져온 기록이 500개를 넘으면
-  500번째 이후 기록은 재가져오기 중복 판정(`DayOneImportExecutor`)·`save()`의
-  중복 방지 가드·기기 간 병합 매칭(`JournalSessionController`)에서 전부
-  누락될 수 있었다. `purgeEntries`에서 이미 쓰던 "정확성이 걸린 곳엔 임의
-  cap을 두지 않는다" 관례를 따라 fetchLimit을 제거함. 휴지통 영구 삭제 작업
-  (openspec `add-trash-permanent-delete`) 중 발견, 이번 세션에서 수정
-  (2026-08-12)
-
-- **첨부 미리보기(QuickLook/기본 앱 열기)** — iOS는 `.quickLookPreview`,
-  macOS는 `NSWorkspace.shared.open`으로 구현함 (2026-08-12)
-- **첨부를 다른 위치에 저장** — `AttachmentDocument` + `.fileExporter`로
-  구현함 (2026-08-12)
-- **편집기 열린 상태에서 수정 이력 복원 시 draft 갱신 안 되던 버그** —
-  `RevisionHistoryView`에 `onRestore` 콜백 추가해 수정함 (2026-08-12)
-- **휴지통 완전 비우기 기능이 없음** — 휴지통 화면에서 개별 영구 삭제와
-  전체 비우기를 추가함. 기록·수정 이력·첨부 행을 함께 지우고, 다른 기록이
-  더 이상 참조하지 않는 첨부 파일만 회수함(checksum 기반 dedupe라 공유
-  파일은 보존). Day One 재가져오기 영구 차단 버그도 함께 해소 — 영구
-  삭제된 기록은 같은 sourceUUID로 다시 가져올 수 있고, 휴지통에만 있는
-  기록은 계속 중복으로 차단됨. 새 canonical 모델이나 속성을 추가하지
-  않아 CloudKit 스키마 재배포가 필요 없음. openspec
-  `add-trash-permanent-delete` (2026-08-12)
+이전 완료 항목(2026-08)은 [`archive/pre-release-checklist-history.md`](archive/pre-release-checklist-history.md)의 "implementation-todo 완료 (이전)".
