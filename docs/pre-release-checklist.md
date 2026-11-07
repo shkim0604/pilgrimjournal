@@ -28,6 +28,22 @@
         메뉴에 나타나는지, 삭제가 수렴하는지(유형 카탈로그와 같은 경로).
       - CloudKit 스키마 변경 없음(`detailsData` 블롭 내부 배열) — 스키마 배포 불필요.
 
+- [ ] **계정 삭제가 가족 공유도 지우는지 — 실기기 CloudKit 확인** (2026-11-07, 브랜치
+      `claude/competent-volhard-bedf3d`). 계정 삭제가 이제 받은 공유에서 나가고(shared
+      database의 zone 전체 share 삭제) 개인 데이터베이스의 기본 zone 밖 zone을 모두
+      지운다(`pilgrim-share-*` 포함, 범위는 `docs/privacy.md` "계정 삭제"). 자동 테스트는
+      순서·실패 보고·zone 선택만 확인했고 실제 CloudKit 호출은 돌리지 않았다.
+      - 두 Apple 계정(A 소유자, B 참여자)으로: A가 노트북과 기록 하나를 공유하고 B가
+        수락, B도 노트북 하나를 공유해 A가 수락한 상태에서 A 계정 삭제.
+      - CloudKit Console(A의 개인 DB)에 기본 zone 말고 zone이 없고, binding record도 없다.
+      - B 기기: A가 공유한 공간이 목록에서 사라지고, B가 공유한 노트북의 참여자 목록에서
+        A가 빠진다. B의 노트북·기록은 그대로다.
+      - A 기기 삭제 직후 앱을 다시 열어도 `pilgrim-share-*` zone이 다시 생기지 않는다
+        (닫힐 때 남은 `CKSyncEngine` 전송이 zone을 되살리지 않는지).
+      - 비행기 모드 등으로 2단계 중간 실패를 만들어 "iCloud 항목 N개를 지우지
+        못했습니다" 오류가 나오고, 다시 시도하면 끝까지 지워지는지.
+      - CloudKit 스키마 변경 없음(삭제만 함) — 스키마 배포 불필요.
+
 - [ ] **1.1.0 (29) — App Review 반려 대응: 계정 삭제·지원 페이지** (2026-10-16,
       브랜치 `fix/account-deletion`). 1.1.0 (28)이 5.1.1(v)(앱 내 계정 삭제 없음)과
       1.5(지원 페이지 없음)로 반려돼 계정 삭제(`AccountDeletionService`)와 지원

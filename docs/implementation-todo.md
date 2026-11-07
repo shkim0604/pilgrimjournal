@@ -23,11 +23,12 @@
     (`SwiftDataSharedEntryCacheProvider`)와 동기화 상태·병합을 맡는 `SharedSpaceStore`,
     실제 화면(노트북·기록의 "공유…" 메뉴, 사이드바 "공유됨", 공유 노트북 열기·편집·
     새 노트, 공유 끝내기·나가기·내 기록장에 복사, 열려 있는 편집기와 원격 변경 병합,
-    iOS 초대 수락 `CKSharingSupported`). 단위·시뮬레이터 테스트만 통과, 실제 CloudKit
-    동작은 미검증.
+    iOS 초대 수락 `CKSharingSupported`), 계정 삭제 시 받은 공유 나가기와 공유한 zone
+    삭제(2026-11-07, `docs/privacy.md` "계정 삭제"). 단위·시뮬레이터 테스트만 통과, 실제
+    CloudKit 동작은 미검증.
   - 다음: 실기기 2대 확인(`docs/development.md` "공유 노트북 실기기 확인"), 상대 편집
     위치 표시, 사진, 공유 노트 휴지통, macOS 초대 수락, 참여자 이름 표시("엄마가 수정"),
-    검색·백업·계정 삭제 경계, `docs/privacy.md`("shared DB 사용 안 함") 수정.
+    검색·백업 경계, `docs/privacy.md`("shared DB 사용 안 함") 수정.
   - 상대 편집 위치는 CloudKit으로만 표시한다(2~10초 지연, 문단 단위, 2026-11-05 결정).
     Apple 메모 같은 실시간 커서는 Apple 전용 동기화라 다른 앱이 쓸 수 없고, SharePlay
     실시간 커서와 자체 실시간 서버는 하지 않기로 했다.

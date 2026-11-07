@@ -1,6 +1,16 @@
 {
   "sourceLanguage" : "ko",
   "strings" : {
+    "내가 공유한 노트북과 기록(함께 보던 가족에게서도 사라짐)과 참여 중인 공유" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notebooks and entries you shared (they disappear for your family too), and shares you joined"
+          }
+        }
+      }
+    },
     "" : {},
     "‘%@’ 태그를 모든 기록에서 제거할까요?" : {
       "localizations" : {

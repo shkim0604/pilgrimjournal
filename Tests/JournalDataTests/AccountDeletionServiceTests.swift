@@ -158,10 +158,17 @@ final class AccountDeletionServiceTests: XCTestCase {
             storedHash: CloudIdentityBindingService.subjectHash(for: "apple-user-b")
         )
         let zones = CallRecorder()
-        let eraser = CloudKitAccountDataEraser(bindingStore: store) {
-            await zones.record("wipe")
-            return []
-        }
+        let eraser = CloudKitAccountDataEraser(
+            bindingStore: store,
+            leaveAcceptedShares: {
+                await zones.record("leave")
+                return []
+            },
+            wipeAccountZones: {
+                await zones.record("wipe")
+                return []
+            }
+        )
 
         do {
             try await eraser.eraseCloudData(appleUserIdentifier: "apple-user-a")
@@ -178,21 +185,84 @@ final class AccountDeletionServiceTests: XCTestCase {
         XCTAssertNotNil(storedHash)
     }
 
-    func testCloudEraserDeletesBindingBeforeZones() async throws {
+    func testCloudEraserUnbindsThenLeavesSharesThenDeletesZones() async throws {
         let store = InMemoryBindingStore(
             storedHash: CloudIdentityBindingService.subjectHash(for: "apple-user-a")
         )
         let order = CallRecorder()
-        let eraser = CloudKitAccountDataEraser(bindingStore: store) {
-            let hashAtWipe = await store.storedHash
-            await order.record(hashAtWipe == nil ? "wipe-after-unbind" : "wipe-while-bound")
-            return ["com.apple.coredata.cloudkit.zone"]
-        }
+        let eraser = CloudKitAccountDataEraser(
+            bindingStore: store,
+            leaveAcceptedShares: {
+                let hashAtLeave = await store.storedHash
+                await order.record(hashAtLeave == nil ? "leave-after-unbind" : "leave-while-bound")
+                return ["pilgrim-share-received"]
+            },
+            wipeAccountZones: {
+                await order.record("wipe")
+                return ["com.apple.coredata.cloudkit.zone", "pilgrim-share-owned"]
+            }
+        )
 
         try await eraser.eraseCloudData(appleUserIdentifier: "apple-user-a")
 
         let calls = await order.calls
-        XCTAssertEqual(calls, ["wipe-after-unbind"])
+        XCTAssertEqual(calls, ["leave-after-unbind", "wipe"])
+    }
+
+    func testCloudEraserKeepsZonesWhenLeavingSharesFails() async throws {
+        let store = InMemoryBindingStore(
+            storedHash: CloudIdentityBindingService.subjectHash(for: "apple-user-a")
+        )
+        let order = CallRecorder()
+        let leaveError = CloudKitWipeError(remaining: ["pilgrim-share-x"], reason: "offline")
+        let eraser = CloudKitAccountDataEraser(
+            bindingStore: store,
+            leaveAcceptedShares: { throw leaveError },
+            wipeAccountZones: {
+                await order.record("wipe")
+                return []
+            }
+        )
+
+        do {
+            try await eraser.eraseCloudData(appleUserIdentifier: "apple-user-a")
+            XCTFail("공유 나가기가 실패하면 멈춰야 합니다.")
+        } catch {
+            XCTAssertEqual(error as? CloudKitWipeError, leaveError)
+        }
+        let calls = await order.calls
+        XCTAssertTrue(calls.isEmpty, "자기 zone은 지우지 않아야 다시 열었을 때 공유 기록이 남습니다.")
+    }
+
+    func testPartialZoneWipeFailureIsReportedAndKeepsLocalData() async throws {
+        let fixture = try await makeFixture(storageLocation: .iCloud(accountHash: "cloud-a"))
+        let store = InMemoryBindingStore(
+            storedHash: CloudIdentityBindingService.subjectHash(for: "apple-user-a")
+        )
+        let eraser = CloudKitAccountDataEraser(
+            bindingStore: store,
+            leaveAcceptedShares: { [] },
+            wipeAccountZones: {
+                throw CloudKitWipeError(remaining: ["pilgrim-share-a"], reason: "quota")
+            }
+        )
+        let service = makeService(fixture: fixture, cloudEraser: eraser)
+
+        do {
+            try await service.deleteAccount(fixture.request) {}
+            XCTFail("일부 zone이 남으면 삭제를 완료로 보면 안 됩니다.")
+        } catch let error as AccountDeletionError {
+            guard case let .cloudDeletionFailed(reason) = error else {
+                return XCTFail("예상과 다른 오류: \(error)")
+            }
+            XCTAssertTrue(reason.contains("quota"), reason)
+            XCTAssertTrue(error.leavesLocalDataIntact)
+        }
+
+        XCTAssertTrue(exists(fixture.scopePaths.root.appending(path: "scope.json")))
+        XCTAssertNotNil(fixture.appLockStore.load())
+        let session = try await fixture.sessionService.session()
+        XCTAssertEqual(session.currentUserIdentifier, "apple-user-a")
     }
 
     func testEmptyIdentifierDeletesNothing() async throws {
