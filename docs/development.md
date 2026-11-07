@@ -235,22 +235,38 @@ npm test && npm run typecheck
    `http://localhost:8420/admin`을 열고 bootstrap 계정(기본 admin/admin)으로 로그인한다.
    비밀번호 변경 화면에서 12자 이상으로 바꾼다. 계정이 생긴 뒤에는 bootstrap 값을 무시하므로
    재시작해도 비밀번호가 되돌아가지 않는다.
-4. `.env`를 운영 값으로 되돌린다: `ADMIN_ORIGIN=https://pilgrim.delight-house.org`,
-   `ADMIN_COOKIE_SECURE=true`, `TRUST_PROXY=true`. `docker compose -f web/admin/docker-compose.yml up -d`로
-   다시 만든다(볼륨의 계정은 유지된다).
-5. 터널 연결 — 둘 중 하나:
-   - 이미 Mac mini에 cloudflared가 있으면 Zero Trust › Networks › Tunnels에서 그 터널에 public
-     hostname `pilgrim.delight-house.org` → `http://localhost:8420`을 추가한다.
+4. `.env`를 운영 값으로 바꾼다: `ADMIN_ORIGIN=https://pilgrim.delight-house.org`,
+   `ADMIN_COOKIE_SECURE=true`, `TRUST_PROXY=true`. `ADMIN_BOOTSTRAP_*` 두 줄은 지운다. 계정이 이미
+   있어 쓰이지 않고, 볼륨을 잃었을 때 admin/admin이 인터넷에 다시 열리는 대신 서버가 시작을
+   거부하게 된다. `docker compose -f web/admin/docker-compose.yml up -d`로 다시 만든다(볼륨의 계정은
+   유지된다).
+5. 터널 연결 — 셋 중 하나:
+   - Mac mini의 cloudflared가 `~/.cloudflared/config.yml`로 관리되면(지금 Mac mini가 이렇다)
+     `config.yml`을 백업하고 `ingress`의 마지막 `- service: http_status:404` 바로 위에
+     `- hostname: pilgrim.delight-house.org` / `service: http://localhost:8420`을 넣는다.
+     `cloudflared tunnel --config ~/.cloudflared/config.yml ingress validate`로 확인하고,
+     `cloudflared tunnel route dns <tunnel-id> pilgrim.delight-house.org`로 DNS를 만든 뒤
+     `launchctl kickstart -k gui/$(id -u)/com.cloudflare.cloudflared`로 재시작한다. 재시작하는 몇 초
+     동안 같은 터널을 쓰는 SSH(`ssh.delight-house.org`)와 noldam API도 끊긴다. SSH로 작업 중이면
+     `nohup`으로 띄워 재시작이 끝까지 실행되게 한다.
+   - 대시보드에서 관리하는 터널이면 Zero Trust › Networks › Tunnels에서 public hostname
+     `pilgrim.delight-house.org` → `http://localhost:8420`을 추가한다.
    - compose에 포함된 cloudflared를 쓰려면 새 터널의 토큰을 `.env`의 `TUNNEL_TOKEN`에 넣고
      `--profile tunnel`로 올린 뒤 public hostname 서비스를 `http://admin:8420`으로 둔다.
    그 뒤 `https://pilgrim.delight-house.org/admin`에서 바꾼 비밀번호로 로그인된다.
-6. 업데이트: `git pull && ./scripts/admin-snapshot.sh`(macOS에서 만든 스냅샷이 커밋돼 있으면 생략)
-   후 `docker compose -f web/admin/docker-compose.yml up -d --build`.
+6. 업데이트: 스냅샷(`./scripts/admin-snapshot.sh`)은 개발 Mac에서 만들어 `main`에 커밋해 둔다.
+   Mac mini에서는 `git pull --ff-only` 후
+   `docker compose -f web/admin/docker-compose.yml up -d --build --force-recreate`.
+   Mac mini의 Docker Compose는 `--build`만으로는 새 이미지를 빌드하고도 컨테이너를 다시 만들지
+   않은 적이 있다(2026-11-07). 반영됐는지는 컨테이너 안 스냅샷의 첫 커밋
+   (`docker compose -f web/admin/docker-compose.yml exec admin node -e "console.log(require('/app/web/admin/snapshot/commits.json').commits[0].hash)"`)이
+   저장소의 `web/admin/snapshot/commits.json` 첫 커밋과 같은지로 확인한다.
 
-비밀번호를 잊으면 `docker compose -f web/admin/docker-compose.yml exec admin node -e "const {DatabaseSync}=require('node:sqlite');new DatabaseSync('/data/admin.sqlite').exec('PRAGMA foreign_keys=ON; DELETE FROM admins')"`
+비밀번호를 잊으면 `.env`에 `ADMIN_BOOTSTRAP_USERNAME`/`ADMIN_BOOTSTRAP_PASSWORD`를 다시 넣고
+`docker compose -f web/admin/docker-compose.yml exec admin node -e "const {DatabaseSync}=require('node:sqlite');new DatabaseSync('/data/admin.sqlite').exec('PRAGMA foreign_keys=ON; DELETE FROM admins')"`
 후 재시작하면 bootstrap 값으로 다시 시드된다(세션도 함께 지워진다). 이때도 계정이 다시 admin/admin이
-되므로, 터널 hostname을 잠시 끄거나 3–4단계처럼 로컬에서 먼저 비밀번호를 바꾼다. `admin-data`
-볼륨을 지운 경우(`down -v`)도 마찬가지다.
+되므로, 터널 hostname을 잠시 끄거나 1–4단계처럼 로컬에서 먼저 비밀번호를 바꾸고 bootstrap 줄을 다시
+지운다. `admin-data` 볼륨을 지운 경우(`down -v`)도 마찬가지다.
 
 ### 고칠 때 같이 고칠 것
 
