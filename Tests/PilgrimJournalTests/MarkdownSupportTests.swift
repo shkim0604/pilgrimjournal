@@ -1511,7 +1511,7 @@ final class MarkdownSupportTests: XCTestCase {
     }
 
     // Typed text that inherits a hidden marker's attributes is stored but
-    // never drawn — see the 2026-08-15 entry in docs/known-issues.md.
+    // never drawn — see "숨긴 마커 뒤 입력과 원자적 이미지 줄" in docs/known-issues.md.
     func testTypingAttributesAreRestoredWhenInheritedFromAHiddenMarker() {
         XCTAssertTrue(
             MarkdownInputReconciliation.shouldRestoreTypingAttributes(
