@@ -134,6 +134,12 @@
       교체했다. 이전 E-3 통과는 구 아이콘 기준이며, 새 빌드의 Dock/Finder와 iPhone
       홈 화면/Spotlight에서 다시 확인.
 
+- [ ] **앱 레이어 파일 분할 — 타이핑 게이트 재실행** (2026-11-09, 브랜치
+      `refactor/split-app-layer`). 동작 변경은 없고 자동 테스트·서명 없는 iOS/macOS
+      빌드는 통과했지만, 편집기 코드가 새 파일(`Markdown/LiveMarkdownTextEditor+iOS.swift`,
+      `+macOS.swift`)로 옮겨졌으므로 이 빌드로 다음 TestFlight 전에
+      [에디터 입력 릴리스 게이트](known-issues.md#에디터-입력-릴리스-게이트)를 다시 돈다.
+
 - [ ] **리팩토링 Phase 0 — 실기기 확인** (2026-10-15, 브랜치
       `refactor/phase-0-hygiene`). 자동 테스트와 서명 없는 iOS/macOS 빌드는
       통과했지만 아래는 서명된 빌드에서만 확인 가능하다.
@@ -225,7 +231,7 @@
       한글을 치면 음절이 아니라 낱개 자모가 찍혔다(`#ㅜㅏㅏ`, `ㅓㅣㅣ` 등 —
       IME 조합이 매 키 입력마다 끊기는 증상). **근본 원인은 확정되지 않았다** —
       IME 조합은 자동화 테스트로 재현 불가.
-      - 유력 후보: `tagsEditor`/`mobileTagsEditor`(`EntryViews.swift`)의 태그
+      - 유력 후보: `tagsEditor`/`mobileTagsEditor`(`Entry/MacEntryEditorView.swift`, `Entry/IOSEntryEditorView.swift`)의 태그
         `TextField`가 `ScrollView(.horizontal)` 안 칩 `ForEach` 바로 뒤에
         `.frame(minWidth:)`만 걸린 채 있어, 글자마다 필드 폭 → HStack 폭이 바뀌고
         가로 스크롤뷰가 매 키마다 relayout하며 조합 세션을 끊는다.

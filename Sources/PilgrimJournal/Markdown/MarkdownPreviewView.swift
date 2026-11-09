@@ -242,7 +242,7 @@ struct MarkdownPreviewView: View {
 /// `.task(id:)` here only redoes the load when the attachment id changes or
 /// `attachmentRevision` bumps (e.g. a background CloudKit download
 /// finishes) — mirrors the pattern already used by
-/// `AttachmentDownloadStatusView` in EntryViews.swift.
+/// `AttachmentDownloadStatusView` in Entry/AttachmentEditorSection.swift.
 private struct AttachmentImageView: View {
     @EnvironmentObject private var model: AppModel
     let attachmentID: UUID
