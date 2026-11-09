@@ -17,8 +17,10 @@
             CloudKit에 저장된 적 없음) Console에서 `SharedRecordMapper` 필드대로 직접 만들고
             Production에 배포했다. 함께 나간 것: `cloudkit.share` 타입, 세 타입의 기본 권한.
             **공유 자체는 여전히 실기기 미검증.**
-      - [ ] iOS·macOS 업로드 → App Store Connect에 1.2.0 버전 생성, 새로운 기능 문구 입력,
-            빌드 31 연결, 심사 제출(수동 출시).
+      - [x] iOS·macOS 업로드(Xcode Organizer — `xcodebuild -exportArchive`는 계정을 못 찾음)
+            → 1.2.0 버전 생성, 새로운 기능·설명·심사 메모를 기도제목·가족 공유에 맞게 갱신,
+            빌드 31 연결, 수동 출시로 심사 제출(2026-11-09, 둘 다 Waiting for Review).
+      - [ ] 심사 통과 → App Store Connect에서 직접 출시.
       - [ ] 출시 뒤: 실제 Production에서 공유 초대·수락과 계정 삭제 시 공유 존 삭제 확인
             (아래 "계정 삭제가 가족 공유도 지우는지" 항목).
 
