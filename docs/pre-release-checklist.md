@@ -10,6 +10,16 @@
 
 ## 미룬 항목 (재개 필요)
 
+- [ ] **1.2.0 (31) — App Store 출시** (2026-11-09, 브랜치 `release/1.2.0-31`). main
+      `a05e694` 전부 + 버전 올림. 범위와 새로운 기능 문구는 `docs/release-1.2.0.md`.
+      - [x] 편집기 입력 게이트(Release 구성, 실기기) — 사용자 확인(2026-11-09).
+      - [ ] CloudKit Console: `SharedEntry`·`SharedRevision`을 Development에서 확인하고
+            Production에 배포(Deploy Schema Changes). **심사 제출 전.**
+      - [ ] iOS·macOS 업로드 → App Store Connect에 1.2.0 버전 생성, 새로운 기능 문구 입력,
+            빌드 31 연결, 심사 제출(수동 출시).
+      - [ ] 출시 뒤: 실제 Production에서 공유 초대·수락과 계정 삭제 시 공유 존 삭제 확인
+            (아래 "계정 삭제가 가족 공유도 지우는지" 항목).
+
 - [ ] **기도노트 기도제목 체크리스트 — 실기기 확인** (2026-11-06, 브랜치
       `feat/prayer-topics`). 자동 테스트·서명 없는 빌드·시뮬레이터 확인은 통과,
       아래는 하지 않았다.
