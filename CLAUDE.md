@@ -39,7 +39,7 @@ Domain-first Swift Package; platform concerns sit behind protocols.
 - **JournalChecks**, **ShareCardEval** (on-device model eval, macOS 26 only, not in CI), **AdminSnapshot** (writes `web/admin/snapshot/`).
 - **`web/admin`** — read-only developer console (Node + Hono, Mac mini + Cloudflare Tunnel). It parses the tracking docs: keep top-level `- [ ]` lines in the checklist and `- **제목**` lines under `## 대기 중` in the todo.
 
-Some app files are very large (`MarkdownSupport.swift`, `EntryViews.swift`, `AppModel.swift`): locate symbols with `git grep -n` and read ranges instead of whole files.
+App code is split by area: the markdown editor in `Sources/PilgrimJournal/Markdown/` (`LiveMarkdownTextEditor+iOS.swift`/`+macOS.swift` hold the input path), entry screens in `Entry/`, and `AppModel` as a core file plus `AppModel+<Area>.swift` extensions. Locate symbols with `git grep -n` and read ranges rather than whole files.
 
 ## Rules that have bitten before
 

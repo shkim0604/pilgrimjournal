@@ -117,13 +117,24 @@
   - 각 단계마다 [에디터 입력 릴리스 게이트](known-issues.md#에디터-입력-릴리스-게이트)를
     다시 돌린다. 5단계의 파일 분할은 아래 항목으로 따로 한다.
 
-- **앱 레이어 파일 분할 (동작 변경 없음)** — `MarkdownSupport.swift`,
-  `AppModel.swift`, `EntryViews.swift`, `ContentView.swift`, `PilgrimJournalApp.swift`를
-  구조만 나눈다(브랜치 `refactor/split-app-layer`, 파일 하나당 커밋 하나). 편집기
-  입력 경로는 글자 그대로 옮긴다. 이 문서 정리(`docs/cleanup`)가 끝난 뒤 시작한다.
-  옮긴 뒤엔 실기기 타이핑 게이트를 다시 통과해야 한다.
+- **앱 레이어 분할의 남은 것** — 2026-11-09 분할(아래 완료)에서 일부러 뺀 것:
+  - `PilgrimJournalApp` App 구조체 본문(디버그 환경 변수 처리, macOS 메뉴 명령)은
+    그대로다. 나누려면 App 멤버를 extension으로 옮기며 `private`을 풀어야 한다.
+  - macOS·iOS 편집기의 중복 헬퍼(`parseTags`/`mergingTag`/`optionalBinding`,
+    `scheduleAutosave`/`performAutosave`)는 합치지 않았다. 저장 실패 처리가 두
+    플랫폼에서 다르다(iOS는 실패를 돌려주고 macOS는 무시) — 합치려면 먼저 정책을 정한다.
+  - `AppModel.autosaveOnEditorExit`는 앱 코드에서 부르는 곳이 없고 테스트만 쓴다.
 
 ## 완료
+
+- **앱 레이어 파일 분할 (동작 변경 없음)** (2026-11-09, 브랜치
+  `refactor/split-app-layer`) — 큰 파일을 파일 하나당 커밋 하나로 글자 그대로 옮겼다.
+  `MarkdownSupport.swift` → `Markdown/` 10개(편집기 입력 경로는 macOS·iOS 블록째),
+  `EntryViews.swift` → `Entry/` 5개, `AppModel.swift` → 코어 + `AppModel+<영역>.swift`
+  9개, ContentView·PrayerTopicViews·SettingsAndImportViews·PilgrimJournalApp의 최상위
+  타입, 큰 테스트 두 파일(같은 suite 이름의 extension). 다른 파일에서 쓰게 된 선언만
+  `private`을 뗐다(AppModel은 25개, `@Published` 9개는 `private(set)` 해제). 테스트 480개
+  전후 동일.
 
 - **기도노트 기도제목 체크리스트 + 응답/기도중 모아보기 + 섹션·템플릿** (2026-11-06) —
   기도제목을 `EntryDetails.prayerTopics`(`detailsData` JSON 블롭 안의 배열)로
