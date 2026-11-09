@@ -9,10 +9,10 @@
 - iOS 1.1.0 (29): Ready for Sale. macOS 1.1.0 (29) 상태는 App Store Connect에서 확인한다.
 - **CloudKit 스키마:** SwiftData 모델(`canonicalModels`)은 바뀌지 않았다. 대신 가족 공유가
   `CKSyncEngine`으로 쓰는 레코드 타입 `SharedEntry`·`SharedRevision`이 새로 생겼다.
-  **심사 제출 전에 CloudKit Console에서 Production에 배포해야 한다** — 없으면 Production은
-  공유 레코드 저장을 조용히 거부한다(`docs/known-issues.md` "CloudKit 스키마 드리프트").
-  Development에 두 타입이 있는지 먼저 확인한다(공유를 Development에서 한 번 저장해야
-  생긴다, `docs/development.md` "공유 노트북 실기기 확인").
+  Development에도 없었으므로(공유가 실제 CloudKit에 저장된 적이 없다) 2026-11-09에
+  Console에서 `SharedRecordMapper`의 필드·타입대로 직접 만들고 Production에 배포했다
+  (`cloudkit.share` 타입과 세 타입의 기본 권한 포함). 필드를 바꾸면 같은 절차를 다시 밟는다.
+- **가족 공유는 실기기에서 검증하지 않은 채 나간다**(사용자 결정, 2026-11-09).
 - 실기기 타이핑 게이트: 이 빌드 범위(main `a05e694`)의 Release 빌드로 사용자가 확인했다
   (2026-11-09).
 - 출시 전 게이트와 진행 상태는 `docs/pre-release-checklist.md`의 "1.2.0 (31)" 항목.

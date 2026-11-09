@@ -13,8 +13,10 @@
 - [ ] **1.2.0 (31) — App Store 출시** (2026-11-09, 브랜치 `release/1.2.0-31`). main
       `a05e694` 전부 + 버전 올림. 범위와 새로운 기능 문구는 `docs/release-1.2.0.md`.
       - [x] 편집기 입력 게이트(Release 구성, 실기기) — 사용자 확인(2026-11-09).
-      - [ ] CloudKit Console: `SharedEntry`·`SharedRevision`을 Development에서 확인하고
-            Production에 배포(Deploy Schema Changes). **심사 제출 전.**
+      - [x] CloudKit 스키마(2026-11-09): Development에 두 타입이 없어서(공유가 실제
+            CloudKit에 저장된 적 없음) Console에서 `SharedRecordMapper` 필드대로 직접 만들고
+            Production에 배포했다. 함께 나간 것: `cloudkit.share` 타입, 세 타입의 기본 권한.
+            **공유 자체는 여전히 실기기 미검증.**
       - [ ] iOS·macOS 업로드 → App Store Connect에 1.2.0 버전 생성, 새로운 기능 문구 입력,
             빌드 31 연결, 심사 제출(수동 출시).
       - [ ] 출시 뒤: 실제 Production에서 공유 초대·수락과 계정 삭제 시 공유 존 삭제 확인
