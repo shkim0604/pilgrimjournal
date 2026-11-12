@@ -222,7 +222,9 @@ final class PromptLabServer {
         cutEnding: Bool
     ) async -> Result<[String], RequestTranslator.Unavailable> {
         let parts = lines.map(PrayerRequestLines.splitLabel)
-        let result = await RequestTranslator.translate(parts.map(\.body), from: source, to: target)
+        let result = await RequestTranslator.translate(
+            parts.map { PrayerRequestLines.translationInput($0.body, from: source) },
+            from: source, to: target)
         return result.map { bodies in
             zip(bodies, parts).map { body, part in
                 let sentence = PrayerRequestLines.polishTranslation(

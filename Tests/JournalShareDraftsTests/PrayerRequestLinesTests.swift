@@ -66,6 +66,16 @@ final class PrayerRequestLinesTests: XCTestCase {
             ["Pray that I pass (me/study)"])
     }
 
+    func testTranslationInputRestoresTheRequestTail() {
+        func input(_ text: String, _ language: RequestLanguage = .korean) -> String {
+            PrayerRequestLines.translationInput(text, from: language)
+        }
+        XCTAssertEqual(input("아버지가 회복하시도록"), "아버지가 회복하시도록 기도해 주세요")
+        XCTAssertEqual(input("체력이 버티게 해주세요"), "체력이 버티게 해주세요")
+        XCTAssertEqual(input(" 건강을 위해 기도해 주세요. "), "건강을 위해 기도해 주세요.")
+        XCTAssertEqual(input(" Pray that I heal. ", .english), "Pray that I heal.")
+    }
+
     func testGateSkipsOnlyOnAClearNo() {
         XCTAssertTrue(PrayerRequestLines.gateSaysNo("No"))
         XCTAssertFalse(PrayerRequestLines.gateSaysNo("Yes"))

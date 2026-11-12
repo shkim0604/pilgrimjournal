@@ -40,6 +40,23 @@ public enum PrayerRequestLines {
     /// "~하도록" or "~주시길" and write 10~20자 (docs/roadmap.md), but asking the model for
     /// that ending made it stop mid-sentence ("팀장님께"), so it writes the long form and
     /// code shortens it.
+    private static let requestTails = [
+        "기도해 주세요", "기도해주세요", "기도 부탁드립니다", "기도합니다", "기도해 주십시오",
+    ]
+
+    /// The sentence to hand a translator. A shortened Korean line ("아버지가 회복하시도록")
+    /// translates into a fragment ("So that father recovers"), so the request tail is put back.
+    public static func translationInput(_ text: String, from language: RequestLanguage) -> String {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard language == .korean else { return trimmed }
+        var body = trimmed
+        while let last = body.last, ".!".contains(last) { body.removeLast() }
+        if requestTails.contains(where: body.hasSuffix) || body.hasSuffix("주세요") {
+            return trimmed
+        }
+        return body + " 기도해 주세요"
+    }
+
     public static func sharedEnding(_ line: String) -> String {
         var body = line.trimmingCharacters(in: .whitespaces)
         var label = ""
@@ -48,8 +65,7 @@ public enum PrayerRequestLines {
             body = body[..<open].trimmingCharacters(in: .whitespaces)
         }
         while let last = body.last, ".!".contains(last) { body.removeLast() }
-        let tails = ["기도해 주세요", "기도해주세요", "기도 부탁드립니다", "기도합니다", "기도해 주십시오"]
-        for tail in tails where body.hasSuffix(tail) {
+        for tail in requestTails where body.hasSuffix(tail) {
             let cut = body.dropLast(tail.count).trimmingCharacters(in: .whitespaces)
             // "건강을 위해 기도해 주세요" keeps reading as a request once cut; a bare
             // "기도해 주세요" would leave nothing.
