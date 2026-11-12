@@ -78,6 +78,7 @@ struct EntryRow: View {
 
 struct EntryRowWithActions: View {
     @EnvironmentObject private var model: AppModel
+    @State private var prayerRequestShareEntry: JournalEntryRecord?
     let entry: JournalEntryRecord
 
     var body: some View {
@@ -91,6 +92,13 @@ struct EntryRowWithActions: View {
                         Label("공유…", systemImage: "person.crop.circle.badge.plus")
                     }
                 }
+                if entry.offersPrayerRequestSharing {
+                    Button {
+                        sharePrayerRequests()
+                    } label: {
+                        Label("기도제목 나누기", systemImage: "hands.and.sparkles")
+                    }
+                }
                 Button("휴지통으로 이동", role: .destructive) {
                     model.moveToTrash(entry)
                 }
@@ -102,6 +110,21 @@ struct EntryRowWithActions: View {
                     Label("삭제", systemImage: "trash")
                 }
             }
+            .sheet(item: $prayerRequestShareEntry) { entry in
+                PrayerRequestShareSheet(entry: entry)
+            }
+    }
+
+    private func sharePrayerRequests() {
+        #if os(macOS)
+        // The inline editor may hold unsaved text for this entry; the sheet reads the saved one.
+        model.flushOpenEditor()
+        let saved = model.entryRecord(id: entry.id) ?? entry
+        guard saved.offersPrayerRequestSharing else { return }
+        prayerRequestShareEntry = saved
+        #else
+        prayerRequestShareEntry = entry
+        #endif
     }
 
     private func edit() {

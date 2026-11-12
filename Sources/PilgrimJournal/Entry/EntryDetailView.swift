@@ -14,6 +14,7 @@ import UIKit
 struct EntryDetailView: View {
     @EnvironmentObject private var model: AppModel
     @State private var isPresentingHistory = false
+    @State private var isPresentingPrayerRequestShare = false
     let entry: JournalEntryRecord
 
     var body: some View {
@@ -68,6 +69,9 @@ struct EntryDetailView: View {
         .sheet(isPresented: $isPresentingHistory) {
             RevisionHistoryView(entry: entry)
         }
+        .sheet(isPresented: $isPresentingPrayerRequestShare) {
+            PrayerRequestShareSheet(entry: entry)
+        }
     }
 
     private var kindBadge: some View {
@@ -91,6 +95,11 @@ struct EntryDetailView: View {
             }
             Button("이력") {
                 isPresentingHistory = true
+            }
+            if entry.offersPrayerRequestSharing {
+                Button("기도제목 나누기") {
+                    isPresentingPrayerRequestShare = true
+                }
             }
         }
     }

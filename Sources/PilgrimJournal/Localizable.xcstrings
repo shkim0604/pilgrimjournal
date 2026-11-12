@@ -929,6 +929,42 @@
         }
       }
     },
+    "prayerShare.addRequest" : {
+      "comment" : "Adds an empty line to the share-prayer-requests sheet",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add a prayer request"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "기도제목 추가"
+          }
+        }
+      }
+    },
+    "prayerShare.requestPlaceholder" : {
+      "comment" : "Placeholder of one line in the share-prayer-requests sheet",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prayer request"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "기도제목"
+          }
+        }
+      }
+    },
     "Quiet Morning" : {},
     "sidebar.notebooks" : {
       "comment" : "Sidebar section header listing notebooks",
@@ -1115,6 +1151,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Warnings"
+          }
+        }
+      }
+    },
+    "계속 쓰기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep writing"
           }
         }
       }
@@ -1572,6 +1618,16 @@
         }
       }
     },
+    "기도제목 나누기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Share prayer requests"
+          }
+        }
+      }
+    },
     "기도제목 삭제" : {
       "localizations" : {
         "en" : {
@@ -1598,6 +1654,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Prayer topics & status"
+          }
+        }
+      }
+    },
+    "기도제목을 찾는 중…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finding prayer requests…"
           }
         }
       }
@@ -1914,6 +1980,16 @@
         }
       }
     },
+    "기록의 ‘기도제목 나누기’를 선택하면 기기 안에서 본문을 읽고 나눌 기도제목을 제안합니다. 문장을 고치거나 고른 뒤 메시지로 나누거나 복사하세요. 기록 내용은 어디에도 올라가거나 저장되지 않습니다. Apple Intelligence를 쓸 수 없는 기기에서는 기도제목을 직접 적어 나눌 수 있습니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose ‘Share prayer requests’ on an entry and the device reads it and suggests prayer requests to share. Edit or pick them, then share them in a message or copy them. Nothing from the entry is uploaded or saved. On devices without Apple Intelligence, you can write your own prayer requests to share."
+          }
+        }
+      }
+    },
     "기본 크기" : {
       "localizations" : {
         "en" : {
@@ -1990,6 +2066,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Leaving removes the shared entries from this device and your iCloud. The owner's entries stay as they are."
+          }
+        }
+      }
+    },
+    "나누기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Share"
+          }
+        }
+      }
+    },
+    "나눌 언어" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Language to share in"
           }
         }
       }
@@ -2240,6 +2336,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Delete the App on Your Other Devices First"
+          }
+        }
+      }
+    },
+    "다른 사람 이야기가 들어 있다면 나누기 전에 한 번 더 확인해 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "If this includes someone else's story, check once more before sharing."
           }
         }
       }
@@ -2800,6 +2906,26 @@
         }
       }
     },
+    "버리기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discard"
+          }
+        }
+      }
+    },
+    "번역하지 못했어요. 원래 언어로 나눕니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't translate. Sharing in the original language."
+          }
+        }
+      }
+    },
     "번호 목록" : {
       "localizations" : {
         "en" : {
@@ -2916,6 +3042,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "What’s Protected"
+          }
+        }
+      }
+    },
+    "복사" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy"
           }
         }
       }
@@ -4444,6 +4580,16 @@
         }
       }
     },
+    "이 기기에서는 자동 제안을 쓸 수 없어요. 직접 적어 보세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suggestions aren't available on this device. Write your own."
+          }
+        }
+      }
+    },
     "이 기기와 iCloud에서 완전히 지워지며 되돌릴 수 없습니다." : {
       "localizations" : {
         "en" : {
@@ -4480,6 +4626,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Only the data on this device will be deleted. To delete your entries in iCloud too, sign in to iCloud on this device and delete again."
+          }
+        }
+      }
+    },
+    "이 기록에서는 기도제목을 찾지 못했어요. 직접 적어 보세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No prayer requests were found in this entry. Write your own."
           }
         }
       }
@@ -4781,6 +4937,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "We Don’t Run Our Own Journal Servers"
+          }
+        }
+      }
+    },
+    "작성한 기도제목을 버릴까요?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discard the prayer requests you wrote?"
           }
         }
       }
@@ -5221,6 +5387,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Support Page"
+          }
+        }
+      }
+    },
+    "직접 쓰기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Write my own"
           }
         }
       }
