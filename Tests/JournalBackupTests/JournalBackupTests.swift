@@ -11,7 +11,13 @@ final class JournalBackupTests: XCTestCase {
         let destination = FileManager.default.temporaryDirectory
             .appending(path: "\(UUID().uuidString).journalbackup")
         defer { try? FileManager.default.removeItem(at: destination) }
-        let entry = makeRecord(title: "백업 기록", date: Date(timeIntervalSince1970: 10))
+        var entry = makeRecord(title: "백업 기록", date: Date(timeIntervalSince1970: 10))
+        entry.kind = .prayer
+        entry.details.prayerTopics = [
+            PrayerTopic(
+                text: "응답된 제목", status: .answered, memo: "메모",
+                answeredAt: Date(timeIntervalSince1970: 20))
+        ]
         let revision = EntryRevisionRecord(
             id: entry.currentRevisionID,
             entryID: entry.id,

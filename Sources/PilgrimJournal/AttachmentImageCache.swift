@@ -2,7 +2,7 @@ import CoreGraphics
 import Foundation
 import ImageIO
 
-// Named distinctly from MarkdownSupport.swift's file-private `PlatformImage`
+// Named distinctly from Markdown/MarkdownEditorConfig.swift's `PlatformImage`
 // alias (same underlying type, NSImage/UIImage) — this one can't be
 // `private` since it's this cache's public return type, and a second
 // same-named typealias at a different access level in the same module
@@ -37,7 +37,7 @@ private let attachmentImageMaxPixelSize = 2048
 /// never the bytes), so id-keying is safe and needs no checksum lookup.
 ///
 /// Deliberately NOT a replacement for the per-Coordinator synchronous front
-/// caches in `MarkdownSupport.swift` — `draw(_:)` needs those to stay a
+/// caches in `Markdown/LiveMarkdownTextEditor+{iOS,macOS}.swift` — `draw(_:)` needs those to stay a
 /// zero-cost synchronous hit, exactly as documented there. This sits behind
 /// them, reached only from their existing async load path, so switching
 /// between entries (which discards the per-Coordinator cache) doesn't force
@@ -68,7 +68,7 @@ final class AttachmentImageCache {
     /// already used by `AppModel.addAttachment`) and stores the result.
     /// Safe to call repeatedly for the same id — a concurrent duplicate
     /// decode just overwrites the cache entry with an equivalent image; the
-    /// callers in MarkdownSupport.swift already serialize this via their
+    /// editor Coordinators (Markdown/LiveMarkdownTextEditor+*.swift) already serialize this via their
     /// own `loadingAttachmentIDs` guard, so in practice it never races.
     func loadAndCache(id: UUID, data: Data) async -> CachedPlatformImage? {
         if let cached = cachedImage(id: id) { return cached }

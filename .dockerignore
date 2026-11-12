@@ -1,0 +1,12 @@
+# Only the admin console image is built from this context (web/admin/Dockerfile).
+*
+!web/admin/package.json
+!web/admin/package-lock.json
+!web/admin/src
+!web/admin/public
+!web/admin/snapshot
+!docs/*.md
+!site/index.html
+web/admin/node_modules
+web/admin/data
+web/admin/.env

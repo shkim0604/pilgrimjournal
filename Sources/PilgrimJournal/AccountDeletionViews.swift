@@ -22,6 +22,7 @@ struct AccountDeletionView: View {
         Form {
             Section {
                 Label("iCloud에 저장된 모든 기록과 첨부", systemImage: "icloud")
+                Label("내가 공유한 노트북과 기록(함께 보던 가족에게서도 사라짐)과 참여 중인 공유", systemImage: "person.2")
                 Label("이 기기의 기록, 첨부, 검색 인덱스와 기기별 설정", systemImage: "internaldrive")
                 Label("이 기기에 저장된 Apple 로그인 정보와 앱 잠금 설정", systemImage: "key")
             } header: {

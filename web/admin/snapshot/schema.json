@@ -1,0 +1,585 @@
+{
+  "schemaVersion" : "1.0.0",
+  "stores" : [
+    {
+      "cloudKitSynced" : true,
+      "entities" : [
+        {
+          "attributes" : [
+            {
+              "externalStorage" : true,
+              "name" : "binary",
+              "optional" : true,
+              "transformable" : false,
+              "type" : "Optional<Data>",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "byteCount",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "Int64",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "checksum",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "String",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "deletedAt",
+              "optional" : true,
+              "transformable" : false,
+              "type" : "Optional<Date>",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "entryID",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "UUID",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "mimeType",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "String",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "originalName",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "String",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "stableID",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "UUID",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "stateRaw",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "String",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "updatedAt",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "Date",
+              "unique" : false
+            }
+          ],
+          "name" : "AttachmentEntity",
+          "relationships" : [
+
+          ]
+        },
+        {
+          "attributes" : [
+            {
+              "externalStorage" : false,
+              "name" : "priority",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "Int",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "sourceRaw",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "String",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "stableID",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "UUID",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "targetKindRaw",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "String",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "updatedAt",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "Date",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "value",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "String",
+              "unique" : false
+            }
+          ],
+          "name" : "ClassificationRuleEntity",
+          "relationships" : [
+
+          ]
+        },
+        {
+          "attributes" : [
+            {
+              "externalStorage" : false,
+              "name" : "createdAt",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "Date",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "deviceID",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "String",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "entryID",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "UUID",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "isRestore",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "Bool",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "parentRevisionID",
+              "optional" : true,
+              "transformable" : false,
+              "type" : "Optional<UUID>",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "snapshotData",
+              "optional" : true,
+              "transformable" : false,
+              "type" : "Optional<Data>",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "stableID",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "UUID",
+              "unique" : false
+            }
+          ],
+          "name" : "EntryRevisionEntity",
+          "relationships" : [
+
+          ]
+        },
+        {
+          "attributes" : [
+            {
+              "externalStorage" : false,
+              "name" : "body",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "String",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "currentRevisionID",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "UUID",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "deletedAt",
+              "optional" : true,
+              "transformable" : false,
+              "type" : "Optional<Date>",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "detailsData",
+              "optional" : true,
+              "transformable" : false,
+              "type" : "Optional<Data>",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "isPinned",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "Bool",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "isStarred",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "Bool",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "kindRaw",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "String",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "modifiedByDeviceID",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "String",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "occurredAt",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "Date",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "originalTimeZone",
+              "optional" : true,
+              "transformable" : false,
+              "type" : "Optional<String>",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "sourceMetadata",
+              "optional" : true,
+              "transformable" : false,
+              "type" : "Optional<Data>",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "sourceUUID",
+              "optional" : true,
+              "transformable" : false,
+              "type" : "Optional<String>",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "stableID",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "UUID",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "tagsData",
+              "optional" : true,
+              "transformable" : false,
+              "type" : "Optional<Data>",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "title",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "String",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "updatedAt",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "Date",
+              "unique" : false
+            }
+          ],
+          "name" : "JournalEntryEntity",
+          "relationships" : [
+
+          ]
+        },
+        {
+          "attributes" : [
+            {
+              "externalStorage" : false,
+              "name" : "completedAt",
+              "optional" : true,
+              "transformable" : false,
+              "type" : "Optional<Date>",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "createdAt",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "Date",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "modeRaw",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "String",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "stableID",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "UUID",
+              "unique" : false
+            }
+          ],
+          "name" : "RestoreEpochEntity",
+          "relationships" : [
+
+          ]
+        }
+      ],
+      "name" : "Canonical"
+    },
+    {
+      "cloudKitSynced" : false,
+      "entities" : [
+        {
+          "attributes" : [
+            {
+              "externalStorage" : false,
+              "name" : "entryID",
+              "optional" : true,
+              "transformable" : false,
+              "type" : "Optional<UUID>",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "jobID",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "UUID",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "message",
+              "optional" : true,
+              "transformable" : false,
+              "type" : "Optional<String>",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "sourceUUID",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "String",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "stableID",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "UUID",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "statusRaw",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "String",
+              "unique" : false
+            }
+          ],
+          "name" : "ImportItemEntity",
+          "relationships" : [
+
+          ]
+        },
+        {
+          "attributes" : [
+            {
+              "externalStorage" : false,
+              "name" : "archiveDisplayName",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "String",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "archiveFingerprint",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "String",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "failureCount",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "Int",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "finishedAt",
+              "optional" : true,
+              "transformable" : false,
+              "type" : "Optional<Date>",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "skippedCount",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "Int",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "stableID",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "UUID",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "startedAt",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "Date",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "statusRaw",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "String",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "successCount",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "Int",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "totalCount",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "Int",
+              "unique" : false
+            }
+          ],
+          "name" : "ImportJobEntity",
+          "relationships" : [
+
+          ]
+        },
+        {
+          "attributes" : [
+            {
+              "externalStorage" : false,
+              "name" : "jobID",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "UUID",
+              "unique" : false
+            },
+            {
+              "externalStorage" : true,
+              "name" : "rawJSON",
+              "optional" : true,
+              "transformable" : false,
+              "type" : "Optional<Data>",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "sourceUUID",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "String",
+              "unique" : false
+            },
+            {
+              "externalStorage" : false,
+              "name" : "stableID",
+              "optional" : false,
+              "transformable" : false,
+              "type" : "UUID",
+              "unique" : false
+            }
+          ],
+          "name" : "SourceSnapshotEntity",
+          "relationships" : [
+
+          ]
+        }
+      ],
+      "name" : "LocalAuxiliary"
+    }
+  ]
+}

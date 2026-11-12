@@ -72,6 +72,40 @@ final class JournalDataTests: XCTestCase {
         XCTAssertEqual(try repository.revisions(entryID: current.id).count, 3)
     }
 
+    func testPrayerTopicsRoundTripThroughRevisionsAndRestore() throws {
+        let repository = try makeRepository()
+        let original = try repository.save(
+            JournalEntryDraft(
+                kind: .prayer, title: "기도",
+                details: EntryDetails(prayerTopics: [
+                    PrayerTopic(text: "제목", status: .ongoing, memo: "메모")
+                ])),
+            deviceID: "Mac",
+            at: Date(timeIntervalSince1970: 1)
+        )
+        XCTAssertEqual(original.details.prayerTopics?.first?.text, "제목")
+
+        var edited = original.draft
+        edited.details.prayerTopics?[0].status = .answered
+        edited.details.prayerTopics?[0].answeredAt = Date(timeIntervalSince1970: 2)
+        let current = try repository.save(
+            edited, deviceID: "iPhone", at: Date(timeIntervalSince1970: 2))
+        XCTAssertEqual(current.details.prayerTopics?.first?.status, .answered)
+
+        let revisions = try repository.revisions(entryID: current.id)
+        XCTAssertEqual(revisions.count, 2)
+        let beforeAnswer = try XCTUnwrap(
+            revisions.first { $0.snapshot.details.prayerTopics?.first?.status == .ongoing })
+        let restored = try repository.restore(
+            entryID: current.id,
+            revisionID: beforeAnswer.id,
+            deviceID: "Mac",
+            at: Date(timeIntervalSince1970: 3)
+        )
+        XCTAssertEqual(restored.details.prayerTopics?.first?.status, .ongoing)
+        XCTAssertNil(restored.details.prayerTopics?.first?.answeredAt)
+    }
+
     func testSourceUUIDIsIdempotent() throws {
         let repository = try makeRepository()
         let draft = JournalEntryDraft(

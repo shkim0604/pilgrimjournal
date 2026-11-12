@@ -12,6 +12,7 @@
 		A00000000000000000000003 /* DayOneImport in Frameworks */ = {isa = PBXBuildFile; productRef = A30000000000000000000003 /* DayOneImport */; };
 		A00000000000000000000004 /* JournalSearch in Frameworks */ = {isa = PBXBuildFile; productRef = A30000000000000000000004 /* JournalSearch */; };
 		A00000000000000000000005 /* JournalBackup in Frameworks */ = {isa = PBXBuildFile; productRef = A30000000000000000000005 /* JournalBackup */; };
+		A00000000000000000000006 /* JournalSharing in Frameworks */ = {isa = PBXBuildFile; productRef = A30000000000000000000006 /* JournalSharing */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -42,6 +43,7 @@
 				A00000000000000000000003 /* DayOneImport in Frameworks */,
 				A00000000000000000000004 /* JournalSearch in Frameworks */,
 				A00000000000000000000005 /* JournalBackup in Frameworks */,
+				A00000000000000000000006 /* JournalSharing in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -91,6 +93,7 @@
 				A30000000000000000000003 /* DayOneImport */,
 				A30000000000000000000004 /* JournalSearch */,
 				A30000000000000000000005 /* JournalBackup */,
+				A30000000000000000000006 /* JournalSharing */,
 			);
 			productName = PilgrimJournal;
 			productReference = 9F42FD123013C28600385B48 /* Pilgrim Journal.app */;
@@ -318,7 +321,7 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.dhouse.PilgrimJournal;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dhouse.PilgrimJournal.debug;
 				PRODUCT_NAME = PilgrimJournal;
 				"PRODUCT_NAME[sdk=macosx*]" = "Pilgrim Journal";
 				REGISTER_APP_GROUPS = YES;
@@ -445,6 +448,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A20000000000000000000001 /* XCLocalSwiftPackageReference ".." */;
 			productName = JournalBackup;
+		};
+		A30000000000000000000006 /* JournalSharing */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A20000000000000000000001 /* XCLocalSwiftPackageReference ".." */;
+			productName = JournalSharing;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

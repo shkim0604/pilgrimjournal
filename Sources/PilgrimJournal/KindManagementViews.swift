@@ -425,36 +425,6 @@ private struct KindRowLabel: View {
     }
 }
 
-/// Shown instead of "유형 편집" when kind management is locked.
-struct PremiumFeatureNoticeSheet: View {
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        VStack(spacing: JournalTheme.Spacing.regular) {
-            Image(systemName: "lock.fill")
-                .font(.system(size: 32, weight: .medium))
-                .foregroundStyle(JournalTheme.brandPrimary)
-                .accessibilityHidden(true)
-            Text("유료 기능")
-                .font(.title2.weight(.semibold))
-                .foregroundStyle(JournalTheme.ink)
-            Text("유형 추가·삭제·편집은 유료 버전에서 쓸 수 있습니다. 지금 있는 유형으로 기록을 쓰고 옮기는 것은 계속 할 수 있습니다.")
-                .multilineTextAlignment(.center)
-                .foregroundStyle(JournalTheme.inkSecondary)
-                .fixedSize(horizontal: false, vertical: true)
-            Button("닫기") { dismiss() }
-                .buttonStyle(.borderedProminent)
-                .tint(JournalTheme.brandPrimary)
-                .keyboardShortcut(.defaultAction)
-        }
-        .padding(JournalTheme.Spacing.large)
-        .frame(maxWidth: 420)
-        #if os(iOS)
-        .presentationDetents([.medium])
-        #endif
-    }
-}
-
 extension KindColorToken {
     fileprivate var accessibilityName: String {
         switch self {

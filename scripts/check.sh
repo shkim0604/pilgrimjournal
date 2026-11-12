@@ -6,7 +6,19 @@ swift build
 swift test
 swift run JournalChecks "$@"
 
-if find . -path './.build' -prune -o -type f -name '*.zip' -print | grep -q .; then
+# The admin console (web/admin) reads a committed schema/architecture snapshot; fail when a model
+# or Package.swift changed without regenerating it.
+snapshot_tmp=$(mktemp -d)
+trap 'rm -rf "$snapshot_tmp"' EXIT
+./scripts/admin-snapshot.sh "$snapshot_tmp" >/dev/null
+for file in schema.json architecture.json; do
+  if ! cmp -s "web/admin/snapshot/$file" "$snapshot_tmp/$file"; then
+    echo "관리 콘솔 스냅샷이 오래됐습니다(web/admin/snapshot/$file). scripts/admin-snapshot.sh를 실행하고 커밋하세요." >&2
+    exit 1
+  fi
+done
+
+if find . -path './.build' -prune -o -path './web/admin/node_modules' -prune -o -type f -name '*.zip' -print | grep -q .; then
   echo "개인 ZIP으로 보이는 파일이 저장소에 있습니다." >&2
   exit 1
 fi

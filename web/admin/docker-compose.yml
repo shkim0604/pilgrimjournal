@@ -1,0 +1,33 @@
+# Admin console for pilgrim.delight-house.org/admin.
+#   cp web/admin/.env.example web/admin/.env   # then edit
+#   docker compose -f web/admin/docker-compose.yml up -d --build
+# With the bundled Cloudflare Tunnel (TUNNEL_TOKEN in .env):
+#   docker compose -f web/admin/docker-compose.yml --profile tunnel up -d --build
+name: pilgrim-admin
+
+services:
+  admin:
+    build:
+      context: ../..
+      dockerfile: web/admin/Dockerfile
+    env_file: .env
+    # Only reachable from this machine; the public route is the Cloudflare Tunnel.
+    ports:
+      - "127.0.0.1:8420:8420"
+    volumes:
+      - admin-data:/data
+    restart: unless-stopped
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    profiles: [tunnel]
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN:-}
+    # In the Zero Trust dashboard, point the public hostname at http://admin:8420.
+    depends_on:
+      - admin
+    restart: unless-stopped
+
+volumes:
+  admin-data:
