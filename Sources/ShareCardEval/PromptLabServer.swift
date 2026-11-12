@@ -1,6 +1,7 @@
 #if canImport(FoundationModels)
 import Foundation
 import FoundationModels
+import JournalShareDrafts
 import Network
 import Translation
 
@@ -97,9 +98,9 @@ final class PromptLabServer {
         // the built-in English one for an English diary.
         let language = RequestLanguage.detect(diary.title + "\n" + diary.body)
         let instructions =
-            language == .korean ? request.instructions : SharePrompts.requestInstructions(language)
+            language == .korean ? request.instructions : PrayerRequestPrompts.instructions(language)
         let template =
-            language == .korean ? request.template : SharePrompts.requestTemplate(language)
+            language == .korean ? request.template : PrayerRequestPrompts.template(language)
         let prompt = SharePrompts.fill(template, with: entry)
         let promptCharacters = instructions.count + prompt.count
         let target = request.outputLanguage.flatMap(RequestLanguage.init(rawValue:)) ?? language
@@ -111,7 +112,7 @@ final class PromptLabServer {
             let (answer, call) = await pipeline.gate(entry, language: language)
             gateAnswer = answer
             gateSeconds = call.seconds
-            if SharePrompts.gateSaysNo(answer) {
+            if PrayerRequestLines.gateSaysNo(answer) {
                 let result = LabRunResult(
                     text: "없음", lines: [], rawLines: [], gate: answer, skippedByGate: true,
                     language: language.rawValue, outputLanguage: target.rawValue,
@@ -124,9 +125,9 @@ final class PromptLabServer {
 
         let (text, call) = await pipeline.draft(
             instructions: instructions, prompt: prompt, greedy: request.greedy ?? true)
-        let rawLines = text.map(SharePrompts.requestLines) ?? []
+        let rawLines = text.map(PrayerRequestLines.parse) ?? []
         // Translating a 40-line loop would take a while, so an untidied run is capped too.
-        var lines = tidy ? SharePrompts.withoutRepeats(rawLines) : Array(rawLines.prefix(12))
+        var lines = tidy ? PrayerRequestLines.withoutRepeats(rawLines) : Array(rawLines.prefix(12))
         // A translated name is spelled differently ("Emily" → "에밀리"), so names are looked
         // for in the lines as the model wrote them as well as in what is shown.
         let beforeTranslation = lines
@@ -142,7 +143,7 @@ final class PromptLabServer {
             }
         }
         if shownLanguage == language, language == .korean, tidy {
-            lines = lines.map(SharePrompts.sharedEnding)
+            lines = lines.map(PrayerRequestLines.sharedEnding)
         }
         if !tidy, target == language { lines = rawLines }
 
@@ -173,14 +174,14 @@ final class PromptLabServer {
         _ lines: [String], from source: RequestLanguage, to target: RequestLanguage,
         cutEnding: Bool
     ) async -> Result<[String], RequestTranslator.Unavailable> {
-        let parts = lines.map(SharePrompts.splitLabel)
+        let parts = lines.map(PrayerRequestLines.splitLabel)
         let result = await RequestTranslator.translate(parts.map(\.body), from: source, to: target)
         return result.map { bodies in
             zip(bodies, parts).map { body, part in
-                let sentence = SharePrompts.polishTranslation(
+                let sentence = PrayerRequestLines.polishTranslation(
                     body, in: target, cutEnding: cutEnding)
                 guard let label = part.label else { return sentence }
-                return sentence + " (" + SharePrompts.translatedLabel(label, to: target) + ")"
+                return sentence + " (" + PrayerRequestLines.translatedLabel(label, to: target) + ")"
             }
         }
     }

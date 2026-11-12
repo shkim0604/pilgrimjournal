@@ -1,6 +1,7 @@
 #if canImport(FoundationModels)
 import Foundation
 import FoundationModels
+import JournalShareDrafts
 
 // Short fields only: long @Guide descriptions get copied into the output verbatim, and prose
 // is asked for separately as free text (roadmap "1차 성능 테스트" findings 2).
@@ -123,13 +124,13 @@ final class SharePipeline {
         return (text, calls.last!)
     }
 
-    /// Asks `SharePrompts.prayerRequestGate` about one diary. `nil` means the model gave no
+    /// Asks `PrayerRequestPrompts.gateTemplate` about one diary. `nil` means the model gave no
     /// answer (guardrail, error), which callers treat as "go on".
     func gate(_ entry: EvalEntry, language: RequestLanguage) async -> (String?, CallRecord) {
         calls = []
         let answer = await text(
-            "lab-gate", instructions: SharePrompts.gateInstructions(language),
-            prompt: SharePrompts.fill(SharePrompts.gateTemplate(language), with: entry),
+            "lab-gate", instructions: PrayerRequestPrompts.gateInstructions(language),
+            prompt: SharePrompts.fill(PrayerRequestPrompts.gateTemplate(language), with: entry),
             options: classifierOptions)
         return (answer?.trimmingCharacters(in: .whitespacesAndNewlines), calls.last!)
     }
@@ -145,14 +146,14 @@ final class SharePipeline {
         let previousCall = calls.last!
         let language = RequestLanguage.detect(diary.title + "\n" + diary.body)
         let current = await text(
-            "prayer-requests", instructions: SharePrompts.requestInstructions(language),
-            prompt: SharePrompts.fill(SharePrompts.requestTemplate(language), with: entry))
+            "prayer-requests", instructions: PrayerRequestPrompts.instructions(language),
+            prompt: SharePrompts.fill(PrayerRequestPrompts.template(language), with: entry))
         let currentCall = calls.last!
 
         func draft(_ text: String?, _ call: CallRecord, list: Bool) -> PrayerDraft {
             PrayerDraft(
                 text: text,
-                lines: list ? text.map(SharePrompts.requestLines) ?? [] : [],
+                lines: list ? text.map(PrayerRequestLines.parse) ?? [] : [],
                 seconds: call.seconds,
                 outcome: call.outcome,
                 leakedNames: EvalScorer.nameLeaks(diary.names, in: ["text": text ?? ""])

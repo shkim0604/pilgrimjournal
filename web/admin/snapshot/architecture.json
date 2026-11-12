@@ -114,6 +114,20 @@
       "name": "JournalSearchTests"
     },
     {
+      "dependencies": [],
+      "kind": "library",
+      "linkedFrameworks": [],
+      "name": "JournalShareDrafts"
+    },
+    {
+      "dependencies": [
+        "JournalShareDrafts"
+      ],
+      "kind": "test",
+      "linkedFrameworks": [],
+      "name": "JournalShareDraftsTests"
+    },
+    {
       "dependencies": [
         "JournalDomain"
       ],
@@ -158,7 +172,9 @@
       "name": "PilgrimJournalTests"
     },
     {
-      "dependencies": [],
+      "dependencies": [
+        "JournalShareDrafts"
+      ],
       "kind": "executable",
       "linkedFrameworks": [],
       "name": "ShareCardEval"

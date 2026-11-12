@@ -1,4 +1,5 @@
 import Foundation
+import JournalShareDrafts
 
 // Re-runnable eval of the planned share-card extraction on Apple's on-device model. Needs
 // macOS 26 with Apple Intelligence enabled, so it is not part of scripts/check.sh or CI; see
@@ -161,7 +162,7 @@ if #available(macOS 26, iOS 26, *) {
         let generatedAt = Date()
         var results: [PrayerDiaryResult] = []
         print(
-            "일기 → 기도제목: 일기 \(diaries.count)개, 프롬프트 \(SharePrompts.prayerRequestVersion) "
+            "일기 → 기도제목: 일기 \(diaries.count)개, 프롬프트 \(PrayerRequestPrompts.version) "
                 + "(비교: \(SharePrompts.version) 기도 카드)")
         for diary in diaries {
             let result = await pipeline.draftPrayerRequests(diary)
@@ -171,7 +172,7 @@ if #available(macOS 26, iOS 26, *) {
         if let path = options.jsonPath {
             saveJSON(
                 PrayerRequestRun(
-                    promptVersion: SharePrompts.prayerRequestVersion,
+                    promptVersion: PrayerRequestPrompts.version,
                     previousPromptVersion: SharePrompts.version,
                     model: "Apple Foundation Models · SystemLanguageModel (온디바이스)",
                     machine: machineModel(),
