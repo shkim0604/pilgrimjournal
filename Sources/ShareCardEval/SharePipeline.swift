@@ -123,6 +123,17 @@ final class SharePipeline {
         return (text, calls.last!)
     }
 
+    /// Asks `SharePrompts.prayerRequestGate` about one diary. `nil` means the model gave no
+    /// answer (guardrail, error), which callers treat as "go on".
+    func gate(_ entry: EvalEntry, language: RequestLanguage) async -> (String?, CallRecord) {
+        calls = []
+        let answer = await text(
+            "lab-gate", instructions: SharePrompts.gateInstructions(language),
+            prompt: SharePrompts.fill(SharePrompts.gateTemplate(language), with: entry),
+            options: classifierOptions)
+        return (answer?.trimmingCharacters(in: .whitespacesAndNewlines), calls.last!)
+    }
+
     /// Runs the previous `prayerCard` prompt and the new `prayerRequests` prompt on one diary,
     /// both regardless of any classifier, so a person can compare them side by side.
     func draftPrayerRequests(_ diary: PrayerDiary) async -> PrayerDiaryResult {
@@ -132,9 +143,10 @@ final class SharePipeline {
             "prayer-card", instructions: SharePrompts.cardInstructions,
             prompt: SharePrompts.prayerCard(entry))
         let previousCall = calls.last!
+        let language = RequestLanguage.detect(diary.title + "\n" + diary.body)
         let current = await text(
-            "prayer-requests", instructions: SharePrompts.prayerRequestInstructions,
-            prompt: SharePrompts.prayerRequests(entry))
+            "prayer-requests", instructions: SharePrompts.requestInstructions(language),
+            prompt: SharePrompts.fill(SharePrompts.requestTemplate(language), with: entry))
         let currentCall = calls.last!
 
         func draft(_ text: String?, _ call: CallRecord, list: Bool) -> PrayerDraft {

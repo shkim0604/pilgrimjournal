@@ -109,6 +109,18 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; }
         </select>
         <button type="button" id="reset">기본 프롬프트로</button>
       </div>
+      <label class="hint" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="gate"> 먼저 "기도할 내용이 있나?"를 예/아니오로 묻고, 아니오면 만들지 않기</label>
+      <label class="hint" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="tidy"> 반복된 줄을 지우고 3줄까지만 보여 주기</label>
+      <div class="row">
+        <label class="hint" for="output-language">공유할 언어</label>
+        <select id="output-language" style="width:auto">
+          <option value="source">일기 언어 그대로</option>
+          <option value="ko">한국어로</option>
+          <option value="en">English로</option>
+        </select>
+      </div>
+      <p class="hint">일기는 쓰인 언어로 처리합니다. 위 지시문은 한국어 일기용이고, 영어 일기는 아래 영어 지시문으로 돌립니다. 공유할 언어가 다르면 완성된 기도제목을 이 Mac의 번역 기능으로 옮깁니다.</p>
+      <details class="preview"><summary class="hint">영어 일기에 쓰는 지시문 보기</summary><pre id="english-instructions"></pre></details>
     </section>
 
     <section class="panel examples">
@@ -214,15 +226,24 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; }
     const diary = diaryFor(diaryId);
     const names = diary ? diary.names : [];
     let body;
-    if (r.text == null) body = `<p class="none">결과 없음 (${esc(r.outcome)})</p>`;
+    if (r.skippedByGate) body = '<p class="none">먼저 물었더니 "아니오" — 기도제목을 만들지 않음</p>';
+    else if (r.text == null) body = `<p class="none">결과 없음 (${esc(r.outcome)})</p>`;
     else if (r.lines.length) body = "<ul>" + r.lines.map((l) => `<li>${highlight(l, names)}</li>`).join("") + "</ul>";
     else if (/없음/.test(r.text)) body = '<p class="none">"없음" — 기도제목을 만들지 않음</p>';
     else body = `<pre>${highlight(r.text, names)}</pre>`;
     const flags = [];
-    if (r.leakedNames && r.leakedNames.length) flags.push(`<div class="flag">이름이 남아 있음: ${r.leakedNames.map(esc).join(", ")}</div>`);
+    if (r.leakedNames && r.leakedNames.length) flags.push(`<div class="flag ok">이름이 들어 있음: ${r.leakedNames.map(esc).join(", ")} — 공유 전에 확인</div>`);
     if (r.lines.length > 3) flags.push(`<div class="flag">${r.lines.length}줄 — 3줄 제한을 넘김</div>`);
     const dup = r.lines.length - new Set(r.lines).size;
     if (dup > 0) flags.push(`<div class="flag">같은 줄 ${dup}번 반복</div>`);
+    const removed = (r.rawLines ? r.rawLines.length : r.lines.length) - r.lines.length;
+    if (removed > 0) flags.push(`<div class="flag ok">모델은 ${r.rawLines.length}줄을 씀 — 반복·초과 ${removed}줄을 뺌</div>`);
+    const LANG = { ko: "한국어", en: "영어" };
+    if (r.skippedByGate) { /* nothing was written, so nothing was translated */ }
+    else if (r.language && r.outputLanguage && r.language !== r.outputLanguage) flags.push(`<div class="flag ok">${LANG[r.language]} 일기 → ${LANG[r.outputLanguage]}로 번역함</div>`);
+    else if (r.language === "en") flags.push('<div class="flag ok">영어 일기 — 영어 지시문으로 처리</div>');
+    if (r.translationNote) flags.push(`<div class="flag">${esc(r.translationNote)}</div>`);
+    if (r.gate && !r.skippedByGate) flags.push(`<div class="flag ok">먼저 물었더니 "${esc(r.gate)}"</div>`);
     if (r.saved) flags.push('<div class="flag ok">고친 내용을 내 말투 예시로 저장함</div>');
     let tools = "";
     if (isLatest && r.text != null) {
@@ -275,6 +296,9 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; }
       instructions: effectiveInstructions(),
       template: $("template").value,
       greedy: $("sampling").value === "greedy",
+      gate: $("gate").checked,
+      tidy: $("tidy").checked,
+      outputLanguage: $("output-language").value,
       order: ids,
       results: {},
     };
@@ -297,6 +321,7 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; }
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             instructions: runRecord.instructions, template: runRecord.template, greedy: runRecord.greedy,
+            gate: runRecord.gate, tidy: runRecord.tidy, outputLanguage: runRecord.outputLanguage,
             diary: { id: id === "custom" ? null : id, title: d.title, date: d.date || new Date().toISOString().slice(0, 10), body: d.body, names: d.names },
           }),
         });
@@ -377,6 +402,7 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; }
     persistEditor();
   });
   for (const id of ["instructions", "template", "sampling"]) $(id).addEventListener("input", persistEditor);
+  for (const id of ["gate", "tidy", "output-language"]) $(id).addEventListener("change", () => store.set("lab-options", { gate: $("gate").checked, tidy: $("tidy").checked, outputLanguage: $("output-language").value }));
   $("use-examples").addEventListener("change", renderMeter);
   $("picker").addEventListener("change", () => store.set("lab-picked", pickedIds()));
 
@@ -386,6 +412,11 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; }
     $("instructions").value = saved ? saved.instructions : s.instructions;
     $("template").value = saved ? saved.template : s.template;
     $("sampling").value = saved ? saved.sampling : "greedy";
+    const options = store.get("lab-options", { gate: true, tidy: true });
+    $("gate").checked = options.gate;
+    $("tidy").checked = options.tidy;
+    $("output-language").value = options.outputLanguage || "source";
+    $("english-instructions").textContent = s.englishInstructions;
     renderPicker();
     renderExamples();
     renderResults();

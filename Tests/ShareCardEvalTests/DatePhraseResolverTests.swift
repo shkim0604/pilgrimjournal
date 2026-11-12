@@ -76,6 +76,84 @@ final class DatePhraseResolverTests: XCTestCase {
         XCTAssertEqual(SharePrompts.requestLines("없음"), [])
     }
 
+    func testTidyDropsRepeatsAndKeepsThree() {
+        let lines = [
+            "아이가 좋은 친구를 만나도록 기도해 주세요 (아들/관계)",
+            "아이가 좋은 친구를 만나도록 기도해 주세요. (나/가정)",
+            "내일 사과 전화를 잘 드리도록 기도해 주세요 (나/관계)",
+            "참을성 있는 엄마가 되도록 기도해 주세요 (나/가정)",
+            "혼자 감당하지 않도록 기도해 주세요 (나/가정)",
+        ]
+        XCTAssertEqual(
+            SharePrompts.tidyRequestLines(lines),
+            [
+                "아이가 좋은 친구를 만나도록 (아들/관계)",
+                "내일 사과 전화를 잘 드리도록 (나/관계)",
+                "참을성 있는 엄마가 되도록 (나/가정)",
+            ])
+        XCTAssertEqual(SharePrompts.tidyRequestLines([]), [])
+    }
+
+    func testSharedEndingCutsOnlyThePrayForMeTail() {
+        XCTAssertEqual(
+            SharePrompts.sharedEnding("어머니 검사 결과가 좋도록 기도해 주세요. (어머니/건강)"),
+            "어머니 검사 결과가 좋도록 (어머니/건강)")
+        XCTAssertEqual(SharePrompts.sharedEnding("가게 매출 회복을 위해 기도해 주세요"), "가게 매출 회복을 위해")
+        XCTAssertEqual(
+            SharePrompts.sharedEnding("남은 닷새 동안 체력이 버티게 해주세요 (나/건강)"),
+            "남은 닷새 동안 체력이 버티게 해주세요 (나/건강)")
+        XCTAssertEqual(SharePrompts.sharedEnding("기도해 주세요"), "기도해 주세요")
+    }
+
+    func testDiaryLanguageFollowsTheScriptItIsMostlyWrittenIn() {
+        XCTAssertEqual(RequestLanguage.detect("엄마 검사 결과가 다음 주 목요일에 나온다."), .korean)
+        XCTAssertEqual(RequestLanguage.detect("Mom's surgery is next Tuesday."), .english)
+        XCTAssertEqual(
+            RequestLanguage.detect("Global launch가 다음 주 화요일로 확정됐다. QA를 다 맡고 있다."), .korean)
+        for diary in PrayerDiaryFixtures.all {
+            let expected: RequestLanguage = diary.id.hasPrefix("en-") ? .english : .korean
+            XCTAssertEqual(
+                RequestLanguage.detect(diary.title + "\n" + diary.body), expected, diary.id)
+        }
+    }
+
+    func testLabelsMoveBetweenLanguagesByTable() {
+        XCTAssertEqual(SharePrompts.translatedLabel("나/가정", to: .english), "me/family")
+        XCTAssertEqual(SharePrompts.translatedLabel("mom/health", to: .korean), "엄마/건강")
+        XCTAssertEqual(SharePrompts.translatedLabel("지후/진로", to: .english), "지후/career")
+        let split = SharePrompts.splitLabel("Pray that the move goes well (me/family)")
+        XCTAssertEqual(split.body, "Pray that the move goes well")
+        XCTAssertEqual(split.label, "me/family")
+        XCTAssertNil(SharePrompts.splitLabel("꼬리표 없는 줄").label)
+    }
+
+    func testTranslatedLinesReadLikeTheOthers() {
+        XCTAssertEqual(
+            SharePrompts.polishTranslation(
+                "Please pray that the test results are good.", in: .english, cutEnding: true),
+            "Pray that the test results are good")
+        XCTAssertEqual(
+            SharePrompts.polishTranslation(
+                "제가 죄책감 없이 쉴 수 있도록 기도해 주세요.", in: .korean, cutEnding: true),
+            "죄책감 없이 쉴 수 있도록")
+        XCTAssertEqual(
+            SharePrompts.withoutRepeats([
+                "Pray that I pass (me/study)", "pray that I pass. (me/faith)",
+            ]),
+            ["Pray that I pass (me/study)"])
+    }
+
+    func testGateSkipsOnlyOnAClearNo() {
+        XCTAssertTrue(SharePrompts.gateSaysNo("No"))
+        XCTAssertFalse(SharePrompts.gateSaysNo("Yes"))
+        XCTAssertFalse(SharePrompts.gateSaysNo("Nothing"))
+        XCTAssertTrue(SharePrompts.gateSaysNo("아니오"))
+        XCTAssertTrue(SharePrompts.gateSaysNo(" 아니요.\n"))
+        XCTAssertFalse(SharePrompts.gateSaysNo("예"))
+        XCTAssertFalse(SharePrompts.gateSaysNo(""))
+        XCTAssertFalse(SharePrompts.gateSaysNo(nil))
+    }
+
     func testPrayerDiariesArePageLongWithUniqueIDs() {
         let ids = PrayerDiaryFixtures.all.map(\.id)
         XCTAssertEqual(Set(ids).count, ids.count)

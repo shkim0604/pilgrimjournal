@@ -10,7 +10,8 @@ struct PrayerDiary: Sendable {
     /// What a good set of prayer requests should cover, for the reviewer. Empty means the
     /// diary has nothing to pray for and the model should answer "없음".
     let points: [String]
-    /// Third-party names that should not appear in a request shared with the group.
+    /// Other people's names in the diary. A request may keep them (groups are private), so
+    /// the lab points them out for the person to check before sharing.
     var names: [String] = []
 
     var entry: EvalEntry {
@@ -379,6 +380,68 @@ enum PrayerDiaryFixtures {
                 다음 날 아침에는 계곡 옆을 산책했다. 단풍이 막 들기 시작해서 산이 울긋불긋했다. 물이 너무 차가워서 발만 담갔다가 소리를 질렀다. 점심으로 라면을 끓여 먹고 텐트를 걷었다.
 
                 돌아오는 차 안에서 다들 곯아떨어졌다. 운전하는 친구만 빼고. 다음에는 겨울 캠핑을 가 보자고 약속했다. 오랜만에 실컷 웃은 주말이었다.
+                """,
+            points: []
+        ),
+        // English diaries: run with the English prompt (`RequestLanguage.detect`).
+        PrayerDiary(
+            id: "en-layoff",
+            date: DayDate(2026, 10, 14),
+            title: "Rumors at work",
+            body: """
+                There were rumors again today that our division will be cut before the end of the year. Nobody says it out loud, but three people on my floor were updating their resumes at lunch. My manager scheduled a one-on-one with me for this Friday and did not say what it is about.
+
+                I keep doing the math in my head. We bought the house two years ago and the mortgage takes almost half my paycheck. Hannah is due in March. She asked me tonight why I was so quiet at dinner and I said I was just tired. I do not want her to worry while she is pregnant, but hiding it makes me feel far away from her.
+
+                I have been at this company for eleven years. I do not even know how to interview anymore. I tried to pray on the drive home and all that came out was a list of numbers. I want to trust that we will be taken care of, and I want the courage to tell Hannah the truth before Friday.
+                """,
+            points: [
+                "meeting with manager on Friday / job security", "honesty with wife",
+                "finances and the baby due in March", "trust instead of fear",
+            ],
+            names: ["Hannah"]
+        ),
+        PrayerDiary(
+            id: "en-mom-surgery",
+            date: DayDate(2026, 10, 20),
+            title: "Mom's hip",
+            body: """
+                Mom's hip replacement is set for next Tuesday. The surgeon says it is routine, but she is seventy-eight and has not been under anesthesia since I was a kid. She called me twice today to ask the same question about what she can eat the night before.
+
+                I will take the week off to stay with her. Emily says she cannot fly out because of the kids' school, and I understand, but I also noticed she had time for a beach trip last month. We have not really talked since the argument about selling Dad's truck. I wrote her a long text tonight and deleted it.
+
+                Mom keeps saying she does not want to be a burden. I told her she carried us for decades and it is our turn. I hope the surgery goes well and that she is not afraid. And I do not want to walk into that hospital still angry at my sister.
+                """,
+            points: ["mother's surgery next Tuesday", "mother's fear", "reconciling with sister"],
+            names: ["Emily"]
+        ),
+        PrayerDiary(
+            id: "en-college-app",
+            date: DayDate(2026, 10, 27),
+            title: "Essays",
+            body: """
+                I rewrote my personal essay for the fourth time and I still hate it. The early deadline is November 15 and I have two supplements left. Noah already submitted everything and keeps posting about it.
+
+                My parents never went to college, so every conversation at dinner ends up being about scholarships. They are not pushing me, exactly. They just look so hopeful that I feel sick. If I do not get aid I honestly do not know what we will do.
+
+                I have not been sleeping well. Last night I lay awake until three comparing myself to everyone in my class. Youth group used to help, but lately I just sit in the back and leave early. I want to finish these essays without falling apart, and I want to stop measuring myself against Noah. I think I also miss feeling close to God.
+                """,
+            points: [
+                "applications due November 15", "scholarship / family finances",
+                "sleep and anxiety", "comparison", "closeness to God",
+            ],
+            names: ["Noah"]
+        ),
+        PrayerDiary(
+            id: "en-hike",
+            date: DayDate(2026, 10, 25),
+            title: "Saturday hike",
+            body: """
+                Slept in until nine, which never happens. Made pancakes with the last of the blueberries and ate them on the porch. The air finally feels like fall.
+
+                In the afternoon I drove out to the ridge trail with the dog. The leaves are about halfway turned. We did the full loop in a little under three hours and only saw four other people. The dog found a creek and refused to leave it.
+
+                Stopped at the farm stand on the way back and bought apples and a pie I did not need. Watched a movie I have seen a dozen times and fell asleep on the couch before the end. A really good, ordinary day.
                 """,
             points: []
         ),

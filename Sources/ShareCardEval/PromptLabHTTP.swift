@@ -16,12 +16,32 @@ struct LabRunRequest: Codable, Sendable {
     var instructions: String
     var template: String
     var greedy: Bool?
+    /// Ask the yes/no gate first and skip the extraction on "아니오".
+    var gate: Bool?
+    /// Drop repeated lines and keep at most three.
+    var tidy: Bool?
+    /// "ko" or "en" to share in that language; nil or anything else keeps the diary's own.
+    var outputLanguage: String?
     var diary: LabDiary
 }
 
 struct LabRunResult: Codable, Sendable {
     let text: String?
+    /// What the page shows: `rawLines` after the tidy step, when it was asked for.
     let lines: [String]
+    /// Every line the model wrote, so the page can say what the tidy step removed.
+    let rawLines: [String]
+    /// The gate's answer ("예", "아니오", …), or nil when it was not asked or gave none.
+    let gate: String?
+    /// True when the gate said "아니오" and the extraction never ran.
+    let skippedByGate: Bool
+    /// The language the diary was written in ("ko"/"en"), which picks the prompt.
+    let language: String
+    /// The language `lines` are in.
+    let outputLanguage: String
+    /// Why `lines` are not in the language that was asked for, when translation failed.
+    let translationNote: String?
+    /// Gate plus extraction.
     let seconds: Double
     let outcome: String
     let leakedNames: [String]
@@ -37,12 +57,15 @@ struct LabDiarySummary: Codable, Sendable {
     let body: String
     let points: [String]
     let names: [String]
+    let language: String
 }
 
 struct LabState: Codable, Sendable {
     let instructions: String
     let template: String
     let promptVersion: String
+    /// What an English diary is run with; the page shows it but does not edit it.
+    let englishInstructions: String
     let diaries: [LabDiarySummary]
 
     static var current: LabState {
@@ -50,10 +73,12 @@ struct LabState: Codable, Sendable {
             instructions: SharePrompts.prayerRequestInstructions,
             template: SharePrompts.prayerRequestTemplate,
             promptVersion: SharePrompts.prayerRequestVersion,
+            englishInstructions: SharePrompts.prayerRequestInstructionsEnglish,
             diaries: PrayerDiaryFixtures.all.map {
                 LabDiarySummary(
                     id: $0.id, title: $0.title, date: $0.date.description, body: $0.body,
-                    points: $0.points, names: $0.names)
+                    points: $0.points, names: $0.names,
+                    language: RequestLanguage.detect($0.title + "\n" + $0.body).rawValue)
             }
         )
     }

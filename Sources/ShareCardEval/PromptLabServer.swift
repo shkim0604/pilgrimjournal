@@ -2,6 +2,7 @@
 import Foundation
 import FoundationModels
 import Network
+import Translation
 
 /// `swift run ShareCardEval --serve`: a page on this Mac where people edit the
 /// diary → prayer request prompt and run it on the on-device model themselves. It listens on
@@ -92,19 +93,96 @@ final class PromptLabServer {
             id: diary.id ?? "custom", kind: .diary,
             date: DayDate(iso: diary.date) ?? EvalFixtures.defaultDate, title: diary.title,
             body: diary.body, expected: Expected())
-        let prompt = SharePrompts.fill(request.template, with: entry)
+        // A diary is run in its own language: the page's (Korean) prompt for a Korean diary,
+        // the built-in English one for an English diary.
+        let language = RequestLanguage.detect(diary.title + "\n" + diary.body)
+        let instructions =
+            language == .korean ? request.instructions : SharePrompts.requestInstructions(language)
+        let template =
+            language == .korean ? request.template : SharePrompts.requestTemplate(language)
+        let prompt = SharePrompts.fill(template, with: entry)
+        let promptCharacters = instructions.count + prompt.count
+        let target = request.outputLanguage.flatMap(RequestLanguage.init(rawValue:)) ?? language
+        let tidy = request.tidy == true
+
+        var gateAnswer: String?
+        var gateSeconds = 0.0
+        if request.gate == true {
+            let (answer, call) = await pipeline.gate(entry, language: language)
+            gateAnswer = answer
+            gateSeconds = call.seconds
+            if SharePrompts.gateSaysNo(answer) {
+                let result = LabRunResult(
+                    text: "없음", lines: [], rawLines: [], gate: answer, skippedByGate: true,
+                    language: language.rawValue, outputLanguage: target.rawValue,
+                    translationNote: nil, seconds: gateSeconds, outcome: call.outcome,
+                    leakedNames: [], promptCharacters: promptCharacters)
+                log(request, result)
+                return result
+            }
+        }
+
         let (text, call) = await pipeline.draft(
-            instructions: request.instructions, prompt: prompt, greedy: request.greedy ?? true)
+            instructions: instructions, prompt: prompt, greedy: request.greedy ?? true)
+        let rawLines = text.map(SharePrompts.requestLines) ?? []
+        // Translating a 40-line loop would take a while, so an untidied run is capped too.
+        var lines = tidy ? SharePrompts.withoutRepeats(rawLines) : Array(rawLines.prefix(12))
+        // A translated name is spelled differently ("Emily" → "에밀리"), so names are looked
+        // for in the lines as the model wrote them as well as in what is shown.
+        let beforeTranslation = lines
+        var shownLanguage = language
+        var translationNote: String?
+        if target != language, !lines.isEmpty {
+            switch await translate(lines, from: language, to: target, cutEnding: tidy) {
+            case .success(let translated):
+                lines = translated
+                shownLanguage = target
+            case .failure(let problem):
+                translationNote = problem.message
+            }
+        }
+        if shownLanguage == language, language == .korean, tidy {
+            lines = lines.map(SharePrompts.sharedEnding)
+        }
+        if !tidy, target == language { lines = rawLines }
+
+        // A name only counts when it survives into what is shown.
+        let shown =
+            lines.isEmpty ? text ?? "" : (lines + beforeTranslation).joined(separator: "\n")
         let result = LabRunResult(
             text: text,
-            lines: text.map(SharePrompts.requestLines) ?? [],
-            seconds: call.seconds,
+            lines: lines,
+            rawLines: rawLines,
+            gate: gateAnswer,
+            skippedByGate: false,
+            language: language.rawValue,
+            outputLanguage: shownLanguage.rawValue,
+            translationNote: translationNote,
+            seconds: gateSeconds + call.seconds,
             outcome: call.outcome,
-            leakedNames: EvalScorer.nameLeaks(diary.names ?? [], in: ["text": text ?? ""]),
-            promptCharacters: request.instructions.count + prompt.count
+            leakedNames: EvalScorer.nameLeaks(diary.names ?? [], in: ["text": shown]),
+            promptCharacters: promptCharacters
         )
         log(request, result)
         return result
+    }
+
+    /// Translates the sentences and moves each `(누구/주제)` label across by table, so a label
+    /// never goes through the translator ("me/family" must not come back as a sentence).
+    private func translate(
+        _ lines: [String], from source: RequestLanguage, to target: RequestLanguage,
+        cutEnding: Bool
+    ) async -> Result<[String], RequestTranslator.Unavailable> {
+        let parts = lines.map(SharePrompts.splitLabel)
+        let result = await RequestTranslator.translate(parts.map(\.body), from: source, to: target)
+        return result.map { bodies in
+            zip(bodies, parts).map { body, part in
+                let sentence = SharePrompts.polishTranslation(
+                    body, in: target, cutEnding: cutEnding)
+                guard let label = part.label else { return sentence }
+                return sentence + " (" + SharePrompts.translatedLabel(label, to: target) + ")"
+            }
+        }
     }
 
     /// Appends fixture runs to `--log-dir` so prompt experiments can be read back later.
@@ -118,6 +196,8 @@ final class PromptLabServer {
                 "instructions": request.instructions, "template": request.template,
                 "greedy": request.greedy ?? true, "text": result.text ?? NSNull(),
                 "seconds": result.seconds, "outcome": result.outcome,
+                "gate": result.gate ?? NSNull(), "tidy": request.tidy ?? false,
+                "language": result.language, "outputLanguage": result.outputLanguage,
             ]
         } else {
             record = ["at": ISO8601DateFormatter().string(from: Date()), "diary": "custom"]
