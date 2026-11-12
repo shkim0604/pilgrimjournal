@@ -154,6 +154,7 @@
         "JournalData",
         "JournalDomain",
         "JournalSearch",
+        "JournalShareDrafts",
         "JournalSharing"
       ],
       "kind": "executable",
@@ -165,6 +166,7 @@
     {
       "dependencies": [
         "JournalData",
+        "JournalShareDrafts",
         "PilgrimJournal"
       ],
       "kind": "test",

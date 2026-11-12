@@ -80,6 +80,7 @@ let package = Package(
                 "JournalSearch",
                 "JournalBackup",
                 "JournalSharing",
+                "JournalShareDrafts",
             ],
             // The app's String Catalog is compiled by the Xcode app target,
             // which builds these sources directly; SwiftPM builds only run
@@ -157,7 +158,7 @@ let package = Package(
         ),
         .testTarget(
             name: "PilgrimJournalTests",
-            dependencies: ["PilgrimJournal", "JournalData"]
+            dependencies: ["PilgrimJournal", "JournalData", "JournalShareDrafts"]
         ),
     ]
 )
