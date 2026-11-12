@@ -169,7 +169,7 @@ final class PrayerRequestShareModelTests: XCTestCase {
 
         model.applyTranslation(
             ["Pray that mom recovers", "Pray for the exam"], for: request!.ids, to: .english)
-        // Both drafted rows are English now; the empty added row is still empty and Korean.
+        // Both drafted rows are English now; the empty added row is still empty, so not pending.
         XCTAssertNil(model.translationRequest(to: .english))
     }
 
@@ -209,6 +209,49 @@ final class PrayerRequestShareModelTests: XCTestCase {
         XCTAssertEqual(model.rows[0].language, .korean)
         XCTAssertEqual(model.rows[1].text, "Pray for my exam")
         XCTAssertEqual(model.rows[1].language, .english)
+    }
+
+    func testApplyTranslationSkipsRowsOutsideThePendingRequest() async {
+        let model = await readyModel()
+        let request = model.translationRequest(to: .english)!
+        // A row typed after the request was made is not part of it, even if a result names it.
+        model.addRow()
+        let typedID = model.rows[2].id
+        model.edit(typedID, text: "새로 쓴 기도제목")
+        model.applyTranslation(
+            ["Please pray that mom recovers.", "Please pray for my exam.", "Stale result."],
+            for: request.ids + [typedID], to: .english)
+        XCTAssertEqual(model.rows[2].text, "새로 쓴 기도제목")
+        XCTAssertEqual(model.rows[2].language, .korean)
+
+        // A late, second result for the same request finds no pending request and changes nothing.
+        let afterFirst = model.rows
+        model.applyTranslation(["Late one.", "Late two."], for: request.ids, to: .english)
+        XCTAssertEqual(model.rows, afterFirst)
+    }
+
+    func testApplyTranslationRetagsEmptyRowsToTarget() async {
+        let model = await readyModel()
+        model.addRow()
+        let request = model.translationRequest(to: .english)!
+        model.applyTranslation(
+            ["Please pray that mom recovers.", "Please pray for my exam."],
+            for: request.ids, to: .english)
+        // Text typed into the empty row afterwards is already in the share language.
+        XCTAssertEqual(model.rows[2].language, .english)
+        model.edit(model.rows[2].id, text: "Pray for my sister")
+        XCTAssertNil(model.translationRequest(to: .english))
+    }
+
+    func testSwitchingLanguageWithNothingToTranslateRetagsEmptyRows() async {
+        let model = PrayerRequestShareModel(
+            source: koreanSource, pipeline: nil, availability: .disabled)
+        await model.start()
+        // The sheet applies an empty result when there is nothing to translate.
+        XCTAssertNil(model.translationRequest(to: .english))
+        model.applyTranslation([], for: [], to: .english)
+        XCTAssertEqual(model.shareLanguage, .english)
+        XCTAssertEqual(model.rows[0].language, .english)
     }
 
     func testTranslationFailureKeepsTextAndSetsNotice() async {

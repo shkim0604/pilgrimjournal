@@ -135,11 +135,19 @@ final class PrayerRequestShareModel: ObservableObject {
     }
 
     func applyTranslation(_ texts: [String], for ids: [UUID], to target: RequestLanguage) {
+        // Only rows of the pending request are replaced: a late or overlapping result finds no
+        // snapshot for its rows and leaves them alone.
         for (id, translated) in zip(ids, texts) {
-            guard let index = rows.firstIndex(where: { $0.id == id }) else { continue }
-            if let asked = translationSnapshot[id], rows[index].text != asked { continue }
+            guard let index = rows.firstIndex(where: { $0.id == id }),
+                let asked = translationSnapshot[id], rows[index].text == asked
+            else { continue }
             rows[index].text = PrayerRequestLines.polishTranslation(
                 translated, in: target, cutEnding: true)
+            rows[index].language = target
+        }
+        // Empty rows hold nothing to translate; what is typed into them next is the new language.
+        for index in rows.indices
+        where rows[index].text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             rows[index].language = target
         }
         translationSnapshot = [:]
