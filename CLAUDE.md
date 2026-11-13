@@ -35,6 +35,7 @@ Domain-first Swift Package; platform concerns sit behind protocols.
 - **DayOneImport** — safe Day One `.zip` parsing (`SafeZipArchive`, `DayOneArchiveAnalyzer`) plus shared ZIP primitives (`StoredZipWriter`, `ZipChecksum`).
 - **JournalSearch** — local SQLite/FTS5 index, fully derived and never synced or backed up ([docs/search.md](docs/search.md)).
 - **JournalBackup** — full local backup export/import.
+- **JournalShareDrafts** — on-device prayer-request drafts for the share sheet: `RequestLanguage` detection (a diary is processed in its own language), versioned Korean/English prompts (`PrayerRequestPrompts.version`), and `PrayerRequestPipeline` (yes/no gate → draft → drop repeats, max 3). The FoundationModels adapter sits behind `ShareDraftFeature`/`ShareModelAvailability` so the app still launches without it; the `ShareCardEval` lab uses the same pipeline. Nothing it produces is stored, synced or logged.
 - **PilgrimJournal** — the SwiftUI app. `AppModel` (central `@MainActor` model), `JournalSessionController` (opens stores, manual sync), `AppLockCoordinator`/`AppleAuthenticationCoordinator` gate the UI.
 - **JournalChecks**, **ShareCardEval** (on-device model eval, macOS 26 only, not in CI), **AdminSnapshot** (writes `web/admin/snapshot/`).
 - **`web/admin`** — read-only developer console (Node + Hono, Mac mini + Cloudflare Tunnel). It parses the tracking docs: keep top-level `- [ ]` lines in the checklist and `- **제목**` lines under `## 대기 중` in the todo.

@@ -241,6 +241,13 @@ swift run ShareCardEval --json /tmp/share-card-run.json
   - 직접 붙여 넣은 일기는 브라우저 저장소와 `--log-dir` 기록 어디에도 내용을 남기지
     않는다. 다른 사이트에서 온 요청(`Origin`이 다른 요청)은 거부한다.
 
+- **실험실과 앱은 같은 `JournalShareDrafts`를 쓴다.** 기도제목 언어 감지·프롬프트·
+  파이프라인(예/아니오 거름 → 초안 → 반복 제거·최대 3줄 → 한국어는 "기도해 주세요"
+  꼬리 자르기)은 `Sources/JournalShareDrafts/`에 하나만 있고, 앱의 `기도제목 나누기`
+  시트와 `--serve` 실험실, `--prayer-requests`가 모두 이것을 부른다. 그래서 프롬프트
+  문구를 바꾸면 `PrayerRequestPrompts.version`(현재 `2026-11-11.1`)을 올리고 21개
+  일기를 다시 돌려 결과를 확인한 뒤 내보낸다. 앱 쪽 출시 기준은
+  `docs/pre-release-checklist.md`.
 - **프롬프트를 바꾸면 `SharePrompts.version`을 올린다.** 기도제목 프롬프트는
   `SharePrompts.prayerRequestVersion`을 따로 올린다. 요약과 JSON에 찍혀서 어떤
   프롬프트의 점수인지 구분된다. 의미 있는 결과는 `docs/roadmap.md`의 성능 테스트 표에
