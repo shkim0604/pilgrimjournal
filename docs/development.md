@@ -245,11 +245,11 @@ swift run ShareCardEval --json /tmp/share-card-run.json
   파이프라인(예/아니오 거름 → 초안 → 반복 제거·최대 3줄 → 한국어는 "기도해 주세요"
   꼬리 자르기)은 `Sources/JournalShareDrafts/`에 하나만 있고, 앱의 `기도제목 나누기`
   시트와 `--serve` 실험실, `--prayer-requests`가 모두 이것을 부른다. 그래서 프롬프트
-  문구를 바꾸면 `PrayerRequestPrompts.version`(현재 `2026-11-11.1`)을 올리고 21개
+  문구를 바꾸면 `PrayerRequestPrompts.version`을 올리고 21개
   일기를 다시 돌려 결과를 확인한 뒤 내보낸다. 앱 쪽 출시 기준은
   `docs/pre-release-checklist.md`.
 - **프롬프트를 바꾸면 `SharePrompts.version`을 올린다.** 기도제목 프롬프트는
-  `SharePrompts.prayerRequestVersion`을 따로 올린다. 요약과 JSON에 찍혀서 어떤
+  `PrayerRequestPrompts.version`을 따로 올린다. 요약과 JSON에 찍혀서 어떤
   프롬프트의 점수인지 구분된다. 의미 있는 결과는 `docs/roadmap.md`의 성능 테스트 표에
   적는다. JSON 결과는 저장소 밖에 둔다.
 

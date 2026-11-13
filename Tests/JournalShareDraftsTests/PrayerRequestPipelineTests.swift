@@ -27,6 +27,24 @@ private actor FakeModel: ShareLanguageModel {
     }
 }
 
+/// Holds its first answer until released, and counts calls; ignores cancellation like a model
+/// that is already mid-generation.
+private actor HeldModel: ShareLanguageModel {
+    private(set) var calls = 0
+    private var waiter: CheckedContinuation<Void, Never>?
+
+    func respond(instructions: String, prompt: String, maximumTokens: Int) async throws -> String {
+        calls += 1
+        if calls == 1 { await withCheckedContinuation { waiter = $0 } }
+        return "예"
+    }
+
+    func release() {
+        waiter?.resume()
+        waiter = nil
+    }
+}
+
 final class PrayerRequestPipelineTests: XCTestCase {
     private func run(
         _ model: FakeModel, title: String = "오늘", body: String = "어머니 검사 결과를 기다린다."
@@ -138,5 +156,40 @@ final class PrayerRequestPipelineTests: XCTestCase {
         let model = FakeModel(gate: .success("예"), draft: .failure(.init()))
         let outcome = await run(model)
         XCTAssertEqual(outcome, .noUsableAnswer)
+    }
+
+    func testCancelledWhileGatingMakesNoSecondCall() async {
+        let model = HeldModel()
+        let task = Task {
+            await PrayerRequestPipeline(model: model).drafts(
+                for: PrayerRequestSource(title: "오늘", dateText: "2026-11-11", body: "걱정이 있다."))
+        }
+        while await model.calls == 0 { await Task.yield() }
+        task.cancel()
+        await model.release()
+        let outcome = await task.value
+        XCTAssertEqual(outcome, .noUsableAnswer)
+        let count = await model.calls
+        XCTAssertEqual(count, 1)
+    }
+
+    func testLineWithOnlyALabelIsDropped() async {
+        let model = FakeModel(
+            gate: .success("예"),
+            draft: .success("- (나/건강)\n- 어머니 검사 결과가 좋도록 기도해 주세요 (어머니/건강)"))
+        let found = drafts(await run(model))
+        XCTAssertEqual(found.map(\.text), ["어머니 검사 결과가 좋도록"])
+    }
+
+    func testOnlyEmptyLinesIsNoUsableAnswer() async {
+        let model = FakeModel(gate: .success("예"), draft: .success("- (나/건강)"))
+        let outcome = await run(model)
+        XCTAssertEqual(outcome, .noUsableAnswer)
+    }
+
+    func testFillIsSinglePass() {
+        let filled = PrayerRequestPrompts.fill(
+            "{제목}|{날짜}|{본문}", title: "{본문}", date: "2026-11-11", body: "진짜 본문")
+        XCTAssertEqual(filled, "{본문}|2026-11-11|진짜 본문")
     }
 }

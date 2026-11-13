@@ -27,6 +27,8 @@ public struct PrayerRequestPipeline: Sendable {
             prompt: prompt(PrayerRequestPrompts.gateTemplate(language)),
             maximumTokens: Self.gateTokens)
         if PrayerRequestLines.gateSaysNo(gate) { return .nothingToPrayFor }
+        // A dismissed sheet should not start a second, slower model call.
+        if Task.isCancelled { return .noUsableAnswer }
 
         guard
             let answer = try? await model.respond(
@@ -45,7 +47,10 @@ public struct PrayerRequestPipeline: Sendable {
         lines = PrayerRequestLines.withoutRepeats(lines)
         if language == .korean { lines = lines.map(PrayerRequestLines.sharedEnding) }
 
-        let drafts = lines.map { draft(from: $0, language: language) }
+        // A line that was only a label ("(나/건강)") has no sentence to share.
+        let drafts = lines.map { draft(from: $0, language: language) }.filter {
+            !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
         return drafts.isEmpty ? .noUsableAnswer : .drafts(drafts)
     }
 

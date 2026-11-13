@@ -69,6 +69,40 @@ final class PrayerRequestShareModelTests: XCTestCase {
         XCTAssertEqual(model.rows.first?.topic, .health)
     }
 
+    func testUnavailableModelShowsManualFromTheStartWithoutSpinner() {
+        let model = PrayerRequestShareModel(
+            source: koreanSource, pipeline: nil, availability: .appleIntelligenceOff)
+        XCTAssertEqual(model.phase, .manual(reason: .modelUnavailable(.appleIntelligenceOff)))
+        XCTAssertEqual(model.rows.count, 1)
+        XCTAssertTrue(model.rows[0].isSelected)
+    }
+
+    func testPromptDateIsIsoInTheEntrysTimeZone() {
+        // 2026-11-11 16:30 UTC is already the 12th in Seoul and still the 11th in Los Angeles.
+        let date = Date(timeIntervalSince1970: 1_794_414_600)
+        XCTAssertEqual(
+            PrayerRequestShareSheet.promptDate(date, timeZoneIdentifier: "Asia/Seoul"),
+            "2026-11-12")
+        XCTAssertEqual(
+            PrayerRequestShareSheet.promptDate(date, timeZoneIdentifier: "America/Los_Angeles"),
+            "2026-11-11")
+    }
+
+    func testSecondStartChangesNothing() async {
+        let (model, fake) = model(answers: ["예", twoRequests, "예", twoRequests])
+        await model.start()
+        let id = model.rows[0].id
+        model.edit(id, text: "고친 문장")
+        let rows = model.rows
+
+        await model.start()
+
+        XCTAssertEqual(model.rows, rows)
+        XCTAssertEqual(model.phase, .ready)
+        let calls = await fake.calls
+        XCTAssertEqual(calls, 2)
+    }
+
     func testUnavailableModelOpensManualWithOneEmptyRow() async {
         let model = PrayerRequestShareModel(
             source: koreanSource, pipeline: nil, availability: .appleIntelligenceOff)

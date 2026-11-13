@@ -44,6 +44,9 @@ final class PrayerRequestShareModel: ObservableObject {
     private let availability: ShareModelAvailability
     /// Bumped by `start()` and `writeManually()`; a draft result only lands if it is unchanged.
     private var generation = 0
+    /// The sheet's `.task` can run again (for example when the view reappears); drafting must
+    /// not restart and overwrite rows the person has edited.
+    private var hasStarted = false
     /// Rows the person created (starter row, "add a line"), as opposed to drafted ones.
     private var addedRowIDs: Set<UUID> = []
     /// Each row's text when a translation was requested, so one edited meanwhile is left alone.
@@ -57,20 +60,26 @@ final class PrayerRequestShareModel: ObservableObject {
         self.pipeline = pipeline
         self.availability = availability
         shareLanguage = RequestLanguage.detect(source.title + "\n" + source.body)
+        // Without a usable model there is nothing to wait for: open the write-by-hand form at once
+        // instead of flashing a spinner.
+        if pipeline == nil || availability != .available {
+            phase = .manual(reason: .modelUnavailable(availability))
+            addRow()
+        }
     }
 
     // MARK: - Drafting
 
     func start() async {
+        guard !hasStarted else { return }
+        hasStarted = true
         generation += 1
         let mine = generation
-        guard let pipeline, availability == .available else {
-            openManual(.modelUnavailable(availability))
-            return
-        }
+        guard let pipeline, availability == .available else { return }
         phase = .drafting
         let outcome = await pipeline.drafts(for: source)
-        guard mine == generation else { return }
+        // A cancelled task means the sheet is gone; its result has nowhere to land.
+        guard mine == generation, !Task.isCancelled else { return }
 
         switch outcome {
         case .drafts(let drafts):

@@ -34,10 +34,20 @@ struct PrayerRequestShareSheet: View {
         PrayerRequestShareModel(
             source: PrayerRequestSource(
                 title: entry.title,
-                dateText: entry.occurredAt.formatted(date: .long, time: .shortened),
+                dateText: promptDate(entry.occurredAt, timeZoneIdentifier: entry.originalTimeZone),
                 body: entry.body),
             pipeline: ShareDraftFeature.makeModel().map(PrayerRequestPipeline.init(model:)),
             availability: ShareDraftFeature.availability())
+    }
+
+    /// `yyyy-MM-dd`, the form the prompt lab scored, in the entry's own time zone when it has one.
+    static func promptDate(_ date: Date, timeZoneIdentifier: String?) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.timeZone = timeZoneIdentifier.flatMap(TimeZone.init(identifier:)) ?? .current
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: date)
     }
 
     var body: some View {

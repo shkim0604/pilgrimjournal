@@ -42,10 +42,19 @@ public enum PrayerRequestPrompts {
     public static func fill(_ template: String, title: String, date: String, body: String)
         -> String
     {
-        template
-            .replacingOccurrences(of: "{날짜}", with: date)
-            .replacingOccurrences(of: "{제목}", with: title)
-            .replacingOccurrences(of: "{본문}", with: body)
+        // One pass, so a title or body that itself contains a placeholder stays literal.
+        let values = ["{날짜}": date, "{제목}": title, "{본문}": body]
+        var result = ""
+        var rest = Substring(template)
+        while !rest.isEmpty {
+            if let key = values.keys.first(where: { rest.hasPrefix($0) }) {
+                result += values[key] ?? ""
+                rest = rest.dropFirst(key.count)
+            } else {
+                result.append(rest.removeFirst())
+            }
+        }
+        return result
     }
 
     // MARK: - Korean diaries

@@ -36,10 +36,7 @@ public enum PrayerRequestLines {
         return kept
     }
 
-    /// "~하도록 기도해 주세요 (나/가정)" → "~하도록 (나/가정)". People sharing requests end at
-    /// "~하도록" or "~주시길" and write 10~20자 (docs/roadmap.md), but asking the model for
-    /// that ending made it stop mid-sentence ("팀장님께"), so it writes the long form and
-    /// code shortens it.
+    /// Request endings the model writes in full and `sharedEnding` cuts.
     private static let requestTails = [
         "기도해 주세요", "기도해주세요", "기도 부탁드립니다", "기도합니다", "기도해 주십시오",
     ]
@@ -57,6 +54,10 @@ public enum PrayerRequestLines {
         return body + " 기도해 주세요"
     }
 
+    /// "~하도록 기도해 주세요 (나/가정)" → "~하도록 (나/가정)". People sharing requests end at
+    /// "~하도록" or "~주시길" and write 10~20자 (docs/roadmap.md), but asking the model for
+    /// that ending made it stop mid-sentence ("팀장님께"), so it writes the long form and
+    /// code shortens it.
     public static func sharedEnding(_ line: String) -> String {
         var body = line.trimmingCharacters(in: .whitespaces)
         var label = ""
