@@ -78,8 +78,13 @@ final class PrayerRequestShareModel: ObservableObject {
         guard let pipeline, availability == .available else { return }
         phase = .drafting
         let outcome = await pipeline.drafts(for: source)
-        // A cancelled task means the sheet is gone; its result has nowhere to land.
-        guard mine == generation, !Task.isCancelled else { return }
+        guard mine == generation else { return }
+        guard !Task.isCancelled else {
+            // Nothing landed, so a later run (the view coming back) has to draft again;
+            // otherwise the sheet would sit on the spinner.
+            hasStarted = false
+            return
+        }
 
         switch outcome {
         case .drafts(let drafts):

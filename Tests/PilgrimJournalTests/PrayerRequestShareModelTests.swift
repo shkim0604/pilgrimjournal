@@ -164,6 +164,24 @@ final class PrayerRequestShareModelTests: XCTestCase {
         XCTAssertEqual(model.rows.map(\.id), [manualRowID])
     }
 
+    func testCancelledDraftCanBeStartedAgain() async {
+        let (model, fake) = model(answers: ["예", "예", twoRequests], held: true)
+        let drafting = Task { await model.start() }
+        while await fake.calls == 0 { await Task.yield() }
+
+        drafting.cancel()
+        await fake.release()
+        await drafting.value
+        XCTAssertEqual(model.phase, .drafting)
+        XCTAssertTrue(model.rows.isEmpty)
+
+        // The sheet's `.task` runs again when the view comes back: it must draft, not stay
+        // on the spinner.
+        await model.start()
+        XCTAssertEqual(model.phase, .ready)
+        XCTAssertEqual(model.rows.count, 2)
+    }
+
     func testEditMarksRowEditedAndSetsText() async {
         let model = await readyModel()
         let id = model.rows[0].id
