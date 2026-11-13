@@ -237,6 +237,8 @@ struct PrayerRequestShareSheet: View {
     }
 
     private func finishTranslation(_ job: PrayerRequestTranslationJob, _ texts: [String]?) {
+        // A job already given up on (see the start grace in the translation modifier) is ignored.
+        guard job.id == translation?.id else { return }
         if let texts {
             model.applyTranslation(texts, for: job.ids, to: job.target)
         } else {
@@ -304,16 +306,32 @@ private struct PrayerRequestTranslationTask: ViewModifier {
     // handed to the nonisolated action below.
     nonisolated let completion: PrayerRequestTranslationCompletion
     @State private var configuration: TranslationSession.Configuration?
+    /// The job whose action has been entered, so a job the task never picks up can be failed.
+    @State private var startedJobID: UUID?
+
+    /// How long a job may wait for `translationTask` to enter its action before it counts as
+    /// failed. The action is entered right after the configuration changes; downloads happen
+    /// inside it, so this does not limit how long a translation itself may take.
+    private static let startGrace: Duration = .seconds(5)
 
     func body(content: Content) -> some View {
         content
-            .translationTask(configuration, action: Self.action(for: job, completion: completion))
+            .translationTask(
+                configuration,
+                action: Self.action(
+                    for: job, started: { startedJobID = $0 }, completion: completion)
+            )
             .onChange(of: job?.id) {
-                // A fresh configuration per job, so even a repeat of the same pair runs again.
-                configuration = job.map {
-                    TranslationSession.Configuration(
-                        source: $0.source.locale, target: $0.target.locale)
-                }
+                guard let job else { return }
+                configuration = PrayerRequestTranslationTrigger.configuration(
+                    after: configuration, source: job.source.locale, target: job.target.locale)
+            }
+            .task(id: job?.id) {
+                // Never leave the sheet waiting on a job the translation task did not pick up.
+                guard let job else { return }
+                try? await Task.sleep(for: Self.startGrace)
+                guard !Task.isCancelled, startedJobID != job.id else { return }
+                completion(job, nil)
             }
     }
 
@@ -321,10 +339,12 @@ private struct PrayerRequestTranslationTask: ViewModifier {
     /// never leaves the task it is handed to; only the resulting strings go back to the sheet.
     nonisolated private static func action(
         for job: PrayerRequestTranslationJob?,
+        started: @escaping @MainActor @Sendable (UUID) -> Void,
         completion: @escaping PrayerRequestTranslationCompletion
     ) -> (TranslationSession) async -> Void {
         { session in
             guard let job else { return }
+            await started(job.id)
             let texts = try? await translate(job.texts, with: session)
             await completion(job, texts)
         }
@@ -353,6 +373,23 @@ private struct PrayerRequestTranslationTask: ViewModifier {
     }
 
     private struct IncompleteTranslation: Error {}
+}
+
+/// Chooses the configuration that makes `translationTask` run once more. The task re-runs only
+/// when its configuration changes, and a fresh configuration for the same pair compares equal, so
+/// a retry of the same pair invalidates the current one (bumping its version) instead.
+@available(iOS 18, macOS 15, *)
+enum PrayerRequestTranslationTrigger {
+    static func configuration(
+        after current: TranslationSession.Configuration?, source: Locale.Language,
+        target: Locale.Language
+    ) -> TranslationSession.Configuration {
+        if var same = current, same.source == source, same.target == target {
+            same.invalidate()
+            return same
+        }
+        return TranslationSession.Configuration(source: source, target: target)
+    }
 }
 #endif
 
