@@ -26,7 +26,8 @@ struct PilgrimJournalApp: App {
     @StateObject private var appLock: AppLockCoordinator
     @StateObject private var authentication: AppleAuthenticationCoordinator
     #if PILGRIM_SWIFTDATA
-    // Receives shared-notebook invitations opened from Messages or Mail.
+    // Receives shared-notebook invitations opened from Messages or Mail, and (while
+    // `GroupsFeature` is on) group notification taps, the APNs token and invite links.
     #if os(iOS)
     @UIApplicationDelegateAdaptor(FamilySharingAppDelegate.self) private var sharingDelegate
     #else
@@ -348,6 +349,9 @@ struct PilgrimJournalApp: App {
             ) { _ in
                 Task { await authentication.handleCredentialRevoked() }
             }
+            // `/i/<code>` group invite links; they wait in `PendingGroupInvite` until the journal
+            // (and later the group sign-in) is ready. Inert while `GroupsFeature` is off.
+            .groupInviteLinkHandling()
             #if PILGRIM_SWIFTDATA
             .onReceive(
                 NotificationCenter.default.publisher(for: ModelContext.didSave)

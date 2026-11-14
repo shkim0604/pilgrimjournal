@@ -2,6 +2,7 @@ import Combine
 import Foundation
 import JournalData
 import JournalDomain
+import JournalGroups
 import JournalSearch
 
 #if PILGRIM_SWIFTDATA
@@ -31,6 +32,9 @@ final class JournalSessionController: ObservableObject {
     private let cloudKitContainerIdentifier: String?
     private let isVisualTesting: Bool
     private let storageLocationProvider: () async -> JournalStorageLocation
+    /// Builds each session's group-server client; nil while `GroupsFeature` is off, which
+    /// leaves `AppModel.groups` nil and the journal exactly as it was without groups.
+    private let makeGroupAPI: (@MainActor () -> any GroupAPI)?
     private var registry: JournalAccountScopeRegistry
     /// Set while the storage folder could not be located. `activate` retries
     /// it, so the error screen's retry can recover from a transient failure.
@@ -40,11 +44,13 @@ final class JournalSessionController: ObservableObject {
         rootURL: URL,
         cloudKitContainerIdentifier: String?,
         isVisualTesting: Bool = false,
-        storageLocationProvider: (() async -> JournalStorageLocation)? = nil
+        storageLocationProvider: (() async -> JournalStorageLocation)? = nil,
+        makeGroupAPI: (@MainActor () -> any GroupAPI)? = GroupsFeature.defaultAPIFactory()
     ) {
         self.rootURL = rootURL
         self.cloudKitContainerIdentifier = cloudKitContainerIdentifier
         self.isVisualTesting = isVisualTesting
+        self.makeGroupAPI = makeGroupAPI
         registry = JournalAccountScopeRegistry(root: rootURL)
         if let storageLocationProvider {
             self.storageLocationProvider = storageLocationProvider
@@ -66,20 +72,23 @@ final class JournalSessionController: ObservableObject {
     convenience init(
         rootURLProvider: @escaping () throws -> URL,
         cloudKitContainerIdentifier: String?,
-        isVisualTesting: Bool = false
+        isVisualTesting: Bool = false,
+        makeGroupAPI: (@MainActor () -> any GroupAPI)? = GroupsFeature.defaultAPIFactory()
     ) {
         do {
             self.init(
                 rootURL: try rootURLProvider(),
                 cloudKitContainerIdentifier: cloudKitContainerIdentifier,
-                isVisualTesting: isVisualTesting
+                isVisualTesting: isVisualTesting,
+                makeGroupAPI: makeGroupAPI
             )
         } catch {
             // Placeholder only: nothing reads it before the root resolves.
             self.init(
                 rootURL: FileManager.default.temporaryDirectory,
                 cloudKitContainerIdentifier: cloudKitContainerIdentifier,
-                isVisualTesting: isVisualTesting
+                isVisualTesting: isVisualTesting,
+                makeGroupAPI: makeGroupAPI
             )
             unresolvedRootProvider = rootURLProvider
         }
@@ -353,6 +362,13 @@ final class JournalSessionController: ObservableObject {
             }
         }
         #endif
+        // Groups talk to the group server, so every scope gets them (local-only too); the
+        // visual-testing screenshots stay as they were.
+        if let makeGroupAPI, !isVisualTesting {
+            let groups = GroupsController(api: makeGroupAPI())
+            groups.onOpenRoute = { [weak model] route in model?.openGroupNotificationRoute(route) }
+            model.groups = groups
+        }
         return model
     }
 
@@ -459,6 +475,7 @@ final class JournalSessionController: ObservableObject {
     }
 
     private func prepare(model: AppModel) {
+        model.groups?.attachToSystemEvents()
         model.refreshNotebookCatalog()
         model.rebuildSearchIndex()
         model.refreshTrash()

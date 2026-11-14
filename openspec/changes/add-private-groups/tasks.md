@@ -33,11 +33,11 @@ Phase 2에서만 고친다. Phase 1 작업끼리는 맡는 파일이 겹치지 �
 
 ### T0.3 앱 뼈대 — `AppModel.swift`, `AppModel+Selection.swift`, `ContentView.swift`, `JournalSidebar.swift`, `JournalSessionController.swift`, `PilgrimJournalApp.swift`, `FamilySharing.swift`(delegate 부분), `Sources/PilgrimJournal/Groups/` stub
 
-- [ ] 0.3.1 `GroupsFeature.isEnabled`(Debug 켜짐, Release 꺼짐, 환경 변수로 덮어쓰기)
-- [ ] 0.3.2 `AppModel.selectedGroupID`, 사이드바 "그룹" 섹션 자리, 피드·상세 stub 화면
-- [ ] 0.3.3 `JournalSessionController.makeAppModel(for:)`에서 `GroupsController` 주입(`PreviewGroupAPI`)
-- [ ] 0.3.4 app/scene delegate: 푸시 토큰 수신, 알림 탭 처리, `/i/*` Universal Link를 `PendingGroupInvite`로 넘기는 자리
-- [ ] 0.3.5 플래그를 끈 상태로 기존 테스트 전부 통과, iOS·macOS xcodebuild 통과
+- [x] 0.3.1 `GroupsFeature.isEnabled`(Debug 켜짐, Release 꺼짐, 환경 변수로 덮어쓰기)
+- [x] 0.3.2 `AppModel.selectedGroupID`, 사이드바 "그룹" 섹션 자리, 피드·상세 stub 화면
+- [x] 0.3.3 `JournalSessionController.makeAppModel(for:)`에서 `GroupsController` 주입(`PreviewGroupAPI`)
+- [x] 0.3.4 app/scene delegate: 푸시 토큰 수신, 알림 탭 처리, `/i/*` Universal Link를 `PendingGroupInvite`로 넘기는 자리
+- [x] 0.3.5 플래그를 끈 상태로 기존 테스트 전부 통과, iOS·macOS xcodebuild 통과
 
 ### T0.4 서버 뼈대 (T0.3과 병렬) — `server/**`(PilgrimAPI 제외)
 
