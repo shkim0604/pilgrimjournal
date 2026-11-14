@@ -39,6 +39,7 @@ struct BookFieldsDraft {
 /// output only for short fields, free text for prose, calendar hints computed in code, and
 /// permissive guardrails with a violation treated as "skip".
 @available(macOS 26, iOS 26, *)
+@MainActor
 final class SharePipeline {
     private let model = SystemLanguageModel(guardrails: .permissiveContentTransformations)
     // Greedy so reruns of the same prompt version compare. The response cap keeps a runaway
@@ -110,6 +111,63 @@ final class SharePipeline {
                 "testimony-card", instructions: SharePrompts.cardInstructions,
                 prompt: SharePrompts.testimonyCard(entry))
         }
+    }
+
+    /// One call with prompts the prompt lab's user wrote. `greedy: false` samples, so the same
+    /// prompt can give different drafts.
+    func draft(instructions: String, prompt: String, greedy: Bool) async -> (String?, CallRecord) {
+        calls = []
+        let options =
+            greedy ? self.options : GenerationOptions(temperature: 0.8, maximumResponseTokens: 600)
+        let text = await text("lab", instructions: instructions, prompt: prompt, options: options)
+        return (text, calls.last!)
+    }
+
+    /// Asks `SharePrompts.prayerRequestGate` about one diary. `nil` means the model gave no
+    /// answer (guardrail, error), which callers treat as "go on".
+    func gate(_ entry: EvalEntry, language: RequestLanguage) async -> (String?, CallRecord) {
+        calls = []
+        let answer = await text(
+            "lab-gate", instructions: SharePrompts.gateInstructions(language),
+            prompt: SharePrompts.fill(SharePrompts.gateTemplate(language), with: entry),
+            options: classifierOptions)
+        return (answer?.trimmingCharacters(in: .whitespacesAndNewlines), calls.last!)
+    }
+
+    /// Runs the previous `prayerCard` prompt and the new `prayerRequests` prompt on one diary,
+    /// both regardless of any classifier, so a person can compare them side by side.
+    func draftPrayerRequests(_ diary: PrayerDiary) async -> PrayerDiaryResult {
+        calls = []
+        let entry = diary.entry
+        let previous = await text(
+            "prayer-card", instructions: SharePrompts.cardInstructions,
+            prompt: SharePrompts.prayerCard(entry))
+        let previousCall = calls.last!
+        let language = RequestLanguage.detect(diary.title + "\n" + diary.body)
+        let current = await text(
+            "prayer-requests", instructions: SharePrompts.requestInstructions(language),
+            prompt: SharePrompts.fill(SharePrompts.requestTemplate(language), with: entry))
+        let currentCall = calls.last!
+
+        func draft(_ text: String?, _ call: CallRecord, list: Bool) -> PrayerDraft {
+            PrayerDraft(
+                text: text,
+                lines: list ? text.map(SharePrompts.requestLines) ?? [] : [],
+                seconds: call.seconds,
+                outcome: call.outcome,
+                leakedNames: EvalScorer.nameLeaks(diary.names, in: ["text": text ?? ""])
+            )
+        }
+        return PrayerDiaryResult(
+            id: diary.id,
+            date: diary.date.description,
+            title: diary.title,
+            body: diary.body,
+            points: diary.points,
+            names: diary.names,
+            previous: draft(previous, previousCall, list: false),
+            current: draft(current, currentCall, list: true)
+        )
     }
 
     private func readBook(_ entry: EvalEntry, into prediction: inout Prediction) async {

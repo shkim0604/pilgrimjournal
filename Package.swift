@@ -102,7 +102,10 @@ let package = Package(
         // On-device model eval for the roadmap's share cards. Builds everywhere (the model code
         // is behind `canImport(FoundationModels)` / macOS 26 checks) but only runs on an Apple
         // Intelligence Mac, so scripts/check.sh and CI never run it.
-        .executableTarget(name: "ShareCardEval"),
+        .executableTarget(
+            name: "ShareCardEval",
+            resources: [.copy("Resources/prompt-lab.html")]
+        ),
         // Exports the SwiftData schema for the developer admin console (web/admin). Run via
         // scripts/admin-snapshot.sh; scripts/check.sh fails when the committed snapshot is stale.
         .executableTarget(
