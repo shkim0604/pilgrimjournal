@@ -41,14 +41,20 @@ Phase 2에서만 고친다. Phase 1 작업끼리는 맡는 파일이 겹치지 �
 
 ### T0.4 서버 뼈대 (T0.3과 병렬) — `server/**`(PilgrimAPI 제외)
 
-- [ ] 0.4.1 `server/Package.swift`(Vapor 4, Fluent, FluentPostgresDriver, JWT, APNS, app-store-server-library-swift;
-      착수 때 최신 버전 확인), `App`·`Run`·`AppTests` 타깃, `Run serve|worker|migrate`
-- [ ] 0.4.2 design.md "Postgres 스키마"의 Fluent 모델과 마이그레이션 전부(트리거 `media_after_delete`, 부분 UNIQUE,
+- [x] 0.4.1 `server/Package.swift`(Vapor 4.122, Fluent 4.13, FluentPostgresDriver 2.14, swift-crypto),
+      `PilgrimServerCore`(앱 로직, `@testable import`)·`PilgrimServer`(진입점)·`PilgrimServerTests` 타깃,
+      `PilgrimServer serve|worker|migrate`. 아래 작업의 `server/Sources/App/<모듈>/**`는
+      `server/Sources/PilgrimServerCore/<모듈>/**`이고, 모듈마다 `<모듈>Module.register(_:)`가 이미 있다.
+      JWT·APNS·app-store-server-library는 쓰는 작업(S1·S5·S8)이 `server/Package.swift`에 한 줄씩 더한다
+- [x] 0.4.2 design.md "Postgres 스키마"의 Fluent 모델과 마이그레이션 전부(트리거 `media_after_delete`, 부분 UNIQUE,
       CHECK 포함)
-- [ ] 0.4.3 공통 헬퍼: `ContentVisibility`(만료·멤버·차단·숨김 필터), `PushOutbox.enqueue`, `MediaStore`(경로,
-      서명 URL), `ClientGate`(426), `Idempotency`, `RateLimiter`, `APIError` → 응답 변환, 인증 미들웨어 자리
-- [ ] 0.4.4 Postgres 테스트 하네스(테스트마다 스키마 초기화), `/api/health`
-- [ ] 0.4.5 Dockerfile(arm64, 빌드·실행 단계 분리), dev compose, `TIME_SCALE_DAY_SECONDS`, `make -C server dev`/`test`
+- [x] 0.4.3 공통 헬퍼: `ContentVisibility`(만료·멤버·차단·숨김 필터), `PushOutbox.enqueue`, `MediaStore`(경로,
+      서명 URL), `ClientGate`(426), `Idempotency`, `RateLimiter`, `APIError` → 응답 변환, 인증 미들웨어 자리,
+      worker 루프 실행기(advisory lock·heartbeat·간격 — S5의 1.5.1을 미리 함)
+- [x] 0.4.4 Postgres 테스트 하네스(프로세스당 한 번 스키마 재생성 + 테스트마다 TRUNCATE, `TEST_DATABASE_URL`
+      없으면 건너뜀), `/api/health`
+- [x] 0.4.5 Dockerfile(arm64, 빌드·실행 단계 분리), dev compose, `TIME_SCALE_DAY_SECONDS`, `make -C server dev`/`test`
+      (T0.4 때 로컬 Docker가 응답하지 않아 compose·Postgres 테스트는 CI `server` job에서 처음 돈다)
 
 ## 1. Phase 1, 1차 묶음
 
