@@ -24,6 +24,7 @@ struct JournalSidebar: View {
                     isSelected: model.selectedKind == nil
                         && model.selectedNotebookName == nil
                         && model.selectedSharedSpaceID == nil
+                        && model.selectedGroupID == nil
                 ) {
                     selectKind(nil)
                 }
@@ -96,6 +97,13 @@ struct JournalSidebar: View {
                 )
             }
             #endif
+
+            if let groups = model.groups {
+                GroupsSidebarSection(
+                    groups: groups,
+                    preferredCompactColumn: $preferredCompactColumn
+                )
+            }
 
             Section {
                 JournalSidebarItem(

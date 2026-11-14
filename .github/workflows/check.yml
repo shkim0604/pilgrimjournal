@@ -32,6 +32,48 @@ jobs:
       - name: scripts/check.sh
         run: ./scripts/check.sh
 
+  server:
+    # The group server on Linux, as it runs in Docker on the Mac mini: the contract package
+    # (server/PilgrimAPI; the gate job above also runs it on macOS) and the Vapor server
+    # (server/) against a real Postgres 17. TEST_DATABASE_URL makes the Postgres tests
+    # mandatory here (locally they skip without it; `make -C server test` provides one).
+    name: Group server (Linux, Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container: swift:6.2-noble
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: pilgrim
+          POSTGRES_PASSWORD: pilgrim
+          POSTGRES_DB: pilgrim_test
+        options: >-
+          --health-cmd "pg_isready -U pilgrim -d pilgrim_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgres://pilgrim:pilgrim@postgres:5432/pilgrim_test?sslmode=disable
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: swift --version
+      - name: Cache SwiftPM build
+        uses: actions/cache@v4
+        with:
+          path: |
+            server/.build
+            server/PilgrimAPI/.build
+          key: server-linux-${{ hashFiles('server/Package.resolved', 'server/Package.swift', 'server/PilgrimAPI/Package.swift') }}
+          restore-keys: server-linux-
+      - name: swift test (server/PilgrimAPI)
+        run: swift test --package-path server/PilgrimAPI
+      - name: swift build (server)
+        run: swift build --package-path server --build-tests
+      - name: swift test (server, Postgres)
+        run: swift test --package-path server --skip-build
+
   admin-console:
     # web/admin (developer admin console). scripts/check.sh only checks its Swift snapshot is fresh.
     name: Admin console (Node)

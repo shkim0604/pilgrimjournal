@@ -19,10 +19,16 @@ let package = Package(
         .library(name: "DayOneImport", targets: ["DayOneImport"]),
         .library(name: "JournalSearch", targets: ["JournalSearch"]),
         .library(name: "JournalBackup", targets: ["JournalBackup"]),
+        .library(name: "JournalGroups", targets: ["JournalGroups"]),
         .executable(name: "PilgrimJournal", targets: ["PilgrimJournal"]),
         .executable(name: "JournalChecks", targets: ["JournalChecks"]),
         .executable(name: "ShareCardEval", targets: ["ShareCardEval"]),
         .executable(name: "AdminSnapshot", targets: ["AdminSnapshot"]),
+    ],
+    dependencies: [
+        // The group-server contract (DTOs, error codes, expiry/vote rules), shared with the
+        // Vapor server in server/. Foundation only.
+        .package(path: "server/PilgrimAPI")
     ],
     targets: [
         .target(
@@ -55,6 +61,14 @@ let package = Package(
         // Diary → prayer-request text logic (prompts, line cleanup, labels). Pure Foundation, so
         // the app and the ShareCardEval prompt lab share one copy.
         .target(name: "JournalShareDrafts"),
+        // Private groups: the GroupAPI client boundary over the PilgrimAPI contract, plus an
+        // in-memory PreviewGroupAPI for UI work and tests. The app imports PilgrimAPI directly
+        // for the DTOs (Xcode resolves it through this target's package dependency).
+        .target(
+            name: "JournalGroups",
+            dependencies: [.product(name: "PilgrimAPI", package: "PilgrimAPI")],
+            resources: [.process("Resources")]
+        ),
         .target(
             name: "DayOneImport",
             dependencies: ["JournalDomain"],
@@ -81,6 +95,7 @@ let package = Package(
                 "JournalBackup",
                 "JournalSharing",
                 "JournalShareDrafts",
+                "JournalGroups",
             ],
             // The app's String Catalog is compiled by the Xcode app target,
             // which builds these sources directly; SwiftPM builds only run
@@ -128,6 +143,10 @@ let package = Package(
         .testTarget(
             name: "JournalShareDraftsTests",
             dependencies: ["JournalShareDrafts"]
+        ),
+        .testTarget(
+            name: "JournalGroupsTests",
+            dependencies: ["JournalGroups", .product(name: "PilgrimAPI", package: "PilgrimAPI")]
         ),
         .testTarget(
             name: "JournalDomainTests",

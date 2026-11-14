@@ -53,6 +53,13 @@ struct ContentView: View {
             // even when its split pane is hidden.
             if isFocusMode {
                 Color.clear
+            } else if let groupID = model.selectedGroupID, let groups = model.groups {
+                GroupFeedView(
+                    groups: groups,
+                    groupID: groupID,
+                    preferredCompactColumn: $preferredCompactColumn
+                )
+                .id(groupID)
             } else {
                 timeline
             }
@@ -61,6 +68,9 @@ struct ContentView: View {
             Group {
                 if model.isPresentingSettings {
                     SettingsView()
+                } else if let groupID = model.selectedGroupID, let groups = model.groups {
+                    GroupPostDetailView(
+                        groups: groups, groupID: groupID, postID: model.selectedGroupPostID)
                 } else if let entry = model.selectedEntry {
                     InlineEntryEditorView(entry: entry, isFocusMode: isFocusMode)
                         .id(entry.id)
@@ -118,6 +128,9 @@ struct ContentView: View {
             // selection could not be resolved bounced the user into settings.
             if model.isPresentingSettings {
                 SettingsView()
+            } else if let groupID = model.selectedGroupID, let groups = model.groups {
+                GroupPostDetailView(
+                    groups: groups, groupID: groupID, postID: model.selectedGroupPostID)
             } else if let entry = model.selectedEntry {
                 EntryDetailView(entry: entry)
             } else {

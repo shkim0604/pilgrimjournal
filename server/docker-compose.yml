@@ -1,0 +1,61 @@
+# Shared definition. Run through the Makefile, which adds the environment override:
+#   make dev   → + docker-compose.dev.yml  (.env.dev)
+#   make prod  → + docker-compose.prod.yml (.env.prod; task I1)
+# api and worker are the same image with different commands (design.md "구성").
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set in .env.dev or .env.prod}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env.dev or .env.prod}
+      POSTGRES_DB: ${POSTGRES_DB:?set in .env.dev or .env.prod}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    image: pilgrim-server:local
+    build:
+      context: .
+    command: ["serve"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment: &server-env
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+      HTTP_HOST: 0.0.0.0
+      PORT: 3100
+      MEDIA_ROOT: /data/media
+    volumes:
+      - media:/data/media
+
+  worker:
+    image: pilgrim-server:local
+    command: ["worker"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment: *server-env
+    volumes:
+      - media:/data/media
+
+  # Applies pending migrations, then exits; api and worker start after it.
+  migrate:
+    image: pilgrim-server:local
+    command: ["migrate", "--yes"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment: *server-env
+
+volumes:
+  pgdata:
+  media:
