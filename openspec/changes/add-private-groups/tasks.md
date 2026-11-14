@@ -107,12 +107,13 @@ Phase 2에서만 고친다. Phase 1 작업끼리는 맡는 파일이 겹치지 �
 
 ### A2 UI: 멤버십 — `Sources/PilgrimJournal/Groups/GroupsController.swift`, `GroupsSidebarSection.swift`, `Onboarding/**`, `GroupCreateSheet.swift`, `GroupInviteSheet.swift`(QR), `JoinGroupView.swift`, `GroupSettingsView.swift`, `GroupMembersSheet.swift`, `GroupVoteView.swift`, `GroupCredentialStore.swift`, `PendingGroupInvite.swift`, 해당 테스트
 
-- [ ] 1.7.1 온보딩: 약관 동의, Apple 재인증(nonce, 사용자 불일치 거부), 이름·프로필 사진
-- [ ] 1.7.2 그룹 만들기, 사이드바 섹션(안 읽은 수), 그룹 설정(이름, 알림, 나가기, 삭제)
-- [ ] 1.7.3 초대 만들기(인원, 만료 표시, QR, 공유), 초대 코드 입력, Universal Link 큐, 미리보기·참여 오류 문구
-- [ ] 1.7.4 멤버 시트(강퇴, 강퇴 해제, 넘기기)
-- [ ] 1.7.5 투표 화면, 투표 중 배너와 관리자 기능 숨김, 삭제 예정 배너
-- [ ] 1.7.6 `PreviewGroupAPI`로 컨트롤러 테스트
+- [x] 1.7.1 온보딩: 약관 동의, Apple 재인증(nonce, 사용자 불일치 거부), 이름·프로필 사진
+- [x] 1.7.2 그룹 만들기, 사이드바 섹션(안 읽은 수), 그룹 설정(이름, 알림, 나가기, 삭제)
+- [x] 1.7.3 초대 만들기(인원, 만료 표시, QR, 공유), 초대 코드 입력, Universal Link 큐, 미리보기·참여 오류 문구
+- [x] 1.7.4 멤버 시트(강퇴, 강퇴 해제, 넘기기)
+- [x] 1.7.5 투표 화면, 투표 중 배너와 관리자 기능 숨김, 삭제 예정 배너 — 배너(`GroupStatusBanner`)는 그룹
+      설정에 있고, 피드 맨 위 배치는 Phase 2(A3 `GroupFeedView`)
+- [x] 1.7.6 `PreviewGroupAPI`로 컨트롤러 테스트
 
 ### A3 UI: 콘텐츠 — `Sources/PilgrimJournal/Groups/GroupFeedView.swift`, `GroupFeedModel.swift`, `GroupPostDetailView.swift`, `GroupPostComposerSheet.swift`, `GroupReportSheet.swift`, `BlockedUsersView.swift`, `HiddenItemsView.swift`, `GroupMediaViews.swift`, `GroupReactionPicker.swift`, 해당 테스트
 
