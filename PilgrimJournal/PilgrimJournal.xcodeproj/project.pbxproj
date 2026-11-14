@@ -13,6 +13,7 @@
 		A00000000000000000000004 /* JournalSearch in Frameworks */ = {isa = PBXBuildFile; productRef = A30000000000000000000004 /* JournalSearch */; };
 		A00000000000000000000005 /* JournalBackup in Frameworks */ = {isa = PBXBuildFile; productRef = A30000000000000000000005 /* JournalBackup */; };
 		A00000000000000000000006 /* JournalSharing in Frameworks */ = {isa = PBXBuildFile; productRef = A30000000000000000000006 /* JournalSharing */; };
+		A00000000000000000000007 /* JournalShareDrafts in Frameworks */ = {isa = PBXBuildFile; productRef = A30000000000000000000007 /* JournalShareDrafts */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -44,6 +45,7 @@
 				A00000000000000000000004 /* JournalSearch in Frameworks */,
 				A00000000000000000000005 /* JournalBackup in Frameworks */,
 				A00000000000000000000006 /* JournalSharing in Frameworks */,
+				A00000000000000000000007 /* JournalShareDrafts in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -94,6 +96,7 @@
 				A30000000000000000000004 /* JournalSearch */,
 				A30000000000000000000005 /* JournalBackup */,
 				A30000000000000000000006 /* JournalSharing */,
+				A30000000000000000000007 /* JournalShareDrafts */,
 			);
 			productName = PilgrimJournal;
 			productReference = 9F42FD123013C28600385B48 /* Pilgrim Journal.app */;
@@ -453,6 +456,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A20000000000000000000001 /* XCLocalSwiftPackageReference ".." */;
 			productName = JournalSharing;
+		};
+		A30000000000000000000007 /* JournalShareDrafts */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A20000000000000000000001 /* XCLocalSwiftPackageReference ".." */;
+			productName = JournalShareDrafts;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

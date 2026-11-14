@@ -15,6 +15,7 @@ let package = Package(
         .library(name: "JournalDomain", targets: ["JournalDomain"]),
         .library(name: "JournalData", targets: ["JournalData"]),
         .library(name: "JournalSharing", targets: ["JournalSharing"]),
+        .library(name: "JournalShareDrafts", targets: ["JournalShareDrafts"]),
         .library(name: "DayOneImport", targets: ["DayOneImport"]),
         .library(name: "JournalSearch", targets: ["JournalSearch"]),
         .library(name: "JournalBackup", targets: ["JournalBackup"]),
@@ -51,6 +52,9 @@ let package = Package(
                 .linkedFramework("CloudKit")
             ]
         ),
+        // Diary → prayer-request text logic (prompts, line cleanup, labels). Pure Foundation, so
+        // the app and the ShareCardEval prompt lab share one copy.
+        .target(name: "JournalShareDrafts"),
         .target(
             name: "DayOneImport",
             dependencies: ["JournalDomain"],
@@ -76,6 +80,7 @@ let package = Package(
                 "JournalSearch",
                 "JournalBackup",
                 "JournalSharing",
+                "JournalShareDrafts",
             ],
             // The app's String Catalog is compiled by the Xcode app target,
             // which builds these sources directly; SwiftPM builds only run
@@ -104,6 +109,7 @@ let package = Package(
         // Intelligence Mac, so scripts/check.sh and CI never run it.
         .executableTarget(
             name: "ShareCardEval",
+            dependencies: ["JournalShareDrafts"],
             resources: [.copy("Resources/prompt-lab.html")]
         ),
         // Exports the SwiftData schema for the developer admin console (web/admin). Run via
@@ -118,6 +124,10 @@ let package = Package(
         .testTarget(
             name: "ShareCardEvalTests",
             dependencies: ["ShareCardEval"]
+        ),
+        .testTarget(
+            name: "JournalShareDraftsTests",
+            dependencies: ["JournalShareDrafts"]
         ),
         .testTarget(
             name: "JournalDomainTests",
@@ -148,7 +158,7 @@ let package = Package(
         ),
         .testTarget(
             name: "PilgrimJournalTests",
-            dependencies: ["PilgrimJournal", "JournalData"]
+            dependencies: ["PilgrimJournal", "JournalData", "JournalShareDrafts"]
         ),
     ]
 )

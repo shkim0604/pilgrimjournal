@@ -1,5 +1,6 @@
 #if canImport(Translation)
 import Foundation
+import JournalShareDrafts
 import Translation
 
 /// Translates finished prayer requests into the share language with the system's on-device

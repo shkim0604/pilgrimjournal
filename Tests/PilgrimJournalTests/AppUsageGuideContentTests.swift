@@ -18,6 +18,7 @@ final class AppUsageGuideContentTests: XCTestCase {
                 "entry-types",
                 "edit-entry",
                 "attachments",
+                "share-prayer-requests",
                 "organize",
                 "search",
                 "trash",

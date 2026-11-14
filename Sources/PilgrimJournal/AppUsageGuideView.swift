@@ -57,6 +57,14 @@ enum AppUsageGuideContent {
                             "편집 화면의 ‘파일’로 사진, 동영상, 오디오, PDF를 더하거나 ‘사진’으로 사진 보관함에서 여러 장을 한 번에 고르세요. iPhone에서는 ‘촬영’으로 카메라를 바로 열어 찍은 사진을 첨부할 수 있습니다. 이 기기에 저장된 첨부는 눈 모양 아이콘으로 바로 미리 보고, 저장 아이콘으로 다른 위치에 저장할 수 있습니다. 아직 받지 않은 첨부는 먼저 ‘다운로드’를 눌러야 합니다."
                     )
                 ),
+                AppUsageGuideItem(
+                    id: "share-prayer-requests",
+                    title: String(localized: "기도제목 나누기"),
+                    body: String(
+                        localized:
+                            "기록의 ‘기도제목 나누기’를 선택하면 기기 안에서 본문을 읽고 나눌 기도제목을 제안합니다. 문장을 고치거나 고른 뒤 메시지로 나누거나 복사하세요. 기록 내용은 어디에도 올라가거나 저장되지 않습니다. Apple Intelligence를 쓸 수 없는 기기에서는 기도제목을 직접 적어 나눌 수 있습니다."
+                    )
+                ),
             ]
         ),
         AppUsageGuideSection(

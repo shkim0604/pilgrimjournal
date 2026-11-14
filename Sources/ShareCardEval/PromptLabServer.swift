@@ -1,6 +1,7 @@
 #if canImport(FoundationModels)
 import Foundation
 import FoundationModels
+import JournalShareDrafts
 import Network
 import Translation
 
@@ -97,9 +98,9 @@ final class PromptLabServer {
         // the built-in English one for an English diary.
         let language = RequestLanguage.detect(diary.title + "\n" + diary.body)
         let instructions =
-            language == .korean ? request.instructions : SharePrompts.requestInstructions(language)
+            language == .korean ? request.instructions : PrayerRequestPrompts.instructions(language)
         let template =
-            language == .korean ? request.template : SharePrompts.requestTemplate(language)
+            language == .korean ? request.template : PrayerRequestPrompts.template(language)
         let prompt = SharePrompts.fill(template, with: entry)
         let promptCharacters = instructions.count + prompt.count
         let target = request.outputLanguage.flatMap(RequestLanguage.init(rawValue:)) ?? language
@@ -107,26 +108,64 @@ final class PromptLabServer {
 
         var gateAnswer: String?
         var gateSeconds = 0.0
-        if request.gate == true {
-            let (answer, call) = await pipeline.gate(entry, language: language)
-            gateAnswer = answer
-            gateSeconds = call.seconds
-            if SharePrompts.gateSaysNo(answer) {
+        var text: String?
+        var rawLines: [String] = []
+        var lines: [String] = []
+        var call = CallRecord(step: "lab", seconds: 0, outcome: "ok")
+
+        // An unedited prompt with the gate and tidy steps on is the app's own pipeline, so it
+        // runs through the shared one; anything else keeps the lab's step-by-step path.
+        let builtIn =
+            instructions == PrayerRequestPrompts.instructions(language)
+            && template == PrayerRequestPrompts.template(language)
+        if builtIn, request.gate == true, tidy {
+            let clock = ContinuousClock()
+            let start = clock.now
+            let source = PrayerRequestSource(
+                title: diary.title, dateText: entry.date.description, body: diary.body)
+            let outcome = await PrayerRequestPipeline(model: FoundationModelsShareLanguageModel())
+                .drafts(for: source)
+            let elapsed = (clock.now - start).components
+            let seconds = Double(elapsed.seconds) + Double(elapsed.attoseconds) / 1e18
+            switch outcome {
+            case .nothingToPrayFor:
                 let result = LabRunResult(
-                    text: "없음", lines: [], rawLines: [], gate: answer, skippedByGate: true,
-                    language: language.rawValue, outputLanguage: target.rawValue,
-                    translationNote: nil, seconds: gateSeconds, outcome: call.outcome,
-                    leakedNames: [], promptCharacters: promptCharacters)
+                    text: "없음", lines: [], rawLines: [], gate: language == .korean ? "아니오" : "No",
+                    skippedByGate: true, language: language.rawValue,
+                    outputLanguage: target.rawValue, translationNote: nil, seconds: seconds,
+                    outcome: "ok", leakedNames: [], promptCharacters: promptCharacters)
                 log(request, result)
                 return result
+            case .noUsableAnswer:
+                call = CallRecord(step: "lab", seconds: seconds, outcome: "error: no usable answer")
+            case .drafts(let drafts):
+                rawLines = drafts.map { Self.line(for: $0, in: language) }
+                text = rawLines.joined(separator: "\n")
+                call = CallRecord(step: "lab", seconds: seconds, outcome: "ok")
             }
-        }
+            lines = rawLines
+        } else {
+            if request.gate == true {
+                let (answer, gateCall) = await pipeline.gate(entry, language: language)
+                gateAnswer = answer
+                gateSeconds = gateCall.seconds
+                if PrayerRequestLines.gateSaysNo(answer) {
+                    let result = LabRunResult(
+                        text: "없음", lines: [], rawLines: [], gate: answer, skippedByGate: true,
+                        language: language.rawValue, outputLanguage: target.rawValue,
+                        translationNote: nil, seconds: gateSeconds, outcome: gateCall.outcome,
+                        leakedNames: [], promptCharacters: promptCharacters)
+                    log(request, result)
+                    return result
+                }
+            }
 
-        let (text, call) = await pipeline.draft(
-            instructions: instructions, prompt: prompt, greedy: request.greedy ?? true)
-        let rawLines = text.map(SharePrompts.requestLines) ?? []
-        // Translating a 40-line loop would take a while, so an untidied run is capped too.
-        var lines = tidy ? SharePrompts.withoutRepeats(rawLines) : Array(rawLines.prefix(12))
+            (text, call) = await pipeline.draft(
+                instructions: instructions, prompt: prompt, greedy: request.greedy ?? true)
+            rawLines = text.map(PrayerRequestLines.parse) ?? []
+            // Translating a 40-line loop would take a while, so an untidied run is capped too.
+            lines = tidy ? PrayerRequestLines.withoutRepeats(rawLines) : Array(rawLines.prefix(12))
+        }
         // A translated name is spelled differently ("Emily" → "에밀리"), so names are looked
         // for in the lines as the model wrote them as well as in what is shown.
         let beforeTranslation = lines
@@ -142,7 +181,7 @@ final class PromptLabServer {
             }
         }
         if shownLanguage == language, language == .korean, tidy {
-            lines = lines.map(SharePrompts.sharedEnding)
+            lines = lines.map(PrayerRequestLines.sharedEnding)
         }
         if !tidy, target == language { lines = rawLines }
 
@@ -167,20 +206,31 @@ final class PromptLabServer {
         return result
     }
 
+    /// A draft as the page shows it: the sentence plus its `(누구/주제)` label when it has one.
+    private static func line(for draft: PrayerRequestDraft, in language: RequestLanguage)
+        -> String
+    {
+        let label = [draft.who, draft.topic?.name(in: language)].compactMap { $0 }
+            .joined(separator: "/")
+        return label.isEmpty ? draft.text : draft.text + " (" + label + ")"
+    }
+
     /// Translates the sentences and moves each `(누구/주제)` label across by table, so a label
     /// never goes through the translator ("me/family" must not come back as a sentence).
     private func translate(
         _ lines: [String], from source: RequestLanguage, to target: RequestLanguage,
         cutEnding: Bool
     ) async -> Result<[String], RequestTranslator.Unavailable> {
-        let parts = lines.map(SharePrompts.splitLabel)
-        let result = await RequestTranslator.translate(parts.map(\.body), from: source, to: target)
+        let parts = lines.map(PrayerRequestLines.splitLabel)
+        let result = await RequestTranslator.translate(
+            parts.map { PrayerRequestLines.translationInput($0.body, from: source) },
+            from: source, to: target)
         return result.map { bodies in
             zip(bodies, parts).map { body, part in
-                let sentence = SharePrompts.polishTranslation(
+                let sentence = PrayerRequestLines.polishTranslation(
                     body, in: target, cutEnding: cutEnding)
                 guard let label = part.label else { return sentence }
-                return sentence + " (" + SharePrompts.translatedLabel(label, to: target) + ")"
+                return sentence + " (" + PrayerRequestLines.translatedLabel(label, to: target) + ")"
             }
         }
     }

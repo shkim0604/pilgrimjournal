@@ -1,4 +1,5 @@
 import Foundation
+import JournalShareDrafts
 
 // The prompt lab's wire format and a minimal HTTP/1.1 parser, kept free of FoundationModels
 // so they build and test everywhere.
@@ -70,10 +71,10 @@ struct LabState: Codable, Sendable {
 
     static var current: LabState {
         LabState(
-            instructions: SharePrompts.prayerRequestInstructions,
-            template: SharePrompts.prayerRequestTemplate,
-            promptVersion: SharePrompts.prayerRequestVersion,
-            englishInstructions: SharePrompts.prayerRequestInstructionsEnglish,
+            instructions: PrayerRequestPrompts.instructions(.korean),
+            template: PrayerRequestPrompts.template(.korean),
+            promptVersion: PrayerRequestPrompts.version,
+            englishInstructions: PrayerRequestPrompts.instructions(.english),
             diaries: PrayerDiaryFixtures.all.map {
                 LabDiarySummary(
                     id: $0.id, title: $0.title, date: $0.date.description, body: $0.body,

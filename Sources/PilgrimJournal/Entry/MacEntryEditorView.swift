@@ -37,6 +37,7 @@ struct InlineEntryEditorView: View {
     @State private var pendingKind: JournalKind?
     @State private var isConfirmingTypeChange = false
     @State private var isPresentingHistory = false
+    @State private var prayerRequestShareEntry: JournalEntryRecord?
     @State private var saveState = EditorSaveState.saved
     @State private var lastSavedAt: Date?
     @State private var autosaveTask: Task<Void, Never>?
@@ -171,6 +172,9 @@ struct InlineEntryEditorView: View {
                 RevisionHistoryView(entry: entry, onRestore: resyncDraftFromRepository)
             }
         }
+        .sheet(item: $prayerRequestShareEntry) { entry in
+            PrayerRequestShareSheet(entry: entry)
+        }
         .confirmationDialog(
             "기록 유형을 바꾸면 일부 상세 정보가 제거됩니다.",
             isPresented: $isConfirmingTypeChange,
@@ -227,6 +231,9 @@ struct InlineEntryEditorView: View {
                 Toggle("고정", isOn: $draft.isPinned)
                 if entry != nil {
                     Button("수정 이력") { isPresentingHistory = true }
+                }
+                if offersPrayerRequestSharing {
+                    Button("기도제목 나누기") { sharePrayerRequests() }
                 }
             } label: {
                 Label("기록 정보", systemImage: "ellipsis.circle")
@@ -295,7 +302,35 @@ struct InlineEntryEditorView: View {
                 .foregroundStyle(JournalTheme.inkSecondary)
                 .labelStyle(.iconOnly)
             }
+
+            if offersPrayerRequestSharing {
+                Button {
+                    sharePrayerRequests()
+                } label: {
+                    Label("기도제목 나누기", systemImage: "hands.and.sparkles")
+                }
+                .foregroundStyle(JournalTheme.inkSecondary)
+                .labelStyle(.iconOnly)
+                .help("기도제목 나누기")
+            }
         }
+    }
+
+    /// Offered once the entry exists and has text, judged on the live draft rather than the
+    /// record the editor was opened with. Evaluated on every render, so it does not hit the
+    /// store; `sharePrayerRequests()` re-checks the saved record.
+    private var offersPrayerRequestSharing: Bool {
+        persistedEntryID != nil && entry?.isDeleted != true
+            && !draft.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func sharePrayerRequests() {
+        guard let id = persistedEntryID else { return }
+        // Save what is typed so far, so the sheet reads the same text the editor shows.
+        model.flushOpenEditor()
+        guard let record = model.entryRecord(id: id), record.offersPrayerRequestSharing
+        else { return }
+        prayerRequestShareEntry = record
     }
 
     private var saveStatusButton: some View {
