@@ -30,6 +30,10 @@ export const MODULES: Record<string, ModuleInfo> = {
     role: '노트북·기록을 iCloud CKShare로 가족과 공유. SwiftData와 따로, 공유 단위마다 pilgrim-share zone을 두고 CKSyncEngine으로 동기화한다.',
     keyTypes: ['SharedSyncEngineHost', 'SharedSpaceService', 'SharedSpaceStore', 'ThreeWayTextMerge', 'SharedEntryMerge'],
   },
+  JournalGroups: {
+    role: '비공개 그룹 클라이언트 경계. 그룹 서버와 같은 계약 패키지 PilgrimAPI(server/PilgrimAPI: DTO, 오류 코드, 기한·투표 규칙)를 쓰고, UI 작업과 테스트용 메모리 서버 PreviewGroupAPI를 둔다.',
+    keyTypes: ['GroupAPI', 'GroupAPIError', 'PreviewGroupAPI', 'PilgrimAPI.PostExpiryPolicy', 'PilgrimAPI.AdminVoteRules'],
+  },
   JournalBackup: {
     role: '전체 로컬 백업 내보내기·가져오기.',
     keyTypes: ['BackupRestoreRepository'],

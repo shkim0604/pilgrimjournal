@@ -2,8 +2,12 @@
 set -eu
 
 swift format lint --strict --recursive Sources Tests scripts/make_anonymous_dayone_export.swift
+# The group-server contract package (server/PilgrimAPI) uses the same .swift-format config.
+swift format lint --strict --recursive \
+  server/PilgrimAPI/Package.swift server/PilgrimAPI/Sources server/PilgrimAPI/Tests
 swift build
 swift test
+swift test --package-path server/PilgrimAPI
 swift run JournalChecks "$@"
 
 # The admin console (web/admin) reads a committed schema/architecture snapshot; fail when a model

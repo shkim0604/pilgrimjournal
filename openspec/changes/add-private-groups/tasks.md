@@ -15,20 +15,21 @@ Phase 2에서만 고친다. Phase 1 작업끼리는 맡는 파일이 겹치지 �
 
 ### T0.2 계약·배선 — `server/PilgrimAPI/**`, 루트 `Package.swift`, `project.pbxproj`, `scripts/check.sh`, `.github/workflows/check.yml`, `web/admin/snapshot/**`, `web/admin/src/content/modules.ts`(콘솔 모듈 목록), `Sources/JournalGroups/GroupAPI.swift`, `Sources/JournalGroups/PreviewGroupAPI.swift`
 
-- [ ] 0.2.1 `server/PilgrimAPI` 패키지(Foundation만, swift-tools 6.2, iOS 17 / macOS 14 / Linux)
-- [ ] 0.2.2 design.md "API"의 모든 DTO, `APIErrorCode`(모르는 값 → `unknown`), `APIErrorBody`, `Page<T>`,
+- [x] 0.2.1 `server/PilgrimAPI` 패키지(Foundation만, swift-tools 6.2, iOS 17 / macOS 14 / Linux)
+- [x] 0.2.2 design.md "API"의 모든 DTO, `APIErrorCode`(모르는 값 → `unknown`), `APIErrorBody`, `Page<T>`,
       `ReactionKey` 사용자 정의 Codable, `LocalDate`·`LocalTime`, `PilgrimJSON`, `ClientHeader`, `APILimits`,
       `BundleIDs`, `PushPayload`·`PushLocKey`, 운영자 DTO
-- [ ] 0.2.3 `PostExpiryPolicy`, `AdminVoteRules`, `PhotoLimits`, `InviteCode` 순수 함수
-- [ ] 0.2.4 테스트: DTO JSON 왕복(고정 JSON 픽스처와 비교), 기한 표의 모든 행(시간대·서머타임·축소 모드), 투표 결과
+- [x] 0.2.3 `PostExpiryPolicy`, `AdminVoteRules`, `PhotoLimits`, `InviteCode` 순수 함수
+- [x] 0.2.4 테스트: DTO JSON 왕복(고정 JSON 픽스처와 비교), 기한 표의 모든 행(시간대·서머타임·축소 모드), 투표 결과
       전 경우(무투표·단독·동률·재투표 동률·재투표 무투표·후보 이탈·멤버 0), 사진 한도, 초대 코드 정규화
-- [ ] 0.2.5 루트 `Package.swift`에 `.package(path: "server/PilgrimAPI")`, `JournalGroups` 타깃(빈 구현 +
+- [x] 0.2.5 루트 `Package.swift`에 `.package(path: "server/PilgrimAPI")`, `JournalGroups` 타깃(빈 구현 +
       `GroupAPI` 프로토콜 + `PreviewGroupAPI`), `Tests/JournalGroupsTests` 자리
-- [ ] 0.2.6 `project.pbxproj`에 로컬 패키지와 `JournalGroups` 링크. iOS·macOS unsigned xcodebuild 통과(못 링크하면
-      `JournalGroups`가 `@_exported import PilgrimAPI`)
-- [ ] 0.2.7 `scripts/check.sh`가 `server/` swift format lint와 `swift test --package-path server/PilgrimAPI`를 돌림.
-      CI에 `server` job(Linux, Postgres 17 서비스, `swift test --package-path server`) 추가
-- [ ] 0.2.8 `web/admin/snapshot/**`와 콘솔 모듈 목록 갱신(`swift run AdminSnapshot`)
+- [x] 0.2.6 `project.pbxproj`에 로컬 패키지와 `JournalGroups` 링크. iOS·macOS unsigned xcodebuild 통과(못 링크하면
+      `JournalGroups`가 `@_exported import PilgrimAPI`) — 링크됨, 앱에서 `import PilgrimAPI` 직접 가능, re-export 안 함
+- [x] 0.2.7 `scripts/check.sh`가 `server/` swift format lint와 `swift test --package-path server/PilgrimAPI`를 돌림.
+      CI에 `server` job(Linux, Postgres 17 서비스, `swift test --package-path server`) 추가 — T0.2는 자리만
+      (macos-26에서 `swift test --package-path server/PilgrimAPI`). Linux·Postgres·`server` 패키지는 T0.4가 넓힌다
+- [x] 0.2.8 `web/admin/snapshot/**`와 콘솔 모듈 목록 갱신(`swift run AdminSnapshot`)
 
 ### T0.3 앱 뼈대 — `AppModel.swift`, `AppModel+Selection.swift`, `ContentView.swift`, `JournalSidebar.swift`, `JournalSessionController.swift`, `PilgrimJournalApp.swift`, `FamilySharing.swift`(delegate 부분), `Sources/PilgrimJournal/Groups/` stub
 

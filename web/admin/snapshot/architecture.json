@@ -96,6 +96,23 @@
     },
     {
       "dependencies": [
+        "PilgrimAPI"
+      ],
+      "kind": "library",
+      "linkedFrameworks": [],
+      "name": "JournalGroups"
+    },
+    {
+      "dependencies": [
+        "JournalGroups",
+        "PilgrimAPI"
+      ],
+      "kind": "test",
+      "linkedFrameworks": [],
+      "name": "JournalGroupsTests"
+    },
+    {
+      "dependencies": [
         "JournalDomain"
       ],
       "kind": "library",
@@ -153,6 +170,7 @@
         "JournalBackup",
         "JournalData",
         "JournalDomain",
+        "JournalGroups",
         "JournalSearch",
         "JournalShareDrafts",
         "JournalSharing"

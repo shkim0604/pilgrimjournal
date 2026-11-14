@@ -32,6 +32,19 @@ jobs:
       - name: scripts/check.sh
         run: ./scripts/check.sh
 
+  server:
+    # The group-server contract package (server/PilgrimAPI), on its own so its failures read
+    # separately from the app gate. T0.4 extends this job for the Vapor server (Linux, Postgres).
+    name: Group server (PilgrimAPI)
+    runs-on: macos-26
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: swift --version
+      - name: swift test (server/PilgrimAPI)
+        run: swift test --package-path server/PilgrimAPI
+
   admin-console:
     # web/admin (developer admin console). scripts/check.sh only checks its Swift snapshot is fresh.
     name: Admin console (Node)
