@@ -116,11 +116,11 @@ Phase 2에서만 고친다. Phase 1 작업끼리는 맡는 파일이 겹치지 �
 
 ### A3 UI: 콘텐츠 — `Sources/PilgrimJournal/Groups/GroupFeedView.swift`, `GroupFeedModel.swift`, `GroupPostDetailView.swift`, `GroupPostComposerSheet.swift`, `GroupReportSheet.swift`, `BlockedUsersView.swift`, `HiddenItemsView.swift`, `GroupMediaViews.swift`, `GroupReactionPicker.swift`, 해당 테스트
 
-- [ ] 1.8.1 피드(커서, 화면에 있을 때 15초 polling), 기한 배지, 종류별 카드
-- [ ] 1.8.2 작성 화면(종류, 데드라인·공개 기간, 사진 4장), 실패해도 내용 유지, 같은 `clientId` 재시도
-- [ ] 1.8.3 상세: 댓글(텍스트·사진·스티커), 이모지·스티커 반응, 토론 연장, 내리기
-- [ ] 1.8.4 신고 시트, 차단, 글·사람 숨김, 차단·숨김 목록 화면
-- [ ] 1.8.5 사라진 글·서버 연결 실패 상태
+- [x] 1.8.1 피드(커서, 화면에 있을 때 15초 polling), 기한 배지, 종류별 카드
+- [x] 1.8.2 작성 화면(종류, 데드라인·공개 기간, 사진 4장), 실패해도 내용 유지, 같은 `clientId` 재시도
+- [x] 1.8.3 상세: 댓글(텍스트·사진·스티커), 이모지·스티커 반응, 토론 연장, 내리기
+- [x] 1.8.4 신고 시트, 차단, 글·사람 숨김, 차단·숨김 목록 화면
+- [x] 1.8.5 사라진 글·서버 연결 실패 상태
 
 ## 2. Phase 1, 2차 묶음
 
