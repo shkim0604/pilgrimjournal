@@ -1,6 +1,33 @@
 {
-  "originHash" : "3dc94c450578b62aa2671f5cf5b24d0281366a58ecd63a5aba15ef787c37d6b2",
+  "originHash" : "6b36dc9797526a4f5d1a3a32ec81bec1f42cec93e1e3cef7c273d3f52d12b0d3",
   "pins" : [
+    {
+      "identity" : "apns",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/vapor/apns.git",
+      "state" : {
+        "revision" : "931d55641392b8243bf888b97555144ab418f55d",
+        "version" : "5.1.0"
+      }
+    },
+    {
+      "identity" : "apnswift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/kylebrowning/APNSwift.git",
+      "state" : {
+        "revision" : "0be1b9d83c104d157cb3da5306cbf2dd360be482",
+        "version" : "7.1.0"
+      }
+    },
+    {
+      "identity" : "app-store-server-library-swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/app-store-server-library-swift.git",
+      "state" : {
+        "revision" : "7a2f5aa217f451e5594833c3c9ce6202be451090",
+        "version" : "2.3.0"
+      }
+    },
     {
       "identity" : "async-http-client",
       "kind" : "remoteSourceControl",
@@ -53,6 +80,24 @@
       "state" : {
         "revision" : "518a9dafba6f7670e3abadbb3204e9a0ee13ddba",
         "version" : "2.14.1"
+      }
+    },
+    {
+      "identity" : "jwt",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/vapor/jwt.git",
+      "state" : {
+        "revision" : "d65f32bfd08fae5910d603028be5dec4f35b3482",
+        "version" : "4.2.2"
+      }
+    },
+    {
+      "identity" : "jwt-kit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/vapor/jwt-kit.git",
+      "state" : {
+        "revision" : "13e7513b3ba0afa13967daf77af2fb4ad087306c",
+        "version" : "4.13.5"
       }
     },
     {
@@ -168,8 +213,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-crypto.git",
       "state" : {
-        "revision" : "da9d28d69ebe3894b18376c8f2395c2f37b8448f",
-        "version" : "4.5.2"
+        "revision" : "95ba0316a9b733e92bb6b071255ff46263bbe7dc",
+        "version" : "3.15.1"
       }
     },
     {
