@@ -2,9 +2,12 @@
 set -eu
 
 swift format lint --strict --recursive Sources Tests scripts/make_anonymous_dayone_export.swift
-# The group-server contract package (server/PilgrimAPI) uses the same .swift-format config.
+# The group server (server/PilgrimAPI contract package and the Vapor server in server/) uses the
+# same .swift-format config. The Vapor server is built and tested by `make -C server test` and the
+# CI `server` job (Linux + Postgres), not here, so the app gate does not compile Vapor.
 swift format lint --strict --recursive \
-  server/PilgrimAPI/Package.swift server/PilgrimAPI/Sources server/PilgrimAPI/Tests
+  server/PilgrimAPI/Package.swift server/PilgrimAPI/Sources server/PilgrimAPI/Tests \
+  server/Package.swift server/Sources server/Tests
 swift build
 swift test
 swift test --package-path server/PilgrimAPI
