@@ -1,0 +1,346 @@
+{
+  "sourceLanguage" : "ko",
+  "strings" : {
+    "Apple 인증에 실패했어요. 다시 시도해 주세요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple authentication failed. Please try again"
+          }
+        }
+      }
+    },
+    "계정이 정지되어 그룹을 쓸 수 없어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your account is suspended, so groups are unavailable"
+          }
+        }
+      }
+    },
+    "구독을 확인하지 못했어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The subscription couldn't be verified"
+          }
+        }
+      }
+    },
+    "그룹 서버에 연결할 수 없어요. 다시 시도해 주세요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Can't connect to the group server. Please try again"
+          }
+        }
+      }
+    },
+    "그룹에 다시 로그인해 주세요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please sign in to groups again"
+          }
+        }
+      }
+    },
+    "그룹을 쓰려면 구독이 필요해요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Groups need a subscription"
+          }
+        }
+      }
+    },
+    "그룹을 쓰려면 먼저 이름을 정해 주세요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a name before using groups"
+          }
+        }
+      }
+    },
+    "그룹을 쓰려면 앱을 업데이트해 주세요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update the app to use groups"
+          }
+        }
+      }
+    },
+    "기록장에 로그인한 Apple 계정으로 인증해 주세요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please authenticate with the Apple account signed in to the journal"
+          }
+        }
+      }
+    },
+    "나 자신에게는 할 수 없어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can't do this to yourself"
+          }
+        }
+      }
+    },
+    "더 이상 그룹을 만들거나 참여할 수 없어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can't create or join any more groups"
+          }
+        }
+      }
+    },
+    "더 이상 볼 수 없는 항목이에요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This is no longer available"
+          }
+        }
+      }
+    },
+    "문제가 생겼어요. 잠시 뒤에 다시 시도해 주세요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Something went wrong. Please try again in a moment"
+          }
+        }
+      }
+    },
+    "사진을 읽을 수 없어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The photo can't be read"
+          }
+        }
+      }
+    },
+    "사진을 줄이지 못했어요. 다른 사진을 골라 주세요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The photo couldn't be made smaller. Please choose another one"
+          }
+        }
+      }
+    },
+    "사진이 너무 커요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The photo is too large"
+          }
+        }
+      }
+    },
+    "삭제 예정인 그룹이라 지금은 할 수 없어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This group is scheduled for deletion, so this isn't available"
+          }
+        }
+      }
+    },
+    "새 관리자를 뽑는 중이라 지금은 할 수 없어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This isn't available while the group chooses a new admin"
+          }
+        }
+      }
+    },
+    "요청이 너무 많아요. 잠시 뒤에 다시 시도해 주세요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Too many requests. Please try again in a moment"
+          }
+        }
+      }
+    },
+    "요청이 취소됐어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The request was cancelled"
+          }
+        }
+      }
+    },
+    "이 구독은 다른 그룹 계정에 연결되어 있어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This subscription belongs to another group account"
+          }
+        }
+      }
+    },
+    "이 그룹에서 내보내져서 다시 참여할 수 없어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You were removed from this group and can't rejoin"
+          }
+        }
+      }
+    },
+    "이 그룹의 스티커는 30개까지예요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This group can have up to 30 stickers"
+          }
+        }
+      }
+    },
+    "이 사진은 붙일 수 없어요. 다시 골라 주세요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This photo can't be attached. Please choose it again"
+          }
+        }
+      }
+    },
+    "이 사진은 올릴 수 없어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This photo can't be uploaded"
+          }
+        }
+      }
+    },
+    "이 작업을 할 권한이 없어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You don't have permission to do this"
+          }
+        }
+      }
+    },
+    "이 초대는 만료됐어요. 관리자에게 새 초대를 요청해 주세요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This invite has expired. Ask the admin for a new invite"
+          }
+        }
+      }
+    },
+    "이 초대는 인원이 다 찼어요. 관리자에게 새 초대를 요청해 주세요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This invite is full. Ask the admin for a new invite"
+          }
+        }
+      }
+    },
+    "이 초대는 취소됐어요. 관리자에게 새 초대를 요청해 주세요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This invite was revoked. Ask the admin for a new invite"
+          }
+        }
+      }
+    },
+    "입력한 내용을 확인해 주세요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please check what you entered"
+          }
+        }
+      }
+    },
+    "지금은 진행 중인 투표가 없어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "There is no vote in progress"
+          }
+        }
+      }
+    },
+    "초대는 그룹마다 20개까지 열어 둘 수 있어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A group can have up to 20 open invites"
+          }
+        }
+      }
+    },
+    "토론 연장은 독후감만 할 수 있어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only book reports can be extended for discussion"
+          }
+        }
+      }
+    },
+    "후보가 아닌 사람에게는 투표할 수 없어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can only vote for a candidate"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

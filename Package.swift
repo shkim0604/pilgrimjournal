@@ -66,7 +66,8 @@ let package = Package(
         // for the DTOs (Xcode resolves it through this target's package dependency).
         .target(
             name: "JournalGroups",
-            dependencies: [.product(name: "PilgrimAPI", package: "PilgrimAPI")]
+            dependencies: [.product(name: "PilgrimAPI", package: "PilgrimAPI")],
+            resources: [.process("Resources")]
         ),
         .target(
             name: "DayOneImport",

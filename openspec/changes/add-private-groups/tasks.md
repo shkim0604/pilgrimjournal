@@ -104,12 +104,18 @@ Phase 2에서만 고친다. Phase 1 작업끼리는 맡는 파일이 겹치지 �
 
 ### A1 JournalGroups — `Sources/JournalGroups/**`(T0.2 파일 제외), `Tests/JournalGroupsTests/**`, `Sources/JournalGroups/Resources/Localizable.xcstrings`
 
-- [ ] 1.6.1 `HTTPTransport` 경계, `URLSessionGroupAPI`(모든 엔드포인트), `X-Pilgrim-Client`
-- [ ] 1.6.2 `GroupSessionStore`(Keychain ThisDeviceOnly), 401 시 갱신 단일 실행, 재사용·무효 시 그룹 세션만 정리
-- [ ] 1.6.3 오프라인·서버 오류 분류(`GroupClientError`), 426 처리
-- [ ] 1.6.4 초대 URL·코드 파서
-- [ ] 1.6.5 `ImageCompressor`(1600px, JPEG 0.7→0.3, 500KB, 메타데이터 제거, 방향 반영, 스티커 256 정사각형 100KB)
-- [ ] 1.6.6 multipart 업로드, 서명 URL 캐시(미디어 ID 키)
+- [x] 1.6.1 `HTTPTransport` 경계, `URLSessionGroupAPI`(모든 엔드포인트, 별칭 `LiveGroupAPI`), `X-Pilgrim-Client`,
+      `GroupServerConfiguration`(운영·`localhost:3100`·`PILGRIM_GROUP_SERVER_URL` 값)
+- [x] 1.6.2 `GroupSession` actor + `GroupCredentialStoring` 프로토콜(Keychain 어댑터는 A2의
+      `GroupCredentialStore.swift`, 테스트용 `InMemoryGroupCredentialStore`), 401 시 갱신 단일 실행 후 한 번 재시도,
+      재사용·무효 시 그룹 세션만 정리(`needsSignInAgain`), `AppleSignInNonce`
+- [x] 1.6.3 오프라인·서버 오류 분류(`GroupAPIError.category` / `GroupErrorCategory`, 코드별 `localizedMessage`),
+      426 처리(본문 없는 426·터널 5xx 포함)
+- [x] 1.6.4 초대 URL·코드 파서(`InviteLink`, 다른 호스트 거부)
+- [x] 1.6.5 `ImageCompressor`(1600px, JPEG 0.7→0.3, 500KB, 메타데이터 제거, 방향 반영, 스티커 256 정사각형 100KB)
+      + `JPEGMetadataStripper`(서버와 같은 APPn·COM 제거 규칙)
+- [x] 1.6.6 multipart 업로드(`GroupMediaUploader`), 서명 URL 캐시(`GroupMediaURLCache`, 미디어 ID 키), `GroupStore`
+      (피드·댓글 병합, 만료 제거, 안 읽은 수)
 
 ### A2 UI: 멤버십 — `Sources/PilgrimJournal/Groups/GroupsController.swift`, `GroupsSidebarSection.swift`, `Onboarding/**`, `GroupCreateSheet.swift`, `GroupInviteSheet.swift`(QR), `JoinGroupView.swift`, `GroupSettingsView.swift`, `GroupMembersSheet.swift`, `GroupVoteView.swift`, `GroupCredentialStore.swift`, `PendingGroupInvite.swift`, 해당 테스트
 
