@@ -1,7 +1,12 @@
 # Shared definition. Run through the Makefile, which adds the environment override:
-#   make dev   → + docker-compose.dev.yml  (.env.dev)
-#   make prod  → + docker-compose.prod.yml (.env.prod; task I1)
+#   make dev   → -p pilgrim-dev  + docker-compose.dev.yml  (.env.dev)
+#   make prod  → -p pilgrim-prod + docker-compose.prod.yml (.env.prod)
 # api and worker are the same image with different commands (design.md "구성").
+#
+# api also joins the shared network pilgrim-edge as `pilgrim-api`, so the admin console
+# (web/admin, project pilgrim-admin) reaches http://pilgrim-api:3100/internal/admin/v1 without
+# going through the tunnel. postgres and worker stay on the project's own network.
+# The network is external: `make edge-network` creates it (every make target here does that first).
 services:
   postgres:
     image: postgres:17-alpine
@@ -34,6 +39,11 @@ services:
       MEDIA_ROOT: /data/media
     volumes:
       - media:/data/media
+    networks:
+      default:
+      edge:
+        aliases:
+          - pilgrim-api
 
   worker:
     image: pilgrim-server:local
@@ -58,4 +68,10 @@ services:
 
 volumes:
   pgdata:
+  # Photos (MEDIA_ROOT). Backed up with the database by scripts/backup.sh.
   media:
+
+networks:
+  edge:
+    name: pilgrim-edge
+    external: true

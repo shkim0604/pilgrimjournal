@@ -1,0 +1,32 @@
+# Production override (`make prod` on the Mac mini, project pilgrim-prod, .env.prod).
+# Kept apart from noldam-prod: own project, Postgres container, volumes, .env.prod, backup folder
+# and launchd job (docs/group-server.md "터널").
+#
+# Only the api is published, on loopback: the Cloudflare Tunnel on the host sends
+# ^/(api/|i/|\.well-known/) on pilgrim.delight-house.org to http://localhost:3100. Postgres has no
+# published port.
+services:
+  postgres:
+    restart: always
+
+  api:
+    image: pilgrim-server:prod
+    env_file: .env.prod
+    environment:
+      # Reported by GET /api/health; `make deploy` passes the deployed commit.
+      APP_VERSION: ${APP_VERSION:-unknown}
+    ports:
+      - "127.0.0.1:3100:3100"
+    restart: always
+
+  worker:
+    image: pilgrim-server:prod
+    env_file: .env.prod
+    environment:
+      APP_VERSION: ${APP_VERSION:-unknown}
+    restart: always
+
+  migrate:
+    image: pilgrim-server:prod
+    env_file: .env.prod
+    restart: "no"
