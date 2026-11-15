@@ -162,14 +162,17 @@ public struct AppleClientSecretSigner: Sendable {
 
     let teamID: String
     let keyID: String
-    let privateKey: P256.Signing.PrivateKey
+    /// The raw P-256 scalar. swift-crypto's `P256.Signing.PrivateKey` is not `Sendable` on
+    /// Linux, so the bytes are stored and the key is rebuilt on use.
+    private let privateKeyBytes: Data
 
     /// `privateKeyPEM` is the `.p8` file (PKCS#8 PEM). Escaped `\n` (one line in `.env`) is
     /// accepted.
     public init(teamID: String, keyID: String, privateKeyPEM: String) throws {
         let pem = privateKeyPEM.replacingOccurrences(of: "\\n", with: "\n")
         do {
-            self.privateKey = try P256.Signing.PrivateKey(pemRepresentation: pem)
+            self.privateKeyBytes = try P256.Signing.PrivateKey(pemRepresentation: pem)
+                .rawRepresentation
         } catch {
             throw ConfigurationError("APPLE_SIWA_PRIVATE_KEY is not a P-256 private key PEM")
         }
@@ -201,6 +204,7 @@ public struct AppleClientSecretSigner: Sendable {
                 aud: Self.audience, sub: clientID)
         ).base64URLEncodedString()
         let signingInput = "\(header).\(claims)"
+        let privateKey = try P256.Signing.PrivateKey(rawRepresentation: privateKeyBytes)
         let signature = try privateKey.signature(for: Data(signingInput.utf8))
         return "\(signingInput).\(signature.rawRepresentation.base64URLEncodedString())"
     }

@@ -7,10 +7,14 @@ import Foundation
 /// `APPLE_TOKEN_ENC_KEY`: 32 bytes written as base64 or as 64 hex characters. The revocation
 /// worker (S5) decrypts with this same type.
 public struct AppleTokenCipher: Sendable {
-    let key: SymmetricKey
+    /// The raw key bytes. swift-crypto's `SymmetricKey` is not `Sendable` on Linux, so the
+    /// bytes are stored and the key is rebuilt on use.
+    private let keyBytes: Data
+
+    var key: SymmetricKey { SymmetricKey(data: keyBytes) }
 
     public init(key: SymmetricKey) {
-        self.key = key
+        self.keyBytes = key.withUnsafeBytes { Data($0) }
     }
 
     /// Parses `APPLE_TOKEN_ENC_KEY`. Throws `ConfigurationError` unless it is exactly 32 bytes.
