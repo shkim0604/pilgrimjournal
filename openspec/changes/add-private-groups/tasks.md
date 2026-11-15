@@ -204,9 +204,9 @@ Phase 2에서만 고친다. Phase 1 작업끼리는 맡는 파일이 겹치지 �
 
 ### W1 콘솔 신고 페이지 — `web/admin/src/**`, `web/admin/test/**`
 
-- [ ] 2.10.1 내부 API 클라이언트(`ADMIN_API_TOKEN`, `X-Admin-Actor`)
-- [ ] 2.10.2 신고 목록·상세(스냅샷, 원본, 사진), 삭제, 정지·해제, 처리 완료
-- [ ] 2.10.3 `npm test`, typecheck 통과
+- [x] 2.10.1 내부 API 클라이언트(`ADMIN_API_TOKEN`, `X-Admin-Actor`)
+- [x] 2.10.2 신고 목록·상세(스냅샷, 원본, 사진), 삭제, 정지·해제, 처리 완료
+- [x] 2.10.3 `npm test`, typecheck 통과
 
 ### D1 문서 — `docs/**`, `CLAUDE.md`
 
