@@ -30,24 +30,30 @@ final class FakeAPNSSender: APNSSending {
     }
 }
 
-/// Records revocations and answers `result`.
-final class FakeAppleTokenRevoker: AppleTokenRevoking {
+/// Records `revoke` calls and fails them while `failure` is set. `exchange` always fails.
+final class FakeAppleRevoker: AppleAuthorizationClient {
     private let state = NIOLockedValueBox<
-        (calls: [(token: String, clientID: String)], result: AppleRevocationResult)
-    >(
-        ([], .revoked))
+        (calls: [(token: String, clientID: String)], failure: AppleRevocationError?)
+    >(([], nil))
 
     var calls: [(token: String, clientID: String)] { state.withLockedValue { $0.calls } }
 
-    func answer(_ result: AppleRevocationResult) {
-        state.withLockedValue { $0.result = result }
+    func fail(status: Int?) {
+        state.withLockedValue { $0.failure = status.map { AppleRevocationError(status: $0) } }
     }
 
-    func revoke(refreshToken: String, clientID: String, now: Date) async -> AppleRevocationResult {
-        state.withLockedValue { state in
+    func exchange(authorizationCode: String, clientID: String) async throws
+        -> AppleTokenExchange
+    {
+        throw APIError(code: .appleCodeExchangeFailed, message: "fake")
+    }
+
+    func revoke(refreshToken: String, clientID: String) async throws {
+        let failure = state.withLockedValue { state in
             state.calls.append((refreshToken, clientID))
-            return state.result
+            return state.failure
         }
+        if let failure { throw failure }
     }
 }
 

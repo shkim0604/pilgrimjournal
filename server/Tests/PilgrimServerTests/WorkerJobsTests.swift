@@ -463,87 +463,91 @@ final class VoteJobTests: WorkerDatabaseTestCase {
 }
 
 final class AppleRevocationJobTests: WorkerDatabaseTestCase {
-    static let keyBase64 = Data((0..<32).map { UInt8(255 - $0) }).base64EncodedString()
+    var cipher: AppleTokenCipher { app.authServices.appleTokenCipher }
 
-    override func makeConfig(databaseURL: String, mediaRoot: String) -> AppConfig {
-        var config = super.makeConfig(databaseURL: databaseURL, mediaRoot: mediaRoot)
-        config.appleTokenEncryptionKey = Self.keyBase64
-        return config
-    }
-
-    func testRevokesAndBacksOffOnFailure() async throws {
-        let revoker = FakeAppleTokenRevoker()
-        app.appleTokenRevoker = revoker
-        let cipher = try RevocationTokenCipher(setting: Self.keyBase64)
+    func testRevokesWithTheAuthServicesAndBacksOffOnFailure() async throws {
+        let revoker = FakeAppleRevoker()
+        app.authServices.appleAuthorization = revoker
         let now = Date()
         let ok = AppleTokenRevocation(
-            clientID: BundleIDs.release, ciphertext: try cipher.seal("token-ok"), nextAttemptAt: now
-        )
+            clientID: BundleIDs.release, ciphertext: try cipher.encrypt("token-ok"),
+            nextAttemptAt: now)
         try await ok.create(on: db)
 
-        let value16 = try await runJob("appleRevocation", at: now)
-        XCTAssertEqual(value16, .ran)
+        let result = try await runJob("appleRevocation", at: now)
+        XCTAssertEqual(result, .ran)
         XCTAssertEqual(revoker.calls.map(\.token), ["token-ok"])
         XCTAssertEqual(revoker.calls.map(\.clientID), [BundleIDs.release])
         let done = try await unwrapAsync(
             try await AppleTokenRevocation.find(try ok.requireID(), on: db))
         XCTAssertNotNil(done.completedAt)
+        XCTAssertEqual(done.attempts, 1)
 
-        revoker.answer(.failed("400 invalid_client"))
+        revoker.fail(status: 400)
         let failing = AppleTokenRevocation(
-            clientID: BundleIDs.debug, ciphertext: try cipher.seal("token-bad"), nextAttemptAt: now)
+            clientID: BundleIDs.debug, ciphertext: try cipher.encrypt("token-bad"),
+            nextAttemptAt: now)
         try await failing.create(on: db)
         try await AppleRevocationSweep.run(
-            on: db, revoker: revoker, encryptionKey: Self.keyBase64, now: now, logger: app.logger)
+            on: db, authorization: revoker, cipher: cipher, now: now, logger: app.logger)
         let retried = try await unwrapAsync(
             try await AppleTokenRevocation.find(try failing.requireID(), on: db))
         XCTAssertEqual(retried.attempts, 1)
         XCTAssertNil(retried.completedAt)
-        XCTAssertEqual(retried.lastError, "400 invalid_client")
+        XCTAssertEqual(retried.lastError, "Apple /auth/revoke answered HTTP 400")
         XCTAssertEqual(
             retried.nextAttemptAt.timeIntervalSince1970,
             now.addingTimeInterval(300).timeIntervalSince1970, accuracy: 0.001)
         // The completed row is not sent again.
         XCTAssertEqual(revoker.calls.count, 2)
+
+        // Once Apple answers, the retry completes.
+        revoker.fail(status: nil)
+        try await AppleRevocationSweep.run(
+            on: db, authorization: revoker, cipher: cipher, now: now.addingTimeInterval(300),
+            logger: app.logger)
+        let completed = try await unwrapAsync(
+            try await AppleTokenRevocation.find(try failing.requireID(), on: db))
+        XCTAssertNotNil(completed.completedAt)
+        XCTAssertNil(completed.lastError)
     }
 
     func testGivesUpAfterTenAttemptsAndKeepsTheError() async throws {
-        let revoker = FakeAppleTokenRevoker()
-        revoker.answer(.failed("500"))
-        let cipher = try RevocationTokenCipher(setting: Self.keyBase64)
+        let revoker = FakeAppleRevoker()
+        revoker.fail(status: 500)
         let now = Date()
         let row = AppleTokenRevocation(
-            clientID: BundleIDs.release, ciphertext: try cipher.seal("t"), nextAttemptAt: now)
+            clientID: BundleIDs.release, ciphertext: try cipher.encrypt("t"), nextAttemptAt: now)
         row.attempts = 9
         try await row.create(on: db)
 
         try await AppleRevocationSweep.run(
-            on: db, revoker: revoker, encryptionKey: Self.keyBase64, now: now, logger: app.logger)
+            on: db, authorization: revoker, cipher: cipher, now: now, logger: app.logger)
         try await AppleRevocationSweep.run(
-            on: db, revoker: revoker, encryptionKey: Self.keyBase64,
+            on: db, authorization: revoker, cipher: cipher,
             now: now.addingTimeInterval(86_400 * 30), logger: app.logger)
         XCTAssertEqual(revoker.calls.count, 1)
         let after = try await unwrapAsync(
             try await AppleTokenRevocation.find(try row.requireID(), on: db))
         XCTAssertEqual(after.attempts, 10)
-        XCTAssertEqual(after.lastError, "500")
+        XCTAssertEqual(after.lastError, "Apple /auth/revoke answered HTTP 500")
         XCTAssertNil(after.completedAt)
     }
 
-    func testMissingConfigurationFailsOnlyWhenWorkIsWaiting() async throws {
-        // Nothing waiting: fine without a revoker.
-        let value17 = try await runJob("appleRevocation", at: Date())
-        XCTAssertEqual(value17, .ran)
-        let cipher = try RevocationTokenCipher(setting: Self.keyBase64)
-        try await AppleTokenRevocation(
-            clientID: BundleIDs.release, ciphertext: try cipher.seal("t"), nextAttemptAt: Date()
-        ).create(on: db)
-        do {
-            try await AppleRevocationSweep.run(
-                on: db, revoker: nil, encryptionKey: Self.keyBase64, now: Date(),
-                logger: app.logger)
-            XCTFail("expected a configuration error")
-        } catch is ConfigurationError {}
+    func testUndecryptableRowIsGivenUpWithoutCallingApple() async throws {
+        let revoker = FakeAppleRevoker()
+        let other = AppleTokenCipher.ephemeral()
+        let row = AppleTokenRevocation(
+            clientID: BundleIDs.release, ciphertext: try other.encrypt("t"), nextAttemptAt: Date())
+        try await row.create(on: db)
+
+        try await AppleRevocationSweep.run(
+            on: db, authorization: revoker, cipher: cipher, now: Date(), logger: app.logger)
+        XCTAssertTrue(revoker.calls.isEmpty)
+        let after = try await unwrapAsync(
+            try await AppleTokenRevocation.find(try row.requireID(), on: db))
+        XCTAssertEqual(after.attempts, AppleRevocationSweep.maximumAttempts)
+        XCTAssertEqual(after.lastError, "cannot decrypt")
     }
 }
 

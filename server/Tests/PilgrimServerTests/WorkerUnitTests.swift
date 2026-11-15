@@ -126,57 +126,6 @@ final class PushRulesTests: XCTestCase {
 }
 
 final class AppleRevocationRulesTests: XCTestCase {
-    func testCipherAcceptsBase64AndHexKeysAndOpensTheCombinedFormat() throws {
-        let keyBytes = Data((0..<32).map { UInt8($0) })
-        let base64 = try RevocationTokenCipher(setting: keyBytes.base64EncodedString())
-        let hex = try RevocationTokenCipher(
-            setting: keyBytes.map { String(format: "%02x", $0) }.joined())
-
-        // nonce ‖ ciphertext ‖ tag, as S1's AppleTokenCipher writes it.
-        let box = try AES.GCM.seal(
-            Data("r.apple-refresh".utf8), using: SymmetricKey(data: keyBytes))
-        let combined = box.nonce.withUnsafeBytes { Data($0) } + box.ciphertext + box.tag
-        XCTAssertEqual(combined, box.combined)
-        XCTAssertEqual(try base64.open(combined), "r.apple-refresh")
-        XCTAssertEqual(try hex.open(combined), "r.apple-refresh")
-        XCTAssertEqual(try hex.open(try base64.seal("again")), "again")
-
-        let otherKey = RevocationTokenCipher(key: SymmetricKey(size: .bits256))
-        XCTAssertThrowsError(try otherKey.open(combined))
-        XCTAssertThrowsError(try RevocationTokenCipher(setting: "too-short"))
-        XCTAssertThrowsError(
-            try RevocationTokenCipher(setting: Data(count: 16).base64EncodedString()))
-    }
-
-    func testClientSecretIsAValidES256JWT() throws {
-        let key = P256.Signing.PrivateKey()
-        let now = Date(timeIntervalSince1970: 1_800_000_000)
-        let jwt = try AppleClientSecret.make(
-            clientID: BundleIDs.release, teamID: "TEAM123456", keyID: "KEY1234567",
-            privateKey: key, now: now)
-        let parts = jwt.split(separator: ".").map(String.init)
-        XCTAssertEqual(parts.count, 3)
-
-        let header = try XCTUnwrap(
-            JSONSerialization.jsonObject(with: try XCTUnwrap(Data(base64URLEncoded: parts[0])))
-                as? [String: Any])
-        XCTAssertEqual(header["alg"] as? String, "ES256")
-        XCTAssertEqual(header["kid"] as? String, "KEY1234567")
-        let claims = try XCTUnwrap(
-            JSONSerialization.jsonObject(with: try XCTUnwrap(Data(base64URLEncoded: parts[1])))
-                as? [String: Any])
-        XCTAssertEqual(claims["iss"] as? String, "TEAM123456")
-        XCTAssertEqual(claims["sub"] as? String, BundleIDs.release)
-        XCTAssertEqual(claims["aud"] as? String, "https://appleid.apple.com")
-        XCTAssertEqual(claims["iat"] as? Int, 1_800_000_000)
-        XCTAssertEqual(claims["exp"] as? Int, 1_800_000_300)
-
-        let signature = try P256.Signing.ECDSASignature(
-            rawRepresentation: try XCTUnwrap(Data(base64URLEncoded: parts[2])))
-        XCTAssertTrue(
-            key.publicKey.isValidSignature(signature, for: Data("\(parts[0]).\(parts[1])".utf8)))
-    }
-
     func testBackoffDoublesFromFiveMinutesAndStopsAtTenAttempts() {
         let now = Date(timeIntervalSince1970: 0)
         XCTAssertEqual(
@@ -238,6 +187,5 @@ final class WorkerRegistrationTests: ServerTestCase {
         XCTAssertEqual(jobs["appleRevocation"]?.interval, .seconds(60))
         XCTAssertEqual(jobs["retention"]?.interval, .seconds(60))
         XCTAssertFalse(app.apnsSender.isConfigured)
-        XCTAssertNil(app.appleTokenRevoker)
     }
 }

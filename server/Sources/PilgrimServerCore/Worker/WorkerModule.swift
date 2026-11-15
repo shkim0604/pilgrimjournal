@@ -8,7 +8,6 @@ import Vapor
 /// exist, in both `serve` and `worker`. Only edit files in this folder.
 enum WorkerModule {
     static func register(_ app: Application) throws {
-        try app.installLiveAppleTokenRevokerIfConfigured()
         for job in jobs() {
             app.workerJobs.register(job)
         }
@@ -41,10 +40,10 @@ enum WorkerModule {
                 name: "appleRevocation", lockKey: WorkerLockKey.appleRevocation,
                 period: WorkerInterval.appleRevocation
             ) { context in
+                let services = context.application.authServices
                 try await AppleRevocationSweep.run(
-                    on: context.db, revoker: context.application.appleTokenRevoker,
-                    encryptionKey: context.config.appleTokenEncryptionKey, now: context.now,
-                    logger: context.logger)
+                    on: context.db, authorization: services.appleAuthorization,
+                    cipher: services.appleTokenCipher, now: context.now, logger: context.logger)
             },
             .periodic(
                 name: "invites", lockKey: WorkerLockKey.invites, period: WorkerInterval.invites
