@@ -79,6 +79,7 @@ struct EntryRow: View {
 struct EntryRowWithActions: View {
     @EnvironmentObject private var model: AppModel
     @State private var prayerRequestShareEntry: JournalEntryRecord?
+    @State private var groupPostRequest: GroupPostRequest?
     let entry: JournalEntryRecord
 
     var body: some View {
@@ -99,6 +100,13 @@ struct EntryRowWithActions: View {
                         Label("기도제목 나누기", systemImage: "hands.and.sparkles")
                     }
                 }
+                if model.groups != nil, entry.offersGroupPosting {
+                    Button {
+                        postToGroup()
+                    } label: {
+                        Label("그룹에 올리기", systemImage: "person.3")
+                    }
+                }
                 Button("휴지통으로 이동", role: .destructive) {
                     model.moveToTrash(entry)
                 }
@@ -111,8 +119,22 @@ struct EntryRowWithActions: View {
                 }
             }
             .sheet(item: $prayerRequestShareEntry) { entry in
-                PrayerRequestShareSheet(entry: entry)
+                PrayerRequestShareSheet(entry: entry, groups: model.groups)
             }
+            .groupPostComposer($groupPostRequest, groups: model.groups)
+    }
+
+    /// Opens the group composer filled from this entry (book report or testimony).
+    private func postToGroup() {
+        #if os(macOS)
+        // The inline editor may hold unsaved text for this entry; the composer reads the saved one.
+        model.flushOpenEditor()
+        let saved = model.entryRecord(id: entry.id) ?? entry
+        #else
+        let saved = entry
+        #endif
+        guard saved.offersGroupPosting else { return }
+        groupPostRequest = GroupPostRequest(draft: model.groupPostDraft(for: saved))
     }
 
     private func sharePrayerRequests() {

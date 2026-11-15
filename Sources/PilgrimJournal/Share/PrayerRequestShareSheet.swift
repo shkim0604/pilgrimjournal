@@ -20,14 +20,23 @@ extension JournalEntryRecord {
 
 /// Lets the person pick, edit and share prayer requests drawn from one entry. The sheet is the
 /// confirmation step; nothing in it is saved, so closing it drops every line.
+///
+/// With groups on (`groups` is non-nil), "그룹에 올리기" opens the group composer with the
+/// selected lines and a deadline suggested from their date phrases; the composer is where the
+/// group, the deadline or visible period and the final "올리기" are chosen.
 struct PrayerRequestShareSheet: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var model: PrayerRequestShareModel
     @State private var translation: PrayerRequestTranslationJob?
     @State private var isConfirmingDiscard = false
+    @State private var groupPostRequest: GroupPostRequest?
+    private let entry: JournalEntryRecord
+    private let groups: GroupsController?
 
-    init(entry: JournalEntryRecord) {
+    init(entry: JournalEntryRecord, groups: GroupsController? = nil) {
         _model = StateObject(wrappedValue: Self.makeModel(for: entry))
+        self.entry = entry
+        self.groups = groups
     }
 
     private static func makeModel(for entry: JournalEntryRecord) -> PrayerRequestShareModel {
@@ -90,6 +99,8 @@ struct PrayerRequestShareSheet: View {
         }
         .prayerRequestTranslation(translation) { finishTranslation($0, $1) }
         .task { await model.start() }
+        // A posted request is done with: close this sheet too.
+        .groupPostComposer($groupPostRequest, groups: groups) { _ in dismiss() }
     }
 
     // MARK: - Sections
@@ -178,17 +189,27 @@ struct PrayerRequestShareSheet: View {
     }
 
     private var shareBar: some View {
-        HStack(spacing: JournalTheme.Spacing.regular) {
-            Button(action: copy) {
-                Label("복사", systemImage: "doc.on.doc")
-                    .frame(maxWidth: .infinity)
+        VStack(spacing: JournalTheme.Spacing.regular) {
+            HStack(spacing: JournalTheme.Spacing.regular) {
+                Button(action: copy) {
+                    Label("복사", systemImage: "doc.on.doc")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                ShareLink(item: model.shareText) {
+                    Label("나누기", systemImage: "square.and.arrow.up")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
             }
-            .buttonStyle(.bordered)
-            ShareLink(item: model.shareText) {
-                Label("나누기", systemImage: "square.and.arrow.up")
-                    .frame(maxWidth: .infinity)
+            if groups != nil {
+                Button(action: postToGroup) {
+                    Label("그룹에 올리기", systemImage: "person.3")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .disabled(translation != nil)
             }
-            .buttonStyle(.borderedProminent)
         }
         .controlSize(.large)
         .disabled(!model.canShare)
@@ -255,6 +276,13 @@ struct PrayerRequestShareSheet: View {
             model.translationFailed(String(localized: "번역하지 못했어요. 원래 언어로 나눕니다."))
         }
         translation = nil
+    }
+
+    private func postToGroup() {
+        groupPostRequest = GroupPostRequest(
+            draft: PrayerRequestGroupDraft.draft(
+                rows: model.rows, entryBody: entry.body, writtenAt: entry.occurredAt,
+                entryTimeZone: entry.originalTimeZone.flatMap(TimeZone.init(identifier:))))
     }
 
     private func close() {

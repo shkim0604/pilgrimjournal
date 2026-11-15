@@ -4,6 +4,7 @@ import { readTrackingDocs } from './content/checklist.ts';
 import { latestCiRun } from './content/github.ts';
 import { consoleLinks } from './content/links.ts';
 import { loadSnapshot } from './content/snapshot.ts';
+import { registerReportPages } from './reports.ts';
 import type { AppDeps } from './server.ts';
 import { architecturePage } from './views/architecture.ts';
 import { dashboardPage } from './views/dashboard.ts';
@@ -38,4 +39,6 @@ export function registerPages(app: Hono<AppEnv>, deps: AppDeps, now: () => numbe
   );
 
   app.get('/admin/flows', ...guard, (c) => c.html(flowsPage()));
+
+  registerReportPages(app, deps, guard);
 }
