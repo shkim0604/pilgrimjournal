@@ -175,6 +175,9 @@ struct SettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            if GroupsFeature.isEnabled, let groups = model.groups {
+                GroupsSettingsSection(groups: groups)
+            }
             Section("도움말") {
                 NavigationLink {
                     AppUsageGuideView()

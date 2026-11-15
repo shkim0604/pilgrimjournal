@@ -184,9 +184,13 @@ Phase 2에서만 고친다. Phase 1 작업끼리는 맡는 파일이 겹치지 �
 
 ### A7 알림·리포트 UI — `Sources/PilgrimJournal/Groups/DailyReportView.swift`, `Sources/PilgrimJournal/Groups/GroupNotifications.swift`, `SettingsView.swift`(새 `Section`만)
 
-- [ ] 2.7.1 처음 그룹 만들기·참여 때 알림 권한, 기기 등록(환경·번들·시간대)
-- [ ] 2.7.2 알림 탭 → 글·리포트·그룹(잠금 해제 뒤), 사라진 글 처리
-- [ ] 2.7.3 Daily Report 화면, 설정의 그룹 섹션(리포트 켜기·시각, 차단·숨김 목록 링크)
+- [x] 2.7.1 처음 그룹 만들기·참여 때 알림 권한, 기기 등록(환경·번들·시간대)
+- [x] 2.7.2 알림 탭 → 글·리포트·그룹(잠금 해제 뒤), 사라진 글 처리
+- [x] 2.7.3 Daily Report 화면, 설정의 그룹 섹션(리포트 켜기·시각, 차단·숨김 목록 링크)
+      (연결은 Phase 2: `JournalSessionController`의 `onOpenRoute` →
+      `GroupNotificationOpener.shared.receive`, `PilgrimJournalApp`의 `appLock.bootstrap()` 뒤
+      `appLockDidBootstrap(appLock)`, `ContentView`에 `.groupNotificationHandling(preferredCompactColumn:)`
+      — `GroupNotifications.swift` 머리 주석)
 
 ### A8 구독 UI — `Sources/PilgrimJournal/Groups/Subscription/**`, `PilgrimJournal/PilgrimJournal.storekit`
 
