@@ -154,10 +154,16 @@ Phase 2에서만 고친다. Phase 1 작업끼리는 맡는 파일이 겹치지 �
 
 ### S8 구독 서버 — `server/Sources/App/Subscriptions/**`
 
-- [ ] 2.3.1 JWS 검증(두 번들, Production·Sandbox), upsert, 다른 사용자 거래 409
-- [ ] 2.3.2 Notifications V2 웹훅, 중복 거르기, 상태 반영
-- [ ] 2.3.3 `EntitlementPolicy`와 `SUBSCRIPTION_REQUIRED`, `GET /me/entitlement`, 미리보기 `requiresSubscription`
-- [ ] 2.3.4 만료 처리(플래그 켜졌을 때만, 한 번만), 오래된 구독 재확인. Apple 테스트 서명 데이터로 테스트
+- [x] 2.3.1 JWS 검증(두 번들, Production·Sandbox), upsert, 다른 사용자 거래 409
+      (`SignedDataVerifier` 대신 같은 규칙을 swift-certificates·swift-crypto로 직접 구현: Apple Root CA - G3
+      내장, `x5c` 3단·Apple OID·`signedDate` 기준 RFC 5280, 온라인 OCSP 없음)
+- [x] 2.3.2 Notifications V2 웹훅, 중복 거르기, 상태 반영
+- [x] 2.3.3 `EntitlementPolicy`와 `SUBSCRIPTION_REQUIRED`, `GET /me/entitlement`, 미리보기 `requiresSubscription`
+      (`SubscriptionEntitlement` 하나로 모음. `MeResponseBuilder`·`GroupEntitlement`가 이것을 부르게 바꾸는
+      일은 Phase 2)
+- [x] 2.3.4 만료 처리(플래그 켜졌을 때만, 한 번만), 오래된 구독 재확인. Apple 테스트 서명 데이터로 테스트
+      (테스트 안에서 만든 테스트 CA 체인으로 서명. S8 때 로컬 Docker가 없어 Postgres 테스트는 컴파일만
+      확인했고 CI `server` job에서 처음 돈다)
 
 ### A4 올리기 연결 — `Sources/PilgrimJournal/Share/**`, `Sources/JournalShareDrafts/Deadline*.swift`, `Sources/ShareCardEval/EvalCalendar.swift`, `Entry/EntryDetailView.swift`, `Entry/MacEntryEditorView.swift`, `EntryRowViews.swift`
 
