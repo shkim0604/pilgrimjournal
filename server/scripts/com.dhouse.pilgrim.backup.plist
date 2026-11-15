@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Template: `make backup-schedule` (scripts/install-backup-schedule.sh) fills in __SERVER_DIR__,
+     __BACKUP_DIR__ and __BACKUP_ENV_FILE__ and loads it as a LaunchAgent of the logged-in user
+     (Docker Desktop runs in that session). A run missed while the Mac slept starts on wake. -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.dhouse.pilgrim.backup</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>__SERVER_DIR__/scripts/backup.sh</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>BACKUP_DIR</key>
+    <string>__BACKUP_DIR__</string>
+    <key>BACKUP_ENV_FILE</key>
+    <string>__BACKUP_ENV_FILE__</string>
+  </dict>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>4</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+  <key>LowPriorityIO</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>__BACKUP_DIR__/backup.log</string>
+  <key>StandardErrorPath</key>
+  <string>__BACKUP_DIR__/backup.log</string>
+</dict>
+</plist>

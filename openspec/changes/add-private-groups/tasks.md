@@ -147,9 +147,10 @@ Phase 2에서만 고친다. Phase 1 작업끼리는 맡는 파일이 겹치지 �
 
 ### S7 Daily Report 서버 — `server/Sources/App/DailyReport/**`
 
-- [ ] 2.2.1 시간대별 리포트 시각 대상 선정(서머타임), `daily_report_log` 중복 방지
-- [ ] 2.2.2 집계(새 글, 내 글 댓글·반응, 연장, 곧 사라짐, 숨김·차단·그룹별 끄기), 빈 리포트 건너뜀
-- [ ] 2.2.3 `GET /me/daily-report`, outbox 넣기
+- [x] 2.2.1 시간대별 리포트 시각 대상 선정(서머타임), `daily_report_log` 중복 방지
+- [x] 2.2.2 집계(새 글, 내 글 댓글·반응, 연장, 곧 사라짐, 숨김·차단·그룹별 끄기), 빈 리포트 건너뜀
+- [x] 2.2.3 `GET /me/daily-report`, outbox 넣기
+      (로컬 Docker가 없어 집계·worker·라우트 Postgres 테스트는 컴파일만 확인했고 CI `server` job에서 처음 돈다)
 
 ### S8 구독 서버 — `server/Sources/App/Subscriptions/**`
 
@@ -166,9 +167,9 @@ Phase 2에서만 고친다. Phase 1 작업끼리는 맡는 파일이 겹치지 �
 
 ### A5 계정 삭제 — `Sources/JournalData/AccountDeletionService.swift`, `Sources/PilgrimJournal/AppleAuthenticationCoordinator.swift`, `Sources/PilgrimJournal/AccountDeletionViews.swift`, `Sources/PilgrimJournal/Groups/GroupAccountErasure.swift`
 
-- [ ] 2.5.1 `RemoteAccountDataErasing` 프로토콜, 모든 범위에서 가장 먼저 실행, 실패 시 멈춤, 멱등
-- [ ] 2.5.2 refresh 무효면 Apple 재인증 후 삭제, 그룹 Keychain 정리
-- [ ] 2.5.3 확인 화면: 관리 그룹 투표 안내, 구독 해지 안내
+- [x] 2.5.1 `RemoteAccountDataErasing` 프로토콜, 모든 범위에서 가장 먼저 실행, 실패 시 멈춤, 멱등
+- [x] 2.5.2 refresh 무효면 Apple 재인증 후 삭제, 그룹 Keychain 정리
+- [x] 2.5.3 확인 화면: 관리 그룹 투표 안내, 구독 해지 안내
 
 ### A6 스크랩 — `Sources/PilgrimJournal/AppModel+Scrap.swift`, `Sources/JournalDomain/Scrap*.swift`, `Sources/JournalDomain/JournalTypes.swift`(`BuiltInKind.scrap`), `Sources/JournalDomain/KindCatalog.swift`, `Sources/PilgrimJournal/KindDisplayName.swift`, 해당 테스트
 
@@ -195,17 +196,19 @@ Phase 2에서만 고친다. Phase 1 작업끼리는 맡는 파일이 겹치지 �
 
 ### I1 인프라 — `server/Makefile`, `server/docker-compose*.yml`, `server/scripts/**`, `server/.env.*.example`, `PilgrimJournal/PilgrimJournal/PilgrimJournal.entitlements`, `PilgrimJournal/PilgrimJournal/iOS-Info.plist`, `web/admin/docker-compose.yml`
 
-- [ ] 2.9.1 놀담 방식 `make dev/prod/deploy`, `pilgrim-prod` compose, `127.0.0.1:3100`, 사진 볼륨
-- [ ] 2.9.2 공유 Docker 네트워크 `pilgrim-edge`(api·admin)
-- [ ] 2.9.3 restic → R2(DB 덤프 + 사진) launchd, 7일 보관, 복원 스크립트
-- [ ] 2.9.4 `aps-environment`, `applinks:pilgrim.delight-house.org`(두 앱 ID), 백그라운드 모드 필요 여부 확인
-- [ ] 2.9.5 `.env.dev.example`, `.env.prod.example`(design.md "환경 변수")
+- [x] 2.9.1 놀담 방식 `make dev/prod/deploy`, `pilgrim-prod` compose, `127.0.0.1:3100`, 사진 볼륨
+- [x] 2.9.2 공유 Docker 네트워크 `pilgrim-edge`(api·admin)
+- [x] 2.9.3 restic → R2(DB 덤프 + 사진) launchd, 7일 보관, 복원 스크립트
+- [x] 2.9.4 `aps-environment`, `applinks:pilgrim.delight-house.org`(두 앱 ID), 백그라운드 모드 필요 여부 확인 —
+      `remote-notification`은 CloudKit 때문에 이미 있고 그룹 푸시는 alert 전용(`content-available` 없음)이라 그대로 둠.
+      macOS도 같은 entitlements 파일: 서명한 macOS 빌드에서 푸시 키 확인 필요(Phase 2)
+- [x] 2.9.5 `.env.dev.example`, `.env.prod.example`(design.md "환경 변수")
 
 ### W1 콘솔 신고 페이지 — `web/admin/src/**`, `web/admin/test/**`
 
-- [ ] 2.10.1 내부 API 클라이언트(`ADMIN_API_TOKEN`, `X-Admin-Actor`)
-- [ ] 2.10.2 신고 목록·상세(스냅샷, 원본, 사진), 삭제, 정지·해제, 처리 완료
-- [ ] 2.10.3 `npm test`, typecheck 통과
+- [x] 2.10.1 내부 API 클라이언트(`ADMIN_API_TOKEN`, `X-Admin-Actor`)
+- [x] 2.10.2 신고 목록·상세(스냅샷, 원본, 사진), 삭제, 정지·해제, 처리 완료
+- [x] 2.10.3 `npm test`, typecheck 통과
 
 ### D1 문서 — `docs/**`, `CLAUDE.md`
 
