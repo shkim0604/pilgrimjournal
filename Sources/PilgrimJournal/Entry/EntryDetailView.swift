@@ -15,6 +15,7 @@ struct EntryDetailView: View {
     @EnvironmentObject private var model: AppModel
     @State private var isPresentingHistory = false
     @State private var isPresentingPrayerRequestShare = false
+    @State private var groupPostRequest: GroupPostRequest?
     let entry: JournalEntryRecord
 
     var body: some View {
@@ -70,8 +71,9 @@ struct EntryDetailView: View {
             RevisionHistoryView(entry: entry)
         }
         .sheet(isPresented: $isPresentingPrayerRequestShare) {
-            PrayerRequestShareSheet(entry: entry)
+            PrayerRequestShareSheet(entry: entry, groups: model.groups)
         }
+        .groupPostComposer($groupPostRequest, groups: model.groups)
     }
 
     private var kindBadge: some View {
@@ -99,6 +101,12 @@ struct EntryDetailView: View {
             if entry.offersPrayerRequestSharing {
                 Button("기도제목 나누기") {
                     isPresentingPrayerRequestShare = true
+                }
+            }
+            // Book report (reading note) or testimony, filled from this entry.
+            if model.groups != nil, entry.offersGroupPosting {
+                Button("그룹에 올리기") {
+                    groupPostRequest = GroupPostRequest(draft: model.groupPostDraft(for: entry))
                 }
             }
         }
