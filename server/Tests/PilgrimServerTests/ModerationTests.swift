@@ -616,8 +616,3 @@ private func expectEqual<T: Equatable>(
 private func expectNil<T>(_ value: T?, file: StaticString = #filePath, line: UInt = #line) {
     XCTAssertNil(value, file: file, line: line)
 }
-
-private func unwrap<T>(_ value: T?, file: StaticString = #filePath, line: UInt = #line) throws -> T
-{
-    try XCTUnwrap(value, file: file, line: line)
-}
