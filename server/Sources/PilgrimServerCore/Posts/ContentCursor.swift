@@ -104,6 +104,7 @@ struct PageRequest: Equatable, Sendable {
 
     static func parse(_ req: Request) throws -> PageRequest {
         try parse(
-            cursor: req.query[String.self, at: "cursor"], limit: req.query[String.self, at: "limit"])
+            cursor: req.query[String.self, at: "cursor"], limit: req.query[String.self, at: "limit"]
+        )
     }
 }

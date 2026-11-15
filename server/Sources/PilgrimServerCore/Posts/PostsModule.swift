@@ -13,7 +13,9 @@ import Vapor
 /// never conflict with the other modules' routes in the shared router.
 enum PostsModule {
     static func register(_ app: Application) throws {
-        let routes = app.pilgrimRoutes.authenticated.grouped(ContentAccountGateMiddleware())
+        // Same account gate as the Groups routes: signed up, not suspended, subscribed when
+        // subscriptions are required.
+        let routes = app.pilgrimRoutes.authenticated.grouped(GroupAccountGate(.member))
         PostRoutes.register(routes)
         CommentRoutes.register(routes)
         ReactionRoutes.register(routes)

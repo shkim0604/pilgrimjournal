@@ -112,7 +112,8 @@ enum PostRoutes {
         if post.$author.id != viewer {
             // Someone else's post: only when the viewer can see it at all.
             guard
-                try await ContentVisibility.visiblePost(postID, viewer: viewer, on: req.db, now: now)
+                try await ContentVisibility.visiblePost(
+                    postID, viewer: viewer, on: req.db, now: now)
                     != nil
             else { throw APIError.notFound() }
         }

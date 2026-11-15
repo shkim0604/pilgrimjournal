@@ -142,8 +142,9 @@ final class PostRulesTests: XCTestCase {
     // MARK: - Comments
 
     func testCommentNeedsSomething() throws {
-        XCTAssertThrowsError(try PostRules.validate(CreateCommentRequest(clientId: UUID(), body: " ")))
-        {
+        XCTAssertThrowsError(
+            try PostRules.validate(CreateCommentRequest(clientId: UUID(), body: " "))
+        ) {
             XCTAssertEqual(($0 as? APIError)?.code, .validationFailed)
         }
         let sticker = UUID()

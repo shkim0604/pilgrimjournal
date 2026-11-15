@@ -16,7 +16,8 @@ final class PostRoutesTests: DatabaseTestCase {
         let group = try await fixtures.group(admin: alice)
 
         let clientID = UUID()
-        let first = try await createPost(PostRequests.testimony(clientId: clientID), in: group, as: alice)
+        let first = try await createPost(
+            PostRequests.testimony(clientId: clientID), in: group, as: alice)
         XCTAssertEqual(first.status, .created, first.body.string)
         let created = try decode(PostResponse.self, from: first)
         XCTAssertEqual(created.kind, .testimony)
@@ -114,9 +115,10 @@ final class PostRoutesTests: DatabaseTestCase {
         let bobs = try await fixtures.media(uploadedBy: bob, in: group)
         let otherGroup = try await fixtures.media(uploadedBy: alice, in: other)
         let comment = try await fixtures.media(uploadedBy: alice, in: group, purpose: .comment)
-        for id in [try first.requireID(), try bobs.requireID(), try otherGroup.requireID(),
-            try comment.requireID()]
-        {
+        for id in [
+            try first.requireID(), try bobs.requireID(), try otherGroup.requireID(),
+            try comment.requireID(),
+        ] {
             try assertError(
                 try await createPost(PostRequests.testimony(media: [id]), in: group, as: alice),
                 409, .mediaNotAttachable)
@@ -233,7 +235,8 @@ final class PostRoutesTests: DatabaseTestCase {
         XCTAssertEqual(try decode(PostResponse.self, from: detail).author.displayName, "밥")
 
         try await fixtures.block(bob, alice)
-        let feed = try decode(APIPage<PostResponse>.self, from: try await send(.GET, feedPath, as: alice))
+        let feed = try decode(
+            APIPage<PostResponse>.self, from: try await send(.GET, feedPath, as: alice))
         XCTAssertEqual(feed.items.map(\.id), [try alicePost.requireID()])
         try assertError(
             try await send(.GET, "posts/\(try bobPost.requireID())", as: alice), 404, .notFound)
@@ -253,13 +256,15 @@ final class PostRoutesTests: DatabaseTestCase {
         let mine = try await fixtures.post(by: alice, in: group)
 
         let feed = try decode(
-            APIPage<PostResponse>.self, from: try await send(.GET, "groups/\(groupID)/posts", as: alice))
+            APIPage<PostResponse>.self,
+            from: try await send(.GET, "groups/\(groupID)/posts", as: alice))
         let unread = Dictionary(uniqueKeysWithValues: feed.items.map { ($0.id, $0.isUnread) })
         XCTAssertEqual(unread[try fresh.requireID()], true)
         XCTAssertEqual(unread[try old.requireID()], false)
         XCTAssertEqual(unread[try mine.requireID()], false)
 
-        let count = try await PostUnread.count(viewer: try alice.requireID(), groupID: groupID, on: db)
+        let count = try await PostUnread.count(
+            viewer: try alice.requireID(), groupID: groupID, on: db)
         XCTAssertEqual(count, 1)
         // Hiding the unread post takes it out of the count.
         try await fixtures.hide(post: fresh, by: alice)
@@ -317,7 +322,8 @@ final class PostRoutesTests: DatabaseTestCase {
 
         let clientID = UUID()
         let path = "posts/\(created.id)/extend"
-        let first = try await send(.POST, path, as: bob, json: ExtendPostRequest(clientId: clientID))
+        let first = try await send(
+            .POST, path, as: bob, json: ExtendPostRequest(clientId: clientID))
         XCTAssertEqual(first.status, .created, first.body.string)
         let extended = try decode(PostResponse.self, from: first)
         XCTAssertEqual(extended.extensionCount, 1)
@@ -329,7 +335,8 @@ final class PostRoutesTests: DatabaseTestCase {
         XCTAssertEqual(repeated.status, .ok)
         XCTAssertEqual(try decode(PostResponse.self, from: repeated).extensionCount, 1)
 
-        let again = try await send(.POST, path, as: alice, json: ExtendPostRequest(clientId: UUID()))
+        let again = try await send(
+            .POST, path, as: alice, json: ExtendPostRequest(clientId: UUID()))
         XCTAssertEqual(try decode(PostResponse.self, from: again).extensionCount, 2)
         let rows = try await PostExtension.query(on: db).count()
         XCTAssertEqual(rows, 2)

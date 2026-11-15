@@ -181,13 +181,16 @@ final class CommentAndReactionTests: DatabaseTestCase {
             withSticker,
             [
                 ReactionSummary(key: .emoji("🙏"), count: 2, reactedByMe: true),
-                ReactionSummary(key: .sticker(try sticker.requireID()), count: 1, reactedByMe: true),
+                ReactionSummary(
+                    key: .sticker(try sticker.requireID()), count: 1, reactedByMe: true),
             ])
 
         // Removing: by query, twice is fine.
         let path = "posts/\(try post.requireID())/reactions?emoji=%F0%9F%99%8F"
-        let removed = try decode([ReactionSummary].self, from: try await send(.DELETE, path, as: bob))
-        XCTAssertEqual(removed.first, ReactionSummary(key: .emoji("🙏"), count: 1, reactedByMe: false))
+        let removed = try decode(
+            [ReactionSummary].self, from: try await send(.DELETE, path, as: bob))
+        XCTAssertEqual(
+            removed.first, ReactionSummary(key: .emoji("🙏"), count: 1, reactedByMe: false))
         assertStatus(try await send(.DELETE, path, as: bob), .ok)
         try assertError(
             try await send(.DELETE, "posts/\(try post.requireID())/reactions", as: bob), 400,
@@ -195,7 +198,8 @@ final class CommentAndReactionTests: DatabaseTestCase {
 
         // The post response carries the same summaries.
         let detail = try decode(
-            PostResponse.self, from: try await send(.GET, "posts/\(try post.requireID())", as: alice))
+            PostResponse.self,
+            from: try await send(.GET, "posts/\(try post.requireID())", as: alice))
         XCTAssertEqual(detail.reactions.count, 2)
     }
 

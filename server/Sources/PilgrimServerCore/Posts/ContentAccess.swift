@@ -88,25 +88,3 @@ enum ContentAccess {
         return id
     }
 }
-
-/// Group content needs a signed-up, unsuspended account (design.md "오류 코드":
-/// 403 `SIGNUP_REQUIRED`, 403 `ACCOUNT_SUSPENDED`).
-///
-/// The Account module (S1) owns account state; until it installs a shared gate on the
-/// authenticated routes, the posts routes check it here. Running both is harmless.
-struct ContentAccountGateMiddleware: AsyncMiddleware {
-    func respond(to request: Request, chainingTo next: any AsyncResponder) async throws
-        -> Response
-    {
-        guard let user = try await User.find(try request.userID, on: request.db) else {
-            throw APIError.unauthenticated("unknown user")
-        }
-        guard user.profileComplete else {
-            throw APIError(code: .signupRequired, message: "finish sign-up first")
-        }
-        if user.isSuspended() {
-            throw APIError(code: .accountSuspended, message: "the account is suspended")
-        }
-        return try await next.respond(to: request)
-    }
-}
