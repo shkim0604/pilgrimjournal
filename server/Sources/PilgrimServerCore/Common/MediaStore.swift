@@ -96,12 +96,16 @@ public enum MediaPaths {
 /// Signs and checks the short-lived media file URLs (design.md 7절 "내려받기"):
 /// `<PUBLIC_BASE_URL>/api/media-files/<id>?exp=<unix>&sig=<base64url HMAC-SHA256(secret, "<id>.<exp>")>`.
 public struct MediaURLSigner: Sendable {
-    let key: SymmetricKey
+    // Kept as bytes: swift-crypto 3.x (pinned by the App Store server library) doesn't mark
+    // SymmetricKey Sendable on Linux.
+    let keyData: Data
     let baseURL: URL
     public let lifetime: TimeInterval
 
+    var key: SymmetricKey { SymmetricKey(data: keyData) }
+
     public init(secret: String, baseURL: URL, lifetime: TimeInterval = MediaRef.signedURLLifetime) {
-        self.key = SymmetricKey(data: Data(secret.utf8))
+        self.keyData = Data(secret.utf8)
         self.baseURL = baseURL
         self.lifetime = lifetime
     }
