@@ -88,9 +88,9 @@ Phase 2에서만 고친다. Phase 1 작업끼리는 맡는 파일이 겹치지 �
 
 ### S4 신고·차단·숨김 — `server/Sources/App/Moderation/**`
 
-- [ ] 1.4.1 양방향 차단, 글·사람 숨김 PUT/DELETE/목록
-- [ ] 1.4.2 신고와 스냅샷, webhook(본문 없음)
-- [ ] 1.4.3 `/internal/admin/v1/*`: `X-Admin-Token`, `Cf-Ray`·`Cf-Connecting-IP` 거부, 신고 목록·상세·처리, 삭제,
+- [x] 1.4.1 양방향 차단, 글·사람 숨김 PUT/DELETE/목록
+- [x] 1.4.2 신고와 스냅샷, webhook(본문 없음)
+- [x] 1.4.3 `/internal/admin/v1/*`: `X-Admin-Token`, `Cf-Ray`·`Cf-Connecting-IP` 거부, 신고 목록·상세·처리, 삭제,
       정지·해제, 미디어, 상태, `moderation_log`
 
 ### S5 worker — `server/Sources/App/Worker/**`, `server/Sources/App/Push/**`
