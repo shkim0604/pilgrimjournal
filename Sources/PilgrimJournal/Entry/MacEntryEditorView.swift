@@ -38,6 +38,7 @@ struct InlineEntryEditorView: View {
     @State private var isConfirmingTypeChange = false
     @State private var isPresentingHistory = false
     @State private var prayerRequestShareEntry: JournalEntryRecord?
+    @State private var groupPostRequest: GroupPostRequest?
     @State private var saveState = EditorSaveState.saved
     @State private var lastSavedAt: Date?
     @State private var autosaveTask: Task<Void, Never>?
@@ -173,8 +174,9 @@ struct InlineEntryEditorView: View {
             }
         }
         .sheet(item: $prayerRequestShareEntry) { entry in
-            PrayerRequestShareSheet(entry: entry)
+            PrayerRequestShareSheet(entry: entry, groups: model.groups)
         }
+        .groupPostComposer($groupPostRequest, groups: model.groups)
         .confirmationDialog(
             "기록 유형을 바꾸면 일부 상세 정보가 제거됩니다.",
             isPresented: $isConfirmingTypeChange,
@@ -234,6 +236,9 @@ struct InlineEntryEditorView: View {
                 }
                 if offersPrayerRequestSharing {
                     Button("기도제목 나누기") { sharePrayerRequests() }
+                }
+                if offersGroupPosting {
+                    Button("그룹에 올리기") { postToGroup() }
                 }
             } label: {
                 Label("기록 정보", systemImage: "ellipsis.circle")
@@ -313,6 +318,17 @@ struct InlineEntryEditorView: View {
                 .labelStyle(.iconOnly)
                 .help("기도제목 나누기")
             }
+
+            if offersGroupPosting {
+                Button {
+                    postToGroup()
+                } label: {
+                    Label("그룹에 올리기", systemImage: "person.3")
+                }
+                .foregroundStyle(JournalTheme.inkSecondary)
+                .labelStyle(.iconOnly)
+                .help("그룹에 올리기")
+            }
         }
     }
 
@@ -331,6 +347,20 @@ struct InlineEntryEditorView: View {
         guard let record = model.entryRecord(id: id), record.offersPrayerRequestSharing
         else { return }
         prayerRequestShareEntry = record
+    }
+
+    /// "그룹에 올리기" (book report or testimony) follows the same rule as prayer sharing, and
+    /// only while groups are on.
+    private var offersGroupPosting: Bool {
+        model.groups != nil && offersPrayerRequestSharing
+    }
+
+    private func postToGroup() {
+        guard let id = persistedEntryID else { return }
+        // Save what is typed so far, so the composer is filled with what the editor shows.
+        model.flushOpenEditor()
+        guard let record = model.entryRecord(id: id), record.offersGroupPosting else { return }
+        groupPostRequest = GroupPostRequest(draft: model.groupPostDraft(for: record))
     }
 
     private var saveStatusButton: some View {

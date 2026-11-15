@@ -17,6 +17,9 @@ public struct AccountDeletionRequest: Equatable, Sendable {
 public enum AccountDeletionError: LocalizedError, Equatable, Sendable {
     case invalidUserIdentifier
     case storageUnavailable(String)
+    /// The account on a server other than iCloud (the group server) could not
+    /// be erased. Nothing in iCloud or on this device has been touched.
+    case remoteDeletionFailed(String)
     case cloudAccountOwnedByDifferentUser
     case cloudDeletionFailed(String)
     case localDeletionFailed(String)
@@ -26,8 +29,8 @@ public enum AccountDeletionError: LocalizedError, Equatable, Sendable {
     /// gone; reopening the store would upload the leftovers again.
     public var leavesLocalDataIntact: Bool {
         switch self {
-        case .invalidUserIdentifier, .storageUnavailable, .cloudAccountOwnedByDifferentUser,
-            .cloudDeletionFailed:
+        case .invalidUserIdentifier, .storageUnavailable, .remoteDeletionFailed,
+            .cloudAccountOwnedByDifferentUser, .cloudDeletionFailed:
             true
         case .localDeletionFailed:
             false
@@ -40,6 +43,11 @@ public enum AccountDeletionError: LocalizedError, Equatable, Sendable {
             String(localized: "삭제할 Apple 로그인 사용자를 확인할 수 없습니다.", bundle: .module)
         case let .storageUnavailable(reason):
             String(localized: "기록 저장 위치를 찾지 못해 아무것도 삭제하지 않았습니다. \(reason)", bundle: .module)
+        case let .remoteDeletionFailed(reason):
+            String(
+                localized:
+                    "그룹 서버 계정을 지우지 못했어요. 다시 시도해 주세요. iCloud와 이 기기의 기록은 그대로 두었어요. (\(reason))",
+                bundle: .module)
         case .cloudAccountOwnedByDifferentUser:
             String(
                 localized: "현재 iCloud 저장 공간은 다른 Apple 로그인 사용자에게 연결되어 있어 아무것도 삭제하지 않았습니다.",
@@ -56,6 +64,17 @@ public enum AccountDeletionError: LocalizedError, Equatable, Sendable {
                 bundle: .module)
         }
     }
+}
+
+/// Removes what one Apple user keeps on a server of the app's own (the
+/// private-groups server), as opposed to the user's iCloud.
+///
+/// `AccountDeletionService` runs it before any iCloud or local deletion, in
+/// every storage scope, and stops when it throws. So it must be idempotent: a
+/// retry after any later failure runs it again, and a user who has nothing on
+/// the server (or a build without the server) must get a quiet success.
+public protocol RemoteAccountDataErasing: Sendable {
+    func eraseRemoteData(appleUserIdentifier: String) async throws
 }
 
 /// Removes what one Apple user keeps in the system iCloud private database.
@@ -173,20 +192,25 @@ public protocol AccountDeleting: Sendable {
 ///
 /// Order matters:
 /// 1. Close the local stores.
-/// 2. Erase iCloud (only for an iCloud scope). A failure stops here, before
+/// 2. Erase the remote account (the group server), in every scope. A failure
+///    stops here, before anything in iCloud or on this device is gone, so the
+///    user can retry; the step is idempotent, so retries repeat it safely.
+/// 3. Erase iCloud (only for an iCloud scope). A failure stops here, before
 ///    anything local is gone, so the user can retry once online.
-/// 3. Remove this Apple user's files. Other Apple users' scopes on the same
+/// 4. Remove this Apple user's files. Other Apple users' scopes on the same
 ///    device are left alone.
-/// 4. Clear this user's preference suites, and the iCloud key-value keys
+/// 5. Clear this user's preference suites, and the iCloud key-value keys
 ///    for an iCloud scope.
-/// 5. Delete the Keychain items last, so a failed step can still be retried
+/// 6. Delete the Keychain items last, so a failed step can still be retried
 ///    while signed in.
 ///
 /// Apple's token revocation needs a server holding the client secret, which
-/// this app does not have; the UI points the user to iOS Settings instead.
+/// the journal itself does not have; the UI points the user to iOS Settings
+/// instead. (The group server revokes the token of its own sign-in.)
 public struct AccountDeletionService: AccountDeleting {
     private let rootURLProvider: @Sendable () throws -> URL
     private let cloudEraser: (any CloudAccountDataErasing)?
+    private let remoteEraser: (any RemoteAccountDataErasing)?
     private let sessionService: AppleAuthenticationSessionService
     private let appLockStore: any SecureValueStore
     private let preferences: any AccountPreferencesClearing
@@ -198,12 +222,14 @@ public struct AccountDeletionService: AccountDeleting {
     ///   - rootURLProvider: The account-scope root (`JournalPaths.applicationRoot`).
     ///     Its parent holds the pre-account-scope legacy store.
     ///   - cloudEraser: `nil` where the build has no CloudKit container.
+    ///   - remoteEraser: The group-server step; `nil` where the build has none.
     ///   - standardDefaultsKeys: App-wide keys to reset, such as onboarding.
     ///   - cloudKeyValueKeys: iCloud key-value keys the journal writes.
     ///   - temporaryItems: Plaintext copies under `tmp/` to remove.
     public init(
         rootURLProvider: @escaping @Sendable () throws -> URL,
         cloudEraser: (any CloudAccountDataErasing)?,
+        remoteEraser: (any RemoteAccountDataErasing)? = nil,
         sessionService: AppleAuthenticationSessionService,
         appLockStore: any SecureValueStore = KeychainSecureValueStore(),
         preferences: any AccountPreferencesClearing = SystemAccountPreferences(),
@@ -213,6 +239,7 @@ public struct AccountDeletionService: AccountDeleting {
     ) {
         self.rootURLProvider = rootURLProvider
         self.cloudEraser = cloudEraser
+        self.remoteEraser = remoteEraser
         self.sessionService = sessionService
         self.appLockStore = appLockStore
         self.preferences = preferences
@@ -243,6 +270,16 @@ public struct AccountDeletionService: AccountDeleting {
         ).appleUserHash
 
         await closeLocalStores()
+
+        if let remoteEraser {
+            do {
+                try await remoteEraser.eraseRemoteData(appleUserIdentifier: identifier)
+            } catch let error as AccountDeletionError {
+                throw error
+            } catch {
+                throw AccountDeletionError.remoteDeletionFailed(error.localizedDescription)
+            }
+        }
 
         let usesICloud: Bool
         if case .iCloud = request.storageLocation {
