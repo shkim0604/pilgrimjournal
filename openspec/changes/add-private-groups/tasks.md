@@ -60,13 +60,13 @@ Phase 2에서만 고친다. Phase 1 작업끼리는 맡는 파일이 겹치지 �
 
 ### S1 인증·계정 — `server/Sources/App/Auth/**`, `server/Sources/App/Account/**`
 
-- [ ] 1.1.1 Apple identityToken 검증(가짜 JWKS로 테스트: iss·aud 두 번들·exp·nonce·kid 갱신)
-- [ ] 1.1.2 code 교환(가짜 Apple 토큰 엔드포인트), 실패 시 502, Apple refresh token AES-GCM 저장
-- [ ] 1.1.3 access JWT, refresh 회전, 재사용 감지(family 폐기), 같은 기기 30초 유예, 로그아웃
-- [ ] 1.1.4 개발 로그인과 운영 설정 시작 거부
-- [ ] 1.1.5 `GET/PATCH /me`(이름·프로필 사진·시간대·리포트 시각), 가입 전 403, 정지 403
-- [ ] 1.1.6 기기 등록·삭제(토큰 이동 정리), 차단·숨김 목록 조회 라우트는 S4
-- [ ] 1.1.7 `DELETE /me`: 투표 시작·그룹 삭제·폐기 대기열·cascade·`alreadyDeleted` 테스트
+- [x] 1.1.1 Apple identityToken 검증(가짜 JWKS로 테스트: iss·aud 두 번들·exp·nonce·kid 갱신)
+- [x] 1.1.2 code 교환(가짜 Apple 토큰 엔드포인트), 실패 시 502, Apple refresh token AES-GCM 저장
+- [x] 1.1.3 access JWT, refresh 회전, 재사용 감지(family 폐기), 같은 기기 30초 유예, 로그아웃
+- [x] 1.1.4 개발 로그인과 운영 설정 시작 거부
+- [x] 1.1.5 `GET/PATCH /me`(이름·프로필 사진·시간대·리포트 시각), 가입 전 403, 정지 403
+- [x] 1.1.6 기기 등록·삭제(토큰 이동 정리), 차단·숨김 목록 조회 라우트는 S4
+- [x] 1.1.7 `DELETE /me`: 투표 시작·그룹 삭제·폐기 대기열·cascade·`alreadyDeleted` 테스트
 
 ### S2 그룹·초대·투표 — `server/Sources/App/Groups/**`, `Invites/**`, `Votes/**`, `Web/**`
 
@@ -81,11 +81,11 @@ Phase 2에서만 고친다. Phase 1 작업끼리는 맡는 파일이 겹치지 �
 
 ### S3 글·댓글·반응 — `server/Sources/App/Posts/**`
 
-- [ ] 1.3.1 글 만들기(종류별 검증, `PostExpiryPolicy`), 피드 커서 페이징, 상세, 삭제(작성자·관리자)
-- [ ] 1.3.2 멱등 처리(`clientId`), 토론 연장(독후감만, 멱등)
-- [ ] 1.3.3 댓글(텍스트·사진·스티커), 삭제, 반응(이모지·스티커, 자연 키 멱등, 10개 제한)
-- [ ] 1.3.4 차단·숨김 필터, 안 읽은 수, `isUnread`
-- [ ] 1.3.5 새 글 outbox 넣기(받는 사람 필터 테스트)
+- [x] 1.3.1 글 만들기(종류별 검증, `PostExpiryPolicy`), 피드 커서 페이징, 상세, 삭제(작성자·관리자)
+- [x] 1.3.2 멱등 처리(`clientId`), 토론 연장(독후감만, 멱등)
+- [x] 1.3.3 댓글(텍스트·사진·스티커), 삭제, 반응(이모지·스티커, 자연 키 멱등, 10개 제한)
+- [x] 1.3.4 차단·숨김 필터, 안 읽은 수, `isUnread`
+- [x] 1.3.5 새 글 outbox 넣기(받는 사람 필터 테스트)
 
 ### S4 신고·차단·숨김 — `server/Sources/App/Moderation/**`
 
