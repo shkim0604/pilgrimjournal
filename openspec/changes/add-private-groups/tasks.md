@@ -141,9 +141,9 @@ Phase 2에서만 고친다. Phase 1 작업끼리는 맡는 파일이 겹치지 �
 
 ### S6 사진·스티커 서버 — `server/Sources/App/Media/**`, `server/Sources/App/Stickers/**`
 
-- [ ] 2.1.1 업로드 검증(JPEG 시그니처, SOF 크기, 목적별 한도), 메타데이터 세그먼트 제거, 저장, 붙이기 규칙
-- [ ] 2.1.2 서명 URL 발급·검증(`/api/media-files/:id`), `GET /media/:id`, 비멤버 404
-- [ ] 2.1.3 스티커 만들기·목록·삭제, 30개 제한, 삭제 시 반응 정리·댓글 표시
+- [x] 2.1.1 업로드 검증(JPEG 시그니처, SOF 크기, 목적별 한도), 메타데이터 세그먼트 제거, 저장, 붙이기 규칙
+- [x] 2.1.2 서명 URL 발급·검증(`/api/media-files/:id`), `GET /media/:id`, 비멤버 404
+- [x] 2.1.3 스티커 만들기·목록·삭제, 30개 제한, 삭제 시 반응 정리·댓글 표시
 
 ### S7 Daily Report 서버 — `server/Sources/App/DailyReport/**`
 
