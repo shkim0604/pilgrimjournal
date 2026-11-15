@@ -2,12 +2,16 @@ import CryptoKit
 import Foundation
 
 public enum BuiltInKind: String, CaseIterable, Sendable {
+    // Order is fixed: `KindCatalog.defaultDefinition` takes each kind's default colour,
+    // icon and order from its position, so new kinds go at the end, after unclassified.
     case prayer
     case bibleStudy
     case reading
     case diary
     case memo
     case unclassified
+    /// Group posts copied into the journal ("스크랩"). Appears on the first scrap.
+    case scrap
 
     public var defaultName: String {
         switch self {
@@ -17,19 +21,32 @@ public enum BuiltInKind: String, CaseIterable, Sendable {
         case .diary: "일기"
         case .memo: "메모"
         case .unclassified: "미분류"
+        case .scrap: "스크랩"
         }
     }
 
-    public var canCreateManually: Bool { self != .unclassified }
+    /// Unclassified only holds imports no rule matched, and scraps only come
+    /// from a group post, so neither is offered for a new entry, a rule or a
+    /// batch move.
+    public var canCreateManually: Bool {
+        switch self {
+        case .unclassified, .scrap: false
+        case .prayer, .bibleStudy, .reading, .diary, .memo: true
+        }
+    }
 
-    /// The core kinds the app is built around stay put; memo and user-made
-    /// kinds can go. Unclassified is locked separately.
+    /// The core kinds the app is built around stay put; memo, scrap and
+    /// user-made kinds can go. Unclassified is locked separately.
     public var canBeDeleted: Bool {
         switch self {
         case .prayer, .bibleStudy, .reading, .diary, .unclassified: false
-        case .memo: true
+        case .memo, .scrap: true
         }
     }
+
+    /// A kind the catalog lists only once a definition for it is stored, so
+    /// a user who never scrapped keeps exactly the sidebar they had.
+    public var appearsOnFirstUse: Bool { self == .scrap }
 }
 
 /// A journal kind identified by an open string ID: built-in IDs are the `BuiltInKind` raw
@@ -75,6 +92,7 @@ public struct JournalKind: Hashable, Codable, Identifiable, Sendable {
     public static let diary = JournalKind(id: BuiltInKind.diary.rawValue)
     public static let memo = JournalKind(id: BuiltInKind.memo.rawValue)
     public static let unclassified = JournalKind(id: BuiltInKind.unclassified.rawValue)
+    public static let scrap = JournalKind(id: BuiltInKind.scrap.rawValue)
 
     public static var builtIns: [JournalKind] {
         BuiltInKind.allCases.map { JournalKind(id: $0.rawValue) }
@@ -158,7 +176,7 @@ public struct EntryDetails: Codable, Equatable, Sendable {
             copy.bookAuthor = nil
             copy.prayerTopics = nil
             copy.prayerCategories = nil
-        case .memo, .unclassified, nil:
+        case .memo, .unclassified, .scrap, nil:
             copy = EntryDetails()
         }
         return copy
@@ -272,7 +290,7 @@ public struct EntryDetails: Codable, Equatable, Sendable {
             if !joined.isEmpty { lines.append(joined) }
         case .diary:
             if let mood = clean(mood) { lines.append("기분: \(mood)") }
-        case .memo, .unclassified:
+        case .memo, .unclassified, .scrap:
             break
         }
         return lines.isEmpty ? nil : lines.joined(separator: "\n")

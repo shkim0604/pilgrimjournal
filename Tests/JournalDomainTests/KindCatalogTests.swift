@@ -29,8 +29,13 @@ final class KindCatalogTests: XCTestCase {
 
     func testEmptyCatalogMatchesCurrentKinds() {
         let catalog = KindCatalog()
-        XCTAssertEqual(catalog.activeKinds.map(\.kind), JournalKind.builtIns)
+        // Scrap is a built-in but appears only on the first scrap.
+        XCTAssertEqual(
+            catalog.activeKinds.map(\.kind),
+            [.prayer, .bibleStudy, .reading, .diary, .memo, .unclassified])
+        XCTAssertEqual(JournalKind.builtIns.last, .scrap)
         XCTAssertEqual(catalog.creatableKinds.count, 5)
+        XCTAssertEqual(catalog.manageableKinds.map(\.kind), catalog.creatableKinds.map(\.kind))
         XCTAssertEqual(catalog.activeKinds.last?.kind, .unclassified)
         XCTAssertFalse(catalog.hasDeletedKinds)
     }
@@ -68,9 +73,9 @@ final class KindCatalogTests: XCTestCase {
         }
     }
 
-    func testOnlyMemoAndCustomKindsCanBeDeletedFromTheApp() {
+    func testOnlyMemoScrapAndCustomKindsCanBeDeletedFromTheApp() {
         XCTAssertEqual(
-            JournalKind.builtIns.filter(\.canBeDeleted), [.memo])
+            JournalKind.builtIns.filter(\.canBeDeleted), [.memo, .scrap])
         XCTAssertTrue(JournalKind.custom().canBeDeleted)
     }
 
@@ -241,7 +246,8 @@ final class KindCatalogTests: XCTestCase {
     func testIconFallback() {
         XCTAssertEqual(KindIconCatalog.displaySymbol(for: "nope"), "tag")
         XCTAssertEqual(KindIconCatalog.displaySymbol(for: "heart"), "heart")
-        XCTAssertEqual(KindIconCatalog.symbols.count, 20)
+        XCTAssertEqual(KindIconCatalog.symbols.count, 21)
+        XCTAssertEqual(KindIconCatalog.displaySymbol(for: "bookmark"), "bookmark")
     }
 
     func testErrorDescriptions() {
