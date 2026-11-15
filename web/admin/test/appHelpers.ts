@@ -33,6 +33,7 @@ export async function makeHarness(overrides: Partial<Config> = {}, extra: Partia
     snapshotDir: join(webAdminDir, 'snapshot'),
     bootstrap: { username: BOOT_USER, password: BOOT_PASS },
     github: null,
+    adminApi: null,
     ...overrides,
   };
   await ensureBootstrapAdmin(db, config.bootstrap, () => {});

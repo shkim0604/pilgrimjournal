@@ -3,6 +3,14 @@
 #   docker compose -f web/admin/docker-compose.yml up -d --build
 # With the bundled Cloudflare Tunnel (TUNNEL_TOKEN in .env):
 #   docker compose -f web/admin/docker-compose.yml --profile tunnel up -d --build
+#
+# The console joins the shared network pilgrim-edge, where the group server's api answers as
+# http://pilgrim-api:3100 (operator routes /internal/admin/v1, never through the tunnel).
+# The console reads ADMIN_API_TOKEN (same value as server/.env.prod, 32+ bytes) and optionally
+# ADMIN_API_URL (default http://pilgrim-api:3100) from .env; neither is set here, because
+# ADMIN_API_URL without a token is refused at start-up.
+# The network must exist first; create it once per machine (idempotent):
+#   make -C server edge-network        # or: docker network create pilgrim-edge
 name: pilgrim-admin
 
 services:
@@ -16,6 +24,9 @@ services:
       - "127.0.0.1:8420:8420"
     volumes:
       - admin-data:/data
+    networks:
+      - default
+      - edge
     restart: unless-stopped
 
   cloudflared:
@@ -24,10 +35,19 @@ services:
     command: tunnel --no-autoupdate run
     environment:
       - TUNNEL_TOKEN=${TUNNEL_TOKEN:-}
-    # In the Zero Trust dashboard, point the public hostname at http://admin:8420.
+    # In the Zero Trust dashboard, point the public hostname at http://admin:8420, and put the
+    # group server rule (path ^/(api/|i/|\.well-known/) → http://pilgrim-api:3100) above it.
     depends_on:
       - admin
+    networks:
+      - default
+      - edge
     restart: unless-stopped
 
 volumes:
   admin-data:
+
+networks:
+  edge:
+    name: pilgrim-edge
+    external: true
