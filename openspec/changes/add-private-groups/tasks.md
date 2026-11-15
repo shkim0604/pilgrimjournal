@@ -173,14 +173,14 @@ Phase 2에서만 고친다. Phase 1 작업끼리는 맡는 파일이 겹치지 �
 
 ### A6 스크랩 — `Sources/PilgrimJournal/AppModel+Scrap.swift`, `Sources/JournalDomain/Scrap*.swift`, `Sources/JournalDomain/JournalTypes.swift`(`BuiltInKind.scrap`), `Sources/JournalDomain/KindCatalog.swift`, `Sources/PilgrimJournal/KindDisplayName.swift`, 해당 테스트
 
-- [ ] 2.6.1 `BuiltInKind.scrap`을 맨 뒤에 추가(teal, `bookmark`, 직접 만들기 불가, 삭제 가능), `EntryDetails`
+- [x] 2.6.1 `BuiltInKind.scrap`을 맨 뒤에 추가(teal, `bookmark`, 직접 만들기 불가, 삭제 가능), `EntryDetails`
       처리, 표시 이름
-- [ ] 2.6.2 `KindCatalog`: 저장된 정의가 없으면 목록에서 숨김, `materialize`(이름 충돌 시 "그룹 스크랩"), 삭제 후 restore
-- [ ] 2.6.3 `ScrapComposer`(순수 함수): 글·댓글·사진 → `JournalEntryDraft` + 첨부 목록, 머리·표식 형식, 제목 규칙
-- [ ] 2.6.4 `AppModel+Scrap`: 사진 내려받기 → 첨부 저장, 노트북 만들기 경로(삭제 목록에서 빼기), 이미 스크랩 확인,
+- [x] 2.6.2 `KindCatalog`: 저장된 정의가 없으면 목록에서 숨김, `materialize`(이름 충돌 시 "그룹 스크랩"), 삭제 후 restore
+- [x] 2.6.3 `ScrapComposer`(순수 함수): 글·댓글·사진 → `JournalEntryDraft` + 첨부 목록, 머리·표식 형식, 제목 규칙
+- [x] 2.6.4 `AppModel+Scrap`: 사진 내려받기 → 첨부 저장, 노트북 만들기 경로(삭제 목록에서 빼기), 이미 스크랩 확인,
       언제나 내 기록장
-- [ ] 2.6.5 테스트: 변환, 노트북 생성, 기존 사용자 카탈로그가 바뀌지 않음, 옛 카탈로그 JSON 디코딩, 기본 유형 색·아이콘
-      순서 불변
+- [x] 2.6.5 테스트: 변환, 노트북 생성, 기존 사용자 카탈로그가 바뀌지 않음, 옛 카탈로그 JSON 디코딩, 기본 유형 색·아이콘
+      순서 불변 — 진입점(피드·상세의 "스크랩" 버튼)과 유형 관리 화면의 `manageableKinds` 전환은 Phase 2
 
 ### A7 알림·리포트 UI — `Sources/PilgrimJournal/Groups/DailyReportView.swift`, `Sources/PilgrimJournal/Groups/GroupNotifications.swift`, `SettingsView.swift`(새 `Section`만)
 

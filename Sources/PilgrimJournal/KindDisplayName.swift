@@ -13,6 +13,16 @@ extension BuiltInKind {
         case .diary: String(localized: "일기")
         case .memo: String(localized: "메모")
         case .unclassified: String(localized: "미분류")
+        case .scrap: String(localized: "스크랩")
+        }
+    }
+
+    /// Other Korean names the app itself may store for this kind, each with
+    /// its translation: scrap becomes "그룹 스크랩" when "스크랩" is taken.
+    fileprivate var localizedAlternateNames: [(stored: String, localized: String)] {
+        switch self {
+        case .scrap: [(KindCatalog.scrapAlternateName, String(localized: "그룹 스크랩"))]
+        case .prayer, .bibleStudy, .reading, .diary, .memo, .unclassified: []
         }
     }
 }
@@ -24,7 +34,11 @@ extension KindDefinition {
     /// user's own and is shown as typed.
     var displayName: String {
         if let builtIn = kind.builtIn {
-            return name == builtIn.defaultName ? builtIn.localizedDefaultName : name
+            if name == builtIn.defaultName { return builtIn.localizedDefaultName }
+            if let alternate = builtIn.localizedAlternateNames.first(where: { $0.stored == name }) {
+                return alternate.localized
+            }
+            return name
         }
         if name == KindCatalog.unknownDefinition(for: kind).name {
             return String(localized: "이름 없는 유형")
@@ -37,10 +51,12 @@ extension KindDefinition {
     /// default in the catalog, so other devices keep showing it in their own
     /// language.
     func storedName(for typedName: String) -> String {
-        guard let builtIn = kind.builtIn,
-            typedName.trimmingCharacters(in: .whitespacesAndNewlines)
-                == builtIn.localizedDefaultName
-        else { return typedName }
-        return builtIn.defaultName
+        guard let builtIn = kind.builtIn else { return typedName }
+        let typed = typedName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if typed == builtIn.localizedDefaultName { return builtIn.defaultName }
+        if let alternate = builtIn.localizedAlternateNames.first(where: { $0.localized == typed }) {
+            return alternate.stored
+        }
+        return typedName
     }
 }
