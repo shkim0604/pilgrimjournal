@@ -1,13 +1,14 @@
 import { html } from 'hono/html';
 
 export type Html = ReturnType<typeof html>;
-export type Section = 'dashboard' | 'database' | 'architecture' | 'flows';
+export type Section = 'dashboard' | 'database' | 'architecture' | 'flows' | 'reports';
 
 const sections: { id: Section; href: string; label: string }[] = [
   { id: 'dashboard', href: '/admin', label: '대시보드' },
   { id: 'database', href: '/admin/database', label: '데이터베이스' },
   { id: 'architecture', href: '/admin/architecture', label: '아키텍처' },
   { id: 'flows', href: '/admin/flows', label: '앱 플로우' },
+  { id: 'reports', href: '/admin/reports', label: '신고' },
 ];
 
 /** Page shell shared by every console page. `nav: false` hides the navigation (login, password change). */
