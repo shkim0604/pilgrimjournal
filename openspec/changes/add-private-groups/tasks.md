@@ -167,9 +167,9 @@ Phase 2에서만 고친다. Phase 1 작업끼리는 맡는 파일이 겹치지 �
 
 ### A5 계정 삭제 — `Sources/JournalData/AccountDeletionService.swift`, `Sources/PilgrimJournal/AppleAuthenticationCoordinator.swift`, `Sources/PilgrimJournal/AccountDeletionViews.swift`, `Sources/PilgrimJournal/Groups/GroupAccountErasure.swift`
 
-- [ ] 2.5.1 `RemoteAccountDataErasing` 프로토콜, 모든 범위에서 가장 먼저 실행, 실패 시 멈춤, 멱등
-- [ ] 2.5.2 refresh 무효면 Apple 재인증 후 삭제, 그룹 Keychain 정리
-- [ ] 2.5.3 확인 화면: 관리 그룹 투표 안내, 구독 해지 안내
+- [x] 2.5.1 `RemoteAccountDataErasing` 프로토콜, 모든 범위에서 가장 먼저 실행, 실패 시 멈춤, 멱등
+- [x] 2.5.2 refresh 무효면 Apple 재인증 후 삭제, 그룹 Keychain 정리
+- [x] 2.5.3 확인 화면: 관리 그룹 투표 안내, 구독 해지 안내
 
 ### A6 스크랩 — `Sources/PilgrimJournal/AppModel+Scrap.swift`, `Sources/JournalDomain/Scrap*.swift`, `Sources/JournalDomain/JournalTypes.swift`(`BuiltInKind.scrap`), `Sources/JournalDomain/KindCatalog.swift`, `Sources/PilgrimJournal/KindDisplayName.swift`, 해당 테스트
 
