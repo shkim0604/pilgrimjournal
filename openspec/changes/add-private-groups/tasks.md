@@ -196,11 +196,13 @@ Phase 2에서만 고친다. Phase 1 작업끼리는 맡는 파일이 겹치지 �
 
 ### I1 인프라 — `server/Makefile`, `server/docker-compose*.yml`, `server/scripts/**`, `server/.env.*.example`, `PilgrimJournal/PilgrimJournal/PilgrimJournal.entitlements`, `PilgrimJournal/PilgrimJournal/iOS-Info.plist`, `web/admin/docker-compose.yml`
 
-- [ ] 2.9.1 놀담 방식 `make dev/prod/deploy`, `pilgrim-prod` compose, `127.0.0.1:3100`, 사진 볼륨
-- [ ] 2.9.2 공유 Docker 네트워크 `pilgrim-edge`(api·admin)
-- [ ] 2.9.3 restic → R2(DB 덤프 + 사진) launchd, 7일 보관, 복원 스크립트
-- [ ] 2.9.4 `aps-environment`, `applinks:pilgrim.delight-house.org`(두 앱 ID), 백그라운드 모드 필요 여부 확인
-- [ ] 2.9.5 `.env.dev.example`, `.env.prod.example`(design.md "환경 변수")
+- [x] 2.9.1 놀담 방식 `make dev/prod/deploy`, `pilgrim-prod` compose, `127.0.0.1:3100`, 사진 볼륨
+- [x] 2.9.2 공유 Docker 네트워크 `pilgrim-edge`(api·admin)
+- [x] 2.9.3 restic → R2(DB 덤프 + 사진) launchd, 7일 보관, 복원 스크립트
+- [x] 2.9.4 `aps-environment`, `applinks:pilgrim.delight-house.org`(두 앱 ID), 백그라운드 모드 필요 여부 확인 —
+      `remote-notification`은 CloudKit 때문에 이미 있고 그룹 푸시는 alert 전용(`content-available` 없음)이라 그대로 둠.
+      macOS도 같은 entitlements 파일: 서명한 macOS 빌드에서 푸시 키 확인 필요(Phase 2)
+- [x] 2.9.5 `.env.dev.example`, `.env.prod.example`(design.md "환경 변수")
 
 ### W1 콘솔 신고 페이지 — `web/admin/src/**`, `web/admin/test/**`
 
