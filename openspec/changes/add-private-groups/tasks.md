@@ -147,9 +147,10 @@ Phase 2에서만 고친다. Phase 1 작업끼리는 맡는 파일이 겹치지 �
 
 ### S7 Daily Report 서버 — `server/Sources/App/DailyReport/**`
 
-- [ ] 2.2.1 시간대별 리포트 시각 대상 선정(서머타임), `daily_report_log` 중복 방지
-- [ ] 2.2.2 집계(새 글, 내 글 댓글·반응, 연장, 곧 사라짐, 숨김·차단·그룹별 끄기), 빈 리포트 건너뜀
-- [ ] 2.2.3 `GET /me/daily-report`, outbox 넣기
+- [x] 2.2.1 시간대별 리포트 시각 대상 선정(서머타임), `daily_report_log` 중복 방지
+- [x] 2.2.2 집계(새 글, 내 글 댓글·반응, 연장, 곧 사라짐, 숨김·차단·그룹별 끄기), 빈 리포트 건너뜀
+- [x] 2.2.3 `GET /me/daily-report`, outbox 넣기
+      (로컬 Docker가 없어 집계·worker·라우트 Postgres 테스트는 컴파일만 확인했고 CI `server` job에서 처음 돈다)
 
 ### S8 구독 서버 — `server/Sources/App/Subscriptions/**`
 
@@ -205,9 +206,9 @@ Phase 2에서만 고친다. Phase 1 작업끼리는 맡는 파일이 겹치지 �
 
 ### W1 콘솔 신고 페이지 — `web/admin/src/**`, `web/admin/test/**`
 
-- [ ] 2.10.1 내부 API 클라이언트(`ADMIN_API_TOKEN`, `X-Admin-Actor`)
-- [ ] 2.10.2 신고 목록·상세(스냅샷, 원본, 사진), 삭제, 정지·해제, 처리 완료
-- [ ] 2.10.3 `npm test`, typecheck 통과
+- [x] 2.10.1 내부 API 클라이언트(`ADMIN_API_TOKEN`, `X-Admin-Actor`)
+- [x] 2.10.2 신고 목록·상세(스냅샷, 원본, 사진), 삭제, 정지·해제, 처리 완료
+- [x] 2.10.3 `npm test`, typecheck 통과
 
 ### D1 문서 — `docs/**`, `CLAUDE.md`
 
