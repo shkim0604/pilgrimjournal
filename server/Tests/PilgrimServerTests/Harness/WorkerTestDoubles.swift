@@ -6,7 +6,9 @@ import PilgrimAPI
 
 /// Records every delivery and answers from `results` (by device token), `.delivered` otherwise.
 final class FakeAPNSSender: APNSSending {
-    private let state = NIOLockedValueBox<(deliveries: [APNSDelivery], results: [String: APNSDeliveryResult])>(
+    private let state = NIOLockedValueBox<
+        (deliveries: [APNSDelivery], results: [String: APNSDeliveryResult])
+    >(
         ([], [:]))
     let isConfigured: Bool
 
@@ -30,7 +32,9 @@ final class FakeAPNSSender: APNSSending {
 
 /// Records revocations and answers `result`.
 final class FakeAppleTokenRevoker: AppleTokenRevoking {
-    private let state = NIOLockedValueBox<(calls: [(token: String, clientID: String)], result: AppleRevocationResult)>(
+    private let state = NIOLockedValueBox<
+        (calls: [(token: String, clientID: String)], result: AppleRevocationResult)
+    >(
         ([], .revoked))
 
     var calls: [(token: String, clientID: String)] { state.withLockedValue { $0.calls } }

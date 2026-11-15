@@ -189,18 +189,34 @@ public enum PushOutboxSender {
 
     private struct DueRow: Decodable {
         var id: UUID
-        var recipient_user_id: UUID
+        var recipientUserId: UUID
         var payload: PushPayload
-        var collapse_id: String?
+        var collapseId: String?
         var attempts: Int
+
+        enum CodingKeys: String, CodingKey {
+            case id
+            case recipientUserId = "recipient_user_id"
+            case payload
+            case collapseId = "collapse_id"
+            case attempts
+        }
     }
 
     private struct DeviceRow: Decodable {
         var id: UUID
-        var user_id: UUID
-        var apns_token: String
-        var apns_environment: String
-        var bundle_id: String
+        var userId: UUID
+        var apnsToken: String
+        var apnsEnvironment: String
+        var bundleId: String
+
+        enum CodingKeys: String, CodingKey {
+            case id
+            case userId = "user_id"
+            case apnsToken = "apns_token"
+            case apnsEnvironment = "apns_environment"
+            case bundleId = "bundle_id"
+        }
     }
 
     static func loadDue(on db: any Database, allowedBundleIDs: Set<String>, now: Date)
@@ -217,7 +233,7 @@ public enum PushOutboxSender {
         ).all(decoding: DueRow.self)
         guard !rows.isEmpty else { return [] }
 
-        let recipients = Array(Set(rows.map(\.recipient_user_id)))
+        let recipients = Array(Set(rows.map(\.recipientUserId)))
         let devices = try await sql.raw(
             """
             SELECT id, user_id, apns_token, apns_environment, bundle_id FROM devices
@@ -227,19 +243,19 @@ public enum PushOutboxSender {
         ).all(decoding: DeviceRow.self)
         var byUser: [UUID: [DeviceTarget]] = [:]
         for device in devices {
-            guard allowedBundleIDs.contains(device.bundle_id),
-                let environment = APNSEnvironment(rawValue: device.apns_environment)
+            guard allowedBundleIDs.contains(device.bundleId),
+                let environment = APNSEnvironment(rawValue: device.apnsEnvironment)
             else { continue }
-            byUser[device.user_id, default: []].append(
+            byUser[device.userId, default: []].append(
                 DeviceTarget(
-                    deviceID: device.id, token: device.apns_token, bundleID: device.bundle_id,
+                    deviceID: device.id, token: device.apnsToken, bundleID: device.bundleId,
                     environment: environment))
         }
         return rows.map { row in
             Due(
                 id: row.id, payload: row.payload,
-                collapseID: row.collapse_id ?? row.id.pilgrimString, attempts: row.attempts,
-                devices: byUser[row.recipient_user_id] ?? [])
+                collapseID: row.collapseId ?? row.id.pilgrimString, attempts: row.attempts,
+                devices: byUser[row.recipientUserId] ?? [])
         }
     }
 

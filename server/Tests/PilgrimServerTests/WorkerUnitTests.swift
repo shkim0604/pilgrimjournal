@@ -8,18 +8,28 @@ import XCTest
 /// S5 rules that need no database.
 final class PushRulesTests: XCTestCase {
     func testClassifyAPNsResponses() {
-        XCTAssertEqual(APNSDeliveryResult.classify(status: 410, reason: "Unregistered"), .invalidToken("410 Unregistered"))
-        XCTAssertEqual(APNSDeliveryResult.classify(status: 400, reason: "BadDeviceToken"), .invalidToken("400 BadDeviceToken"))
+        XCTAssertEqual(
+            APNSDeliveryResult.classify(status: 410, reason: "Unregistered"),
+            .invalidToken("410 Unregistered"))
+        XCTAssertEqual(
+            APNSDeliveryResult.classify(status: 400, reason: "BadDeviceToken"),
+            .invalidToken("400 BadDeviceToken"))
         XCTAssertEqual(
             APNSDeliveryResult.classify(status: 400, reason: "DeviceTokenNotForTopic"),
             .invalidToken("400 DeviceTokenNotForTopic"))
         XCTAssertEqual(APNSDeliveryResult.classify(status: 410, reason: nil), .invalidToken("410"))
-        XCTAssertEqual(APNSDeliveryResult.classify(status: 503, reason: "ServiceUnavailable"), .retryLater("503 ServiceUnavailable"))
-        XCTAssertEqual(APNSDeliveryResult.classify(status: 429, reason: "TooManyRequests"), .retryLater("429 TooManyRequests"))
+        XCTAssertEqual(
+            APNSDeliveryResult.classify(status: 503, reason: "ServiceUnavailable"),
+            .retryLater("503 ServiceUnavailable"))
+        XCTAssertEqual(
+            APNSDeliveryResult.classify(status: 429, reason: "TooManyRequests"),
+            .retryLater("429 TooManyRequests"))
         XCTAssertEqual(
             APNSDeliveryResult.classify(status: 403, reason: "ExpiredProviderToken"),
             .retryLater("403 ExpiredProviderToken"))
-        XCTAssertEqual(APNSDeliveryResult.classify(status: 413, reason: "PayloadTooLarge"), .rejected("413 PayloadTooLarge"))
+        XCTAssertEqual(
+            APNSDeliveryResult.classify(status: 413, reason: "PayloadTooLarge"),
+            .rejected("413 PayloadTooLarge"))
     }
 
     func testRetryScheduleIsThirtySecondsTwoMinutesTenMinutesThenGiveUp() {
@@ -34,13 +44,18 @@ final class PushRulesTests: XCTestCase {
         let now = Date(timeIntervalSince1970: 1_000_000)
         typealias D = PushOutboxSender.Decision
         XCTAssertEqual(PushOutboxSender.decide(results: [], attempts: 0, now: now), D.sent)
-        XCTAssertEqual(PushOutboxSender.decide(results: [.delivered, .rejected("413")], attempts: 0, now: now), D.sent)
-        XCTAssertEqual(PushOutboxSender.decide(results: [.invalidToken("410")], attempts: 0, now: now), D.sent)
         XCTAssertEqual(
-            PushOutboxSender.decide(results: [.rejected("413 PayloadTooLarge")], attempts: 0, now: now),
+            PushOutboxSender.decide(
+                results: [.delivered, .rejected("413")], attempts: 0, now: now), D.sent)
+        XCTAssertEqual(
+            PushOutboxSender.decide(results: [.invalidToken("410")], attempts: 0, now: now), D.sent)
+        XCTAssertEqual(
+            PushOutboxSender.decide(
+                results: [.rejected("413 PayloadTooLarge")], attempts: 0, now: now),
             D.failed(attempts: 1, error: "413 PayloadTooLarge"))
         XCTAssertEqual(
-            PushOutboxSender.decide(results: [.delivered, .retryLater("503")], attempts: 0, now: now),
+            PushOutboxSender.decide(
+                results: [.delivered, .retryLater("503")], attempts: 0, now: now),
             D.retry(attempts: 1, next: now + 30, error: "503"))
         XCTAssertEqual(
             PushOutboxSender.decide(results: [.retryLater("503")], attempts: 3, now: now),
@@ -85,7 +100,8 @@ final class PushRulesTests: XCTestCase {
         XCTAssertEqual(results.count, 20)
         XCTAssertEqual(results[3], .invalidToken("410"))
         XCTAssertEqual(results.filter { $0 == .delivered }.count, 19)
-        XCTAssertEqual(Set(sender.deliveries.map(\.deviceToken)), Set(deliveries.map(\.deviceToken)))
+        XCTAssertEqual(
+            Set(sender.deliveries.map(\.deviceToken)), Set(deliveries.map(\.deviceToken)))
     }
 
     func testUnconfiguredSenderIsTheDefault() async throws {
@@ -97,7 +113,8 @@ final class PushRulesTests: XCTestCase {
         let key = P256.Signing.PrivateKey()
         let pem = key.pemRepresentation
         let oneLine = pem.replacingOccurrences(of: "\n", with: "\\n")
-        XCTAssertEqual(try PEMSetting.pem(from: oneLine), pem.trimmingCharacters(in: .whitespacesAndNewlines))
+        XCTAssertEqual(
+            try PEMSetting.pem(from: oneLine), pem.trimmingCharacters(in: .whitespacesAndNewlines))
 
         let file = FileManager.default.temporaryDirectory
             .appendingPathComponent("apns-\(UUID().uuidString).p8")
@@ -116,7 +133,8 @@ final class AppleRevocationRulesTests: XCTestCase {
             setting: keyBytes.map { String(format: "%02x", $0) }.joined())
 
         // nonce ‖ ciphertext ‖ tag, as S1's AppleTokenCipher writes it.
-        let box = try AES.GCM.seal(Data("r.apple-refresh".utf8), using: SymmetricKey(data: keyBytes))
+        let box = try AES.GCM.seal(
+            Data("r.apple-refresh".utf8), using: SymmetricKey(data: keyBytes))
         let combined = box.nonce.withUnsafeBytes { Data($0) } + box.ciphertext + box.tag
         XCTAssertEqual(combined, box.combined)
         XCTAssertEqual(try base64.open(combined), "r.apple-refresh")
@@ -126,7 +144,8 @@ final class AppleRevocationRulesTests: XCTestCase {
         let otherKey = RevocationTokenCipher(key: SymmetricKey(size: .bits256))
         XCTAssertThrowsError(try otherKey.open(combined))
         XCTAssertThrowsError(try RevocationTokenCipher(setting: "too-short"))
-        XCTAssertThrowsError(try RevocationTokenCipher(setting: Data(count: 16).base64EncodedString()))
+        XCTAssertThrowsError(
+            try RevocationTokenCipher(setting: Data(count: 16).base64EncodedString()))
     }
 
     func testClientSecretIsAValidES256JWT() throws {
@@ -160,10 +179,14 @@ final class AppleRevocationRulesTests: XCTestCase {
 
     func testBackoffDoublesFromFiveMinutesAndStopsAtTenAttempts() {
         let now = Date(timeIntervalSince1970: 0)
-        XCTAssertEqual(AppleRevocationSweep.nextAttempt(afterFailedAttempts: 1, now: now), now + 300)
-        XCTAssertEqual(AppleRevocationSweep.nextAttempt(afterFailedAttempts: 2, now: now), now + 600)
-        XCTAssertEqual(AppleRevocationSweep.nextAttempt(afterFailedAttempts: 4, now: now), now + 2_400)
-        XCTAssertEqual(AppleRevocationSweep.nextAttempt(afterFailedAttempts: 9, now: now), now + 86_400)
+        XCTAssertEqual(
+            AppleRevocationSweep.nextAttempt(afterFailedAttempts: 1, now: now), now + 300)
+        XCTAssertEqual(
+            AppleRevocationSweep.nextAttempt(afterFailedAttempts: 2, now: now), now + 600)
+        XCTAssertEqual(
+            AppleRevocationSweep.nextAttempt(afterFailedAttempts: 4, now: now), now + 2_400)
+        XCTAssertEqual(
+            AppleRevocationSweep.nextAttempt(afterFailedAttempts: 9, now: now), now + 76_800)
         XCTAssertNil(AppleRevocationSweep.nextAttempt(afterFailedAttempts: 10, now: now))
     }
 }
@@ -201,7 +224,10 @@ final class WorkerScheduleTests: XCTestCase {
 final class WorkerRegistrationTests: ServerTestCase {
     func testEveryS5LoopIsRegisteredWithItsInterval() throws {
         let jobs = Dictionary(uniqueKeysWithValues: app.workerJobs.jobs.map { ($0.name, $0) })
-        for name in ["worker", "pushOutbox", "expiry", "mediaFiles", "votes", "appleRevocation", "invites", "retention"] {
+        for name in [
+            "worker", "pushOutbox", "expiry", "mediaFiles", "votes", "appleRevocation", "invites",
+            "retention",
+        ] {
             XCTAssertNotNil(jobs[name], name)
         }
         XCTAssertEqual(jobs["pushOutbox"]?.interval, .seconds(5))

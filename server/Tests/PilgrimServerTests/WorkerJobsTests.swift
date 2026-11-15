@@ -129,7 +129,8 @@ final class PushOutboxJobTests: WorkerDatabaseTestCase {
             XCTAssertEqual(row.attempts, attempt)
             XCTAssertNil(row.failedAt)
             XCTAssertEqual(
-                row.nextAttemptAt.timeIntervalSince1970, now.addingTimeInterval(delay)
+                row.nextAttemptAt.timeIntervalSince1970,
+                now.addingTimeInterval(delay)
                     .timeIntervalSince1970, accuracy: 0.001)
             XCTAssertEqual(row.lastError, "503 ServiceUnavailable")
             // Not due yet: nothing is sent.
@@ -255,10 +256,12 @@ final class CleanupJobTests: WorkerDatabaseTestCase {
         let group = try await fixtures.group(admin: admin)
         let now = Date()
         let old = Invite(
-            groupID: try group.requireID(), code: "ABCDEFGHJKMN", createdByID: try admin.requireID(),
+            groupID: try group.requireID(), code: "ABCDEFGHJKMN",
+            createdByID: try admin.requireID(),
             maxUses: 5, expiresAt: now.addingTimeInterval(-8 * 86_400))
         let recent = Invite(
-            groupID: try group.requireID(), code: "ABCDEFGHJKMP", createdByID: try admin.requireID(),
+            groupID: try group.requireID(), code: "ABCDEFGHJKMP",
+            createdByID: try admin.requireID(),
             maxUses: 5, expiresAt: now.addingTimeInterval(-6 * 86_400))
         try await old.create(on: db)
         try await recent.create(on: db)
@@ -357,7 +360,9 @@ final class VoteJobTests: WorkerDatabaseTestCase {
         XCTAssertEqual(runoff.round, 2)
         XCTAssertEqual(Set(runoff.candidateIDs), [try a.requireID(), try b.requireID()])
         XCTAssertEqual(runoff.eligibleIDs.count, 3)
-        XCTAssertEqual(runoff.endsAt.timeIntervalSince1970, (roundOneEnd + 86_400).timeIntervalSince1970, accuracy: 0.001)
+        XCTAssertEqual(
+            runoff.endsAt.timeIntervalSince1970, (roundOneEnd + 86_400).timeIntervalSince1970,
+            accuracy: 0.001)
         let value10 = try await outbox().filter { $0.kind == .voteRunoff }.count
         XCTAssertEqual(value10, 3)
 
@@ -367,7 +372,8 @@ final class VoteJobTests: WorkerDatabaseTestCase {
         try await VoteSweep.run(
             on: db, now: roundOneEnd + 86_400, dayLength: 86_400, random: fixedRandom([0]),
             logger: app.logger)
-        let decided = try await unwrapAsync(try await AdminVote.find(try runoff.requireID(), on: db))
+        let decided = try await unwrapAsync(
+            try await AdminVote.find(try runoff.requireID(), on: db))
         XCTAssertEqual(decided.outcome, .random)
         let winner = try XCTUnwrap(decided.$electedUser.id)
         XCTAssertTrue([try a.requireID(), try b.requireID()].contains(winner))
@@ -396,7 +402,9 @@ final class VoteJobTests: WorkerDatabaseTestCase {
         XCTAssertEqual(pending.status, .pendingDeletion)
         XCTAssertEqual(pending.deletionReason, .noVotes)
         let deleteAt = try XCTUnwrap(pending.deleteAt)
-        XCTAssertEqual(deleteAt.timeIntervalSince1970, (end + 7 * 86_400).timeIntervalSince1970, accuracy: 0.001)
+        XCTAssertEqual(
+            deleteAt.timeIntervalSince1970, (end + 7 * 86_400).timeIntervalSince1970,
+            accuracy: 0.001)
         let value11 = try await outbox().filter { $0.kind == .groupDeletionScheduled }.count
         XCTAssertEqual(value11, 3)
 
@@ -469,14 +477,16 @@ final class AppleRevocationJobTests: WorkerDatabaseTestCase {
         let cipher = try RevocationTokenCipher(setting: Self.keyBase64)
         let now = Date()
         let ok = AppleTokenRevocation(
-            clientID: BundleIDs.release, ciphertext: try cipher.seal("token-ok"), nextAttemptAt: now)
+            clientID: BundleIDs.release, ciphertext: try cipher.seal("token-ok"), nextAttemptAt: now
+        )
         try await ok.create(on: db)
 
         let value16 = try await runJob("appleRevocation", at: now)
         XCTAssertEqual(value16, .ran)
         XCTAssertEqual(revoker.calls.map(\.token), ["token-ok"])
         XCTAssertEqual(revoker.calls.map(\.clientID), [BundleIDs.release])
-        let done = try await unwrapAsync(try await AppleTokenRevocation.find(try ok.requireID(), on: db))
+        let done = try await unwrapAsync(
+            try await AppleTokenRevocation.find(try ok.requireID(), on: db))
         XCTAssertNotNil(done.completedAt)
 
         revoker.answer(.failed("400 invalid_client"))
@@ -490,7 +500,9 @@ final class AppleRevocationJobTests: WorkerDatabaseTestCase {
         XCTAssertEqual(retried.attempts, 1)
         XCTAssertNil(retried.completedAt)
         XCTAssertEqual(retried.lastError, "400 invalid_client")
-        XCTAssertEqual(retried.nextAttemptAt.timeIntervalSince1970, now.addingTimeInterval(300).timeIntervalSince1970, accuracy: 0.001)
+        XCTAssertEqual(
+            retried.nextAttemptAt.timeIntervalSince1970,
+            now.addingTimeInterval(300).timeIntervalSince1970, accuracy: 0.001)
         // The completed row is not sent again.
         XCTAssertEqual(revoker.calls.count, 2)
     }
@@ -511,7 +523,8 @@ final class AppleRevocationJobTests: WorkerDatabaseTestCase {
             on: db, revoker: revoker, encryptionKey: Self.keyBase64,
             now: now.addingTimeInterval(86_400 * 30), logger: app.logger)
         XCTAssertEqual(revoker.calls.count, 1)
-        let after = try await unwrapAsync(try await AppleTokenRevocation.find(try row.requireID(), on: db))
+        let after = try await unwrapAsync(
+            try await AppleTokenRevocation.find(try row.requireID(), on: db))
         XCTAssertEqual(after.attempts, 10)
         XCTAssertEqual(after.lastError, "500")
         XCTAssertNil(after.completedAt)
@@ -566,7 +579,7 @@ final class ScaledWorkerFlowTests: WorkerDatabaseTestCase {
         try await PushOutbox.enqueue(on: db, post: post, now: start)
 
         try await runJob("pushOutbox", at: start)
-        XCTAssertEqual(sender.deliveries.count, 2)  // everyone but the author
+        XCTAssertEqual(sender.deliveries.count, 2) // everyone but the author
 
         // The admin leaves: round 1 among the other two (S2 opens it; here by hand).
         try await Membership.query(on: db)
@@ -614,6 +627,7 @@ final class ScaledWorkerFlowTests: WorkerDatabaseTestCase {
 
         // Every loop beat.
         let beats = Set(try await WorkerHeartbeat.query(on: db).all().map(\.loop))
-        XCTAssertTrue(beats.isSuperset(of: ["pushOutbox", "votes", "expiry", "mediaFiles", "retention"]))
+        XCTAssertTrue(
+            beats.isSuperset(of: ["pushOutbox", "votes", "expiry", "mediaFiles", "retention"]))
     }
 }

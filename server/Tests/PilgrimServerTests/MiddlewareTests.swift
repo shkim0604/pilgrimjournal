@@ -153,7 +153,13 @@ final class MiddlewareTests: ServerTestCase {
     }
 
     func testEveryModuleRegisteredAndWorkerHeartbeatJobExists() {
-        XCTAssertEqual(app.workerJobs.names, ["worker"])
+        // The built-in heartbeat first, then the S5 loops (Push and Worker modules).
+        XCTAssertEqual(app.workerJobs.names.first, "worker")
+        XCTAssertTrue(
+            Set(app.workerJobs.names).isSuperset(of: [
+                "pushOutbox", "expiry", "mediaFiles", "votes", "appleRevocation", "invites",
+                "retention",
+            ]))
         XCTAssertNotNil(app.asyncCommands.commands["worker"])
     }
 }

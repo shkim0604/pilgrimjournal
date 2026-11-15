@@ -28,7 +28,8 @@ public final class LiveAPNSSender: APNSSending {
         eventLoopGroup: any EventLoopGroup
     ) throws {
         let key = try P256.Signing.PrivateKey(pemRepresentation: privateKeyPEM)
-        func client(_ environment: APNSCore.APNSEnvironment) -> APNSClient<JSONDecoder, JSONEncoder> {
+        func client(_ environment: APNSCore.APNSEnvironment) -> APNSClient<JSONDecoder, JSONEncoder>
+        {
             APNSClient(
                 configuration: APNSClientConfiguration(
                     authenticationMethod: .jwt(

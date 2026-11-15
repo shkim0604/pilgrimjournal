@@ -87,8 +87,14 @@ public enum MediaFileSweep {
 
         struct QueueRow: Decodable {
             var id: UUID
-            var file_path: String
+            var filePath: String
             var attempts: Int
+
+            enum CodingKeys: String, CodingKey {
+                case id
+                case filePath = "file_path"
+                case attempts
+            }
         }
         let queued = try await sql.raw(
             """
@@ -98,7 +104,7 @@ public enum MediaFileSweep {
         ).all(decoding: QueueRow.self)
         for row in queued {
             do {
-                try await store.delete(row.file_path)
+                try await store.delete(row.filePath)
                 try await sql.raw("DELETE FROM media_file_deletions WHERE id = \(bind: row.id)")
                     .run()
                 summary.filesDeleted += 1
@@ -115,7 +121,7 @@ public enum MediaFileSweep {
                 if row.attempts + 1 >= maximumAttempts {
                     logger.error(
                         "giving up on media file deletion",
-                        metadata: ["path": "\(row.file_path)", "error": "\(error)"])
+                        metadata: ["path": "\(row.filePath)", "error": "\(error)"])
                     try await sql.raw(
                         "DELETE FROM media_file_deletions WHERE id = \(bind: row.id)"
                     ).run()
@@ -169,8 +175,10 @@ public enum RetentionSweep {
         public var age: TimeInterval
     }
 
+    /// Reports (with their snapshots) are purged by the Moderation module (S4).
+    public static let reportRetention: TimeInterval = 90 * day
+
     public static let rules: [Rule] = [
-        Rule(table: "reports", column: "created_at", age: 90 * day),
         Rule(table: "push_outbox", column: "sent_at", age: 7 * day),
         Rule(table: "push_outbox", column: "failed_at", age: 30 * day),
         Rule(table: "daily_report_log", column: "created_at", age: 30 * day),
@@ -186,6 +194,8 @@ public enum RetentionSweep {
     public static func run(on db: any Database, now: Date) async throws -> [String: Int] {
         let sql = try Sweep.sql(db)
         var removed: [String: Int] = [:]
+        removed["reports.created_at"] = try await ModerationService.purgeExpiredReportSnapshots(
+            on: db, now: now, retention: reportRetention)
         for rule in rules {
             let cutoff = now.addingTimeInterval(-rule.age)
             let count = try await Sweep.repeatBatches(batchSize: 1_000) {

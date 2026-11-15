@@ -96,12 +96,13 @@ Phase 2에서만 고친다. Phase 1 작업끼리는 맡는 파일이 겹치지 �
 
 ### S5 worker — `server/Sources/App/Worker/**`, `server/Sources/App/Push/**`
 
-- [ ] 1.5.1 루프 실행기(advisory lock, heartbeat, 간격)
-- [ ] 1.5.2 기한 삭제, 사진 파일 큐, 붙지 않은 업로드 정리, 초대·보관 기간 정리
-- [ ] 1.5.3 투표 마감·재투표·무작위·유예 삭제(`AdminVoteRules`), 결과 알림
-- [ ] 1.5.4 outbox 발송(`APNSSending` 프로토콜과 가짜 sender), 두 번들 topic, 환경, 무효 토큰 정리, 재시도
-- [ ] 1.5.5 Apple 토큰 폐기 재시도
-- [ ] 1.5.6 축소 TTL로 전체 흐름 테스트
+- [x] 1.5.1 루프 실행기(advisory lock, heartbeat, 간격)
+- [x] 1.5.2 기한 삭제, 사진 파일 큐, 붙지 않은 업로드 정리, 초대·보관 기간 정리
+- [x] 1.5.3 투표 마감·재투표·무작위·유예 삭제(`AdminVoteRules`), 결과 알림
+- [x] 1.5.4 outbox 발송(`APNSSending` 프로토콜과 가짜 sender), 두 번들 topic, 환경, 무효 토큰 정리, 재시도
+- [x] 1.5.5 Apple 토큰 폐기 재시도
+- [x] 1.5.6 축소 TTL로 전체 흐름 테스트
+      (S5 때 로컬 Docker가 응답하지 않아 worker Postgres 테스트는 컴파일만 확인했고 CI `server` job에서 처음 돈다)
 
 ### A1 JournalGroups — `Sources/JournalGroups/**`(T0.2 파일 제외), `Tests/JournalGroupsTests/**`, `Sources/JournalGroups/Resources/Localizable.xcstrings`
 

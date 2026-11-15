@@ -121,10 +121,17 @@ public struct LiveAppleTokenRevoker: AppleTokenRevoking {
         -> AppleRevocationResult
     {
         struct Form: Content {
-            var client_id: String
-            var client_secret: String
+            var clientId: String
+            var clientSecret: String
             var token: String
-            var token_type_hint: String
+            var tokenTypeHint: String
+
+            enum CodingKeys: String, CodingKey {
+                case clientId = "client_id"
+                case clientSecret = "client_secret"
+                case token
+                case tokenTypeHint = "token_type_hint"
+            }
         }
         struct ErrorBody: Decodable {
             var error: String?
@@ -136,8 +143,8 @@ public struct LiveAppleTokenRevoker: AppleTokenRevoking {
             let response = try await client.post(Self.endpoint) { request in
                 try request.content.encode(
                     Form(
-                        client_id: clientID, client_secret: secret, token: refreshToken,
-                        token_type_hint: "refresh_token"),
+                        clientId: clientID, clientSecret: secret, token: refreshToken,
+                        tokenTypeHint: "refresh_token"),
                     as: .urlEncodedForm)
             }
             if response.status == .ok { return .revoked }
@@ -202,9 +209,16 @@ public enum AppleRevocationSweep {
         let sql = try Sweep.sql(db)
         struct DueRow: Decodable {
             var id: UUID
-            var client_id: String
-            var refresh_token_ciphertext: Data
+            var clientId: String
+            var refreshTokenCiphertext: Data
             var attempts: Int
+
+            enum CodingKeys: String, CodingKey {
+                case id
+                case clientId = "client_id"
+                case refreshTokenCiphertext = "refresh_token_ciphertext"
+                case attempts
+            }
         }
         let due = try await sql.raw(
             """
@@ -227,7 +241,7 @@ public enum AppleRevocationSweep {
             let attempt = row.attempts + 1
             let token: String
             do {
-                token = try cipher.open(row.refresh_token_ciphertext)
+                token = try cipher.open(row.refreshTokenCiphertext)
             } catch {
                 // Retrying cannot fix a wrong key or a damaged row.
                 try await sql.raw(
@@ -241,7 +255,7 @@ public enum AppleRevocationSweep {
                 summary.failed += 1
                 continue
             }
-            switch await revoker.revoke(refreshToken: token, clientID: row.client_id, now: now) {
+            switch await revoker.revoke(refreshToken: token, clientID: row.clientId, now: now) {
             case .revoked:
                 try await sql.raw(
                     """
