@@ -97,7 +97,8 @@ enum AuthModule {
         guard (1...64).contains(body.devUser.count),
             body.devUser.allSatisfy({ devUserCharacters.contains($0) })
         else {
-            throw APIError.validationFailed(field: "devUser", "devUser must be 1–64 of [A-Za-z0-9._-]")
+            throw APIError.validationFailed(
+                field: "devUser", "devUser must be 1–64 of [A-Za-z0-9._-]")
         }
         guard req.pilgrimConfig.allowedBundleIDs.contains(body.bundleId) else {
             throw APIError.invalidRequest("unknown bundleId")

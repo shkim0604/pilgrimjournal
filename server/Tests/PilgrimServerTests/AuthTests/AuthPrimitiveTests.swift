@@ -24,7 +24,8 @@ final class AuthPrimitiveTests: XCTestCase {
         let now = Date()
         let issued = try service.issue(userID: UUID(), sessionID: UUID(), now: now)
         XCTAssertThrowsError(
-            try service.verify(issued.token, now: now.addingTimeInterval(SessionLifetime.accessToken + 1))
+            try service.verify(
+                issued.token, now: now.addingTimeInterval(SessionLifetime.accessToken + 1))
         ) { XCTAssertEqual(($0 as? APIError)?.code, .tokenExpired) }
     }
 
@@ -78,12 +79,14 @@ final class AuthPrimitiveTests: XCTestCase {
         XCTAssertTrue(
             key.publicKey.isValidSignature(signature, for: Data("\(parts[0]).\(parts[1])".utf8)))
 
-        let header = try JSONSerialization.jsonObject(
-            with: try XCTUnwrap(Data(base64URLEncoded: parts[0]))) as? [String: Any]
+        let header =
+            try JSONSerialization.jsonObject(
+                with: try XCTUnwrap(Data(base64URLEncoded: parts[0]))) as? [String: Any]
         XCTAssertEqual(header?["alg"] as? String, "ES256")
         XCTAssertEqual(header?["kid"] as? String, "KEY1234567")
-        let claims = try JSONSerialization.jsonObject(
-            with: try XCTUnwrap(Data(base64URLEncoded: parts[1]))) as? [String: Any]
+        let claims =
+            try JSONSerialization.jsonObject(
+                with: try XCTUnwrap(Data(base64URLEncoded: parts[1]))) as? [String: Any]
         XCTAssertEqual(claims?["iss"] as? String, "TEAM123456")
         XCTAssertEqual(claims?["sub"] as? String, BundleIDs.debug)
         XCTAssertEqual(claims?["aud"] as? String, "https://appleid.apple.com")

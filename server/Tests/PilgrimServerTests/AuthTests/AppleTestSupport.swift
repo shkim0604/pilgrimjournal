@@ -75,7 +75,8 @@ enum AppleTestTokens {
     static func token(
         sub: String = "001234.apple-test-user", aud: String = BundleIDs.release,
         iss: String = AppleIdentityTokenVerifier.issuer, kid: String = AppleTestKeys.firstKID,
-        signingKeyPEM: String? = nil, nonce: String? = AppleIdentityTokenVerifier.nonceHash(rawNonce),
+        signingKeyPEM: String? = nil,
+        nonce: String? = AppleIdentityTokenVerifier.nonceHash(rawNonce),
         expiresIn: TimeInterval = 600, now: Date = Date()
     ) throws -> String {
         let pem =

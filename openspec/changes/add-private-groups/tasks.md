@@ -60,13 +60,13 @@ Phase 2에서만 고친다. Phase 1 작업끼리는 맡는 파일이 겹치지 �
 
 ### S1 인증·계정 — `server/Sources/App/Auth/**`, `server/Sources/App/Account/**`
 
-- [ ] 1.1.1 Apple identityToken 검증(가짜 JWKS로 테스트: iss·aud 두 번들·exp·nonce·kid 갱신)
-- [ ] 1.1.2 code 교환(가짜 Apple 토큰 엔드포인트), 실패 시 502, Apple refresh token AES-GCM 저장
-- [ ] 1.1.3 access JWT, refresh 회전, 재사용 감지(family 폐기), 같은 기기 30초 유예, 로그아웃
-- [ ] 1.1.4 개발 로그인과 운영 설정 시작 거부
-- [ ] 1.1.5 `GET/PATCH /me`(이름·프로필 사진·시간대·리포트 시각), 가입 전 403, 정지 403
-- [ ] 1.1.6 기기 등록·삭제(토큰 이동 정리), 차단·숨김 목록 조회 라우트는 S4
-- [ ] 1.1.7 `DELETE /me`: 투표 시작·그룹 삭제·폐기 대기열·cascade·`alreadyDeleted` 테스트
+- [x] 1.1.1 Apple identityToken 검증(가짜 JWKS로 테스트: iss·aud 두 번들·exp·nonce·kid 갱신)
+- [x] 1.1.2 code 교환(가짜 Apple 토큰 엔드포인트), 실패 시 502, Apple refresh token AES-GCM 저장
+- [x] 1.1.3 access JWT, refresh 회전, 재사용 감지(family 폐기), 같은 기기 30초 유예, 로그아웃
+- [x] 1.1.4 개발 로그인과 운영 설정 시작 거부
+- [x] 1.1.5 `GET/PATCH /me`(이름·프로필 사진·시간대·리포트 시각), 가입 전 403, 정지 403
+- [x] 1.1.6 기기 등록·삭제(토큰 이동 정리), 차단·숨김 목록 조회 라우트는 S4
+- [x] 1.1.7 `DELETE /me`: 투표 시작·그룹 삭제·폐기 대기열·cascade·`alreadyDeleted` 테스트
 
 ### S2 그룹·초대·투표 — `server/Sources/App/Groups/**`, `Invites/**`, `Votes/**`, `Web/**`
 

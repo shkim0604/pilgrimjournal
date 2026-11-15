@@ -120,7 +120,7 @@ final class AccountRouteTests: DatabaseTestCase {
         XCTAssertEqual(me?.profileComplete, true)
         XCTAssertEqual(me?.timeZone, "America/New_York")
         XCTAssertEqual(me?.dailyReportEnabled, false)
-        let stored = try await XCTUnwrapAsync(try await User.find(user.id, on: db))
+        let stored = try await unwrapAsync(try await User.find(user.id, on: db))
         XCTAssertEqual(stored.dailyReportMinute, 7 * 60 + 30)
     }
 
@@ -163,7 +163,7 @@ final class AccountRouteTests: DatabaseTestCase {
         XCTAssertEqual(attached.0, .ok)
         XCTAssertEqual(attached.1?.profilePhoto?.id, first.id)
         XCTAssertEqual(attached.1?.profilePhoto?.width, 800)
-        let firstRow = try await XCTUnwrapAsync(try await Media.find(first.id, on: db))
+        let firstRow = try await unwrapAsync(try await Media.find(first.id, on: db))
         XCTAssertNotNil(firstRow.attachedAt)
 
         let second = try await fixtures.media(uploadedBy: user, in: nil, purpose: .profile)
@@ -190,7 +190,8 @@ final class AccountRouteTests: DatabaseTestCase {
         XCTAssertEqual(notMine.2?.code, .notFound)
         let missing = try await patchMe(UpdateMeRequest(profilePhotoId: UUID()), as: user)
         XCTAssertEqual(missing.2?.code, .notFound)
-        let wrongPurpose = try await patchMe(UpdateMeRequest(profilePhotoId: postPhoto.id), as: user)
+        let wrongPurpose = try await patchMe(
+            UpdateMeRequest(profilePhotoId: postPhoto.id), as: user)
         XCTAssertEqual(wrongPurpose.2?.code, .mediaNotAttachable)
         let both = try await patchMe(
             UpdateMeRequest(profilePhotoId: othersPhoto.id, removeProfilePhoto: true), as: user)

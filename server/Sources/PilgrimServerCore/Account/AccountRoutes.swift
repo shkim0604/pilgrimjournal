@@ -13,7 +13,8 @@ enum AccountRoutes {
     static func register(_ app: Application) {
         let routes = app.pilgrimRoutes
         let me = routes.authenticated.grouped("me")
-        let loaded = me.grouped(AccountStateMiddleware(requiresSignup: false, allowsSuspended: true))
+        let loaded = me.grouped(
+            AccountStateMiddleware(requiresSignup: false, allowsSuspended: true))
         let editable = me.grouped(
             AccountStateMiddleware(requiresSignup: false, allowsSuspended: false))
 

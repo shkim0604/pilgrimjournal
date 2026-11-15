@@ -10,7 +10,8 @@ public enum MeResponseBuilder {
         let userID = try user.requireID()
         var photo: MediaRef?
         if let mediaID = user.$profileMedia.id, let media = try await Media.find(mediaID, on: db) {
-            let signer = MediaURLSigner(secret: config.mediaURLSecret, baseURL: config.publicBaseURL)
+            let signer = MediaURLSigner(
+                secret: config.mediaURLSecret, baseURL: config.publicBaseURL)
             let signed = signer.signedURL(for: mediaID, now: now)
             photo = MediaRef(
                 id: mediaID, width: media.width, height: media.height, byteCount: media.byteCount,
@@ -21,7 +22,8 @@ public enum MeResponseBuilder {
             profileComplete: user.profileComplete, timeZone: user.timeZone,
             dailyReportEnabled: user.dailyReportEnabled, dailyReportTime: user.dailyReportTime,
             // An indefinite suspension has no end date; report it as far in the future.
-            suspendedUntil: user.isSuspended(at: now) ? (user.suspendedUntil ?? .distantFuture) : nil,
+            suspendedUntil: user.isSuspended(at: now)
+                ? (user.suspendedUntil ?? .distantFuture) : nil,
             createdAt: user.createdAt ?? now,
             entitlement: try await entitlement(for: userID, on: db, config: config, now: now))
     }

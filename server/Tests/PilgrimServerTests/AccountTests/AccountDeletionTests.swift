@@ -37,10 +37,10 @@ final class AccountDeletionTests: DatabaseTestCase {
         XCTAssertEqual(result.groupsDeleted, [try solo.requireID()])
 
         // Vote opened among the others, round 1, 3 days.
-        let votingGroup = try await XCTUnwrapAsync(try await Group.find(voting.id, on: db))
+        let votingGroup = try await unwrapAsync(try await Group.find(voting.id, on: db))
         XCTAssertEqual(votingGroup.status, .voting)
         XCTAssertNil(votingGroup.$admin.id)
-        let vote = try await XCTUnwrapAsync(
+        let vote = try await unwrapAsync(
             try await AdminVote.query(on: db).filter(\.$group.$id == voting.requireID()).first())
         XCTAssertEqual(vote.round, 1)
         XCTAssertEqual(Set(vote.candidateIDs), Set([try a.requireID(), try b.requireID()]))
@@ -50,21 +50,20 @@ final class AccountDeletionTests: DatabaseTestCase {
             AdminVoteRules.roundLength(1, dayLength: AppConfig.defaultDayLength), accuracy: 1)
 
         // Sole remaining member becomes admin.
-        let appointedGroup = try await XCTUnwrapAsync(try await Group.find(appointed.id, on: db))
+        let appointedGroup = try await unwrapAsync(try await Group.find(appointed.id, on: db))
         XCTAssertEqual(appointedGroup.$admin.id, c.id)
         XCTAssertEqual(appointedGroup.status, .active)
 
         // Empty group deleted; a group I only belonged to is untouched.
         let soloGone = try await Group.find(solo.id, on: db)
         XCTAssertNil(soloGone)
-        let other = try await XCTUnwrapAsync(try await Group.find(notMine.id, on: db))
+        let other = try await unwrapAsync(try await Group.find(notMine.id, on: db))
         XCTAssertEqual(other.$admin.id, a.id)
 
-        // Pushes: voteStarted to a and b, voteDecided to c, none to me.
+        // voteStarted goes to the voting group's remaining members, never to me.
         let pushes = try await PushOutboxEntry.query(on: db).all()
         XCTAssertEqual(
-            Set(pushes.map { $0.$recipient.id }),
-            Set([try a.requireID(), try b.requireID(), try c.requireID()]))
+            Set(pushes.map { $0.$recipient.id }), Set([try a.requireID(), try b.requireID()]))
 
         // The user and everything hanging off them is gone.
         let user = try await User.find(me.id, on: db)
@@ -126,7 +125,7 @@ final class AccountDeletionTests: DatabaseTestCase {
         let result = try await deleteMe(me)
         XCTAssertEqual(result.groupsHandedToVote, [])
         XCTAssertEqual(result.groupsDeleted, [])
-        let stored = try await XCTUnwrapAsync(try await Group.find(group.id, on: db))
+        let stored = try await unwrapAsync(try await Group.find(group.id, on: db))
         XCTAssertEqual(stored.status, .pendingDeletion)
         let votes = try await AdminVote.query(on: db).count()
         XCTAssertEqual(votes, 0)

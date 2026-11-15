@@ -84,20 +84,21 @@ final class AuthRouteTests: DatabaseTestCase {
         XCTAssertNil(session.user.displayName)
         XCTAssertEqual(session.user.entitlement, .notRequired)
 
-        let user = try await XCTUnwrapAsync(
+        let user = try await unwrapAsync(
             try await User.query(on: db).filter(\.$appleSub == Self.appleSub).first())
         XCTAssertEqual(session.user.id, user.id)
         let stored = try await AppleToken.query(on: db).all()
         XCTAssertEqual(stored.count, 1)
         XCTAssertEqual(stored.first?.clientID, BundleIDs.release)
         XCTAssertEqual(
-            try app.authServices.appleTokenCipher.decrypt(try XCTUnwrap(stored.first)
-                .refreshTokenCiphertext),
+            try app.authServices.appleTokenCipher.decrypt(
+                try XCTUnwrap(stored.first)
+                    .refreshTokenCiphertext),
             Self.appleRefreshToken)
 
         // The access token works on an authenticated route.
-        try await app.test(.GET, "api/v1/me", headers: clientHeaders(bearer: session.accessToken))
-        { res async throws in
+        try await app.test(.GET, "api/v1/me", headers: clientHeaders(bearer: session.accessToken)) {
+            res async throws in
             XCTAssertEqual(res.status, .ok)
             XCTAssertEqual(try decode(MeResponse.self, from: res).id, user.id)
         }
@@ -223,7 +224,7 @@ final class AuthRouteTests: DatabaseTestCase {
         let installation = UUID()
         let first = try await signIn(try signInRequest(installationID: installation))
         _ = try await rotated(first.refreshToken, installationID: installation)
-        let old = try await XCTUnwrapAsync(
+        let old = try await unwrapAsync(
             try await RefreshToken.query(on: db)
                 .filter(\.$tokenHash == SessionService.hash(refreshToken: first.refreshToken))
                 .first())
@@ -340,7 +341,7 @@ final class DevLoginRouteTests: DatabaseTestCase {
         let first = try await devSignIn("alice")
         let second = try await devSignIn("alice")
         XCTAssertEqual(first.user.id, second.user.id)
-        let user = try await XCTUnwrapAsync(try await User.find(first.user.id, on: db))
+        let user = try await unwrapAsync(try await User.find(first.user.id, on: db))
         XCTAssertEqual(user.appleSub, "dev:alice")
         XCTAssertNoThrow(
             try app.authServices.accessTokens.verify(first.accessToken, now: Date()))
@@ -354,19 +355,12 @@ final class DevLoginDisabledTests: ServerTestCase {
             .POST, "api/v1/auth/dev", headers: try headers(),
             beforeRequest: { req in
                 try req.content.encode(
-                    DevSignInRequest(devUser: "alice", bundleId: BundleIDs.debug, installationId: UUID()),
+                    DevSignInRequest(
+                        devUser: "alice", bundleId: BundleIDs.debug, installationId: UUID()),
                     as: .json)
             }
         ) { res async throws in
             XCTAssertEqual(res.status, .notFound)
         }
     }
-}
-
-/// `XCTUnwrap` for an expression evaluated with `await` first.
-func XCTUnwrapAsync<T>(
-    _ value: @autoclosure () async throws -> T?, file: StaticString = #filePath, line: UInt = #line
-) async throws -> T {
-    let resolved = try await value()
-    return try XCTUnwrap(resolved, file: file, line: line)
 }
