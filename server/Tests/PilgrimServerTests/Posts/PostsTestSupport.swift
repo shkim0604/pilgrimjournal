@@ -14,7 +14,7 @@ typealias APIPage = PilgrimAPI.Page
 
 extension ServerTestCase {
     /// Sends `/api/v1/<path>` (a path, optionally with a percent-encoded query) as `user`.
-    func send(
+    func sendV1(
         _ method: HTTPMethod, _ path: String, as user: User?, body: Data? = nil,
         file: StaticString = #filePath, line: UInt = #line
     ) async throws -> XCTHTTPResponse {
@@ -36,11 +36,11 @@ extension ServerTestCase {
         }
     }
 
-    func send(
+    func sendV1(
         _ method: HTTPMethod, _ path: String, as user: User?, json: some Encodable,
         file: StaticString = #filePath, line: UInt = #line
     ) async throws -> XCTHTTPResponse {
-        try await send(
+        try await sendV1(
             method, path, as: user, body: try PilgrimJSON.encode(json), file: file, line: line)
     }
 
@@ -67,7 +67,7 @@ extension DatabaseTestCase {
         _ request: CreatePostRequest, in group: Group, as user: User,
         file: StaticString = #filePath, line: UInt = #line
     ) async throws -> XCTHTTPResponse {
-        try await send(
+        try await sendV1(
             .POST, "groups/\(try group.requireID())/posts", as: user, json: request, file: file,
             line: line)
     }

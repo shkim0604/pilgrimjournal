@@ -12,7 +12,7 @@ final class CommentAndReactionTests: DatabaseTestCase {
         _ body: String, on post: Post, as user: User, clientId: UUID = UUID(),
         media: [UUID] = [], sticker: UUID? = nil
     ) async throws -> XCTHTTPResponse {
-        try await send(
+        try await sendV1(
             .POST, "posts/\(try post.requireID())/comments", as: user,
             json: CreateCommentRequest(
                 clientId: clientId, body: body, mediaIds: media, stickerId: sticker))
@@ -45,14 +45,15 @@ final class CommentAndReactionTests: DatabaseTestCase {
             var path = "posts/\(try post.requireID())/comments?limit=2"
             if let cursor { path += "&cursor=\(cursor)" }
             let page = try decode(
-                APIPage<CommentResponse>.self, from: try await send(.GET, path, as: bob))
+                APIPage<CommentResponse>.self, from: try await sendV1(.GET, path, as: bob))
             bodies += page.items.map(\.body)
             cursor = page.nextCursor
         } while cursor != nil && bodies.count < 20
         XCTAssertEqual(bodies, ["아멘", "댓글 0", "댓글 1", "댓글 2", "댓글 3"], "oldest first")
 
         let detail = try decode(
-            PostResponse.self, from: try await send(.GET, "posts/\(try post.requireID())", as: bob))
+            PostResponse.self,
+            from: try await sendV1(.GET, "posts/\(try post.requireID())", as: bob))
         XCTAssertEqual(detail.commentCount, 5)
     }
 
@@ -92,7 +93,7 @@ final class CommentAndReactionTests: DatabaseTestCase {
         try await sticker.delete(on: db)
         let page = try decode(
             APIPage<CommentResponse>.self,
-            from: try await send(.GET, "posts/\(try post.requireID())/comments", as: alice))
+            from: try await sendV1(.GET, "posts/\(try post.requireID())/comments", as: alice))
         XCTAssertEqual(page.items.first?.sticker, nil)
         XCTAssertEqual(page.items.first?.stickerRemoved, true)
 
@@ -113,16 +114,16 @@ final class CommentAndReactionTests: DatabaseTestCase {
         try await fixtures.hide(user: carol, by: alice)
         let page = try decode(
             APIPage<CommentResponse>.self,
-            from: try await send(.GET, "posts/\(try post.requireID())/comments", as: alice))
+            from: try await sendV1(.GET, "posts/\(try post.requireID())/comments", as: alice))
         XCTAssertEqual(page.items, [])
         let detail = try decode(
             PostResponse.self,
-            from: try await send(.GET, "posts/\(try post.requireID())", as: alice))
+            from: try await sendV1(.GET, "posts/\(try post.requireID())", as: alice))
         XCTAssertEqual(detail.commentCount, 0)
         // Carol, who blocked nobody, still sees both.
         let carolPage = try decode(
             APIPage<CommentResponse>.self,
-            from: try await send(.GET, "posts/\(try post.requireID())/comments", as: carol))
+            from: try await sendV1(.GET, "posts/\(try post.requireID())/comments", as: carol))
         XCTAssertEqual(carolPage.items.count, 2)
     }
 
@@ -138,18 +139,18 @@ final class CommentAndReactionTests: DatabaseTestCase {
             CommentResponse.self, from: try await comment("캐롤", on: post, as: carol))
 
         try assertError(
-            try await send(.DELETE, "comments/\(bobs.id)", as: carol), 403, .forbidden)
-        assertStatus(try await send(.DELETE, "comments/\(bobs.id)", as: bob), .noContent)
-        try assertError(try await send(.DELETE, "comments/\(bobs.id)", as: bob), 404, .notFound)
+            try await sendV1(.DELETE, "comments/\(bobs.id)", as: carol), 403, .forbidden)
+        assertStatus(try await sendV1(.DELETE, "comments/\(bobs.id)", as: bob), .noContent)
+        try assertError(try await sendV1(.DELETE, "comments/\(bobs.id)", as: bob), 404, .notFound)
 
         try await setStatus(.voting, of: group)
         try assertError(
-            try await send(.DELETE, "comments/\(carols.id)", as: admin), 409,
+            try await sendV1(.DELETE, "comments/\(carols.id)", as: admin), 409,
             .adminVoteInProgress)
         try await setStatus(.active, of: group)
         group.$admin.id = try admin.requireID()
         try await group.save(on: db)
-        assertStatus(try await send(.DELETE, "comments/\(carols.id)", as: admin), .noContent)
+        assertStatus(try await sendV1(.DELETE, "comments/\(carols.id)", as: admin), .noContent)
     }
 
     // MARK: - Reactions
@@ -157,7 +158,7 @@ final class CommentAndReactionTests: DatabaseTestCase {
     private func react(_ key: ReactionKey, on post: Post, as user: User) async throws
         -> XCTHTTPResponse
     {
-        try await send(
+        try await sendV1(
             .PUT, "posts/\(try post.requireID())/reactions", as: user,
             json: ReactionRequest(key: key))
     }
@@ -188,18 +189,18 @@ final class CommentAndReactionTests: DatabaseTestCase {
         // Removing: by query, twice is fine.
         let path = "posts/\(try post.requireID())/reactions?emoji=%F0%9F%99%8F"
         let removed = try decode(
-            [ReactionSummary].self, from: try await send(.DELETE, path, as: bob))
+            [ReactionSummary].self, from: try await sendV1(.DELETE, path, as: bob))
         XCTAssertEqual(
             removed.first, ReactionSummary(key: .emoji("🙏"), count: 1, reactedByMe: false))
-        assertStatus(try await send(.DELETE, path, as: bob), .ok)
+        assertStatus(try await sendV1(.DELETE, path, as: bob), .ok)
         try assertError(
-            try await send(.DELETE, "posts/\(try post.requireID())/reactions", as: bob), 400,
+            try await sendV1(.DELETE, "posts/\(try post.requireID())/reactions", as: bob), 400,
             .invalidRequest)
 
         // The post response carries the same summaries.
         let detail = try decode(
             PostResponse.self,
-            from: try await send(.GET, "posts/\(try post.requireID())", as: alice))
+            from: try await sendV1(.GET, "posts/\(try post.requireID())", as: alice))
         XCTAssertEqual(detail.reactions.count, 2)
     }
 

@@ -78,7 +78,7 @@ final class PostRoutesAuthTests: ServerTestCase {
             (.DELETE, "posts/\(id)/reactions?emoji=%F0%9F%99%8F"),
         ]
         for (method, path) in routes {
-            let response = try await send(method, path, as: nil)
+            let response = try await sendV1(method, path, as: nil)
             try assertError(response, 401, .unauthenticated)
         }
     }

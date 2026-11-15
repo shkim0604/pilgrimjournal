@@ -60,7 +60,7 @@ final class PostRoutesTests: DatabaseTestCase {
         try assertError(
             try await createPost(PostRequests.testimony(), in: group, as: outsider), 404,
             .notFound)
-        let missing = try await send(
+        let missing = try await sendV1(
             .POST, "groups/\(UUID())/posts", as: alice, json: PostRequests.testimony())
         try assertError(missing, 404, .notFound)
 
@@ -80,19 +80,19 @@ final class PostRoutesTests: DatabaseTestCase {
         let newcomer = try await fixtures.user(nil)
         try await fixtures.join(newcomer, group)
         try assertError(
-            try await send(.GET, "groups/\(try group.requireID())/posts", as: newcomer), 403,
+            try await sendV1(.GET, "groups/\(try group.requireID())/posts", as: newcomer), 403,
             .signupRequired)
 
         alice.suspendedAt = Date()
         alice.suspendedUntil = Date().addingTimeInterval(3_600)
         try await alice.save(on: db)
         try assertError(
-            try await send(.GET, "groups/\(try group.requireID())/posts", as: alice), 403,
+            try await sendV1(.GET, "groups/\(try group.requireID())/posts", as: alice), 403,
             .accountSuspended)
         alice.suspendedUntil = Date().addingTimeInterval(-1)
         try await alice.save(on: db)
         assertStatus(
-            try await send(.GET, "groups/\(try group.requireID())/posts", as: alice), .ok)
+            try await sendV1(.GET, "groups/\(try group.requireID())/posts", as: alice), .ok)
     }
 
     func testPhotosAttachOnceToTheirUploader() async throws {
@@ -199,7 +199,7 @@ final class PostRoutesTests: DatabaseTestCase {
         repeat {
             var path = "groups/\(try group.requireID())/posts?limit=2"
             if let cursor { path += "&cursor=\(cursor)" }
-            let response = try await send(.GET, path, as: alice)
+            let response = try await sendV1(.GET, path, as: alice)
             XCTAssertEqual(response.status, .ok, response.body.string)
             let page = try decode(APIPage<PostResponse>.self, from: response)
             seen += page.items.map(\.id)
@@ -209,7 +209,7 @@ final class PostRoutesTests: DatabaseTestCase {
         XCTAssertEqual(seen.count, 7)
         XCTAssertEqual(Set(seen), Set(ids), "the expired post is left out")
 
-        let all = try await send(.GET, "groups/\(try group.requireID())/posts", as: alice)
+        let all = try await sendV1(.GET, "groups/\(try group.requireID())/posts", as: alice)
         let items = try decode(APIPage<PostResponse>.self, from: all).items
         XCTAssertEqual(items.map(\.id), seen)
         XCTAssertEqual(
@@ -225,21 +225,21 @@ final class PostRoutesTests: DatabaseTestCase {
         let alicePost = try await fixtures.post(by: alice, in: group)
 
         let feedPath = "groups/\(try group.requireID())/posts"
-        try assertError(try await send(.GET, feedPath, as: outsider), 404, .notFound)
+        try assertError(try await sendV1(.GET, feedPath, as: outsider), 404, .notFound)
         try assertError(
-            try await send(.GET, "posts/\(try bobPost.requireID())", as: outsider), 404,
+            try await sendV1(.GET, "posts/\(try bobPost.requireID())", as: outsider), 404,
             .notFound)
 
-        let detail = try await send(.GET, "posts/\(try bobPost.requireID())", as: alice)
+        let detail = try await sendV1(.GET, "posts/\(try bobPost.requireID())", as: alice)
         XCTAssertEqual(detail.status, .ok)
         XCTAssertEqual(try decode(PostResponse.self, from: detail).author.displayName, "밥")
 
         try await fixtures.block(bob, alice)
         let feed = try decode(
-            APIPage<PostResponse>.self, from: try await send(.GET, feedPath, as: alice))
+            APIPage<PostResponse>.self, from: try await sendV1(.GET, feedPath, as: alice))
         XCTAssertEqual(feed.items.map(\.id), [try alicePost.requireID()])
         try assertError(
-            try await send(.GET, "posts/\(try bobPost.requireID())", as: alice), 404, .notFound)
+            try await sendV1(.GET, "posts/\(try bobPost.requireID())", as: alice), 404, .notFound)
     }
 
     func testUnreadIsOtherPeoplesPostsSinceLastSeen() async throws {
@@ -257,7 +257,7 @@ final class PostRoutesTests: DatabaseTestCase {
 
         let feed = try decode(
             APIPage<PostResponse>.self,
-            from: try await send(.GET, "groups/\(groupID)/posts", as: alice))
+            from: try await sendV1(.GET, "groups/\(groupID)/posts", as: alice))
         let unread = Dictionary(uniqueKeysWithValues: feed.items.map { ($0.id, $0.isUnread) })
         XCTAssertEqual(unread[try fresh.requireID()], true)
         XCTAssertEqual(unread[try old.requireID()], false)
@@ -284,30 +284,30 @@ final class PostRoutesTests: DatabaseTestCase {
         _ = try await fixtures.media(uploadedBy: bob, in: group, post: bobPost)
 
         try assertError(
-            try await send(.DELETE, "posts/\(try bobPost.requireID())", as: carol), 403,
+            try await sendV1(.DELETE, "posts/\(try bobPost.requireID())", as: carol), 403,
             .forbidden)
         assertStatus(
-            try await send(.DELETE, "posts/\(try bobPost.requireID())", as: bob), .noContent)
+            try await sendV1(.DELETE, "posts/\(try bobPost.requireID())", as: bob), .noContent)
         let mediaLeft = try await Media.query(on: db).count()
         XCTAssertEqual(mediaLeft, 0, "photos go with the post")
         let queued = try await MediaFileDeletion.query(on: db).count()
         XCTAssertEqual(queued, 1, "the trigger queues the file")
         try assertError(
-            try await send(.DELETE, "posts/\(try bobPost.requireID())", as: bob), 404, .notFound)
+            try await sendV1(.DELETE, "posts/\(try bobPost.requireID())", as: bob), 404, .notFound)
 
         let carolPost = try await fixtures.post(by: carol, in: group)
         assertStatus(
-            try await send(.DELETE, "posts/\(try carolPost.requireID())", as: admin), .noContent)
+            try await sendV1(.DELETE, "posts/\(try carolPost.requireID())", as: admin), .noContent)
 
         // While a vote is open nobody is admin; authors still delete their own.
         let another = try await fixtures.post(by: carol, in: group)
         try await setStatus(.voting, of: group)
         try assertError(
-            try await send(.DELETE, "posts/\(try another.requireID())", as: admin), 409,
+            try await sendV1(.DELETE, "posts/\(try another.requireID())", as: admin), 409,
             .adminVoteInProgress)
         try await setStatus(.pendingDeletion, of: group)
         assertStatus(
-            try await send(.DELETE, "posts/\(try another.requireID())", as: carol), .noContent)
+            try await sendV1(.DELETE, "posts/\(try another.requireID())", as: carol), .noContent)
     }
 
     // MARK: - Extend
@@ -322,7 +322,7 @@ final class PostRoutesTests: DatabaseTestCase {
 
         let clientID = UUID()
         let path = "posts/\(created.id)/extend"
-        let first = try await send(
+        let first = try await sendV1(
             .POST, path, as: bob, json: ExtendPostRequest(clientId: clientID))
         XCTAssertEqual(first.status, .created, first.body.string)
         let extended = try decode(PostResponse.self, from: first)
@@ -330,12 +330,12 @@ final class PostRoutesTests: DatabaseTestCase {
         XCTAssertEqual(
             extended.expiresAt.timeIntervalSince(created.expiresAt), 7 * 86_400, accuracy: 0.001)
 
-        let repeated = try await send(
+        let repeated = try await sendV1(
             .POST, path, as: bob, json: ExtendPostRequest(clientId: clientID))
         XCTAssertEqual(repeated.status, .ok)
         XCTAssertEqual(try decode(PostResponse.self, from: repeated).extensionCount, 1)
 
-        let again = try await send(
+        let again = try await sendV1(
             .POST, path, as: alice, json: ExtendPostRequest(clientId: UUID()))
         XCTAssertEqual(try decode(PostResponse.self, from: again).extensionCount, 2)
         let rows = try await PostExtension.query(on: db).count()
@@ -343,13 +343,13 @@ final class PostRoutesTests: DatabaseTestCase {
 
         let testimony = try await fixtures.post(by: alice, in: group)
         try assertError(
-            try await send(
+            try await sendV1(
                 .POST, "posts/\(try testimony.requireID())/extend", as: bob,
                 json: ExtendPostRequest(clientId: UUID())), 422, .extendNotAllowed)
 
         try await setStatus(.pendingDeletion, of: group)
         try assertError(
-            try await send(.POST, path, as: bob, json: ExtendPostRequest(clientId: UUID())), 409,
+            try await sendV1(.POST, path, as: bob, json: ExtendPostRequest(clientId: UUID())), 409,
             .groupPendingDeletion)
     }
 }
