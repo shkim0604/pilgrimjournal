@@ -160,9 +160,9 @@ Phase 2에서만 고친다. Phase 1 작업끼리는 맡는 파일이 겹치지 �
 
 ### A4 올리기 연결 — `Sources/PilgrimJournal/Share/**`, `Sources/JournalShareDrafts/Deadline*.swift`, `Sources/ShareCardEval/EvalCalendar.swift`, `Entry/EntryDetailView.swift`, `Entry/MacEntryEditorView.swift`, `EntryRowViews.swift`
 
-- [ ] 2.4.1 `DatePhraseResolver`를 `JournalShareDrafts`로 옮기고(`Calendar` 주입) `DeadlineSuggester` 추가
-- [ ] 2.4.2 기도제목 시트에 "그룹에 올리기"(그룹 선택, 데드라인 제안, 공개 기간)
-- [ ] 2.4.3 독후감·간증: 기록 내용·책 정보·사진을 채운 작성 화면으로 열기(진입점 3곳)
+- [x] 2.4.1 `DatePhraseResolver`를 `JournalShareDrafts`로 옮기고(`Calendar` 주입) `DeadlineSuggester` 추가
+- [x] 2.4.2 기도제목 시트에 "그룹에 올리기"(그룹 선택, 데드라인 제안, 공개 기간)
+- [x] 2.4.3 독후감·간증: 기록 내용·책 정보·사진을 채운 작성 화면으로 열기(진입점 3곳)
 
 ### A5 계정 삭제 — `Sources/JournalData/AccountDeletionService.swift`, `Sources/PilgrimJournal/AppleAuthenticationCoordinator.swift`, `Sources/PilgrimJournal/AccountDeletionViews.swift`, `Sources/PilgrimJournal/Groups/GroupAccountErasure.swift`
 
