@@ -200,9 +200,13 @@ Phase 2에서만 고친다. Phase 1 작업끼리는 맡는 파일이 겹치지 �
 
 ### A8 구독 UI — `Sources/PilgrimJournal/Groups/Subscription/**`, `PilgrimJournal/PilgrimJournal.storekit`
 
-- [ ] 2.8.1 PR #27 코드 이식(상품 ID 바꿈), 구독 화면, 구매(`appAccountToken`), 복원
-- [ ] 2.8.2 JWS를 서버로(실행 때, `Transaction.updates`), entitlement가 꺼져 있으면 화면 건너뜀
-- [ ] 2.8.3 StoreKit 테스트 설정 파일로 테스트
+- [x] 2.8.1 PR #27 코드 이식(상품 ID 바꿈), 구독 화면, 구매(`appAccountToken`), 복원
+- [x] 2.8.2 JWS를 서버로(실행 때, `Transaction.updates`), entitlement가 꺼져 있으면 화면 건너뜀 — 판단은
+      `GroupSubscriptionPolicy` 순수 함수. Phase 2 배선: 세션이 보여 주는 `GroupsController`마다
+      `GroupSubscriptionController.shared.attach(to:)`, `GroupsSidebarSection`의 자리 시트를
+      `GroupSubscriptionSheet()`로, 앱 scheme에 `PilgrimJournal.storekit` 연결
+- [x] 2.8.3 StoreKit 테스트 설정 파일로 테스트 — 설정 파일 검사와 상품 불러오기는 iOS 시뮬레이터에서 돈다. 구매
+      테스트는 앱이 호스트하는 테스트 번들이 필요해(`xctest`에는 StoreKit이 거래를 주지 않음) 그 전까지 건너뛴다
 
 ### I1 인프라 — `server/Makefile`, `server/docker-compose*.yml`, `server/scripts/**`, `server/.env.*.example`, `PilgrimJournal/PilgrimJournal/PilgrimJournal.entitlements`, `PilgrimJournal/PilgrimJournal/iOS-Info.plist`, `web/admin/docker-compose.yml`
 
