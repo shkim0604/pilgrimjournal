@@ -31,6 +31,11 @@ struct AccountDeletionView: View {
                 Text("삭제한 기록과 첨부는 되돌릴 수 없습니다.")
             }
 
+            // Only while groups are on: `AppModel.groups` is nil otherwise.
+            if let groups = journalSession.appModel?.groups {
+                GroupAccountDeletionSection(groups: groups)
+            }
+
             Section("삭제 전에 확인하세요") {
                 #if os(macOS)
                 Label("필요하면 먼저 전체 백업을 내보내세요", systemImage: "externaldrive")
@@ -82,6 +87,11 @@ struct AccountDeletionView: View {
         .scrollContentBackground(.hidden)
         .background(JournalTheme.canvas)
         .navigationTitle("계정 삭제")
+        .task {
+            if let groups = journalSession.appModel?.groups {
+                await GroupAccountDeletionSection.load(groups)
+            }
+        }
         .confirmationDialog(
             "계정과 모든 데이터를 삭제할까요?",
             isPresented: $isConfirming,
@@ -101,6 +111,52 @@ struct AccountDeletionView: View {
     private var isUsingLocalOnlyStorage: Bool {
         journalSession.activeScope?.storageLocation == .localOnly
             && journalSession.pendingMigration == nil
+    }
+}
+
+/// The group part of the deletion screen: the group-server account goes first, groups I run
+/// move to a member vote, and an App Store subscription is not cancelled for the user.
+/// Hidden until a group profile is loaded (never signed in, or the server is unreachable).
+private struct GroupAccountDeletionSection: View {
+    @ObservedObject var groups: GroupsController
+
+    var body: some View {
+        let notice = GroupAccountDeletionNotice(me: groups.me, groups: groups.groups)
+        if notice.hasGroupAccount {
+            Section {
+                Label("그룹 서버의 내 계정과 내가 올린 글, 댓글, 반응, 스티커, 사진", systemImage: "person.3")
+                if notice.adminGroupCount > 0 {
+                    Label(
+                        "내가 관리하는 그룹 \(notice.adminGroupCount)개는 멤버 투표로 다음 관리자를 정해요",
+                        systemImage: "person.crop.circle.badge.checkmark"
+                    )
+                    Text("남은 멤버가 한 명이면 그 사람이 바로 관리자가 되고, 아무도 없으면 그룹이 삭제돼요.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+                if notice.hasAppStoreSubscription {
+                    Label("구독은 App Store 설정에서 직접 해지해야 해요", systemImage: "creditcard")
+                    Text("계정을 삭제해도 App Store 구독은 자동으로 해지되지 않아요.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                    Link(
+                        "App Store 구독 관리 열기",
+                        destination: GroupAccountDeletionNotice.manageSubscriptionsURL)
+                }
+            } header: {
+                Text("그룹")
+            } footer: {
+                Text("그룹 서버의 계정을 가장 먼저 지웁니다. 그룹 로그인이 만료됐다면 Apple 인증을 한 번 더 요청해요.")
+            }
+        }
+    }
+
+    /// Fresh counts: the sidebar may not have loaded the groups this launch.
+    static func load(_ groups: GroupsController) async {
+        await groups.loadAccount()
+        if groups.accountState.hasGroupAccess {
+            await groups.refresh()
+        }
     }
 }
 
