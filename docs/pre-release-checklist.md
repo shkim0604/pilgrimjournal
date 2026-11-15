@@ -10,6 +10,46 @@
 
 ## 미룬 항목 (재개 필요)
 
+- [ ] **비공개 그룹 — 실기기 확인** (2026-11-15, 브랜치 `feat/groups`, openspec
+      `add-private-groups`). Phase 1(서버 S1~S8, 앱 A1~A8, 인프라 I1, 콘솔 W1)이 합쳐졌다. 확인한
+      것은 자동 테스트와 서명 없는 빌드뿐이고, 앱은 아직 `PreviewGroupAPI`(가짜 서버)를 쓴다.
+      Phase 2 연결(`docs/implementation-todo.md` "비공개 그룹 — Phase 2 통합") 뒤에
+      `docs/device-verification.md` 세션 H로 확인한다. **아래는 모두 하지 않았다.**
+      - 실기기 푸시: 새 글 푸시가 잠금 화면에 기도 내용 없이 오는지, 탭이 앱 잠금 뒤 글을 여는지,
+        Debug(sandbox)·TestFlight(production) 각각, Daily Report 시각 (H-4).
+      - 그룹 서버로 보내는 Sign in with Apple: nonce 재인증, 다른 Apple ID 거부, code 교환과
+        Apple refresh token 저장 (H-1).
+      - 초대 Universal Link: AASA가 두 앱 ID로 열리는지, 앱이 꺼진·잠긴·미가입 상태, QR, 앱 없는
+        기기의 `/i/<코드>` 페이지에 그룹 정보가 없는지 (H-2).
+      - 스크랩: "스크랩" 유형과 노트북 생성, 사진·댓글, 두 번째 기기로 iCloud 동기화, 1.1.0~1.2.x
+        기기에서 사용자 유형처럼 보이는지 (H-7). CloudKit 스키마 변경 없음 — 스키마 배포 불필요.
+      - 원격 삭제가 든 계정 삭제: 그룹 서버를 가장 먼저 지우고, 실패하면 iCloud·로컬 삭제 전에
+        멈추는지, 관리 그룹 투표, Apple 토큰 폐기로 설정의 "Apple로 로그인" 목록에서 연결이
+        끊기는지 (H-8). App Review 5.1.1(v) 대응이므로 B-3도 이 빌드로 다시 돈다.
+      - StoreKit 샌드박스: 구매·복원·서버 JWS 검증·Notifications V2(Sandbox)·만료 처리,
+        `SUBSCRIPTION_REQUIRED=false`에서 구독 화면이 안 뜨는지 (H-9).
+      - 신고 → 콘솔 신고 페이지(스냅샷·삭제·정지), 차단·숨김의 기기 간 맞춤 (H-5), 위임 투표 (H-6),
+        서버가 꺼졌을 때 기록장이 그대로인지 (H-10).
+      - macOS 서명 빌드의 푸시 entitlement(`aps-environment`를 macOS가 받는지).
+      - 기록 화면에 진입점(그룹에 올리기)을 더했으므로 다음 TestFlight 전에
+        [에디터 입력 릴리스 게이트](known-issues.md#에디터-입력-릴리스-게이트)를 이 빌드로 돈다.
+
+- [ ] **비공개 그룹 — 운영·출시 준비** (2026-11-15, 브랜치 `feat/groups`). 절차는
+      `docs/development.md` "그룹 서버". **아래는 모두 하지 않았다.**
+      - 맥미니: 공유 네트워크 `pilgrim-edge`, `server/.env.prod` 비밀 값, `make -C server deploy`,
+        R2 버킷·전용 토큰, `brew install restic`, 백업 설정과 `make backup-init`·
+        `make backup-schedule`, 개발 Mac으로 `make restore ARGS='--into dev'` 복원 연습.
+      - 터널: `^/(api/|i/|\.well-known/)` → 3100 규칙을 콘솔 규칙 **위에**, Cloudflare 봇 규칙에서
+        `/api`·`/.well-known` 예외, 인터넷에서 `/internal/admin/v1`이 서버에 닿지 않는지.
+      - Apple: 두 App ID에 Push Notifications·Associated Domains, Sign in with Apple 키·APNs 키·
+        In-App Purchase 키, App Store Server Notifications V2 URL, 구독 상품.
+      - 콘솔: `web/admin/.env`에 서버와 같은 `ADMIN_API_TOKEN`, 콘솔이 `pilgrim-edge`에 있는지.
+      - CI `server` job에서 Postgres 테스트가 전부 통과하는지(Phase 1 상당수는 컴파일만 확인).
+      - 문서 밖: App Store 개인정보 라벨, 지원 사이트의 개인정보 처리방침·그룹 이용약관
+        (`docs/privacy.md` "그룹 서버"), App Store ID가 정해지면 `/i/:code`의 App Store 링크.
+      - 출시 순서: main에는 서버·CI 먼저, 앱은 Release `GroupsFeature.isEnabled = false`.
+        `aps-environment`·`applinks` entitlement는 1.2.0 출시 뒤에 main으로.
+
 - [ ] **기도제목 나누기 — 실기기 확인과 출시 기준** (2026-11-12, 브랜치
       `feat/prayer-request-share`). 절차는 `docs/device-verification.md` 세션 G.
       - **한 것(iOS 26.2 시뮬레이터뿐):** 시트가 직접 쓰기로 열림, 복사 결과가

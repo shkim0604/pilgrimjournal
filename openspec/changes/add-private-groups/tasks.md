@@ -226,11 +226,13 @@ Phase 2에서만 고친다. Phase 1 작업끼리는 맡는 파일이 겹치지 �
 
 ### D1 문서 — `docs/**`, `CLAUDE.md`
 
-- [ ] 2.11.1 `docs/privacy.md`: 서버 저장 항목, 사진, 구독, Cloudflare, 백업·보관 기간, 콘솔이 사용자 데이터를 다룸,
+- [x] 2.11.1 `docs/privacy.md`: 서버 저장 항목, 사진, 구독, Cloudflare, 백업·보관 기간, 콘솔이 사용자 데이터를 다룸,
       신고 스냅샷 90일, 스크랩이 남의 글을 내 iCloud에 둠, Apple 토큰 폐기
-- [ ] 2.11.2 `docs/roadmap.md`(사이드바 "그룹", 이번 범위 반영), `docs/pre-release-checklist.md`,
+      ("그룹 서버" 절, 계정 삭제 2단계는 Phase 2 `remoteEraser` 연결 전이라고 적음)
+- [x] 2.11.2 `docs/roadmap.md`(사이드바 "그룹", 이번 범위 반영), `docs/pre-release-checklist.md`,
       `docs/device-verification.md`(새 세션), `docs/development.md`(서버 운영, 터널, Apple·APNs 키, StoreKit),
       `docs/implementation-todo.md`, `CLAUDE.md`(server·PilgrimAPI·JournalGroups)
+      (세션 H, 체크리스트 두 항목은 모두 미확인, todo "비공개 그룹 — Phase 2 통합"·"서버 정리와 확인할 결정")
 
 ## 3. Phase 2: 통합 (순서대로)
 

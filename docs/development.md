@@ -7,6 +7,9 @@
   `com.dhouse.PilgrimJournal.debug` (Debug)
 - CloudKit container: `iCloud.com.dhouse.PilgrimJournal` (두 구성 공통. Debug 서명은
   Development 환경만 쓴다)
+- 그룹 서버: `https://pilgrim.delight-house.org/api/v1` (개발: `http://localhost:3100/api/v1`).
+  두 bundle identifier를 Apple 토큰 검증·AASA·APNs topic·StoreKit 검증에서 모두 받는다.
+- 그룹 구독 상품: `com.dhouse.PilgrimJournal.groups.monthly` (월간 자동 갱신)
 
 Debug 빌드는 설치된 릴리스 앱과 나란히 실행해도 구분되도록 bundle identifier에
 `.debug`가 붙는다(2026-11-05). 그래서 Debug 빌드는:
@@ -36,9 +39,17 @@ iOS와 macOS target 모두에 다음 capability가 필요하다.
    - 동일한 private container 선택
 3. Background Modes
    - Remote notifications 활성화
+4. Push Notifications (그룹 새 글·Daily Report 푸시, `feat/groups`)
+5. Associated Domains: `applinks:pilgrim.delight-house.org` (그룹 초대 Universal Link `/i/*`)
 
 저장소의 `PilgrimJournal.entitlements`에는 Sign in with Apple, CloudKit private
-container와 iCloud key-value store entitlement가 포함되어 있다. 실제 로그인과
+container와 iCloud key-value store entitlement가 포함되어 있다. `feat/groups`에는
+`aps-environment`(`development`)와 `applinks:pilgrim.delight-house.org`도 있다. 이 두
+entitlement는 1.2.0 출시 뒤에 main에 넣는다(openspec `add-private-groups` Migration Plan).
+Apple Developer에서 두 App ID(`com.dhouse.PilgrimJournal`, `.debug`) 모두에 Push
+Notifications와 Associated Domains를 켜야 서명된다. macOS도 같은 entitlements 파일을 쓰는데,
+macOS 푸시 키는 `com.apple.developer.aps-environment`라 서명한 macOS 빌드에서 확인이 필요하다
+(필요하면 `CODE_SIGN_ENTITLEMENTS[sdk=macosx*]`로 파일을 나눈다). 실제 로그인과
 CloudKit은 소유한 Apple Developer Team과 provisioning profile로 서명해야 하며
 `CODE_SIGNING_ALLOWED=NO` 빌드는 UI·컴파일 검증만 가능하다.
 
@@ -207,7 +218,14 @@ swift run ShareCardEval --json /tmp/share-card-run.json
   있음, 간증, 제3자 사정) ② 기도제목이 있으면 `@Generable`로 짧은 값(요약·날짜 표현·
   날짜)만 뽑고 ③ 카드 문장은 자유 텍스트로 따로 받는다 ④ 작성일 기준 달력 힌트(내일,
   이번/다음 주 요일별 날짜, 이번/다음 달 말)를 코드가 계산해 넣고, 모델이 뽑은 날짜
-  표현은 `DatePhraseResolver`가 먼저 해석한다 — 해석 못 하면 모델 날짜를 쓴다 ⑤
+  표현은 `DatePhraseResolver`가 먼저 해석한다 — 해석 못 하면 모델 날짜를 쓴다. 해석기는
+  2026-11-14에 `ShareCardEval`에서 `JournalShareDrafts`(`DeadlinePhraseResolver.swift`,
+  `Calendar`를 주입받는 `DeadlineCalendar`)로 옮겼다. 앱은 같은 해석기로 그룹에 올리는
+  기도제목의 데드라인을 제안하고(`DeadlineSuggester`: 선택한 줄에서 먼저, 없으면 기록 본문
+  문장에서, 오늘~365일 안의 가장 늦은 날, "매주" 같은 반복은 건너뜀), 실험실은 서울 달력으로
+  부른다(`EvalCalendar.swift`). 해석 규칙을 바꾸면 `DatePhraseResolverTests`
+  (`Tests/ShareCardEvalTests`)와 `DeadlineSuggesterTests`(`Tests/JournalShareDraftsTests`)를
+  함께 돌린다 ⑤
   `SystemLanguageModel(guardrails: .permissiveContentTransformations)`, greedy
   샘플링, `guardrailViolation`은 "추천 건너뜀"으로 기록한다.
 - **출력:** 기록별 PASS/FAIL과 검사 항목, 호출 수·지연 시간, 마지막에 요약 점수
@@ -257,8 +275,10 @@ swift run ShareCardEval --json /tmp/share-card-run.json
 
 `pilgrim.delight-house.org/admin`에서 대시보드(출시 게이트·남은 일·최근 커밋·바로가기),
 데이터베이스(SwiftData 스키마), 아키텍처(SwiftPM 타깃 그래프·모듈 설명·저장 위치),
-앱 플로우(Mermaid 흐름도)를 보는 개발자 전용 읽기 전용 콘솔이다. 사용자 기록·Apple 식별자·
-이메일·iCloud 정보는 받지도 저장하지도 않는다(`docs/privacy.md`). 설계는
+앱 플로우(Mermaid 흐름도)를 보는 개발자 전용 콘솔이다. 기록장 기록·이메일·iCloud 정보는
+받지 않는다. 예외는 그룹 기능의 **신고** 페이지로, 그룹 서버의 운영자 API에서 신고 스냅샷·
+원본·사진을 그때그때 받아 보여 주고 삭제·정지·처리 완료를 보낸다(저장하지 않음,
+`docs/privacy.md` "운영자 콘솔과 신고", 아래 "그룹 서버" › "관리 콘솔 연결"). 설계는
 `docs/archive/superpowers/specs/2026-11-06-admin-console-design.md`.
 
 ### 스냅샷
@@ -341,6 +361,207 @@ npm test && npm run typecheck
 - 대시보드는 `docs/pre-release-checklist.md`의 최상위 `- [ ]`/`- [x]` 줄과
   `docs/implementation-todo.md` "## 대기 중" 절의 `- **제목**` 줄을 읽는다. 형식을 바꾸면 화면에
   "파싱 실패"가 뜬다.
+
+## 그룹 서버 (`server/`)
+
+비공개 그룹의 서버다. 설계와 운영 결정은 `docs/group-server.md`, API·스키마·worker·제한의
+원본은 `openspec/changes/add-private-groups/design.md`. 앱의 루트 `Package.swift`와 분리된
+패키지라 `swift build`/`scripts/check.sh`는 Vapor를 컴파일하지 않는다.
+
+| 위치 | 내용 |
+| --- | --- |
+| `server/PilgrimAPI/` | Foundation만 쓰는 계약 패키지(DTO, `APIErrorCode`, `PostExpiryPolicy`·`AdminVoteRules`·`PhotoLimits`·`InviteCode`). 앱(`JournalGroups`)과 서버가 함께 쓴다 |
+| `server/Sources/PilgrimServerCore/` | Vapor 앱 로직(모듈별 폴더, 마이그레이션, worker 루프) |
+| `server/Sources/PilgrimServer/` | 진입점: `serve` / `worker` / `migrate` |
+| `server/Tests/PilgrimServerTests/` | 서버 테스트. Postgres 테스트는 `TEST_DATABASE_URL`이 있을 때만 돈다 |
+| `server/Makefile`, `docker-compose*.yml`, `Dockerfile` | 로컬·운영 실행(arm64 이미지 하나로 api·worker·migrate) |
+| `server/scripts/` | 백업·복원(restic → R2)과 launchd 설치 |
+
+### 테스트
+
+```sh
+swift test --package-path server/PilgrimAPI     # 계약 패키지 (scripts/check.sh도 돌린다)
+make -C server test                             # 계약 + 서버 테스트, Postgres는 Docker
+swift test --package-path server                # Postgres 없이: DB 테스트는 건너뛴다
+```
+
+- `make -C server test`는 dev Postgres 컨테이너(`127.0.0.1:5433`)만 띄우고 `pilgrim_test` DB를
+  만든 뒤 `TEST_DATABASE_URL=postgres://pilgrim:pilgrim@127.0.0.1:5433/pilgrim_test?sslmode=disable`로
+  돌린다. 다른 Postgres를 쓰려면 `TEST_DATABASE_URL`을 직접 준다. 하네스는 프로세스마다 스키마를
+  지웠다 다시 만들고 테스트마다 TRUNCATE하므로, 이름에 `test`가 없는 DB는 거부한다.
+- CI의 `server` job(Linux `swift:6.2-noble`, Postgres 17 서비스)은 `TEST_DATABASE_URL`을 넣어 DB
+  테스트를 필수로 돌린다. Phase 1 작업 때는 로컬 Docker가 응답하지 않아 Postgres 테스트 상당수
+  (T0.4·S2·S5·S7·S8)를 컴파일만 확인했다 — 실제 통과는 이 job이나 `make -C server test`로 확인한다
+  (openspec tasks 3.3).
+- `scripts/check.sh`는 `server/`(PilgrimAPI 포함) 소스에도 `swift format lint --strict`를 돌고
+  `swift test --package-path server/PilgrimAPI`를 돌린다. Vapor 서버 빌드·테스트는 하지 않는다.
+
+### 로컬 개발 (`make dev`)
+
+```sh
+make -C server dev        # .env.dev가 없으면 .env.dev.example을 복사, 이미지 빌드, 마이그레이션, api·worker
+make -C server dev-logs   # api·worker 로그
+make -C server dev-down
+curl -s http://127.0.0.1:3100/api/health
+```
+
+- compose 프로젝트 `pilgrim-dev`. api는 `127.0.0.1:3100`, Postgres는 `127.0.0.1:5433`.
+  `dev`·`test`·`prod`는 먼저 공유 네트워크 `pilgrim-edge`를 만든다(`make -C server edge-network`,
+  멱등).
+- `.env.dev`(gitignore)는 버리는 개발 값뿐이다. `DEV_LOGIN_ENABLED=true`라 `POST /api/v1/auth/dev`가
+  열린다 — Debug 앱을 `PILGRIM_DEV_APPLE_USER=<아무 이름>`으로 직접 실행하면 Apple 인증 대신
+  이것으로 그룹에 로그인한다(`apple_sub = dev:<이름>`). Apple 키는 비워 두면 된다. 실제 Apple
+  로그인·푸시·App Store를 로컬에서 시험할 때만 아래 키를 넣는다.
+- `TIME_SCALE_DAY_SECONDS`를 줄이면(예 `10`) 기한·투표·유예·초대 만료의 "하루"가 그 초가 된다
+  (7일 글이 70초 뒤 사라진다). 운영 설정에서는 서버가 시작을 거부한다.
+- 앱 쪽: `GroupServerConfiguration`에 운영 주소와 `localDevelopment()`(localhost:3100),
+  `PILGRIM_GROUP_SERVER_URL` 형식의 값을 읽는 생성자가 있다. **지금 앱 세션은
+  `PreviewGroupAPI`(메모리 안 가짜 서버)를 쓴다** — 실제 클라이언트(`URLSessionGroupAPI`)로
+  바꾸고 서버 주소를 빌드 설정에서 읽는 일은 Phase 2(openspec tasks 3.2)다.
+
+### 운영 배포 (맥미니)
+
+```sh
+make -C server deploy     # 개발 Mac에서: rsync → 맥미니에서 make prod health → 터널 너머 /api/health
+make -C server prod       # 맥미니에서: Postgres → 이미지 빌드 → migrate → api·worker 재생성
+make -C server prod-logs | prod-ps | prod-down | health
+```
+
+- 맥미니는 `~/.ssh/config`의 `delight`(`DEPLOY_HOST`), 배포 폴더는 `~/Developments/pilgrim-server`
+  (`DEPLOY_DIR`, git checkout 아님, `~/Documents` 밖). `rsync --delete`가 폴더를 관리하고
+  `.env.*`는 어느 쪽에서도 복사·삭제하지 않는다.
+- compose 프로젝트 `pilgrim-prod`(놀담 `noldam-prod`과 프로젝트·Postgres·볼륨·`.env.prod`·백업·
+  launchd 작업 모두 분리). api만 `127.0.0.1:3100`에 열고 Postgres는 포트를 열지 않는다. 사진은
+  `media` 볼륨(`/data/media`).
+- `make prod`는 마이그레이션이 실패하면 거기서 멈춰 옛 api가 계속 돈다. 맥미니 compose가 새 빌드
+  뒤에도 옛 컨테이너를 둔 적이 있어 api·worker는 항상 `--force-recreate`한다. Postgres는 다시
+  만들지 않는다.
+- 터널 경로 규칙을 넣기 전에는 `make -C server deploy DEPLOY_HEALTH_URL=`로 공개 확인을 건너뛴다.
+
+### 운영 설정 (`server/.env.prod`)
+
+맥미니 배포 폴더에서 `cp .env.prod.example .env.prod`, 값을 채우고 `chmod 600 .env.prod`.
+**커밋하지 않는다.** 모든 비밀 값은 운영자 암호 관리자에도 둔다(다른 곳에서 복원할 때 필요).
+이름은 `server/Sources/PilgrimServerCore/Common/AppConfig.swift`와 같다.
+
+| 변수 | 내용 |
+| --- | --- |
+| `POSTGRES_USER`·`POSTGRES_PASSWORD`·`POSTGRES_DB` | compose가 `DATABASE_URL`을 만든다(비밀번호는 영문·숫자만) |
+| `APP_ENV=production`, `PUBLIC_BASE_URL`, `LOG_LEVEL` | `APP_VERSION`은 `make deploy`가 넣는다 |
+| `JWT_SECRET`, `MEDIA_URL_SECRET` | 32바이트 이상. 없으면 운영 설정에서 시작을 거부한다 |
+| `ADMIN_API_TOKEN` | 운영자 라우트 `X-Admin-Token`. 비우면 그 라우트가 없다(404). 콘솔 `web/admin/.env`와 같은 값 |
+| `DEV_LOGIN_ENABLED=false`, `TIME_SCALE_DAY_SECONDS=86400` | 다르면 운영 설정에서 시작을 거부한다 |
+| `SUBSCRIPTION_REQUIRED=false` | 출시 값. 구독을 켤 때만 `true` |
+| `MIN_CLIENT_VERSION` | 이보다 낮은 앱은 426. 비우면 제한 없음 |
+| `REPORT_WEBHOOK_URL` | 선택. 새 신고를 본문 없이 알린다 |
+| `APPLE_TEAM_ID`, `APPLE_SIWA_KEY_ID`, `APPLE_SIWA_PRIVATE_KEY` | Sign in with Apple 키(code 교환·토큰 폐기) |
+| `APPLE_TOKEN_ENC_KEY` | 32바이트(`openssl rand -hex 32`). 잃으면 저장된 Apple 토큰을 못 열어 계정 삭제 때 폐기할 수 없다 |
+| `APNS_KEY_ID`, `APNS_PRIVATE_KEY` | APNs 인증 키 하나가 sandbox·production, 두 번들을 모두 맡는다 |
+| `APPSTORE_ISSUER_ID`, `APPSTORE_KEY_ID`, `APPSTORE_PRIVATE_KEY` | In-App Purchase 키(App Store Server API 재확인) |
+| `RATE_LIMIT_<이름>=<횟수>/<초>` | 비우면 `PilgrimAPI` 기본값 |
+
+비밀 값은 각각 따로 만든다(`openssl rand -hex 32`). `.p8` 내용은 줄바꿈을 `\n`으로 바꿔 한 줄로
+넣는다: `awk 'NF {printf "%s\\n", $0}' AuthKey_XXXXXXXXXX.p8`.
+
+### Apple 키와 App Store Connect
+
+- **Sign in with Apple 키:** Certificates, Identifiers & Profiles › Keys에서 Sign in with Apple을
+  켜고 primary App ID `com.dhouse.PilgrimJournal`에 묶는다(Debug App ID는 같은 그룹에 묶여 있어야
+  한다, 위 "식별자"). 서버는 이 키로 ES256 client secret을 만들어 code 교환과 `/auth/revoke`를 한다.
+- **APNs 키:** 같은 화면에서 Apple Push Notifications service를 켠 키. topic은 기기 행의 번들 ID,
+  환경은 앱이 등록 때 보낸 값(Debug·TestFlight 구분)이다.
+- **In-App Purchase 키:** App Store Connect › 사용자 및 액세스 › 통합 › In-App Purchase. Issuer ID도
+  같은 화면에 있다.
+- **App Store Server Notifications V2:** 앱 정보의 서버 URL(Production·Sandbox 모두)을
+  `https://pilgrim.delight-house.org/api/appstore/notifications`로 둔다.
+- 구독 상품 `com.dhouse.PilgrimJournal.groups.monthly`(월간, ₩2,000 / $1.99 가격 단계)를 App Store
+  Connect에 만든다.
+- `.p8` 파일은 저장소에 넣지 않는다. `server/.env.prod`와 운영자 암호 관리자에만 둔다.
+
+### Cloudflare Tunnel
+
+`pilgrim.delight-house.org` 하나를 콘솔과 나눠 쓴다. 터널에 그룹 서버 경로 규칙을 **콘솔 규칙보다
+앞에** 넣는다(`docs/group-server.md` "터널").
+
+- 로컬 `~/.cloudflared/config.yml`이면(지금 맥미니) `ingress`의 콘솔 항목 위에:
+
+  ```yaml
+  - hostname: pilgrim.delight-house.org
+    path: ^/(api/|i/|\.well-known/)
+    service: http://localhost:3100
+  - hostname: pilgrim.delight-house.org
+    service: http://localhost:8420
+  ```
+
+  `cloudflared tunnel --config ~/.cloudflared/config.yml ingress validate`로 확인하고 재시작한다
+  (재시작 중 같은 터널을 쓰는 SSH와 noldam API도 잠깐 끊긴다, 위 "관리 콘솔" 5단계).
+- 대시보드 관리형이거나 콘솔 compose의 `cloudflared`(`--profile tunnel`)를 쓰면 Public Hostname에
+  같은 호스트·같은 path로 `http://pilgrim-api:3100` 규칙을 콘솔 규칙 위에 둔다.
+- Cloudflare 봇 차단·챌린지 규칙이 `/api`와 `/.well-known`을 막지 않게 예외를 둔다(앱 요청과
+  Apple의 AASA 요청).
+- `/internal/admin/v1`은 규칙에 없으므로 인터넷에서 오면 콘솔로 가 404가 된다. 서버도 `Cf-Ray`·
+  `Cf-Connecting-IP`가 붙은 요청을 403으로 거부한다.
+- 확인: `curl -s https://pilgrim.delight-house.org/api/health`, `curl -sI
+  https://pilgrim.delight-house.org/.well-known/apple-app-site-association`(JSON, 리디렉트 없음),
+  `https://pilgrim.delight-house.org/admin`이 여전히 콘솔인지.
+
+### 백업과 복원 (restic → Cloudflare R2)
+
+맥미니에서 매일 04:00 DB 덤프와 사진 볼륨을 restic 스냅샷 하나로 R2에 올리고 7일 넘은 것을 지운다
+(`--keep-within 7d`, 개인정보 처리방침의 "최대 7일"). 로컬 덤프도 `~/backups/pilgrim/db`에 7개 남는다.
+
+1. `brew install restic`.
+2. 설정: `mkdir -p ~/.config/pilgrim-backup && cp server/scripts/backup.env.example
+   ~/.config/pilgrim-backup/env && chmod 600 ~/.config/pilgrim-backup/env`. `RESTIC_REPOSITORY`
+   (R2 S3 엔드포인트), 이 버킷에만 쓰기 권한이 있는 R2 토큰(`AWS_ACCESS_KEY_ID`·
+   `AWS_SECRET_ACCESS_KEY`), restic 비밀번호(`RESTIC_PASSWORD_FILE` 또는 `RESTIC_PASSWORD_COMMAND`),
+   선택으로 `BACKUP_HEALTHCHECK_URL`. restic 비밀번호는 맥미니 밖에도 보관한다 — 없으면 백업을
+   읽을 수 없다.
+3. 맥미니 배포 폴더에서:
+
+   ```sh
+   make backup-init        # R2에 restic 저장소 만들기 (한 번, 이미 있으면 그대로)
+   make backup             # 지금 한 번 백업
+   make backup-schedule    # 매일 04:00 launchd 작업 설치 (com.dhouse.pilgrim.backup)
+   make backup-snapshots   # 스냅샷 목록
+   make backup-unschedule
+   ```
+
+4. 복원(`server/scripts/restore.sh --help`):
+
+   ```sh
+   make restore ARGS='--into dev'                                   # 최신 스냅샷을 개발 Mac 로컬 스택에
+   make restore ARGS='--into prod --confirm pilgrim-prod --snapshot <ID>'
+   ```
+
+   `--into dev`는 worker를 멈춘 채 둔다(`--start-worker`로만 켠다) — 복원한 푸시 대기열이나 Apple
+   토큰 폐기 대기열이 개발 기기에서 실제 사용자에게 가지 않게. 복원 중 임시 폴더는 개인정보를
+   담으므로 끝나면 지운다. 한 달에 한 번 개발 Mac에서 `--into dev`로 복원해 본다.
+
+### 관리 콘솔 연결 (신고 페이지)
+
+- 콘솔(`web/admin`, 프로젝트 `pilgrim-admin`)과 api가 공유 Docker 네트워크 `pilgrim-edge`에 함께
+  있고, 콘솔은 `http://pilgrim-api:3100/internal/admin/v1`을 부른다. 네트워크를 먼저 만든다
+  (`make -C server edge-network`).
+- 콘솔 `web/admin/.env`에 `ADMIN_API_TOKEN`(서버 `.env.prod`와 같은 값, 32바이트 이상)을 넣는다.
+  주소가 다르면 `ADMIN_API_URL`(기본 `http://pilgrim-api:3100`). 토큰 없이 주소만 있으면 콘솔이
+  시작을 거부한다. 지금 `web/admin/.env.example`에는 이 두 줄이 없다(Phase 2에서 더한다).
+- 조치마다 콘솔이 로그인한 관리자 이름을 `X-Admin-Actor`로 보내 서버 `moderation_log`에 남는다.
+
+### StoreKit 테스트 설정
+
+- `PilgrimJournal/PilgrimJournal.storekit`에 구독 그룹과 `com.dhouse.PilgrimJournal.groups.monthly`
+  (P1M, ₩2,000)가 있다. 설정 파일 검사는 iOS 시뮬레이터 테스트
+  (`GroupSubscriptionStoreKitTests`)에서 돈다. 상품 불러오기와 구매 테스트는 앱이 호스트하는 테스트
+  번들이 필요해(`xctest`에는 StoreKit이 상품·거래를 주지 않을 수 있다) 상품이 오지 않으면 건너뛴다 —
+  CI의 시뮬레이터에서는 건너뛰고 로컬 시뮬레이터에서는 상품 불러오기가 통과한 적이 있다.
+- **아직 연결 전(Phase 2):** 앱 scheme(`PilgrimJournalApp.xcscheme`)의 Run에 이 파일을 StoreKit
+  Configuration으로 지정하지 않았고, `GroupSubscriptionController.shared.attach(to:)`와 사이드바의
+  구독 시트(`GroupSubscriptionSheet`)도 연결 전이다. 지정한 뒤에는 Xcode에서 Debug로 실행해 로컬
+  StoreKit으로 구매를 시험하고, 샌드박스 계정 시험은 서명한 기기 빌드에서 한다
+  (`docs/device-verification.md` 세션 H).
+- 서버 쪽 검증은 `SUBSCRIPTION_REQUIRED`와 상관없이 돈다. 구독 화면과 402 차단은 `true`일 때만
+  보인다.
 
 ## 릴리스 아카이브
 
