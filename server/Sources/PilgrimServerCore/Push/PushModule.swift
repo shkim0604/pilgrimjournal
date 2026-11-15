@@ -8,5 +8,17 @@ import Vapor
 /// exist, in both `serve` and `worker`. Only edit files in this folder.
 enum PushModule {
     static func register(_ app: Application) throws {
+        try app.installLiveAPNSSenderIfConfigured()
+        app.workerJobs.register(
+            WorkerJob(
+                name: "pushOutbox", lockKey: WorkerLockKey.pushOutbox,
+                interval: WorkerInterval.pushOutbox
+            ) { context in
+                try await PushOutboxSender.run(
+                    on: context.db, sender: context.application.apnsSender,
+                    allowedBundleIDs: context.config.allowedBundleIDs,
+                    isProduction: context.config.isProduction, now: context.now,
+                    logger: context.logger)
+            })
     }
 }
