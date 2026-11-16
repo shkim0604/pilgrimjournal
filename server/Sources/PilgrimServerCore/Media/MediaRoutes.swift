@@ -33,7 +33,7 @@ enum MediaRoutes {
         if let groupID = fields.groupID {
             try await MediaAccountCheck.requireGroupMember(user, req)
             let (group, _) = try await GroupAccess.memberGroup(groupID, viewer: viewer, on: req.db)
-            try ContentAccess.requireWritable(group)
+            try GroupAccess.requireWritable(group)
         }
         let signer = MediaURLSigner(config: req.pilgrimConfig)
 

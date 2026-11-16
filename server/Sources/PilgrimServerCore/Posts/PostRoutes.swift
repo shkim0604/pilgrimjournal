@@ -17,7 +17,7 @@ enum PostRoutes {
     /// `GET /groups/:id/posts?cursor&limit` → `Page<PostResponse>`, newest first.
     @Sendable static func feed(_ req: Request) async throws -> Response {
         let viewer = try req.userID
-        let groupID = try ContentAccess.uuidParameter(req, "id")
+        let groupID = try GroupAccess.uuidParameter("id", of: req)
         let membership = try await ContentVisibility.requireMembership(
             of: viewer, in: groupID, on: req.db)
         let page = try PageRequest.parse(req)
@@ -43,7 +43,7 @@ enum PostRoutes {
     /// `clientId`, with the first post).
     @Sendable static func create(_ req: Request) async throws -> Response {
         let viewer = try req.userID
-        let groupID = try ContentAccess.uuidParameter(req, "id")
+        let groupID = try GroupAccess.uuidParameter("id", of: req)
         let membership = try await ContentVisibility.requireMembership(
             of: viewer, in: groupID, on: req.db)
         let request = try req.content.decode(CreatePostRequest.self)
@@ -57,8 +57,8 @@ enum PostRoutes {
                     .first()
             },
             create: { db in
-                let group = try await ContentAccess.group(groupID, on: db)
-                try ContentAccess.requireWritable(group)
+                let group = try await GroupAccess.group(groupID, on: db)
+                try GroupAccess.requireWritable(group)
                 let now = Date()
                 let valid = try PostRules.validate(request, now: now, policy: policy)
                 try await ContentAccess.consumeRateLimit(req, bucket: "posts", rule: \.posts)
@@ -99,7 +99,7 @@ enum PostRoutes {
     /// everything under it go at once (cascade; photo files through `media_after_delete`).
     @Sendable static func delete(_ req: Request) async throws -> HTTPStatus {
         let viewer = try req.userID
-        let postID = try ContentAccess.uuidParameter(req, "id")
+        let postID = try GroupAccess.uuidParameter("id", of: req)
         let now = Date()
         guard
             let post = try await Post.query(on: req.db)
@@ -107,8 +107,8 @@ enum PostRoutes {
                 .filter(\.$expiresAt > now)
                 .first()
         else { throw APIError.notFound() }
-        _ = try await ContentVisibility.requireMembership(
-            of: viewer, in: post.$group.id, on: req.db)
+        let (group, _) = try await GroupAccess.memberGroup(
+            post.$group.id, viewer: viewer, on: req.db)
         if post.$author.id != viewer {
             // Someone else's post: only when the viewer can see it at all.
             guard
@@ -117,8 +117,7 @@ enum PostRoutes {
                     != nil
             else { throw APIError.notFound() }
         }
-        let group = try await ContentAccess.group(post.$group.id, on: req.db)
-        try ContentAccess.requireCanDelete(authorID: post.$author.id, viewer: viewer, group: group)
+        try GroupAccess.requireCanDelete(authorID: post.$author.id, viewer: viewer, group: group)
         try await post.delete(on: req.db)
         return .noContent
     }
@@ -145,8 +144,8 @@ enum PostRoutes {
                     throw APIError(
                         code: .extendNotAllowed, message: "only book reports can be extended")
                 }
-                let group = try await ContentAccess.group(post.$group.id, on: db)
-                try ContentAccess.requireWritable(group)
+                let group = try await GroupAccess.group(post.$group.id, on: db)
+                try GroupAccess.requireWritable(group)
                 let sql = try ContentAccess.sql(db)
                 // Lock the row so concurrent extensions each add their 7 days.
                 guard

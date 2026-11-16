@@ -53,8 +53,8 @@ enum CommentRoutes {
                     .first()
             },
             create: { db in
-                let group = try await ContentAccess.group(groupID, on: db)
-                try ContentAccess.requireWritable(group)
+                let group = try await GroupAccess.group(groupID, on: db)
+                try GroupAccess.requireWritable(group)
                 let valid = try PostRules.validate(request)
                 if let stickerID = valid.stickerID {
                     try await ContentAccess.requireSticker(stickerID, in: groupID, on: db)
@@ -82,7 +82,7 @@ enum CommentRoutes {
     /// anyone's, except while an admin vote is open.
     @Sendable static func delete(_ req: Request) async throws -> HTTPStatus {
         let viewer = try req.userID
-        let commentID = try ContentAccess.uuidParameter(req, "id")
+        let commentID = try GroupAccess.uuidParameter("id", of: req)
         // The comment must be one the viewer can see: its post visible, its author neither
         // blocked either way nor hidden.
         guard
@@ -93,8 +93,8 @@ enum CommentRoutes {
             let post = try await ContentVisibility.visiblePost(
                 comment.$post.id, viewer: viewer, on: req.db)
         else { throw APIError.notFound() }
-        let group = try await ContentAccess.group(post.$group.id, on: req.db)
-        try ContentAccess.requireCanDelete(
+        let group = try await GroupAccess.group(post.$group.id, on: req.db)
+        try GroupAccess.requireCanDelete(
             authorID: comment.$author.id, viewer: viewer, group: group)
         try await comment.delete(on: req.db)
         return .noContent

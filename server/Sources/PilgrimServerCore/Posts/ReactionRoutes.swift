@@ -20,8 +20,8 @@ enum ReactionRoutes {
         let postID = try post.requireID()
         let key = try req.content.decode(ReactionRequest.self).key
         try PostRules.validate(key)
-        let group = try await ContentAccess.group(post.$group.id, on: req.db)
-        try ContentAccess.requireWritable(group)
+        let group = try await GroupAccess.group(post.$group.id, on: req.db)
+        try GroupAccess.requireWritable(group)
         if case .sticker(let stickerID) = key {
             try await ContentAccess.requireSticker(stickerID, in: post.$group.id, on: req.db)
         }

@@ -3,8 +3,9 @@ import Foundation
 import PilgrimAPI
 import Vapor
 
-/// Group lookups with the error answers of design.md 2절 and 5절, shared by the Groups, Invites
-/// and Votes routes (and usable by Posts/Stickers for "author or admin" checks).
+/// Group lookups and permissions with the error answers of design.md 2절 and 5절 ("투표 중",
+/// "유예 삭제", the permission columns), shared by every module that works inside a group:
+/// Groups, Invites, Votes, Posts, Stickers and Media.
 enum GroupAccess {
     /// What an admin-only write may do while the group is `pendingDeletion`.
     enum PendingDeletionPolicy {
@@ -21,10 +22,23 @@ enum GroupAccess {
     {
         let membership = try await ContentVisibility.requireMembership(
             of: viewer, in: groupID, on: db)
-        guard let group = try await Group.find(groupID, on: db) else {
-            throw APIError.notFound()
+        return (try await group(groupID, on: db), membership)
+    }
+
+    /// The group, or 404 (it may have been deleted between the membership check and now).
+    static func group(_ id: UUID, on db: any Database) async throws -> Group {
+        guard let group = try await Group.find(id, on: db) else { throw APIError.notFound() }
+        return group
+    }
+
+    /// New posts, comments, reactions, stickers, photos and discussion extensions are refused
+    /// while the group waits to be deleted (409 `GROUP_PENDING_DELETION`; "읽기와 스크랩만 된다").
+    /// Reading and taking one's own content down still work.
+    static func requireWritable(_ group: Group) throws {
+        if group.status == .pendingDeletion {
+            throw APIError(
+                code: .groupPendingDeletion, message: "the group is scheduled for deletion")
         }
-        return (group, membership)
     }
 
     /// Refuses admin-only actions: 409 `ADMIN_VOTE_IN_PROGRESS` while voting (there is no admin),
@@ -38,8 +52,7 @@ enum GroupAccess {
             throw APIError(
                 code: .adminVoteInProgress, message: "an admin election is in progress")
         case .pendingDeletion where policy == .refuse:
-            throw APIError(
-                code: .groupPendingDeletion, message: "the group is scheduled for deletion")
+            try requireWritable(group)
         case .active, .pendingDeletion:
             break
         }
@@ -48,13 +61,21 @@ enum GroupAccess {
         }
     }
 
-    /// Whether `viewer` is the admin of an active group (for "author or admin" deletes). False
-    /// while voting.
-    static func isActingAdmin(_ group: Group, viewer: UUID) -> Bool {
-        group.status != .voting && group.$admin.id == viewer
+    /// Deleting a post, comment or sticker: its author always may; otherwise only the group's
+    /// admin, and not while a new admin is being voted on (409 `ADMIN_VOTE_IN_PROGRESS`).
+    static func requireCanDelete(authorID: UUID, viewer: UUID, group: Group) throws {
+        if authorID == viewer { return }
+        if group.status == .voting {
+            throw APIError(
+                code: .adminVoteInProgress,
+                message: "only the author can delete while an admin vote is open")
+        }
+        guard group.$admin.id == viewer else {
+            throw APIError.forbidden("only the author or the group admin can delete this")
+        }
     }
 
-    /// Parses a `:groupID`-style path parameter; an unparsable ID is a plain 404.
+    /// A required UUID path parameter; a malformed one is 404 like any unknown ID.
     static func uuidParameter(_ name: String, of req: Request) throws -> UUID {
         guard let text = req.parameters.get(name), let id = UUID(uuidString: text) else {
             throw APIError.notFound()

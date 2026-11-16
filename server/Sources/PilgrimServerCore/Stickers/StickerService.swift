@@ -13,8 +13,8 @@ enum StickerService {
         on db: any Database
     ) async throws -> Sticker {
         try await GroupService.lockGroup(groupID, on: db)
-        let group = try await ContentAccess.group(groupID, on: db)
-        try ContentAccess.requireWritable(group)
+        let group = try await GroupAccess.group(groupID, on: db)
+        try GroupAccess.requireWritable(group)
         let name = try StickerRules.normalizedName(request.name)
         let count = try await Sticker.query(on: db).filter(\.$group.$id == groupID).count()
         guard count < APILimits.stickersPerGroup else {

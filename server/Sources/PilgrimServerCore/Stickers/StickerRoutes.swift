@@ -65,7 +65,7 @@ enum StickerRoutes {
         }
         let (group, _) = try await GroupAccess.memberGroup(
             sticker.$group.id, viewer: viewer, on: req.db)
-        try ContentAccess.requireCanDelete(
+        try GroupAccess.requireCanDelete(
             authorID: sticker.$createdBy.id, viewer: viewer, group: group)
         try await StickerService.delete(stickerID, on: req.db)
         return .noContent
