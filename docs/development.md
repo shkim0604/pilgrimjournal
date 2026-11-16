@@ -472,7 +472,13 @@ make -C server prod-logs | prod-ps | prod-down | health
 | `RATE_LIMIT_<이름>=<횟수>/<초>` | 비우면 `PilgrimAPI` 기본값 |
 
 비밀 값은 각각 따로 만든다(`openssl rand -hex 32`). `.p8` 내용은 줄바꿈을 `\n`으로 바꿔 한 줄로
-넣는다: `awk 'NF {printf "%s\\n", $0}' AuthKey_XXXXXXXXXX.p8`.
+넣는다: `awk 'NF {printf "%s\\n", $0}' AuthKey_XXXXXXXXXX.p8`. `server/scripts/set-apple-key.sh`가 이 변환을 하고,
+키를 화면에 띄우지 않고 해당 줄만 채운다(키 하나에 Sign in with Apple과 APNs를 함께 켰다면 한 번에):
+
+```sh
+ssh delight 'cd Developments/pilgrim-server && ./scripts/set-apple-key.sh siwa,apns <KEY_ID>' \
+  < ~/Downloads/AuthKey_<KEY_ID>.p8
+```
 
 ### Apple 키와 App Store Connect
 
