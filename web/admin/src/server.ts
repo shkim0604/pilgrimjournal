@@ -15,7 +15,14 @@ import {
   type AppEnv,
 } from './auth/middleware.ts';
 import { burnPasswordCheck, hashPassword, verifyPassword } from './auth/password.ts';
-import { beginAttempt, clearFailures, loginKey } from './auth/rateLimit.ts';
+import {
+  LOGIN_MAX_PER_ADDRESS,
+  beginAttempt,
+  clearFailures,
+  ipKey,
+  loginKey,
+  pruneFailures,
+} from './auth/rateLimit.ts';
 import { SESSION_MAX_MS, createSession, deleteOtherSessions, deleteSession } from './auth/sessions.ts';
 import type { Config } from './config.ts';
 import { registerPages } from './pages.ts';
@@ -118,16 +125,25 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
     if ([...username].length > MAX_USERNAME_LENGTH || password.length > MAX_PASSWORD_LENGTH) {
       return c.html(loginPage({ error: TOO_LONG }), 400);
     }
-    const key = loginKey(clientIp(c, config.trustProxy), username);
+    const ip = clientIp(c, config.trustProxy);
+    const key = loginKey(ip, username);
+    const addrKey = ipKey(ip);
+    const t = now();
+    pruneFailures(db, t);
 
-    // Counted synchronously before the scrypt await, so a concurrent burst gets at most five tries.
-    if (!beginAttempt(db, key, now())) return c.html(loginPage({ error: LOCKED, username }), 429);
+    // Counted synchronously before the scrypt await, so a concurrent burst gets at most five tries per
+    // username and twenty per address (random usernames would otherwise each get a fresh key).
+    if (!beginAttempt(db, addrKey, t, LOGIN_MAX_PER_ADDRESS) || !beginAttempt(db, key, t)) {
+      return c.html(loginPage({ error: LOCKED, username }), 429);
+    }
 
     const admin = findAdminByUsername(db, username);
     const ok = admin ? await verifyPassword(password, admin.passwordHash) : (await burnPasswordCheck(password), false);
     if (!admin || !ok) return c.html(loginPage({ error: LOGIN_FAILED, username }), 401);
 
     clearFailures(db, key);
+    // Only real operator credentials get here, so the address budget resets too (shared office NAT).
+    clearFailures(db, addrKey);
     issueCookie(c, createSession(db, admin.id, now()));
     return c.redirect(admin.mustChangePassword ? '/admin/change-password' : '/admin', 302);
   });

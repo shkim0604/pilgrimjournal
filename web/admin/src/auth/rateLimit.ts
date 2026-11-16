@@ -3,6 +3,8 @@ import type { DatabaseSync } from 'node:sqlite';
 export const LOGIN_WINDOW_MS = 15 * 60_000;
 export const LOGIN_MAX_FAILURES = 5;
 export const LOGIN_LOCK_MS = 15 * 60_000;
+/** Attempts one address may make per window across all usernames; stops username enumeration. */
+export const LOGIN_MAX_PER_ADDRESS = 20;
 
 /** Expands an IPv6 address to its eight hextets, or returns null when it is not one. */
 function ipv6Hextets(ip: string): string[] | null {
@@ -32,18 +34,23 @@ export function loginKey(ip: string, username: string): string {
   return `${addressKey(ip)}|${username}`;
 }
 
+/** The per-address key, counted whatever username is tried. */
+export function ipKey(ip: string): string {
+  return `ip:${addressKey(ip)}`;
+}
+
 export function isLocked(db: DatabaseSync, key: string, now: number): boolean {
   const row = db.prepare('SELECT locked_until FROM login_failures WHERE key = ?').get(key);
   return row?.locked_until != null && Number(row.locked_until) > now;
 }
 
-/** Counts a failure in the current window (restarting it once expired) and locks on the fifth. */
-export function recordFailure(db: DatabaseSync, key: string, now: number): void {
+/** Counts a failure in the current window (restarting it once expired) and locks on the `max`th. */
+export function recordFailure(db: DatabaseSync, key: string, now: number, max = LOGIN_MAX_FAILURES): void {
   const row = db.prepare('SELECT count, first_failed_at FROM login_failures WHERE key = ?').get(key);
   const inWindow = row != null && now - Number(row.first_failed_at) <= LOGIN_WINDOW_MS;
   const count = inWindow ? Number(row.count) + 1 : 1;
   const firstFailedAt = inWindow ? Number(row.first_failed_at) : now;
-  const lockedUntil = count >= LOGIN_MAX_FAILURES ? now + LOGIN_LOCK_MS : null;
+  const lockedUntil = count >= max ? now + LOGIN_LOCK_MS : null;
   db.prepare(
     `INSERT INTO login_failures (key, count, first_failed_at, locked_until) VALUES (?, ?, ?, ?)
      ON CONFLICT(key) DO UPDATE SET count = excluded.count, first_failed_at = excluded.first_failed_at,
@@ -55,10 +62,18 @@ export function recordFailure(db: DatabaseSync, key: string, now: number): void 
  * Counts the attempt before the password is checked, so concurrent requests cannot all slip in
  * ahead of the lock. Returns false when the key is locked; a successful login calls clearFailures.
  */
-export function beginAttempt(db: DatabaseSync, key: string, now: number): boolean {
+export function beginAttempt(db: DatabaseSync, key: string, now: number, max = LOGIN_MAX_FAILURES): boolean {
   if (isLocked(db, key, now)) return false;
-  recordFailure(db, key, now);
+  recordFailure(db, key, now, max);
   return true;
+}
+
+/** Deletes rows whose window has passed and whose lock (if any) has expired, so the table stays small. */
+export function pruneFailures(db: DatabaseSync, now: number): void {
+  db.prepare('DELETE FROM login_failures WHERE first_failed_at < ? AND (locked_until IS NULL OR locked_until <= ?)').run(
+    now - LOGIN_WINDOW_MS,
+    now,
+  );
 }
 
 export function clearFailures(db: DatabaseSync, key: string): void {

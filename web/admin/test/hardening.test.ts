@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
+import { syncBuiltinESMExports } from 'node:module';
 import { test } from 'node:test';
 import { ensureBootstrapAdmin } from '../src/auth/bootstrap.ts';
-import { loginKey } from '../src/auth/rateLimit.ts';
+import { LOGIN_MAX_PER_ADDRESS, loginKey } from '../src/auth/rateLimit.ts';
 import { BOOT_PASS, BOOT_USER, makeHarness, post } from './appHelpers.ts';
 import { tempDatabase } from './helpers.ts';
 
@@ -21,6 +23,47 @@ test('a correct password at the end of a concurrent burst is still locked out', 
   burst.push(post(h, '/admin/login', { username: BOOT_USER, password: BOOT_PASS }));
   const statuses = (await Promise.all(burst)).map((res) => res.status);
   assert.equal(statuses.at(-1), 429);
+});
+
+test('random usernames from one address hit the address cap before any scrypt runs', async (t) => {
+  // password.ts imports scrypt as a live binding, so a spy synced into the builtin ESM exports sees its calls.
+  const scrypt = t.mock.method(crypto, 'scrypt');
+  syncBuiltinESMExports();
+  t.after(() => {
+    scrypt.mock.restore();
+    syncBuiltinESMExports();
+  });
+  const h = await makeHarness();
+  scrypt.mock.resetCalls(); // drop the bootstrap admin's hash
+  const statuses = (
+    await Promise.all(
+      Array.from({ length: LOGIN_MAX_PER_ADDRESS + 6 }, (_, i) =>
+        post(h, '/admin/login', { username: `nobody-${i}`, password: 'wrong-password' }),
+      ),
+    )
+  ).map((res) => res.status);
+  assert.equal(statuses.filter((s) => s === 401).length, LOGIN_MAX_PER_ADDRESS);
+  assert.equal(statuses.filter((s) => s === 429).length, 6);
+  assert.equal(scrypt.mock.callCount(), LOGIN_MAX_PER_ADDRESS, 'locked requests never reach a password check');
+  const late = await post(h, '/admin/login', { username: BOOT_USER, password: BOOT_PASS });
+  assert.equal(late.status, 429, 'the address lock covers real usernames too');
+});
+
+test('another address is not affected by one address hitting its cap', async () => {
+  const h = await makeHarness({ trustProxy: true });
+  const from = (ip: string, username: string, password = 'wrong') =>
+    post(h, '/admin/login', { username, password }, { headers: { 'cf-connecting-ip': ip } });
+  for (let i = 0; i < LOGIN_MAX_PER_ADDRESS; i++) await from('198.51.100.1', `nobody-${i}`);
+  assert.equal((await from('198.51.100.1', 'nobody-x')).status, 429);
+  assert.equal((await from('198.51.100.2', BOOT_USER, BOOT_PASS)).status, 302);
+});
+
+test('a successful login resets the address budget', async () => {
+  const h = await makeHarness();
+  const miss = (i: number) => post(h, '/admin/login', { username: `nobody-${i}`, password: 'wrong' });
+  for (let i = 0; i < LOGIN_MAX_PER_ADDRESS - 1; i++) await miss(i);
+  assert.equal((await post(h, '/admin/login', { username: BOOT_USER, password: BOOT_PASS })).status, 302);
+  assert.equal((await miss(100)).status, 401);
 });
 
 test('IPv6 addresses in the same /64 share a lockout key', () => {
