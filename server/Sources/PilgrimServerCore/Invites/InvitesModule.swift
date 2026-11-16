@@ -45,8 +45,8 @@ enum InvitesModule {
 
         // The preview is open to signed-in users who have not finished sign-up or subscribed:
         // the join screen leads them through both. Accepting needs both.
-        authenticated.grouped(AccountStateMiddleware(requiresSignup: false)).get("invites", ":code") {
-            req async throws -> Response in
+        let signedIn = authenticated.grouped(AccountStateMiddleware(requiresSignup: false))
+        signedIn.get("invites", ":code") { req async throws -> Response in
             try .pilgrimJSON(
                 try await InviteService.preview(
                     try code(req), viewer: try req.userID, config: req.pilgrimConfig, on: req.db))
