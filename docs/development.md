@@ -208,8 +208,9 @@ swift run ShareCardEval --json /tmp/share-card-run.json
   켜져 있어야 한다. 모델을 쓸 수 없으면 이유를 출력하고 종료 코드 69로 끝난다.
   `swift build`는 어디서나 통과하도록 모델 코드를 `canImport(FoundationModels)`와
   macOS 26 확인 뒤에 두었다. 하드웨어가 필요하므로 `scripts/check.sh`와 CI에서는
-  **돌리지 않는다.** (날짜 해석·채점 같은 순수 로직은 `ShareCardEvalTests`로 `swift
-  test`에 들어 있다.)
+  **돌리지 않는다.** (채점 같은 순수 로직은 `ShareCardEvalTests`로 `swift test`에 들어
+  있다. 날짜 해석기 `DatePhraseResolver`는 이제 `JournalShareDrafts`에 있고 실험실은 그것을
+  가져다 쓴다. 해석기 테스트 `DatePhraseResolverTests`는 아직 `Tests/ShareCardEvalTests`에 있다.)
 - **기록은 전부 지어낸 것이다** (`Sources/ShareCardEval/EvalFixtures.swift`). 실제
   기록이나 Day One 내용을 넣지 않는다. 기록을 추가할 때 `expected` 라벨(기도제목
   여부, 간증 여부, 제3자 사정, 데드라인)을 함께 적는다. 데드라인은 `phrase`가 본문에
@@ -414,10 +415,20 @@ curl -s http://127.0.0.1:3100/api/health
   로그인·푸시·App Store를 로컬에서 시험할 때만 아래 키를 넣는다.
 - `TIME_SCALE_DAY_SECONDS`를 줄이면(예 `10`) 기한·투표·유예·초대 만료의 "하루"가 그 초가 된다
   (7일 글이 70초 뒤 사라진다). 운영 설정에서는 서버가 시작을 거부한다.
-- 앱 쪽: `GroupServerConfiguration`에 운영 주소와 `localDevelopment()`(localhost:3100),
-  `PILGRIM_GROUP_SERVER_URL` 형식의 값을 읽는 생성자가 있다. **지금 앱 세션은
-  `PreviewGroupAPI`(메모리 안 가짜 서버)를 쓴다** — 실제 클라이언트(`URLSessionGroupAPI`)로
-  바꾸고 서버 주소를 빌드 설정에서 읽는 일은 Phase 2(openspec tasks 3.2)다.
+- 앱 쪽: 그룹이 켜진 빌드(Debug)의 세션은 실제 클라이언트(`URLSessionGroupAPI`)로
+  `https://pilgrim.delight-house.org`에 붙는다(`GroupsFeature.defaultAPIFactory`). 그룹 세션
+  토큰과 설치 ID는 Keychain `com.dhouse.PilgrimJournal.group-session`
+  (`GroupKeychainCredentialStore`)에 기록장 Apple 사용자별로 둔다. 직접 실행한 Debug 앱은
+  환경 변수로 바꾼다(Release는 둘 다 읽지 않는다):
+
+  | 변수 | 하는 일 |
+  | --- | --- |
+  | `PILGRIM_GROUP_SERVER_URL=http://localhost:3100` | 로컬 `make -C server dev` 서버에 붙는다(`/api/v1`은 붙여도 된다) |
+  | `PILGRIM_GROUP_API=preview` | 서버 없이 `PreviewGroupAPI`(메모리 안 가짜 서버)로 화면을 본다 |
+  | `PILGRIM_GROUPS=0` | 그룹을 끈다 |
+
+  단위 테스트와 SwiftUI 미리보기는 늘 `PreviewGroupAPI`를 쓴다. iOS 시뮬레이터에서 로컬 서버에
+  붙으려면 `localhost`가 그대로 Mac을 가리키고, 실기기는 Mac의 LAN 주소를 쓴다.
 
 ### 운영 배포 (맥미니)
 
@@ -555,11 +566,12 @@ make -C server prod-logs | prod-ps | prod-down | health
   (`GroupSubscriptionStoreKitTests`)에서 돈다. 상품 불러오기와 구매 테스트는 앱이 호스트하는 테스트
   번들이 필요해(`xctest`에는 StoreKit이 상품·거래를 주지 않을 수 있다) 상품이 오지 않으면 건너뛴다 —
   CI의 시뮬레이터에서는 건너뛰고 로컬 시뮬레이터에서는 상품 불러오기가 통과한 적이 있다.
-- **아직 연결 전(Phase 2):** 앱 scheme(`PilgrimJournalApp.xcscheme`)의 Run에 이 파일을 StoreKit
-  Configuration으로 지정하지 않았고, `GroupSubscriptionController.shared.attach(to:)`와 사이드바의
-  구독 시트(`GroupSubscriptionSheet`)도 연결 전이다. 지정한 뒤에는 Xcode에서 Debug로 실행해 로컬
-  StoreKit으로 구매를 시험하고, 샌드박스 계정 시험은 서명한 기기 빌드에서 한다
-  (`docs/device-verification.md` 세션 H).
+- 앱 scheme(`PilgrimJournalApp.xcscheme`)의 Run이 이 파일을 StoreKit Configuration으로 쓴다.
+  세션의 `GroupsController`는 `GroupSubscriptionController.shared`에 붙고(`attach(to:)`,
+  `Transaction.updates` 리스너), 구독이 필요하면 `GroupSubscriptionSheet`가 뜬다. Xcode에서 Debug로
+  실행하면 로컬 StoreKit으로 구매를 시험하고, 샌드박스 계정 시험은 서명한 기기 빌드에서 한다
+  (`docs/device-verification.md` 세션 H). 서버가 `SUBSCRIPTION_REQUIRED=false`(출시 값)인 동안은
+  구독 화면이 뜨지 않는다.
 - 서버 쪽 검증은 `SUBSCRIPTION_REQUIRED`와 상관없이 돈다. 구독 화면과 402 차단은 `true`일 때만
   보인다.
 

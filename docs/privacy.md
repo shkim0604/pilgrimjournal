@@ -136,7 +136,8 @@
   App Store Server API로 다시 확인해 행의 상태만 고친다.
 - **스크랩은 남의 글을 내 iCloud에 둔다:** 스크랩하면 다른 멤버가 쓴 글, 댓글(숨기거나
   차단한 사람 것은 빼고), 사진이 내 기록장에 새 기록(유형 "스크랩", 노트북
-  "스크랩 · <그룹 이름>")으로 복사되고 내 CloudKit 개인 데이터베이스로 동기화된다. 서버에는
+  "스크랩 · <그룹 이름>")으로 복사되고 내 CloudKit 개인 데이터베이스로 동기화된다. 머리 문구는
+  글의 언어(한글이 있으면 한국어, 없으면 영어)로 쓰고 기기 언어는 보지 않는다. 서버에는
   아무것도 보내지 않는다(조회만). 원본이 기한으로 사라지거나 작성자가 내리거나 계정을 지워도
   스크랩한 사본은 스크랩한 사람의 기록장에 남는다.
 
@@ -184,10 +185,10 @@ App Store 심사 지침 5.1.1(v)에 따라 앱 안에서 계정을 삭제할 수
    설정에서 직접 해지해야 한다"를 보인다. 다른 멤버가 스크랩한 내 글은 그들의 기록장에
    있으므로 지워지지 않는다.
 
-   **아직 연결 전(Phase 2):** `PilgrimJournalApp`이 `AccountDeletionService`를 만들 때
-   `remoteEraser`를 넘기지 않으므로 지금 빌드에서는 이 단계가 돌지 않는다
-   (`docs/implementation-todo.md` "비공개 그룹 — Phase 2 통합"). Release는 그룹 기능이 꺼져
-   있어 그룹 계정이 생기지 않는다.
+   `PilgrimJournalApp`이 `AccountDeletionService`에 `remoteEraser`로 `GroupAccountErasure`를
+   넘긴다(2026-11-16, 브랜치 `groups/p2-app`). Release는 그룹 기능이 꺼져 있어 그룹 계정이
+   생기지 않고 이 단계는 아무것도 보내지 않는다. 실제 서버로 확인하는 것은
+   `docs/device-verification.md` 세션 H-8이다.
 3. 현재 시스템 iCloud가 연결되어 있으면 iCloud에서 지운다(`CloudKitAccountDataEraser`).
    binding이 다른 Apple 사용자 것이면 아무것도 지우지 않는다.
    1. 기본 zone의 binding record(`pilgrim-journal-apple-user-binding-v1`)를 지운다.

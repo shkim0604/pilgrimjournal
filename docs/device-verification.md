@@ -485,9 +485,10 @@ Mac은 시뮬레이터가 없으므로 실기기에서 Light·Dark × 넓은 창
 `docs/development.md` "그룹 서버".
 
 **시작 조건:** Phase 2 연결이 끝난 빌드여야 한다 — 실제 클라이언트(`URLSessionGroupAPI`),
-알림 탭 경로, 계정 삭제의 `remoteEraser`, 구독 컨트롤러·시트, 스크랩 버튼
-(`docs/implementation-todo.md` "비공개 그룹 — Phase 2 통합"). 그 전 빌드는 `PreviewGroupAPI`를
-써서 서버에 닿지 않는다.
+알림 탭 경로, 계정 삭제의 `remoteEraser`, 구독 컨트롤러·시트, 스크랩 버튼. 모두 브랜치
+`groups/p2-app`(2026-11-16)에서 연결했다. 그 전 빌드나 `PILGRIM_GROUP_API=preview`로 연 빌드는
+`PreviewGroupAPI`를 써서 서버에 닿지 않는다. 로컬 서버는 `PILGRIM_GROUP_SERVER_URL`로 가리킨다
+(`docs/development.md` "그룹 서버").
 
 준비물:
 

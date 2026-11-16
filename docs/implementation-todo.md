@@ -6,49 +6,30 @@
 
 ## 대기 중
 
-- **비공개 그룹 — Phase 2 통합** (2026-11-15, 브랜치 `feat/groups`, openspec
-  `add-private-groups` tasks 3.1~3.5) — Phase 1 각 작업이 맡은 파일 밖이라 남긴 연결이다.
-  이것이 끝나야 앱이 실제 서버에 닿고 `docs/device-verification.md` 세션 H를 돌 수 있다.
-  - **실제 클라이언트(3.2):** `GroupsFeature.defaultAPIFactory`가 아직 `PreviewGroupAPI`를 준다.
-    `URLSessionGroupAPI`로 바꾸고 서버 주소를 빌드 설정(`PILGRIM_GROUP_SERVER_URL`)에서 읽는다
-    (`GroupServerConfiguration(serverURLString:)`은 있지만 아무도 부르지 않는다).
+- **비공개 그룹 — Phase 2 통합의 남은 것** (2026-11-15, 브랜치 `feat/groups`, openspec
+  `add-private-groups` tasks 3.1·3.3~3.5) — 앱 연결(3.2, A5~A8, A4)은 2026-11-16 `groups/p2-app`에서
+  끝났다(아래 완료). 남은 것:
   - **현지화(3.1):** 앱 `Localizable.xcstrings`(푸시 `PushLocKey` 포함)와 `InfoPlist.xcstrings`
     (알림·사진·카메라 권한)의 영어. A4("그룹에 올리기", "그룹에 올릴 수 없어요", "확인", 준비 상태
-    문구 5개), A6(스크랩 → Scraps, 그룹 스크랩, "\(x)에 올림", "데드라인 \(x)", "\(x)의 기도제목",
-    "\(x)의 간증", 댓글, (스티커), 사진 내려받기 오류), A7·A8의 새 문구.
-  - **계정 삭제 원격 단계(A5):** `PilgrimJournalApp`(약 180줄)의 `AccountDeletionService`에
-    `remoteEraser: GroupAccountErasure { … URLSessionGroupAPI(…) }`를 넘긴다. `GroupCredentialStore`를
-    `GroupCredentialStoring`으로 잇는 어댑터가 필요하다(같은 Keychain service
-    `com.dhouse.PilgrimJournal.group-session`). 지금은 넘기지 않아 그룹 서버 삭제가 돌지 않는다.
-  - **스크랩 진입점(A6):** `GroupPostDetailView`의 overflow 메뉴에 "스크랩" →
-    `appModel.scrapGroupPost(post)`, `.alreadyScrapped`면 확인 후 `saveAgain: true`.
-    `KindManagementViews.swift`의 `creatableKinds`(25·31·155줄) → `manageableKinds`.
-    `DayOneImportView`의 `kindPickerOptions`에서 스크랩 빼기. 스크랩 노트북 이름이 앱 언어를 따르게.
-  - **알림 탭(A7):** `JournalSessionController.makeAppModel`(약 369줄)의 `groups.onOpenRoute`가 지금
-    `openGroupNotificationRoute`로 바로 가서 앱 잠금을 기다리지 않는다 →
-    `GroupNotificationOpener.shared.receive(route)`로. `PilgrimJournalApp.prepareJournalSession()`의
-    `await appLock.bootstrap()` 뒤에 `GroupNotificationOpener.shared.appLockDidBootstrap(appLock)`
-    (빠뜨리면 opener로 온 탭이 계속 보류된다). `ContentView.body`에
-    `.groupNotificationHandling(preferredCompactColumn: $preferredCompactColumn)`(registrar 시작,
-    Daily Report 시트). 순서·설명은 `GroupNotifications.swift` 머리 주석.
-  - **구독(A8):** `PilgrimJournalApp.xcscheme` Run에 `PilgrimJournal.storekit` 지정,
-    세션의 `GroupsController`마다 `GroupSubscriptionController.shared.attach(to:)`(`Transaction.updates`
-    리스너 시작), `GroupsSidebarSection`의 `case .subscription:` 자리 시트 →
-    `GroupSubscriptionSheet()`. 구매 테스트용 앱 호스트 테스트 타깃.
+    문구), A7·A8의 새 문구, 그리고 `groups/p2-app`의 새 문구: 스크랩 메뉴("스크랩",
+    "이미 스크랩했어요. 한 번 더 저장할까요?", "한 번 더 저장", "스크랩했어요",
+    "기록장의 ‘스크랩’ 유형에 저장했어요. 원래 글이 사라져도 남아요."), 가입 화면 아래 저장 범위 문구와
+    "그룹에서 쓰고 올린 것만 그룹 서버에 저장돼요.". 스크랩 본문 문구("Scraps", "Posted on …" 등)는
+    JournalDomain의 고정 문자열이라 현지화하지 않는다(design.md 15절 3). 쓰지 않게 된 키: "그룹에
+    올리려면 먼저 사이드바의 그룹에서 ‘그룹 시작하기’를 마쳐 주세요.", 구독 자리 시트 문구, 앱 언어 스크랩
+    문구("\(x)에 올림", "데드라인 \(x)", "\(x)의 기도제목", "\(x)의 간증", "(스티커)").
   - **화면 빈틈:** 투표 중·삭제 예정 배너(`GroupStatusBanner`)를 피드 맨 위에(지금은 그룹 설정에만).
-    로그아웃 상태에서 "그룹에 올리기"가 사이드바 그룹 섹션을 가리키기만 한다 — 시트 호스트가
-    `GroupsSidebarSection`에 있어 compact iPhone에서는 화면 밖일 수 있다(A4). 가입 화면 아래 문구
-    "그룹 서버에는 이 이름과 프로필 사진, 직접 올린 글만 저장돼요"가 실제 저장 범위(댓글·반응·기기
-    토큰·숨김·차단 등, `docs/privacy.md` "그룹 서버")보다 좁다. "이용 안내 보기"가 지원 페이지를
-    가리키므로 그룹 이용약관 페이지가 필요하다.
+    프로필 사진은 아직 앱 쪽 `GroupProfilePhotoPreparer`로 줄인다(글·댓글·스티커는
+    `ImageCompressor`, 같은 기준) — 하나로 합칠지. 업데이트 안내의 App Store 링크
+    (`GroupsAppStoreLink`)는 App Store ID가 정해질 때까지 검색 URL이다.
+  - **구매 테스트:** 앱이 호스트하는 테스트 타깃(`xctest`에는 StoreKit이 거래를 주지 않는다).
   - **콘솔(W1):** `web/admin/.env.example`에 `ADMIN_API_TOKEN`, `ADMIN_API_URL`(기본
     `http://pilgrim-api:3100`) 두 줄.
-  - **macOS 푸시(I1):** 공유 entitlements의 `aps-environment`를 서명한 macOS 빌드가 받는지 확인,
-    안 되면 `CODE_SIGN_ENTITLEMENTS[sdk=macosx*]`로 `com.apple.developer.aps-environment` 파일을 나눈다.
-  - **검증·배포(3.3~3.5):** `./scripts/check.sh`, `make -C server test`, 양 플랫폼 xcodebuild, iOS
-    시뮬레이터 테스트, CI, 로컬 시나리오, `xcrun simctl push` → 맥미니 배포·터널 →
-    실기기 세션 H → main에 조각내어(서버·CI 먼저, 앱은 Release에서 플래그 끔, entitlement는 1.2.0
-    뒤). 운영 준비 항목은 `docs/pre-release-checklist.md` "비공개 그룹 — 운영·출시 준비".
+  - **검증·배포(3.3~3.5):** `make -C server test`, CI, 로컬 시나리오(`PILGRIM_GROUP_SERVER_URL`로
+    `make -C server dev`에 붙여 가입·초대·글·스크랩·기한·안전·Daily Report·투표·구독·계정 삭제),
+    `xcrun simctl push` → 맥미니 배포·터널 → 실기기 세션 H → main에 조각내어(서버·CI 먼저, 앱은
+    Release에서 플래그 끔, entitlement는 1.2.0 뒤). 운영 준비 항목은 `docs/pre-release-checklist.md`
+    "비공개 그룹 — 운영·출시 준비".
   - 참고: `JournalDataTests.testFiveThousandEntryPaginationIsCompleteAndResponsive`(3초 한도)가
     병렬 작업 부하에서 6.2초가 걸린 적이 있다. 부하 탓이며 회귀가 아니다.
 
@@ -81,7 +62,7 @@
     했다 — 아래 완료 "비공개 그룹 Phase 1".)
   - 고른 기도제목을 기도노트 체크리스트에 저장.
   - iCloud 공유 노트북에 올리기. (그룹 서버에 올리기는 기도제목 시트의 "그룹에 올리기"로
-    만들었다 — Phase 2 연결 전.)
+    만들었다.)
   - 저장 뒤 자동으로 제안하는 배너.
   - 영어 프롬프트를 21개 일기로 평가(지금은 한국어 위주로 확인했다).
   - 한→영 번역이 문장 앞의 사람 명사를 호칭(부르는 말)으로 잘못 읽는 문제.
@@ -209,9 +190,33 @@
 
 ## 완료
 
+- **비공개 그룹 — Phase 2 앱 연결** (2026-11-16, 브랜치 `groups/p2-app`, openspec tasks 3.2) —
+  자동 테스트와 서명 없는 iOS·macOS 빌드, iOS 시뮬레이터 테스트까지. 실제 서버·실기기는 아직이다.
+  - 실제 클라이언트: `GroupsFeature.defaultAPIFactory`가 기록장 Apple 사용자의 Keychain 계정으로
+    `URLSessionGroupAPI`를 만든다. 기본은 `https://pilgrim.delight-house.org`, Debug는
+    `PILGRIM_GROUP_SERVER_URL`로 바꾸고 `PILGRIM_GROUP_API=preview`면 `PreviewGroupAPI`. 테스트와
+    SwiftUI 미리보기는 늘 `PreviewGroupAPI`. Keychain 어댑터 `GroupKeychainCredentialStore`(같은 service
+    `com.dhouse.PilgrimJournal.group-session`, 가입 요청과 같은 설치 ID). 사진은 올리기 전에
+    `ImageCompressor`로 줄이고 메타데이터를 지운다(`GroupImagePreparation.current`가 그대로 보내고 있었다).
+  - 계정 삭제(A5): `AccountDeletionService`에 `remoteEraser: GroupAccountErasure`.
+  - 스크랩(A6): 글 상세 메뉴 "스크랩"(이미 했으면 확인 후 다시 저장), 유형 편집이 `manageableKinds`,
+    Day One 가져오기 유형 고르기에서 스크랩 제외. 스크랩 문구는 기기 언어가 아니라 **글의 언어**(한글이
+    있으면 한국어, 없으면 영어, `ScrapLanguage`)로 JournalDomain의 고정 문자열에서 쓰고, 노트북은 늘
+    "스크랩 · <그룹 이름>"(소유자 결정 2026-11-16).
+  - 알림(A7): 탭이 `GroupNotificationOpener`를 거쳐 앱 잠금을 기다린다. `appLockDidBootstrap`,
+    `ContentView`의 `groupNotificationHandling`.
+  - 구독(A8): scheme Run에 `PilgrimJournal.storekit`, 세션마다 `GroupSubscriptionController.shared.attach`,
+    사이드바 `.subscription` → `GroupSubscriptionSheet`.
+  - "그룹에 올리기"(A4): 그룹에 로그인하지 않았으면 그 자리에서 "그룹 시작하기"를 열고, 끝나면 작성 화면으로
+    잇는다.
+  - 가입 화면 아래 문구를 실제 저장 범위로 고치고, 그룹 이용 안내 초안 `docs/group-terms.md`.
+  - macOS: `CODE_SIGN_ENTITLEMENTS[sdk=macosx*]` = `PilgrimJournal-macOS.entitlements`
+    (`com.apple.developer.aps-environment`, 나머지는 공유 파일과 같음),
+    `ENABLE_OUTGOING_NETWORK_CONNECTIONS`(샌드박스 앱이 그룹 서버에 닿도록).
+
 - **비공개 그룹 Phase 1** (2026-11-15, 브랜치 `feat/groups`, openspec `add-private-groups`
-  tasks 0~2) — 자동 테스트와 서명 없는 빌드까지. 앱은 아직 `PreviewGroupAPI`를 쓰고, Release는
-  `GroupsFeature.isEnabled`가 꺼져 있다. 남은 연결은 위 "비공개 그룹 — Phase 2 통합", 실기기
+  tasks 0~2) — 자동 테스트와 서명 없는 빌드까지. Release는 `GroupsFeature.isEnabled`가 꺼져 있다.
+  앱 연결은 위 "비공개 그룹 — Phase 2 앱 연결", 남은 것은 "비공개 그룹 — Phase 2 통합의 남은 것", 실기기
   확인은 `docs/pre-release-checklist.md`.
   - 서버 `server/`(Swift + Vapor 4 + Postgres 17, `serve`·`worker`·`migrate`): Apple 로그인(JWKS,
     code 교환, refresh token 암호화 저장), 세션 회전·재사용 감지, `/me`·기기, `DELETE /me`(투표
