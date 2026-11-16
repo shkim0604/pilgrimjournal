@@ -236,8 +236,9 @@ Phase 2에서만 고친다. Phase 1 작업끼리는 맡는 파일이 겹치지 �
 
 ## 3. Phase 2: 통합 (순서대로)
 
-- [ ] 3.1 현지화: 앱 `Localizable.xcstrings`(푸시 `PushLocKey` 포함)와 `InfoPlist.xcstrings`(알림·사진·카메라 권한
-      문구)에 새 키의 영어를 채운다
+- [x] 3.1 현지화: 앱 `Localizable.xcstrings`(푸시 `PushLocKey` 포함)와 `InfoPlist.xcstrings`(알림·사진·카메라 권한
+      문구)에 새 키의 영어를 채운다 (2026-11-16, `groups/p2-l10n`: 빠진 `en` 0개, 푸시 키 10개는 manual 항목과
+      `GroupPushLocalizationTests`. 그룹은 새 Info.plist 권한 문구를 더하지 않아 `InfoPlist.xcstrings`는 그대로)
 - [x] 3.2 `JournalSessionController`에서 `PreviewGroupAPI`를 `URLSessionGroupAPI`로 바꾼다 (2026-11-16,
       `groups/p2-app`: `GroupsFeature.defaultAPIFactory`, `PILGRIM_GROUP_SERVER_URL`·`PILGRIM_GROUP_API=preview`,
       Keychain 어댑터 `GroupKeychainCredentialStore`. 같은 브랜치에서 A5 `remoteEraser`, A6 스크랩 버튼,

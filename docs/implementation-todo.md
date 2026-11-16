@@ -7,17 +7,8 @@
 ## 대기 중
 
 - **비공개 그룹 — Phase 2 통합의 남은 것** (2026-11-15, 브랜치 `feat/groups`, openspec
-  `add-private-groups` tasks 3.1·3.3~3.5) — 앱 연결(3.2, A5~A8, A4)은 2026-11-16 `groups/p2-app`에서
-  끝났다(아래 완료). 남은 것:
-  - **현지화(3.1):** 앱 `Localizable.xcstrings`(푸시 `PushLocKey` 포함)와 `InfoPlist.xcstrings`
-    (알림·사진·카메라 권한)의 영어. A4("그룹에 올리기", "그룹에 올릴 수 없어요", "확인", 준비 상태
-    문구), A7·A8의 새 문구, 그리고 `groups/p2-app`의 새 문구: 스크랩 메뉴("스크랩",
-    "이미 스크랩했어요. 한 번 더 저장할까요?", "한 번 더 저장", "스크랩했어요",
-    "기록장의 ‘스크랩’ 유형에 저장했어요. 원래 글이 사라져도 남아요."), 가입 화면 아래 저장 범위 문구와
-    "그룹에서 쓰고 올린 것만 그룹 서버에 저장돼요.". 스크랩 본문 문구("Scraps", "Posted on …" 등)는
-    JournalDomain의 고정 문자열이라 현지화하지 않는다(design.md 15절 3). 쓰지 않게 된 키: "그룹에
-    올리려면 먼저 사이드바의 그룹에서 ‘그룹 시작하기’를 마쳐 주세요.", 구독 자리 시트 문구, 앱 언어 스크랩
-    문구("\(x)에 올림", "데드라인 \(x)", "\(x)의 기도제목", "\(x)의 간증", "(스티커)").
+  `add-private-groups` tasks 3.3~3.5) — 앱 연결(3.2, A5~A8, A4)은 2026-11-16 `groups/p2-app`에서,
+  현지화(3.1)는 같은 날 `groups/p2-l10n`에서 끝났다(아래 완료). 남은 것:
   - **화면 빈틈:** 투표 중·삭제 예정 배너(`GroupStatusBanner`)를 피드 맨 위에(지금은 그룹 설정에만).
     프로필 사진은 아직 앱 쪽 `GroupProfilePhotoPreparer`로 줄인다(글·댓글·스티커는
     `ImageCompressor`, 같은 기준) — 하나로 합칠지. 업데이트 안내의 App Store 링크
@@ -165,6 +156,18 @@
   - `AppModel.autosaveOnEditorExit`는 앱 코드에서 부르는 곳이 없고 테스트만 쓴다.
 
 ## 완료
+
+- **비공개 그룹 — 현지화** (2026-11-16, 브랜치 `groups/p2-l10n`, openspec tasks 3.1) — 그룹 화면 전체
+  (가입·사이드바·피드·상세·작성·댓글·반응·스티커·초대/QR·멤버·관리자 투표·신고/차단/숨김·Daily Report·알림
+  설정·구독·"그룹에 올리기"·스크랩 메뉴·계정 삭제 그룹 단계)의 영어를 앱 catalog에 채웠다(빠진 `en` 0개).
+  푸시 `PushLocKey` 10개는 앱 catalog의 manual 항목(`ko`·`en`)이고, `GroupPushLocalizationTests`가 키마다
+  두 언어 문구와 `loc-args` 개수를 확인한다. 한국어 키가 겹쳐 영어가 달라야 하는 곳은 명시 키로 나눴다:
+  스크랩 메뉴(`groupPost.scrap`, "Save to Scraps" — 유형 이름 "스크랩"은 "Scraps"), 그룹 글 종류
+  "기도제목"(`groupPost.kind.prayer`, "Prayer request" — 기도노트 체크리스트는 "Prayer topics"),
+  Daily Report의 "새 글" 섹션(`dailyReport.newPosts`). 기도 기한의 "D-3"/"D-day"도 catalog를 거친다.
+  `InfoPlist.xcstrings`는 그대로다: 그룹은 새 권한 문구를 더하지 않았다(사진은 `PhotosPicker`, 알림은
+  Info.plist 문구가 필요 없고, QR은 시스템 카메라로 읽는다). 쓰지 않게 된 stale 키 8개를 지웠다.
+  스크랩 본문 문구("Scraps", "Posted on …")는 계속 JournalDomain의 고정 문자열이다.
 
 - **비공개 그룹 — Phase 2 서버 정리** (2026-11-16, 브랜치 `groups/p2-server`) — 계정 상태 검사는
   `AccountStateMiddleware` 하나(그룹 라우트는 `PilgrimRoutes.groupMember`), 권한은
