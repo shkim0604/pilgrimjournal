@@ -1,0 +1,12 @@
+.build/
+PilgrimAPI/.build/
+.swiftpm/
+PilgrimAPI/.swiftpm/
+.media/
+.env*
+Tests/
+PilgrimAPI/Tests/
+*.xcodeproj
+.DS_Store
+docker-compose*.yml
+Makefile
