@@ -180,12 +180,13 @@ public enum SubscriptionTransition {
 /// Who a subscription row belongs to (design.md 12절: `appAccountToken = 서버 사용자 ID`).
 public enum SubscriptionOwnership {
     /// The owner after `caller` verifies a transaction. Throws 409
-    /// `SUBSCRIPTION_OWNED_BY_OTHER_USER` when the purchase names another user in its
-    /// `appAccountToken` or the row is already bound to someone else.
+    /// `SUBSCRIPTION_OWNED_BY_OTHER_USER` when the purchase names another existing user in its
+    /// `appAccountToken` or the row is already bound to someone else. A token whose account was
+    /// deleted names no one, so the person's new account can claim the purchase they still pay.
     public static func ownerForVerify(
-        caller: UUID, existingOwner: UUID?, appAccountToken: UUID?
+        caller: UUID, existingOwner: UUID?, appAccountToken: UUID?, tokenUserExists: Bool
     ) throws -> UUID {
-        if let appAccountToken, appAccountToken != caller {
+        if let appAccountToken, appAccountToken != caller, tokenUserExists {
             throw APIError(
                 code: .subscriptionOwnedByOtherUser,
                 message: "the purchase belongs to another account")

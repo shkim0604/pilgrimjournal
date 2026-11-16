@@ -384,8 +384,9 @@ server/
 - 구매 때 `appAccountToken = 서버 사용자 ID`(`GET /me`의 `id`)를 넣는다.
 - 앱이 `Transaction.jwsRepresentation`을 `POST /subscriptions/verify { signedTransaction, bundleId }`로
   보낸다. 서버는 `app-store-server-library-swift`의 `SignedDataVerifier`(Apple 루트 인증서, 두 bundleId,
-  Production·Sandbox)로 검증하고 `original_transaction_id`로 upsert한다. `appAccountToken`이 다른 사용자거나
-  그 거래가 이미 다른 사용자에 묶여 있으면 409 `SUBSCRIPTION_OWNED_BY_OTHER_USER`. 검증 실패는 422
+  Production·Sandbox)로 검증하고 `original_transaction_id`로 upsert한다. `appAccountToken`이 (아직 있는) 다른
+  사용자거나 그 거래가 이미 다른 사용자에 묶여 있으면 409 `SUBSCRIPTION_OWNED_BY_OTHER_USER`. 계정을 지우고 다시
+  가입한 경우처럼 `appAccountToken`의 사용자가 더 이상 없으면 아무도 아닌 것으로 보고 새 계정이 가져간다. 검증 실패는 422
   `SUBSCRIPTION_INVALID`. 앱은 실행 때와 `Transaction.updates`마다 보낸다.
 - App Store Server Notifications V2: `POST /api/appstore/notifications { signedPayload }`. `notificationUUID`로
   중복을 거르고(`appstore_notifications`), `SUBSCRIBED`·`DID_RENEW`·`DID_CHANGE_RENEWAL_STATUS`·

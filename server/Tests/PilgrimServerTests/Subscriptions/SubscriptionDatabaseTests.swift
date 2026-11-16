@@ -177,6 +177,24 @@ final class SubscriptionDatabaseTests: SubscriptionDatabaseTestCase {
         expectEqual(try await subscriptionRow()?.$user.id, try owner.requireID())
     }
 
+    func testVerifyLetsANewAccountClaimADeletedAccountsPurchase() async throws {
+        // Deleted and signed up again while the App Store subscription keeps renewing: the
+        // purchase still carries the old account's ID as its `appAccountToken`.
+        let old = try await fixtures.user()
+        let oldID = try old.requireID()
+        let first = try await subscriptionVerify(
+            AppStoreTestPayloads.transaction(expires: later, appAccountToken: oldID), as: old)
+        XCTAssertEqual(first.status, .ok, first.body.string)
+        try await sql.raw("DELETE FROM users WHERE id = \(bind: oldID)").run()
+
+        let fresh = try await fixtures.user()
+        let response = try await subscriptionVerify(
+            AppStoreTestPayloads.transaction(expires: later, appAccountToken: oldID), as: fresh)
+        XCTAssertEqual(response.status, .ok, response.body.string)
+        XCTAssertTrue(try decode(EntitlementResponse.self, from: response).active)
+        expectEqual(try await subscriptionRow()?.$user.id, try fresh.requireID())
+    }
+
     func testVerifyRefusesInvalidData() async throws {
         let user = try await fixtures.user()
         let garbage = try await send(
