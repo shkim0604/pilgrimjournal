@@ -31,9 +31,15 @@ final class AuthPrimitiveTests: XCTestCase {
 
     func testTamperedOrForeignTokenIsUnauthenticated() throws {
         let issued = try service.issue(userID: UUID(), sessionID: UUID())
-        var tampered = issued.token
-        tampered.removeLast(2)
-        tampered += tampered.hasSuffix("A") ? "BB" : "AA"
+        // Change the signature's first character: all six of its bits are signature data. (The
+        // last character also carries padding bits, so changing it can decode to the same bytes.)
+        var parts = issued.token.split(separator: ".", omittingEmptySubsequences: false).map(
+            String.init)
+        let signature = try XCTUnwrap(parts.last)
+        let replacement: Character = signature.first == "A" ? "B" : "A"
+        parts[parts.count - 1] = String(replacement) + signature.dropFirst()
+        let tampered = parts.joined(separator: ".")
+        XCTAssertNotEqual(tampered, issued.token)
         let other = AccessTokenService(secret: "another-secret-another-secret-0000")
         let foreign = try other.issue(userID: UUID(), sessionID: UUID()).token
         for token in [tampered, foreign, "garbage", ""] {
