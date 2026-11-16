@@ -55,9 +55,9 @@ enum GroupUserSummaries {
 
 /// Builds `GroupSummary` / `GroupDetail` for one viewer (design.md "그룹·멤버·투표").
 ///
-/// `unreadCount` is the number of posts by other members, created after the viewer's
-/// `last_seen_at` (every post when never seen), that the viewer may see
-/// (`ContentVisibility.visiblePost`). `latestPostAt` uses the same visibility.
+/// `unreadCount` is `PostUnread.counts`, the same rule as `PostResponse.isUnread`: posts by other
+/// members, created after the viewer's `last_seen_at` (else their `joined_at`), that the viewer
+/// may see (`ContentVisibility.visiblePost`). `latestPostAt` uses the same visibility.
 enum GroupViews {
     struct Row: Sendable {
         var id: UUID
@@ -134,10 +134,6 @@ enum GroupViews {
                    m.new_post_push_enabled, m.daily_report_enabled,
                    (SELECT count(*) FROM memberships AS mc WHERE mc.group_id = g.id)
                        AS member_count,
-                   (SELECT count(*) FROM posts AS p
-                     WHERE p.group_id = g.id AND p.author_id <> \(bind: viewer)
-                       AND (m.last_seen_at IS NULL OR p.created_at > m.last_seen_at)
-                       AND \(visible)) AS unread_count,
                    (SELECT max(p.created_at) FROM posts AS p
                      WHERE p.group_id = g.id AND \(visible)) AS latest_post_at,
                    (SELECT v.ends_at FROM admin_votes AS v
@@ -148,14 +144,17 @@ enum GroupViews {
             ORDER BY m.joined_at, g.id
             """
         ).all()
+        let ids = try rows.map { try $0.decode(column: "id", as: UUID.self) }
+        let unread = try await PostUnread.counts(viewer: viewer, groupIDs: ids, on: db, now: now)
         return try rows.map { row in
             let statusText = try row.decode(column: "status", as: String.self)
             guard let status = GroupStatus(rawValue: statusText) else {
                 throw APIError(code: .internal, message: "unknown group status \(statusText)")
             }
             let reason = try row.decode(column: "deletion_reason", as: String?.self)
+            let id = try row.decode(column: "id", as: UUID.self)
             return Row(
-                id: try row.decode(column: "id", as: UUID.self),
+                id: id,
                 name: try row.decode(column: "name", as: String.self),
                 status: status,
                 adminID: try row.decode(column: "admin_id", as: UUID?.self),
@@ -169,7 +168,7 @@ enum GroupViews {
                     dailyReportEnabled: try row.decode(
                         column: "daily_report_enabled", as: Bool.self)),
                 memberCount: try row.decode(column: "member_count", as: Int.self),
-                unreadCount: try row.decode(column: "unread_count", as: Int.self),
+                unreadCount: unread[id] ?? 0,
                 latestPostAt: try row.decode(column: "latest_post_at", as: Date?.self),
                 voteEndsAt: try row.decode(column: "vote_ends_at", as: Date?.self))
         }
