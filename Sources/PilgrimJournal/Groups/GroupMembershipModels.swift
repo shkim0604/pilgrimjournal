@@ -52,7 +52,8 @@ enum GroupsSheet: Identifiable, Equatable {
     case settings(groupID: UUID)
     case invites(groupID: UUID)
     case vote(groupID: UUID)
-    /// Placeholder until A8 brings the paywall (`GroupsController.onSubscriptionRequired`).
+    /// `GroupSubscriptionSheet`, opened by `GroupSubscriptionController` when the server asks
+    /// for a subscription.
     case subscription
 
     var id: String {
