@@ -21,7 +21,12 @@ enum AuthModule {
         let routes = app.pilgrimRoutes
         let auth = routes.v1.grouped("auth")
         auth.post("apple", use: signInWithApple)
-        auth.post("refresh", use: refresh)
+        // Own per-IP bucket: many members behind one church IP refresh at the same time.
+        routes.clientGated
+            .grouped(
+                RateLimitMiddleware(bucket: "refresh", scope: .ip) { $0.rateLimits.refreshPerIP }
+            )
+            .post("auth", "refresh", use: refresh)
         routes.authenticated.grouped("auth").post("logout", use: logout)
         if app.pilgrimConfig.devLoginEnabled {
             auth.post("dev", use: devSignIn)

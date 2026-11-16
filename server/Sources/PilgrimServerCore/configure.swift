@@ -44,6 +44,7 @@ public func configure(_ app: Application, config: AppConfig) async throws {
     app.pilgrimRoutes = PilgrimRoutes(
         root: app.routes,
         v1: unauthenticated,
+        clientGated: v1,
         authenticated: authenticated,
         admin: app.grouped("internal", "admin", "v1"))
 

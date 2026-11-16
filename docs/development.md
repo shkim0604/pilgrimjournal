@@ -1,4 +1,4 @@
-# 개발 및 배포 구성
+| `RATE_LIMIT_<이름>=<횟수>/<초>` | 비우면 `PilgrimAPI` 기본값. `UNAUTHENTICATED`(로그인, IP별 30/600)와 `REFRESH`(토큰 갱신, IP별 600/600)는 따로 센다 |# 개발 및 배포 구성
 
 ## 식별자
 

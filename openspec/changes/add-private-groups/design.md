@@ -1020,7 +1020,8 @@ NULL, `last_error_at` NULL.
 
 글자 수는 Swift `String.count`(grapheme) 기준이다. rate limit(사용자별, 환경 변수로 조정): 글 30/시간, 댓글
 120/시간, 업로드 60/시간, 반응 300/시간, 신고 20/일, 초대 만들기 30/일, 그 밖 요청 600/10분. 인증 전
-엔드포인트는 IP별 30/10분.
+엔드포인트(`auth/apple`, `auth/dev`)는 IP별 30/10분, `auth/refresh`는 따로 IP별 600/10분(한 교회 Wi-Fi에서
+예배 뒤 여럿이 한꺼번에 갱신한다).
 
 ## 환경 변수 (`server/.env.*.example`, I1)
 
