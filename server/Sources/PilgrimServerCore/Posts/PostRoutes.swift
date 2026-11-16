@@ -101,14 +101,8 @@ enum PostRoutes {
         let viewer = try req.userID
         let postID = try GroupAccess.uuidParameter("id", of: req)
         let now = Date()
-        guard
-            let post = try await Post.query(on: req.db)
-                .filter(\.$id == postID)
-                .filter(\.$expiresAt > now)
-                .first()
-        else { throw APIError.notFound() }
-        let (group, _) = try await GroupAccess.memberGroup(
-            post.$group.id, viewer: viewer, on: req.db)
+        let (post, group) = try await ContentAccess.memberPost(
+            postID, viewer: viewer, on: req.db, now: now)
         if post.$author.id != viewer {
             // Someone else's post: only when the viewer can see it at all.
             guard

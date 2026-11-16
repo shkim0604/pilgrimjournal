@@ -51,11 +51,12 @@ enum ReactionRoutes {
     }
 
     /// `DELETE /posts/:id/reactions?emoji=` or `?stickerId=` → the post's `[ReactionSummary]`.
-    /// Removing a reaction that is not there is not an error.
+    /// Removing a reaction that is not there is not an error. Only the viewer's own reactions go,
+    /// so membership and an unexpired post are enough (no block or hide filter).
     @Sendable static func remove(_ req: Request) async throws -> Response {
         let viewer = try req.userID
-        let post = try await ContentAccess.visiblePost(req)
-        let postID = try post.requireID()
+        let postID = try GroupAccess.uuidParameter("id", of: req)
+        _ = try await ContentAccess.memberPost(postID, viewer: viewer, on: req.db)
         let key = try removalKey(
             emoji: req.query[String.self, at: "emoji"],
             stickerID: req.query[String.self, at: "stickerId"])

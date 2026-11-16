@@ -83,17 +83,23 @@ enum CommentRoutes {
     @Sendable static func delete(_ req: Request) async throws -> HTTPStatus {
         let viewer = try req.userID
         let commentID = try GroupAccess.uuidParameter("id", of: req)
-        // The comment must be one the viewer can see: its post visible, its author neither
-        // blocked either way nor hidden.
-        guard
-            let comment = try await Comment.query(on: req.db)
-                .filter(\.$id == commentID)
-                .visibleAuthors(to: viewer)
-                .first(),
-            let post = try await ContentVisibility.visiblePost(
-                comment.$post.id, viewer: viewer, on: req.db)
-        else { throw APIError.notFound() }
-        let group = try await GroupAccess.group(post.$group.id, on: req.db)
+        guard let comment = try await Comment.find(commentID, on: req.db) else {
+            throw APIError.notFound()
+        }
+        let (_, group) = try await ContentAccess.memberPost(
+            comment.$post.id, viewer: viewer, on: req.db)
+        if comment.$author.id != viewer {
+            // Someone else's comment must be one the viewer can see: its post visible, its
+            // author neither blocked either way nor hidden.
+            guard
+                try await Comment.query(on: req.db)
+                    .filter(\.$id == commentID)
+                    .visibleAuthors(to: viewer)
+                    .first() != nil,
+                try await ContentVisibility.visiblePost(
+                    comment.$post.id, viewer: viewer, on: req.db) != nil
+            else { throw APIError.notFound() }
+        }
         try GroupAccess.requireCanDelete(
             authorID: comment.$author.id, viewer: viewer, group: group)
         try await comment.delete(on: req.db)

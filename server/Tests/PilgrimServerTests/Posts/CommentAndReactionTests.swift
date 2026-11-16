@@ -153,6 +153,50 @@ final class CommentAndReactionTests: DatabaseTestCase {
         assertStatus(try await sendV1(.DELETE, "comments/\(carols.id)", as: admin), .noContent)
     }
 
+    func testOwnCommentsAndReactionsStayRemovableDespiteBlocksAndHides() async throws {
+        let alice = try await fixtures.user()
+        let bob = try await fixtures.user()
+        let carol = try await fixtures.user()
+        let dave = try await fixtures.user()
+        let outsider = try await fixtures.user()
+        let group = try await fixtures.group(admin: alice, members: [bob, carol, dave])
+        let post = try await fixtures.post(by: alice, in: group)
+        let postID = try post.requireID()
+        let reactionPath = "posts/\(postID)/reactions?emoji=%F0%9F%99%8F"
+        let bobs = try decode(
+            CommentResponse.self, from: try await comment("밥", on: post, as: bob))
+        let carols = try decode(
+            CommentResponse.self, from: try await comment("캐롤", on: post, as: carol))
+        for user in [bob, carol] {
+            assertStatus(try await react(.emoji("🙏"), on: post, as: user), .ok)
+        }
+
+        // The post's author blocks Bob; Carol hides the post's author; Dave hides the post.
+        try await fixtures.block(alice, bob)
+        try await fixtures.hide(user: alice, by: carol)
+        try await fixtures.hide(post: post, by: dave)
+
+        // Someone else's comment the viewer cannot see stays 404, as does a non-member.
+        try assertError(
+            try await sendV1(.DELETE, "comments/\(carols.id)", as: dave), 404, .notFound)
+        try assertError(
+            try await sendV1(.DELETE, "comments/\(carols.id)", as: outsider), 404, .notFound)
+        try assertError(try await sendV1(.DELETE, reactionPath, as: outsider), 404, .notFound)
+
+        for (user, commentID) in [(bob, bobs.id), (carol, carols.id)] {
+            assertStatus(
+                try await sendV1(.DELETE, "comments/\(commentID)", as: user), .noContent)
+            let gone = try await Comment.find(commentID, on: db)
+            XCTAssertNil(gone)
+            assertStatus(try await sendV1(.DELETE, reactionPath, as: user), .ok)
+            let reactions = try await Reaction.query(on: db)
+                .filter(\.$post.$id == postID)
+                .filter(\.$user.$id == (try user.requireID()))
+                .count()
+            XCTAssertEqual(reactions, 0)
+        }
+    }
+
     // MARK: - Reactions
 
     private func react(_ key: ReactionKey, on post: Post, as user: User) async throws
