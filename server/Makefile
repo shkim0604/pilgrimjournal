@@ -124,7 +124,7 @@ backup-unschedule:
 #   make restore ARGS='--into dev'                   latest snapshot into the local dev stack
 #   make restore ARGS='--into prod --confirm pilgrim-prod --snapshot 1a2b3c4d'
 restore:
-	BACKUP_ENV_FILE='$(BACKUP_ENV_FILE)' ./scripts/restore.sh $(ARGS)
+	BACKUP_DIR='$(BACKUP_DIR)' BACKUP_ENV_FILE='$(BACKUP_ENV_FILE)' ./scripts/restore.sh $(ARGS)
 
 .env.dev:
 	cp .env.dev.example .env.dev

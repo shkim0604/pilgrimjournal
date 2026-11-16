@@ -555,6 +555,23 @@ ssh delight 'cd Developments/pilgrim-server && ./scripts/set-apple-key.sh siwa,a
    토큰 폐기 대기열이 개발 기기에서 실제 사용자에게 가지 않게. 복원 중 임시 폴더는 개인정보를
    담으므로 끝나면 지운다. 한 달에 한 번 개발 Mac에서 `--into dev`로 복원해 본다.
 
+   `--into prod`는 지우기 전에 지금 운영 데이터를 `BACKUP_DIR`(기본 `~/backups/pilgrim`)에 남긴다:
+   DB는 `db/pre-restore-<UTC 시각>.dump`(`pg_dump -Fc`), 사진은 `pre-restore-<UTC 시각>-media.tar`,
+   둘 다 chmod 600. 어느 하나라도 실패하면 아무것도 지우지 않고 api·worker를 다시 켠 뒤 멈춘다.
+   사본 위치와 되돌리는 명령은 시작할 때와 복원이 실패했을 때 출력된다. 되돌리기(`server/`에서):
+
+   ```sh
+   mkdir -m 700 ~/backups/pilgrim/pre-restore-<시각>-media
+   tar -C ~/backups/pilgrim/pre-restore-<시각>-media -xf ~/backups/pilgrim/pre-restore-<시각>-media.tar
+   make restore ARGS="--into prod --confirm pilgrim-prod \
+     --dump ~/backups/pilgrim/db/pre-restore-<시각>.dump --media ~/backups/pilgrim/pre-restore-<시각>-media"
+   ```
+
+   되돌리기도 prod 복원이라 그 직전 상태의 사본을 하나 더 남긴다. 사전 사본은 백업 보존 기간(7일)과
+   상관없이 운영자가 직접 지울 때까지 남는다 — 개인정보를 담고 사진 볼륨 전체 크기만큼 디스크를
+   쓰므로, 복원을 확인한 뒤 `rm -rf ~/backups/pilgrim/db/pre-restore-* ~/backups/pilgrim/pre-restore-*`로
+   지운다.
+
 ### 관리 콘솔 연결 (신고 페이지)
 
 - 콘솔(`web/admin`, 프로젝트 `pilgrim-admin`)과 api가 공유 Docker 네트워크 `pilgrim-edge`에 함께

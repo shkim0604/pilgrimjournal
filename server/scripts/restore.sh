@@ -12,16 +12,20 @@
 #              --confirm pilgrim-prod.
 # --snapshot   restic snapshot ID (default: latest of host BACKUP_HOST_TAG, tag pilgrim).
 #
-# Steps: fetch the snapshot into a temporary folder, stop api and worker, drop and recreate the
-# database, pg_restore, replace the media volume's contents, start api (and worker), which apply
-# any newer migrations. The temporary folder holds personal data and is deleted at exit.
+# Steps: fetch the snapshot into a temporary folder, stop api and worker, (prod only) save the
+# live database and photos to BACKUP_DIR as pre-restore-<UTC stamp> copies, kept until deleted by
+# hand, drop and recreate the database, pg_restore, replace the media volume's contents, start
+# api (and worker), which apply any newer migrations. The temporary folder holds personal data
+# and is deleted at exit.
 set -euo pipefail
 
 # shellcheck source=lib.sh
 . "$(dirname "$0")/lib.sh"
 
+BACKUP_DIR="${BACKUP_DIR:-$HOME/backups/pilgrim}"
+
 usage() {
-  sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'
   exit "${1:-0}"
 }
 
@@ -53,7 +57,21 @@ need docker 'Docker Desktop'
 
 work="$(mktemp -d "${TMPDIR:-/tmp}/pilgrim-restore.XXXXXX")"
 chmod 700 "$work"
-trap 'rm -rf "$work"' EXIT
+pre_db="" pre_media="" pre_dir=""
+put_back_hint() {
+  log "pre-restore copies (kept until you delete them): $pre_db, $pre_media. To put them back, in server/:"
+  log "  mkdir -m 700 '$pre_dir' && tar -C '$pre_dir' -xf '$pre_media'"
+  log "  make restore ARGS=\"--into prod --confirm pilgrim-prod --dump '$pre_db' --media '$pre_dir'\""
+}
+cleanup() {
+  local status=$?
+  rm -rf "$work"
+  if ((status != 0)) && [[ -n "$pre_db" ]]; then
+    log "restore FAILED (exit $status); prod may be half-restored" >&2
+    put_back_hint >&2
+  fi
+}
+trap cleanup EXIT
 
 if [[ -n "$dump" ]]; then
   [[ -s "$dump" ]] || die "dump file $dump is missing or empty"
@@ -79,6 +97,31 @@ fi
 # api/worker off while the data underneath them changes.
 compose "$into" stop api worker
 compose "$into" up -d --wait postgres
+
+# Prod: a copy of the live data first, so a wrong snapshot or a failed restore can be undone.
+if [[ "$into" == prod ]]; then
+  stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+  mkdir -p "$BACKUP_DIR/db"
+  chmod 700 "$BACKUP_DIR"
+  db_copy="$BACKUP_DIR/db/pre-restore-$stamp.dump"
+  media_copy="$BACKUP_DIR/pre-restore-$stamp-media.tar"
+  abort_copy() {
+    rm -f "$db_copy" "$media_copy"
+    compose prod up -d --no-deps api worker || log "warning: could not restart api and worker" >&2
+    die "$*; nothing was restored or deleted"
+  }
+  log "saving the live database to $db_copy"
+  compose prod exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc --no-owner' \
+    >"$db_copy" || abort_copy "pg_dump of the live database failed"
+  chmod 600 "$db_copy"
+  [[ -s "$db_copy" ]] || abort_copy "pg_dump of the live database wrote nothing"
+  log "saving the live photos to $media_copy"
+  compose prod run --rm --no-deps -T --entrypoint tar api -C /data/media -cf - . \
+    >"$media_copy" || abort_copy "copying the live photo volume failed"
+  chmod 600 "$media_copy"
+  pre_db="$db_copy" pre_media="$media_copy" pre_dir="$BACKUP_DIR/pre-restore-$stamp-media"
+  put_back_hint
+fi
 
 log "recreating database"
 compose "$into" exec -T postgres sh -c '
