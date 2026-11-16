@@ -22,13 +22,13 @@ struct KindManagementSheet: View {
                 }
 
                 Section {
-                    ForEach(model.kindCatalog.creatableKinds) { definition in
+                    ForEach(model.kindCatalog.manageableKinds) { definition in
                         kindRow(definition)
                             .deleteDisabled(!definition.kind.canBeDeleted)
                     }
                     .onMove(perform: moveKinds)
                     .onDelete { offsets in
-                        requestDeletion(at: offsets, in: model.kindCatalog.creatableKinds)
+                        requestDeletion(at: offsets, in: model.kindCatalog.manageableKinds)
                     }
 
                     // Kinds from another device whose catalog has not arrived
@@ -152,7 +152,7 @@ struct KindManagementSheet: View {
     }
 
     private func moveKinds(from source: IndexSet, to destination: Int) {
-        var ordered = model.kindCatalog.creatableKinds.map(\.kind)
+        var ordered = model.kindCatalog.manageableKinds.map(\.kind)
         ordered.move(fromOffsets: source, toOffset: destination)
         perform { try model.reorderKinds(ordered) }
     }

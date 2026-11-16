@@ -135,6 +135,13 @@ final class AppModelScrapTests: XCTestCase {
         XCTAssertEqual(model.sidebarKinds.dropLast().last?.kind, .scrap)
         XCTAssertFalse(model.kindCatalog.creatableKinds.contains { $0.kind == .scrap })
         XCTAssertFalse(model.kindPickerOptions().contains { $0.kind == .scrap })
+        // The Day One import table offers every active kind but scrap.
+        let importKinds = model.kindPickerOptions(activeOnly: true).map(\.kind)
+        XCTAssertFalse(importKinds.contains(.scrap))
+        XCTAssertTrue(importKinds.contains(.unclassified))
+        XCTAssertEqual(importKinds.count, model.kindCatalog.activeKinds.count - 1)
+        // 유형 편집 lists it, so it can be renamed, recoloured, reordered and deleted.
+        XCTAssertEqual(model.kindCatalog.manageableKinds.last?.kind, .scrap)
         XCTAssertEqual(model.defaultKindForNewEntry, .diary)
         XCTAssertTrue(model.notebooks.contains("스크랩 · 수요 기도모임"))
         XCTAssertTrue(model.hasScrapped(postID: post.id))
