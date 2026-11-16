@@ -383,8 +383,8 @@ private final class FailingSaveRepository: JournalRepository {
         return try base.save(draft, deviceID: deviceID, at: date)
     }
 
-    func revisions(entryID: UUID) throws -> [EntryRevisionRecord] {
-        try base.revisions(entryID: entryID)
+    func revisions(entryID: UUID, limit: Int?) throws -> [EntryRevisionRecord] {
+        try base.revisions(entryID: entryID, limit: limit)
     }
 
     func restore(entryID: UUID, revisionID: UUID, deviceID: String, at date: Date) throws

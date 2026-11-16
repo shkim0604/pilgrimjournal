@@ -158,8 +158,9 @@ public final class InMemoryJournalRepository:
         return record
     }
 
-    public func revisions(entryID: UUID) throws -> [EntryRevisionRecord] {
-        (revisionStorage[entryID] ?? []).sorted { $0.createdAt > $1.createdAt }
+    public func revisions(entryID: UUID, limit: Int?) throws -> [EntryRevisionRecord] {
+        let all = (revisionStorage[entryID] ?? []).sorted { $0.createdAt > $1.createdAt }
+        return limit.map { Array(all.prefix($0)) } ?? all
     }
 
     public func restore(

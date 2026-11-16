@@ -155,14 +155,14 @@ public final class SwiftDataJournalRepository:
         return try map(entity)
     }
 
-    public func revisions(entryID: UUID) throws -> [EntryRevisionRecord] {
+    public func revisions(entryID: UUID, limit: Int?) throws -> [EntryRevisionRecord] {
         var descriptor = FetchDescriptor<EntryRevisionEntity>(
             predicate: #Predicate { revision in
                 revision.entryID == entryID
             },
             sortBy: [SortDescriptor(\EntryRevisionEntity.createdAt, order: .reverse)]
         )
-        descriptor.fetchLimit = 1_000
+        descriptor.fetchLimit = limit
         return try context.fetch(descriptor).map(map)
     }
 

@@ -53,7 +53,7 @@ extension AppModel {
                 limit: 100_000
             )
             let revisions = try allEntries.flatMap {
-                try repository.revisions(entryID: $0.id)
+                try repository.revisions(entryID: $0.id, limit: nil)
             }
             let attachments: [BackupAttachment]
             if let attachmentRepository = repository as? any AttachmentRepository {
@@ -211,7 +211,7 @@ extension AppModel {
             limit: 100_000
         )
         let revisions = try allEntries.flatMap {
-            try repository.revisions(entryID: $0.id)
+            try repository.revisions(entryID: $0.id, limit: nil)
         }
         let attachments: [BackupAttachment]
         if let attachmentRepository = repository as? any AttachmentRepository {

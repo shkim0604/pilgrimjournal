@@ -115,7 +115,7 @@ final class FamilySharingController: ObservableObject {
     func contents(of spaceID: UUID) throws -> [(JournalEntryRecord, [EntryRevisionRecord])] {
         let cache = try store.cache(for: spaceID)
         return try cache.list(kind: nil, includeDeleted: false, limit: 100_000).map {
-            ($0, try cache.revisions(entryID: $0.id))
+            ($0, try cache.revisions(entryID: $0.id, limit: nil))
         }
     }
 

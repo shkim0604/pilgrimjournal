@@ -1228,6 +1228,34 @@ final class JournalDataTests: XCTestCase {
         XCTAssertEqual(result.migratedAttachments, 1)
     }
 
+    /// Autosave writes a revision per typing pause, so a long-edited entry
+    /// passes the history UI's 1,000 cap; migration must still carry them all.
+    func testScopeMigrationCarriesMoreThanAThousandRevisionsOfOneEntry() throws {
+        let source = try makeRepository()
+        let entry = try source.save(
+            JournalEntryDraft(kind: .diary, body: "오래 고친 기록"), deviceID: "Mac",
+            at: Date(timeIntervalSince1970: 0))
+        try source.performRestoreTransaction {
+            for index in 1...1_100 {
+                try source.importRevision(
+                    EntryRevisionRecord(
+                        entryID: entry.id, parentRevisionID: nil, snapshot: entry.draft,
+                        createdAt: Date(timeIntervalSince1970: Double(index)), deviceID: "Mac"))
+            }
+        }
+        XCTAssertEqual(try source.revisions(entryID: entry.id).count, 1_000)
+        XCTAssertEqual(try source.revisions(entryID: entry.id, limit: nil).count, 1_101)
+
+        let destination = InMemoryJournalRepository()
+        let result = try JournalScopeMigrationService().migrate(from: source, to: destination)
+
+        XCTAssertEqual(result.migratedRevisions, 1_101)
+        XCTAssertTrue(
+            Set(try source.revisions(entryID: entry.id, limit: nil).map(\.id))
+                .isSubset(
+                    of: Set(try destination.revisions(entryID: entry.id, limit: nil).map(\.id))))
+    }
+
     private func assertJSONRoundTrip<T>(_ value: T) throws
     where T: Codable & Equatable {
         let encoded = try JSONEncoder().encode(value)
