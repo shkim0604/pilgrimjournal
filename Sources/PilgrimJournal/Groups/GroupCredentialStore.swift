@@ -1,13 +1,13 @@
 import CryptoKit
 import Foundation
+import JournalGroups
 import Security
 
 /// Raw secure items keyed by account under one Keychain service.
 ///
-/// A1 defines `GroupCredentialStoring` in JournalGroups for `GroupSessionStore` in parallel;
-/// Phase 2 makes `GroupCredentialStore` conform to it (the shapes are meant to match:
-/// save/load/delete of `Data` per account) and passes the same instance to the live client,
-/// so the session and the installation ID live in one place.
+/// The live client's `GroupSession` reads and writes the same items through
+/// `GroupKeychainCredentialStore` (JournalGroups' `GroupCredentialStoring`), so the session,
+/// the installation ID and account deletion's markers live in one place.
 protocol GroupSecureItemStoring: Sendable {
     func save(_ data: Data, for account: String) throws
     func load(for account: String) throws -> Data?
@@ -122,6 +122,46 @@ extension GroupSecureItemStoring {
         let id = UUID()
         try save(Data(id.uuidString.lowercased().utf8), for: account)
         return id
+    }
+}
+
+/// `GroupCredentialStoring` (what `URLSessionGroupAPI`'s session needs) over the group
+/// Keychain items: each journal user's session is `GroupCredential` JSON under their account
+/// hash, and the installation ID is the same lowercase UUID string under `installation-id`
+/// that `GroupSecureItemStoring.installationID()` reads, so the sign-in body, device
+/// registration and the session's refresh all send one ID.
+struct GroupKeychainCredentialStore: GroupCredentialStoring {
+    let items: any GroupSecureItemStoring
+
+    init(items: any GroupSecureItemStoring = GroupCredentialStore()) {
+        self.items = items
+    }
+
+    func loadCredential(account: String) throws -> GroupCredential? {
+        guard let data = try items.load(for: account) else { return nil }
+        return try GroupCredential.decoded(from: data)
+    }
+
+    func saveCredential(_ credential: GroupCredential, account: String) throws {
+        try items.save(credential.encoded(), for: account)
+    }
+
+    func deleteCredential(account: String) throws {
+        try items.delete(for: account)
+    }
+
+    func loadInstallationID() throws -> UUID? {
+        guard let data = try items.load(for: GroupCredentialStore.installationIDAccount) else {
+            return nil
+        }
+        guard let text = String(data: data, encoding: .utf8), let id = UUID(uuidString: text)
+        else { throw GroupCredentialStoreError.malformed }
+        return id
+    }
+
+    func saveInstallationID(_ id: UUID) throws {
+        try items.save(
+            Data(id.uuidString.lowercased().utf8), for: GroupCredentialStore.installationIDAccount)
     }
 }
 

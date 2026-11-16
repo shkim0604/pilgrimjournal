@@ -201,6 +201,9 @@ final class GroupPostLaunchTests: XCTestCase {
         XCTAssertNotEqual(evaluate(.signedIn, []), .ready)
         XCTAssertEqual(
             evaluate(.upgradeRequired, [group(.active)]), .blocked(GroupMessages.upgradeRequired))
+        // Not signed in (or signed up) to groups: onboarding opens from the share flow itself.
+        XCTAssertEqual(evaluate(.signedOut, [group(.active)]), .needsOnboarding)
+        XCTAssertEqual(evaluate(.needsProfile, []), .needsOnboarding)
         for state in [GroupsAccountState.signedOut, .needsProfile, .needsSubscription, .unknown] {
             XCTAssertNotEqual(evaluate(state, [group(.active)]), .ready, "\(state)")
         }
@@ -222,7 +225,7 @@ final class GroupPostLaunchTests: XCTestCase {
 
         let signedOut = GroupsMembershipFixtures.controller(api: PreviewGroupAPI(signedIn: false))
         let signedOutReadiness = await signedOut.prepareForPosting()
-        XCTAssertNotEqual(signedOutReadiness, .ready)
+        XCTAssertEqual(signedOutReadiness, .needsOnboarding)
         XCTAssertEqual(signedOut.accountState, .signedOut)
     }
 }

@@ -46,6 +46,9 @@ private struct GroupPostDetailContent: View {
     @State private var isConfirmingExtend = false
     @State private var isConfirmingDelete = false
     @State private var blocking: UserSummary?
+    @State private var isScrapping = false
+    @State private var isConfirmingScrapAgain = false
+    @State private var didScrap = false
     @State private var commentPhotoSelection: [PhotosPickerItem] = []
     let groupID: UUID
     let api: any GroupAPI
@@ -165,6 +168,20 @@ private struct GroupPostDetailContent: View {
             } message: { _ in
                 Text("서로의 글·댓글·반응이 보이지 않게 돼요. 상대에게는 알리지 않아요.")
             }
+            .confirmationDialog(
+                "이미 스크랩했어요. 한 번 더 저장할까요?", isPresented: $isConfirmingScrapAgain,
+                titleVisibility: .visible
+            ) {
+                Button("한 번 더 저장") {
+                    if let post = model.post { Task { await scrap(post, saveAgain: true) } }
+                }
+                Button("취소", role: .cancel) {}
+            }
+            .alert("스크랩했어요", isPresented: $didScrap) {
+                Button("확인", role: .cancel) {}
+            } message: {
+                Text("기록장의 ‘스크랩’ 유형에 저장했어요. 원래 글이 사라져도 남아요.")
+            }
     }
 
     @ViewBuilder
@@ -259,6 +276,10 @@ private struct GroupPostDetailContent: View {
 
     private func overflowMenu(_ post: PostResponse) -> some View {
         Menu {
+            Button("스크랩", systemImage: "bookmark") {
+                Task { await scrap(post, saveAgain: false) }
+            }
+            .disabled(isScrapping)
             if model.canDeletePost {
                 Button("글 내리기", systemImage: "trash", role: .destructive) {
                     isConfirmingDelete = true
@@ -480,6 +501,21 @@ private struct GroupPostDetailContent: View {
 
     private func closePost() {
         appModel.selectGroupPost(nil)
+    }
+
+    /// Copies the post into the journal (design.md 15절). A post already scrapped asks first.
+    private func scrap(_ post: PostResponse, saveAgain: Bool) async {
+        guard !isScrapping else { return }
+        isScrapping = true
+        defer { isScrapping = false }
+        switch await appModel.scrapGroupPost(post, saveAgain: saveAgain) {
+        case .saved:
+            didScrap = true
+        case .alreadyScrapped:
+            isConfirmingScrapAgain = true
+        case .failed(let message):
+            model.notice = message
+        }
     }
 
     private func importCommentPhotos(_ items: [PhotosPickerItem]) async {

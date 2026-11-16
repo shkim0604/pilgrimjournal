@@ -26,11 +26,12 @@ import AppKit
 // tested; the classes only wire them to the system. Everything is inert while `GroupsFeature`
 // is off.
 //
-// Phase 2 hooks (files this track does not own):
-// 1. `JournalSessionController.makeAppModel(for:)`: route taps through the opener —
-//    `groups.onOpenRoute = { route in GroupNotificationOpener.shared.receive(route) }`.
+// Where the opener is wired in (all three are needed):
+// 1. `JournalSessionController.makeAppModel(for:)` routes taps through the opener —
+//    `groups.onOpenRoute = { route in opener.receive(route) }`.
 // 2. `PilgrimJournalApp.prepareJournalSession()`, right after `await appLock.bootstrap()`:
-//    `GroupNotificationOpener.shared.appLockDidBootstrap(appLock)`.
+//    `GroupNotificationOpener.shared.appLockDidBootstrap(appLock)`. Without it every tap
+//    waits forever.
 // 3. `ContentView.body`: `.groupNotificationHandling(preferredCompactColumn:
 //    $preferredCompactColumn)` (attaches the destination, starts the registrar, hosts the
 //    Daily Report sheet and the "no longer available" alert).
@@ -491,13 +492,13 @@ final class GroupNotificationOpener: ObservableObject {
     /// Whether a journal window is attached to open routes in.
     var isAttached: Bool { model != nil }
 
-    /// Phase 2 hook 1: `GroupsController.onOpenRoute` hands every tapped notification here.
+    /// Hook 1: `GroupsController.onOpenRoute` hands every tapped notification here.
     func receive(_ route: GroupNotificationRoute) {
         guard isEnabled, let route = gate.receive(route) else { return }
         startOpening(route)
     }
 
-    /// Phase 2 hook 2: the app lock has read its configuration, so `isLocked` is now real.
+    /// Hook 2: the app lock has read its configuration, so `isLocked` is now real.
     /// Follows the lock and the privacy shield from here on.
     func appLockDidBootstrap(_ appLock: AppLockCoordinator) {
         guard isEnabled else { return }
@@ -604,7 +605,7 @@ extension GroupNotificationRoute {
 // MARK: - Journal window
 
 extension View {
-    /// Phase 2 hook 3, on `ContentView`: attaches the journal window to
+    /// Hook 3, on `ContentView`: attaches the journal window to
     /// `GroupNotificationOpener.shared` (which starts the session's notification registrar),
     /// and hosts the Daily Report sheet and the "no longer available" alert. Inert while
     /// `GroupsFeature` is off.

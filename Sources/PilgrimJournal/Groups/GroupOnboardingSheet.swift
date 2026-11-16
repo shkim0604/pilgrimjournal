@@ -69,7 +69,7 @@ private struct GroupSignInStep: View {
 
                 VStack(alignment: .leading, spacing: JournalTheme.Spacing.medium) {
                     Label("기록장은 그대로 내 기기와 iCloud에만 있어요.", systemImage: "lock.shield")
-                    Label("직접 올린 글만 그룹 서버에 저장돼요.", systemImage: "paperplane")
+                    Label("그룹에서 쓰고 올린 것만 그룹 서버에 저장돼요.", systemImage: "paperplane")
                     Label("기록장에 로그인한 Apple 계정으로 한 번 더 인증해요.", systemImage: "person.badge.key")
                 }
                 .font(.callout)
@@ -179,9 +179,13 @@ private struct GroupSignUpForm: View {
 
             Section {
                 Toggle("이용 안내와 개인정보 처리 방침에 동의해요", isOn: $acceptsTerms)
+                // The support page until the group terms (`docs/group-terms.md`) are published there.
                 Link("이용 안내 보기", destination: SupportLinks.supportPage)
             } footer: {
-                Text("그룹 서버에는 이 이름과 프로필 사진, 직접 올린 글만 저장돼요.")
+                // What the server keeps, as `docs/privacy.md` "그룹 서버" lists it.
+                Text(
+                    "그룹 서버에는 그룹에서 보일 이름과 프로필 사진, 내 그룹과 멤버 정보, 올린 글과 사진, 댓글, 반응, 스티커, 알림용 기기 토큰, 숨김·차단 목록, 신고가 저장돼요. 기록장의 기록은 올라가지 않아요."
+                )
             }
 
             Section {

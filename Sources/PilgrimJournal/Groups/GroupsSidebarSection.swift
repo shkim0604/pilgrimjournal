@@ -177,34 +177,12 @@ private struct GroupsSheetsModifier: ViewModifier {
         case .vote(let groupID):
             GroupAdminVoteSheet(groups: groups, groupID: groupID)
         case .subscription:
-            GroupSubscriptionPlaceholderSheet()
+            GroupSubscriptionSheet()
         }
     }
 
     private func open(_ groupID: UUID) {
         model.selectGroup(groupID)
         preferredCompactColumn = .content
-    }
-}
-
-/// Stands in for the subscription screen until A8 sets `GroupsController.onSubscriptionRequired`.
-private struct GroupSubscriptionPlaceholderSheet: View {
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            JournalEmptyState(
-                title: String(localized: "구독이 필요해요"),
-                description: String(localized: "그룹을 만들거나 참여하려면 구독이 필요해요. 구독 화면은 준비 중입니다."),
-                systemImage: "sparkles"
-            ) {}
-            .navigationTitle("구독")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("닫기") { dismiss() }
-                }
-            }
-        }
-        .frame(minWidth: 320, minHeight: 240)
     }
 }

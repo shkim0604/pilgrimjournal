@@ -87,7 +87,7 @@ final class AppModelScrapTests: XCTestCase {
         let clock = fixture.clock
         return await model.scrapGroupPost(
             post, groupName: groupName, using: fixture.api, saveAgain: saveAgain,
-            labels: .korean, download: server.download, now: { clock.now })
+            download: server.download, now: { clock.now })
     }
 
     private func savedID(_ result: GroupScrapResult) throws -> UUID {
@@ -135,6 +135,13 @@ final class AppModelScrapTests: XCTestCase {
         XCTAssertEqual(model.sidebarKinds.dropLast().last?.kind, .scrap)
         XCTAssertFalse(model.kindCatalog.creatableKinds.contains { $0.kind == .scrap })
         XCTAssertFalse(model.kindPickerOptions().contains { $0.kind == .scrap })
+        // The Day One import table offers every active kind but scrap.
+        let importKinds = model.kindPickerOptions(activeOnly: true).map(\.kind)
+        XCTAssertFalse(importKinds.contains(.scrap))
+        XCTAssertTrue(importKinds.contains(.unclassified))
+        XCTAssertEqual(importKinds.count, model.kindCatalog.activeKinds.count - 1)
+        // 유형 편집 lists it, so it can be renamed, recoloured, reordered and deleted.
+        XCTAssertEqual(model.kindCatalog.manageableKinds.last?.kind, .scrap)
         XCTAssertEqual(model.defaultKindForNewEntry, .diary)
         XCTAssertTrue(model.notebooks.contains("스크랩 · 수요 기도모임"))
         XCTAssertTrue(model.hasScrapped(postID: post.id))
@@ -157,6 +164,36 @@ final class AppModelScrapTests: XCTestCase {
         _ = try savedID(await scrap(model, post, fixture, server: server, saveAgain: true))
         XCTAssertEqual(
             try repository.list(kind: .scrap, includeDeleted: false, limit: 10).count, 2)
+    }
+
+    func testPostLanguageNotDeviceLanguagePicksTheWordsAndOneNotebookServesBoth() async throws {
+        let fixture = try await GroupsContentFixture()
+        let korean = try await prayerPost(fixture)
+        let english = try await fixture.api.createPost(
+            groupID: fixture.wednesday.id,
+            CreatePostRequest(
+                clientId: UUID(), kind: .prayer,
+                items: [PrayerItem(text: "Pray for my interview this week", topic: "work")],
+                timeZone: GroupsContentFixture.seoul.identifier))
+        let repository = InMemoryJournalRepository()
+        let model = try makeModel(repository: repository)
+        let server = FakePhotoServer(data: try GroupsContentFixture.jpeg(width: 800, height: 600))
+
+        let koreanID = try savedID(await scrap(model, korean, fixture, server: server))
+        let englishID = try savedID(await scrap(model, english, fixture, server: server))
+
+        let englishEntry = try XCTUnwrap(repository.entry(id: englishID))
+        XCTAssertEqual(englishEntry.title, "\(english.author.displayName)'s prayer requests")
+        XCTAssertTrue(englishEntry.body.hasPrefix("> Scraps · 수요 기도모임\n"), englishEntry.body)
+        XCTAssertTrue(englishEntry.body.contains(" · Prayer requests · Posted on "))
+        XCTAssertTrue(englishEntry.body.contains("- Pray for my interview this week (work)"))
+        XCTAssertEqual(
+            try repository.entry(id: koreanID)?.title, "\(korean.author.displayName)의 기도제목")
+        // Both languages land in the one Korean-named notebook.
+        XCTAssertEqual(englishEntry.notebookName, "스크랩 · 수요 기도모임")
+        XCTAssertEqual(try repository.entry(id: koreanID)?.notebookName, "스크랩 · 수요 기도모임")
+        XCTAssertEqual(model.notebooks.filter { $0.contains("수요 기도모임") }, ["스크랩 · 수요 기도모임"])
+        XCTAssertEqual(model.kindCatalog.definition(for: .scrap).name, "스크랩")
     }
 
     func testPreviouslyDeletedNotebookComesBack() async throws {

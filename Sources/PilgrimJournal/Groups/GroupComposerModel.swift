@@ -15,9 +15,17 @@ enum GroupImagePreparation {
     /// Sends the data as is. Only for previews and tests: `PreviewGroupAPI` accepts any JPEG.
     static let identity: GroupImagePreparer = { data, _ in data }
 
-    /// What every group screen uses unless a test injects its own. Phase 2 points this at
-    /// `JournalGroups.ImageCompressor` (A1).
-    @MainActor static var current: GroupImagePreparer = identity
+    /// Shrinks and strips the photo with `JournalGroups.ImageCompressor` (design.md 7절), off
+    /// the main actor. The server rejects anything over the limits, and EXIF/GPS must never
+    /// leave the device.
+    static let compressing: GroupImagePreparer = { data, purpose in
+        try await Task.detached(priority: .userInitiated) {
+            try ImageCompressor.compress(data, for: purpose).data
+        }.value
+    }
+
+    /// What every group screen uses unless a test injects its own.
+    @MainActor static var current: GroupImagePreparer = compressing
 }
 
 /// Pixel sizes and thumbnails of encoded images, without UIKit/AppKit.

@@ -238,7 +238,10 @@ Phase 2에서만 고친다. Phase 1 작업끼리는 맡는 파일이 겹치지 �
 
 - [ ] 3.1 현지화: 앱 `Localizable.xcstrings`(푸시 `PushLocKey` 포함)와 `InfoPlist.xcstrings`(알림·사진·카메라 권한
       문구)에 새 키의 영어를 채운다
-- [ ] 3.2 `JournalSessionController`에서 `PreviewGroupAPI`를 `URLSessionGroupAPI`로 바꾼다
+- [x] 3.2 `JournalSessionController`에서 `PreviewGroupAPI`를 `URLSessionGroupAPI`로 바꾼다 (2026-11-16,
+      `groups/p2-app`: `GroupsFeature.defaultAPIFactory`, `PILGRIM_GROUP_SERVER_URL`·`PILGRIM_GROUP_API=preview`,
+      Keychain 어댑터 `GroupKeychainCredentialStore`. 같은 브랜치에서 A5 `remoteEraser`, A6 스크랩 버튼,
+      A7 알림 opener, A8 구독 연결)
 - [ ] 3.3 전체 검증: `./scripts/check.sh`, `make -C server test`, iOS·macOS xcodebuild, iOS 시뮬레이터 테스트, CI, 계획의
       로컬 시나리오(가입·초대·글·스크랩·기한·안전·Daily Report·투표·구독·계정 삭제), `xcrun simctl push`
 - [ ] 3.4 맥미니 배포, 터널 ingress(콘솔 규칙보다 앞), Cloudflare 봇 규칙 예외(`/api`, `/.well-known`), 실기기

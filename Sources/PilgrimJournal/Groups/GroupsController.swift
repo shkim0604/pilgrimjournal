@@ -34,7 +34,8 @@ final class GroupsController: ObservableObject {
     let api: any GroupAPI
     /// Called with each tapped group notification once this controller is attached.
     var onOpenRoute: ((GroupNotificationRoute) -> Void)?
-    /// Opens the subscription screen (A8). Until it is set, a placeholder sheet stands in.
+    /// Asks for the subscription screen; `GroupSubscriptionController.attach(to:)` sets it.
+    /// Until then the screen opens directly.
     var onSubscriptionRequired: (() -> Void)?
 
     private let invites: PendingGroupInvite
@@ -220,7 +221,7 @@ final class GroupsController: ObservableObject {
         await afterAccess()
     }
 
-    /// Opens the subscription screen (A8) or its placeholder.
+    /// Opens the subscription screen (through `GroupSubscriptionController` once attached).
     func requestSubscription() {
         if let onSubscriptionRequired {
             presentedSheet = nil

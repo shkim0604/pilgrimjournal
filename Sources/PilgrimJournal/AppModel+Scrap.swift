@@ -3,7 +3,6 @@ import JournalData
 import JournalDomain
 import JournalGroups
 import JournalSearch
-import JournalShareDrafts
 import PilgrimAPI
 
 /// What `scrapGroupPost` did.
@@ -68,6 +67,9 @@ extension AppModel {
     /// as a new entry of the scrap kind, in the notebook "스크랩 · <그룹 이름>". The server
     /// is only read from. Nothing is saved unless every photo downloaded.
     ///
+    /// - The words are the post's own language (Korean if it has any Hangul, else English),
+    ///   never the device's, and the notebook name is always Korean (`ScrapComposer`), so
+    ///   two devices never word one scrap differently or split a group into two notebooks.
     /// - The entry always goes to this scope's own journal, never into a shared notebook,
     ///   whatever the sidebar shows.
     /// - The scrap kind appears in the catalog on the first scrap (and comes back if the user
@@ -78,7 +80,6 @@ extension AppModel {
         groupName: String?,
         using api: any GroupAPI,
         saveAgain: Bool = false,
-        labels: ScrapLabels? = nil,
         download: @escaping GroupScrapDownloader = AppModel.urlSessionScrapDownloader,
         now: @escaping @Sendable () -> Date = { Date() }
     ) async -> GroupScrapResult {
@@ -102,8 +103,7 @@ extension AppModel {
         }
         let composition = ScrapComposer.compose(
             post: Self.scrapPost(post, groupName: name),
-            comments: comments.map(Self.scrapComment),
-            labels: labels ?? Self.appScrapLabels())
+            comments: comments.map(Self.scrapComment))
 
         var media: [UUID: MediaRef] = [:]
         for ref in post.media + comments.flatMap(\.media) { media[ref.id] = ref }
@@ -258,23 +258,4 @@ extension AppModel {
             hasSticker: comment.sticker != nil || comment.stickerRemoved)
     }
 
-    /// The scrap's words in the app's language right now. They are stored with the entry and
-    /// never translated afterwards.
-    static func appScrapLabels(bundle: Bundle = .main) -> ScrapLabels {
-        let identifier = bundle.preferredLocalizations.first ?? "ko"
-        let language: RequestLanguage = identifier.hasPrefix("en") ? .english : .korean
-        return ScrapLabels(
-            locale: Locale(identifier: identifier),
-            scrap: String(localized: "스크랩"),
-            prayerKind: PostKind.prayer.groupLabel,
-            bookReportKind: PostKind.bookReport.groupLabel,
-            testimonyKind: PostKind.testimony.groupLabel,
-            posted: { String(localized: "\($0)에 올림") },
-            deadline: { String(localized: "데드라인 \($0)") },
-            prayerTitle: { String(localized: "\($0)의 기도제목") },
-            testimonyTitle: { String(localized: "\($0)의 간증") },
-            comments: String(localized: "댓글"),
-            sticker: String(localized: "(스티커)"),
-            topicName: { PrayerRequestTopic(rawValue: $0)?.name(in: language) })
-    }
 }

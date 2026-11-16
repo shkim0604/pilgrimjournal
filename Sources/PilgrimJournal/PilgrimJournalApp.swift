@@ -3,6 +3,7 @@ import CloudKit
 import Combine
 import JournalData
 import JournalDomain
+import JournalGroups
 import JournalSearch
 import SwiftUI
 
@@ -177,11 +178,20 @@ struct PilgrimJournalApp: App {
             cloudKitEnabled && Self.developerSignInBypassUser == nil
             ? CloudKitAccountDataEraser(containerIdentifier: requestedCloudIdentifier)
             : nil
+        // The group-server step runs first in every deletion (design.md 13절). It is a quiet
+        // no-op while groups are off or this device holds no group session for the user.
+        let remoteEraser: (any RemoteAccountDataErasing)? =
+            isVisualTesting
+            ? nil
+            : GroupAccountErasure { account in
+                GroupsFeature.accountDeletionClient(account: account)
+            }
         let accountDeleter = AccountDeletionService(
             rootURLProvider: {
                 isVisualTesting ? visualTestingRoot : try JournalPaths.applicationRoot()
             },
             cloudEraser: cloudEraser,
+            remoteEraser: remoteEraser,
             sessionService: sessionService,
             appLockStore: appLockStore,
             standardDefaultsKeys: ["has-completed-onboarding"],
@@ -564,6 +574,8 @@ struct PilgrimJournalApp: App {
         await journalSession.activate(appleUserIdentifier: identifier)
         guard let appModel = journalSession.appModel else { return }
         await appLock.bootstrap()
+        // Group notification taps wait until the lock state is known (and unlocked).
+        GroupNotificationOpener.shared.appLockDidBootstrap(appLock)
         await appModel.refreshCloudAccountState()
         #if DEBUG
         if Self.isVisualTesting {
