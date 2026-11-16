@@ -120,7 +120,7 @@ private struct GroupPostComposerPresenter: ViewModifier {
         case .ready:
             composing = pending
         case .needsOnboarding:
-            // Closing "그룹 시작하기" without finishing it ends here, without a second sheet.
+            // Just back from "그룹 시작하기" (the session was lost meanwhile): not a second time.
             guard !afterOnboarding else { return }
             waitingRequest = pending
             onboarding = pending
