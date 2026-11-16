@@ -93,6 +93,57 @@ jobs:
       - run: npm run typecheck
       - run: npm test
 
+  server-image:
+    # Builds the group server image the way docker-compose.yml does (context server/, default
+    # target), so a Dockerfile or .dockerignore break shows up here and not at deploy time. The
+    # release Swift build is slow, so it only runs when server/ or this workflow changes; the job
+    # itself always runs and reports, so a required check never waits forever. Nothing is pushed.
+    name: Docker image (group server)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      pull-requests: read # dorny/paths-filter lists a PR's files through the API
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            server:
+              - 'server/**'
+              - '.github/workflows/check.yml'
+      - if: steps.changes.outputs.server != 'true'
+        run: echo "No server/ changes; image build skipped."
+      - if: steps.changes.outputs.server == 'true'
+        uses: docker/setup-buildx-action@v3
+      - name: docker build server
+        if: steps.changes.outputs.server == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: server
+          push: false
+          cache-from: type=gha,scope=server-image
+          cache-to: type=gha,scope=server-image,mode=max
+
+  admin-image:
+    # web/admin/docker-compose.yml builds from the repository root with web/admin/Dockerfile and
+    # the root .dockerignore (docs/*.md and site/index.html go in too). Small, so it always runs.
+    name: Docker image (admin console)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: docker build admin console
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: web/admin/Dockerfile
+          push: false
+          cache-from: type=gha,scope=admin-image
+          cache-to: type=gha,scope=admin-image,mode=max
+
   xcode:
     # The Xcode project enforces member import visibility, which `swift build`
     # does not, so an import that is only "transitively" visible fails here.
