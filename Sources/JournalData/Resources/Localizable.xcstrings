@@ -162,7 +162,14 @@
       }
     },
     "그룹 서버 계정을 지우지 못했어요. 다시 시도해 주세요. iCloud와 이 기기의 기록은 그대로 두었어요. (%@)" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't delete your group server account. Please try again. Your entries in iCloud and on this device were left as they are. (%@)"
+          }
+        }
+      }
     },
     "기기 보안 저장소 오류입니다(%d)." : {
       "localizations" : {
