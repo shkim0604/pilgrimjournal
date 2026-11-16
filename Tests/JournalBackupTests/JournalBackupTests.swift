@@ -476,6 +476,59 @@ final class JournalBackupTests: XCTestCase {
         XCTAssertEqual(try repository.entry(id: entry.id)?.title, entry.title)
     }
 
+    /// Backups include the trash; restoring must keep those entries trashed,
+    /// both when they are new to this store and when the store still has an
+    /// older live copy (same revision, trashed later on another device).
+    @MainActor
+    func testRestoreKeepsTrashedEntriesInTheTrash() throws {
+        let repository = InMemoryJournalRepository()
+        let live = try repository.save(
+            JournalEntryDraft(kind: .diary, title: "다른 기기에서 지운 기록"),
+            deviceID: "iPhone",
+            at: Date(timeIntervalSince1970: 10)
+        )
+        var trashedElsewhere = live
+        trashedElsewhere.deletedAt = Date(timeIntervalSince1970: 20)
+        trashedElsewhere.updatedAt = Date(timeIntervalSince1970: 20)
+        var trashedNew = makeRecord(title: "휴지통의 기록", date: Date(timeIntervalSince1970: 5))
+        trashedNew.deletedAt = Date(timeIntervalSince1970: 6)
+        trashedNew.updatedAt = Date(timeIntervalSince1970: 6)
+        let contents = BackupContents(
+            manifest: BackupManifest(files: [:], includesSourceSnapshots: false),
+            entries: [trashedElsewhere, trashedNew],
+            revisions: [],
+            rules: [],
+            attachments: [],
+            sourceSnapshots: []
+        )
+        let plan = JournalBackupService().plan(
+            contents: contents,
+            currentEntries: try repository.list(kind: nil, includeDeleted: true, limit: 10),
+            mode: .merge
+        )
+
+        let result = try JournalRestoreExecutor().execute(
+            contents: contents,
+            plan: plan,
+            repository: repository,
+            deviceID: "restore",
+            at: Date(timeIntervalSince1970: 30)
+        )
+
+        XCTAssertEqual(result.restored, 2)
+        XCTAssertEqual(result.conflicts, 0)
+        let restoredLive = try XCTUnwrap(repository.entry(id: live.id))
+        XCTAssertEqual(restoredLive.deletedAt, Date(timeIntervalSince1970: 20))
+        // Only the trash state changed, so no duplicate revision is written.
+        XCTAssertEqual(restoredLive.currentRevisionID, live.currentRevisionID)
+        XCTAssertEqual(
+            try repository.entry(id: trashedNew.id)?.deletedAt,
+            Date(timeIntervalSince1970: 6)
+        )
+        XCTAssertTrue(
+            try repository.list(kind: nil, includeDeleted: false, limit: 10).isEmpty)
+    }
+
     private func makeRecord(title: String, date: Date) -> JournalEntryRecord {
         JournalEntryRecord(
             id: UUID(),
