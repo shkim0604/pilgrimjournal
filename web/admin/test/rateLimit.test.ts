@@ -3,10 +3,14 @@ import { test } from 'node:test';
 import {
   LOGIN_LOCK_MS,
   LOGIN_MAX_FAILURES,
+  LOGIN_MAX_PER_ADDRESS,
   LOGIN_WINDOW_MS,
+  beginAttempt,
   clearFailures,
+  ipKey,
   isLocked,
   loginKey,
+  pruneFailures,
   recordFailure,
 } from '../src/auth/rateLimit.ts';
 import { tempDatabase } from './helpers.ts';
@@ -57,6 +61,27 @@ test('clearFailures resets', () => {
   clearFailures(db, key);
   recordFailure(db, key, t0 + 5000);
   assert.equal(isLocked(db, key, t0 + 5000), false);
+});
+
+test('beginAttempt honours a custom cap', () => {
+  const db = tempDatabase();
+  const addr = ipKey('203.0.113.7');
+  for (let i = 0; i < LOGIN_MAX_PER_ADDRESS; i++) assert.equal(beginAttempt(db, addr, t0 + i, LOGIN_MAX_PER_ADDRESS), true);
+  assert.equal(beginAttempt(db, addr, t0 + 100, LOGIN_MAX_PER_ADDRESS), false);
+  assert.notEqual(addr, loginKey('203.0.113.7', ''));
+});
+
+test('pruneFailures removes only rows past their window with no live lock', () => {
+  const db = tempDatabase();
+  recordFailure(db, 'stale', t0);
+  fail(db, 5, t0); // `key` is locked until t0 + 4000 + LOGIN_LOCK_MS
+  recordFailure(db, 'fresh', t0 + LOGIN_WINDOW_MS);
+  const keys = () => db.prepare('SELECT key FROM login_failures ORDER BY key').all().map((row) => String(row.key));
+
+  pruneFailures(db, t0 + LOGIN_WINDOW_MS + 1);
+  assert.deepEqual(keys(), [key, 'fresh']);
+  pruneFailures(db, t0 + 4000 + LOGIN_LOCK_MS);
+  assert.deepEqual(keys(), ['fresh']);
 });
 
 test('keys differ per ip and username', () => {
