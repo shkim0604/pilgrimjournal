@@ -66,7 +66,8 @@ final class JournalSessionControllerTests: XCTestCase {
         let controller = JournalSessionController(
             rootURL: root,
             cloudKitContainerIdentifier: nil,
-            storageLocationProvider: { location }
+            storageLocationProvider: { location },
+            requiresVerifiedCloudIdentity: false
         )
 
         await controller.activate(appleUserIdentifier: "apple-user")
@@ -125,7 +126,8 @@ final class JournalSessionControllerTests: XCTestCase {
         let controller = JournalSessionController(
             rootURL: root,
             cloudKitContainerIdentifier: nil,
-            storageLocationProvider: { location }
+            storageLocationProvider: { location },
+            requiresVerifiedCloudIdentity: false
         )
 
         await controller.activate(appleUserIdentifier: appleUser)
@@ -177,7 +179,8 @@ final class JournalSessionControllerTests: XCTestCase {
         let controller = JournalSessionController(
             rootURL: root,
             cloudKitContainerIdentifier: nil,
-            storageLocationProvider: { location }
+            storageLocationProvider: { location },
+            requiresVerifiedCloudIdentity: false
         )
 
         await controller.activate(appleUserIdentifier: appleUser)
@@ -214,7 +217,8 @@ final class JournalSessionControllerTests: XCTestCase {
         let controller = JournalSessionController(
             rootURL: root,
             cloudKitContainerIdentifier: nil,
-            storageLocationProvider: { location }
+            storageLocationProvider: { location },
+            requiresVerifiedCloudIdentity: false
         )
 
         await controller.activate(appleUserIdentifier: "apple-user")
@@ -292,7 +296,8 @@ final class JournalSessionControllerTests: XCTestCase {
         let controller = JournalSessionController(
             rootURL: root,
             cloudKitContainerIdentifier: nil,
-            storageLocationProvider: { location }
+            storageLocationProvider: { location },
+            requiresVerifiedCloudIdentity: false
         )
         await controller.activate(appleUserIdentifier: "apple-user")
         let localModel = try XCTUnwrap(controller.appModel)
@@ -353,7 +358,8 @@ final class JournalSessionControllerTests: XCTestCase {
         let controller = JournalSessionController(
             rootURL: root,
             cloudKitContainerIdentifier: nil,
-            storageLocationProvider: { .iCloud(accountHash: "icloud-account-a") }
+            storageLocationProvider: { .iCloud(accountHash: "icloud-account-a") },
+            requiresVerifiedCloudIdentity: false
         )
         await controller.activate(appleUserIdentifier: appleUser)
         XCTAssertTrue(controller.canReopenForSync)
@@ -405,7 +411,8 @@ final class JournalSessionControllerTests: XCTestCase {
         let controller = JournalSessionController(
             rootURL: root,
             cloudKitContainerIdentifier: nil,
-            storageLocationProvider: { .iCloud(accountHash: "icloud-account-a") }
+            storageLocationProvider: { .iCloud(accountHash: "icloud-account-a") },
+            requiresVerifiedCloudIdentity: false
         )
         await controller.activate(appleUserIdentifier: appleUser)
         let held = try XCTUnwrap(controller.appModel)
@@ -418,6 +425,173 @@ final class JournalSessionControllerTests: XCTestCase {
         XCTAssertTrue(controller.appModel === held)
         XCTAssertEqual(controller.activeScope, scope)
         XCTAssertNotNil(held.errorMessage)
+    }
+
+    // MARK: Cloud identity verification
+
+    private func makeCloudRoot(_ name: String) -> (parent: URL, root: URL, user: String) {
+        let parent = FileManager.default.temporaryDirectory.appending(
+            path: "journal-\(name)-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        return (
+            parent, parent.appending(path: "PilgrimJournal", directoryHint: .isDirectory),
+            "\(name)-\(UUID().uuidString)"
+        )
+    }
+
+    private func removeSuites(of user: String) {
+        for location in [
+            JournalStorageLocation.localOnly, .iCloud(accountHash: "icloud-account-a"),
+        ] {
+            UserDefaults().removePersistentDomain(
+                forName: JournalAccountScope(
+                    appleUserIdentifier: user, storageLocation: location
+                ).userDefaultsSuiteName)
+        }
+    }
+
+    private func makeCloudController(root: URL) -> JournalSessionController {
+        JournalSessionController(
+            rootURL: root,
+            cloudKitContainerIdentifier: nil,
+            storageLocationProvider: { .iCloud(accountHash: "icloud-account-a") }
+        )
+    }
+
+    func testUnverifiedICloudPairStaysLocalOnlyUntilTheCheckPasses() async throws {
+        let (parent, root, user) = makeCloudRoot("cloud-unverified")
+        defer {
+            try? FileManager.default.removeItem(at: parent)
+            removeSuites(of: user)
+        }
+        let controller = makeCloudController(root: root)
+        let canOpenFirst = await controller.canOpenBeforeVerification(appleUserIdentifier: user)
+        XCTAssertFalse(canOpenFirst)
+
+        await controller.activate(appleUserIdentifier: user)
+        XCTAssertEqual(controller.activeScope?.storageLocation, .localOnly)
+
+        await controller.markCloudIdentityVerified(appleUserIdentifier: user)
+        XCTAssertEqual(
+            controller.activeScope?.storageLocation, .iCloud(accountHash: "icloud-account-a"))
+
+        let relaunched = makeCloudController(root: root)
+        let canOpenAfter = await relaunched.canOpenBeforeVerification(appleUserIdentifier: user)
+        XCTAssertTrue(canOpenAfter)
+        relaunched.forgetCloudIdentity(appleUserIdentifier: user)
+        await relaunched.activate(appleUserIdentifier: user)
+        XCTAssertEqual(relaunched.activeScope?.storageLocation, .localOnly)
+    }
+
+    /// The user blocked by a mismatch gets no saved session; and even one left
+    /// behind (the app killed before the check) opens only local-only offline.
+    func testMismatchedUserNeverOpensTheICloudScopeOnRelaunch() async throws {
+        let (parent, root, user) = makeCloudRoot("cloud-mismatch")
+        defer {
+            try? FileManager.default.removeItem(at: parent)
+            removeSuites(of: user)
+        }
+        let service = AppleAuthenticationSessionService(store: InMemorySecureValueStore())
+        let controller = makeCloudController(root: root)
+        let coordinator = AppleAuthenticationCoordinator(
+            service: service,
+            credentialChecker: AuthorizedCredentialChecker(),
+            cloudIdentityChecker: FixedCloudIdentityChecker(result: .mismatch),
+            cloudIdentityVerification: controller
+        )
+        await coordinator.acceptAuthorizedUser(identifier: user)
+        XCTAssertEqual(coordinator.state, .blockedCloudAccountMismatch)
+
+        let relaunchedSession = makeCloudController(root: root)
+        let relaunched = AppleAuthenticationCoordinator(
+            service: service,
+            credentialChecker: OfflineCredentialChecker(),
+            cloudIdentityChecker: FixedCloudIdentityChecker(result: .mismatch),
+            cloudIdentityVerification: relaunchedSession
+        )
+        await relaunched.bootstrap()
+        XCTAssertEqual(relaunched.state, .signedOut)
+
+        try await service.acceptAuthorizedUser(identifier: user)
+        let leftBehind = AppleAuthenticationCoordinator(
+            service: service,
+            credentialChecker: OfflineCredentialChecker(),
+            cloudIdentityChecker: FixedCloudIdentityChecker(result: .mismatch),
+            cloudIdentityVerification: relaunchedSession
+        )
+        await leftBehind.bootstrap()
+        XCTAssertEqual(leftBehind.state, .authenticated(offline: true))
+        await relaunchedSession.activate(appleUserIdentifier: user)
+        XCTAssertEqual(relaunchedSession.activeScope?.storageLocation, .localOnly)
+    }
+
+    func testVerifiedUserRelaunchingOfflineOpensTheICloudJournal() async throws {
+        let (parent, root, user) = makeCloudRoot("cloud-offline")
+        defer {
+            try? FileManager.default.removeItem(at: parent)
+            removeSuites(of: user)
+        }
+        let service = AppleAuthenticationSessionService(store: InMemorySecureValueStore())
+        let controller = makeCloudController(root: root)
+        let coordinator = AppleAuthenticationCoordinator(
+            service: service,
+            credentialChecker: AuthorizedCredentialChecker(),
+            cloudIdentityChecker: FixedCloudIdentityChecker(result: .bound),
+            cloudIdentityVerification: controller
+        )
+        await coordinator.acceptAuthorizedUser(identifier: user)
+        XCTAssertEqual(coordinator.state, .authenticated(offline: false))
+
+        let relaunchedSession = makeCloudController(root: root)
+        let relaunched = AppleAuthenticationCoordinator(
+            service: service,
+            credentialChecker: OfflineCredentialChecker(),
+            cloudIdentityChecker: FixedCloudIdentityChecker(result: .mismatch),
+            cloudIdentityVerification: relaunchedSession
+        )
+        await relaunched.bootstrap()
+        XCTAssertEqual(relaunched.state, .authenticated(offline: true))
+        await relaunchedSession.activate(appleUserIdentifier: user)
+        XCTAssertEqual(
+            relaunchedSession.activeScope?.storageLocation,
+            .iCloud(accountHash: "icloud-account-a"))
+    }
+
+    /// An install updated from a build without verification marks: its iCloud
+    /// scope is carried over, so the journal still opens offline, but online it
+    /// waits for the check rather than opening at once.
+    func testICloudScopeFromBeforeTheUpdateStillOpensOffline() async throws {
+        let (parent, root, user) = makeCloudRoot("cloud-carried-over")
+        defer {
+            try? FileManager.default.removeItem(at: parent)
+            removeSuites(of: user)
+        }
+        let scope = JournalAccountScope(
+            appleUserIdentifier: user, storageLocation: .iCloud(accountHash: "icloud-account-a"))
+        _ = try JournalAccountScopeRegistry(root: root).prepareScope(scope)
+        let service = AppleAuthenticationSessionService(store: InMemorySecureValueStore())
+        try await service.acceptAuthorizedUser(identifier: user)
+        let controller = makeCloudController(root: root)
+        let canOpenAtOnce = await controller.canOpenBeforeVerification(appleUserIdentifier: user)
+        XCTAssertFalse(canOpenAtOnce)
+
+        let coordinator = AppleAuthenticationCoordinator(
+            service: service,
+            credentialChecker: OfflineCredentialChecker(),
+            cloudIdentityChecker: FixedCloudIdentityChecker(result: .mismatch),
+            cloudIdentityVerification: controller
+        )
+        await coordinator.bootstrap()
+        XCTAssertEqual(coordinator.state, .authenticated(offline: true))
+        await controller.activate(appleUserIdentifier: user)
+        XCTAssertEqual(controller.activeScope, scope)
+
+        // A mismatch drops the carried-over trust for good.
+        controller.forgetCloudIdentity(appleUserIdentifier: user)
+        let afterMismatch = makeCloudController(root: root)
+        await afterMismatch.activate(appleUserIdentifier: user)
+        XCTAssertEqual(afterMismatch.activeScope?.storageLocation, .localOnly)
     }
 
     func testManualSyncIsUnavailableForALocalOnlyScope() async throws {
@@ -446,6 +620,21 @@ final class JournalSessionControllerTests: XCTestCase {
 private struct AuthorizedCredentialChecker: AppleCredentialStateChecking {
     func credentialState(for userIdentifier: String) async throws -> AppleCredentialState {
         .authorized
+    }
+}
+
+@MainActor
+private struct OfflineCredentialChecker: AppleCredentialStateChecking {
+    func credentialState(for userIdentifier: String) async throws -> AppleCredentialState {
+        throw URLError(.notConnectedToInternet)
+    }
+}
+
+private struct FixedCloudIdentityChecker: CloudIdentityBindingChecking {
+    let result: CloudIdentityBindingResult
+
+    func verifyOrBind(userIdentifier: String) async -> CloudIdentityBindingResult {
+        result
     }
 }
 

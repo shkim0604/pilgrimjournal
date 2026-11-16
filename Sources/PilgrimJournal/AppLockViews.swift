@@ -34,6 +34,13 @@ struct AppLockView: View {
                         .font(.caption)
                         .foregroundStyle(.red)
                 }
+                if lock.isConfigurationUnreadable {
+                    // The password cannot be checked without the stored settings.
+                    Button("기기 암호로 잠금 해제") {
+                        Task { _ = await lock.unlockWithDeviceOwner() }
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
                 HStack {
                     if lock.configuration.allowsBiometrics {
                         Button {

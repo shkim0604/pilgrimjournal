@@ -32,6 +32,10 @@ final class JournalSessionController: ObservableObject {
     private let cloudKitContainerIdentifier: String?
     private let isVisualTesting: Bool
     private let storageLocationProvider: () async -> JournalStorageLocation
+    /// Opens an iCloud scope only for an (Apple user, iCloud account) pair that
+    /// passed the cloud identity check; otherwise CloudKit would import
+    /// another Apple user's private database. Off only for the developer bypass.
+    private let requiresVerifiedCloudIdentity: Bool
     /// Builds each session's group-server client; nil while `GroupsFeature` is off, which
     /// leaves `AppModel.groups` nil and the journal exactly as it was without groups.
     private let makeGroupAPI: GroupsFeature.APIFactory?
@@ -49,6 +53,7 @@ final class JournalSessionController: ObservableObject {
         cloudKitContainerIdentifier: String?,
         isVisualTesting: Bool = false,
         storageLocationProvider: (() async -> JournalStorageLocation)? = nil,
+        requiresVerifiedCloudIdentity: Bool = true,
         makeGroupAPI: GroupsFeature.APIFactory? = GroupsFeature.defaultAPIFactory(),
         groupNotificationOpener: GroupNotificationOpener? = nil,
         attachesGroupSubscription: Bool = true
@@ -56,6 +61,7 @@ final class JournalSessionController: ObservableObject {
         self.rootURL = rootURL
         self.cloudKitContainerIdentifier = cloudKitContainerIdentifier
         self.isVisualTesting = isVisualTesting
+        self.requiresVerifiedCloudIdentity = requiresVerifiedCloudIdentity
         self.makeGroupAPI = makeGroupAPI
         // Resolved here rather than as default arguments, which are not main-actor isolated in
         // the app target's Swift 5 mode.
@@ -83,6 +89,7 @@ final class JournalSessionController: ObservableObject {
         rootURLProvider: @escaping () throws -> URL,
         cloudKitContainerIdentifier: String?,
         isVisualTesting: Bool = false,
+        requiresVerifiedCloudIdentity: Bool = true,
         makeGroupAPI: GroupsFeature.APIFactory? = GroupsFeature.defaultAPIFactory()
     ) {
         do {
@@ -90,6 +97,7 @@ final class JournalSessionController: ObservableObject {
                 rootURL: try rootURLProvider(),
                 cloudKitContainerIdentifier: cloudKitContainerIdentifier,
                 isVisualTesting: isVisualTesting,
+                requiresVerifiedCloudIdentity: requiresVerifiedCloudIdentity,
                 makeGroupAPI: makeGroupAPI
             )
         } catch {
@@ -98,6 +106,7 @@ final class JournalSessionController: ObservableObject {
                 rootURL: FileManager.default.temporaryDirectory,
                 cloudKitContainerIdentifier: cloudKitContainerIdentifier,
                 isVisualTesting: isVisualTesting,
+                requiresVerifiedCloudIdentity: requiresVerifiedCloudIdentity,
                 makeGroupAPI: makeGroupAPI
             )
             unresolvedRootProvider = rootURLProvider
@@ -125,10 +134,20 @@ final class JournalSessionController: ObservableObject {
         isLoading = true
         defer { isLoading = false }
         do {
-            let storageLocation =
+            var storageLocation =
                 isVisualTesting
                 ? JournalStorageLocation.localOnly
                 : await storageLocationProvider()
+            if case .iCloud = storageLocation,
+                cloudIdentityVerification(
+                    for: JournalAccountScope(
+                        appleUserIdentifier: appleUserIdentifier,
+                        storageLocation: storageLocation
+                    )) == .unverified
+            {
+                // Local-only until the check passes; `markCloudIdentityVerified` moves it.
+                storageLocation = .localOnly
+            }
             let desiredScope = JournalAccountScope(
                 appleUserIdentifier: appleUserIdentifier,
                 storageLocation: storageLocation
@@ -300,6 +319,59 @@ final class JournalSessionController: ObservableObject {
 
     func keepLocalOnly() {
         pendingMigration = nil
+    }
+
+    // MARK: Cloud identity verification
+
+    /// Whether the saved sign-in may open the journal before Apple and the
+    /// cloud identity are checked again: always for local-only storage, and
+    /// for iCloud only when this exact pair was verified before.
+    func canOpenBeforeVerification(appleUserIdentifier: String) async -> Bool {
+        let location = await currentStorageLocation()
+        guard case .iCloud = location else { return true }
+        return cloudIdentityVerification(
+            for: JournalAccountScope(
+                appleUserIdentifier: appleUserIdentifier,
+                storageLocation: location
+            )) == .verified
+    }
+
+    /// Records a `.matched`/`.bound` check for the current iCloud account. A
+    /// journal held local-only while the pair was unverified moves to iCloud.
+    func markCloudIdentityVerified(appleUserIdentifier: String) async {
+        let location = await currentStorageLocation()
+        guard case .iCloud = location, unresolvedRootProvider == nil,
+            (try? registry.markCloudIdentityVerified(
+                JournalAccountScope(
+                    appleUserIdentifier: appleUserIdentifier,
+                    storageLocation: location
+                ))) == true
+        else { return }
+        if appModel != nil, activeScope?.storageLocation == .localOnly,
+            lastAppleUserIdentifier == appleUserIdentifier
+        {
+            await activate(appleUserIdentifier: appleUserIdentifier)
+        }
+    }
+
+    /// After a `.mismatch`, sign-out or revocation: no pair of this Apple
+    /// user opens iCloud again until a new check passes.
+    func forgetCloudIdentity(appleUserIdentifier: String) {
+        guard unresolvedRootProvider == nil else { return }
+        try? registry.clearCloudIdentityVerification(
+            appleUserHash: JournalAccountScope(
+                appleUserIdentifier: appleUserIdentifier,
+                storageLocation: .localOnly
+            ).appleUserHash)
+    }
+
+    private func cloudIdentityVerification(
+        for scope: JournalAccountScope
+    ) -> CloudIdentityVerification {
+        guard requiresVerifiedCloudIdentity else { return .verified }
+        guard unresolvedRootProvider == nil else { return .unverified }
+        // An unreadable record fails closed.
+        return (try? registry.cloudIdentityVerification(for: scope)) ?? .unverified
     }
 
     private func makeAppModel(

@@ -152,11 +152,16 @@ public struct JournalBackupService {
                 upserts.append(backup)
                 continue
             }
-            if current.currentRevisionID != backup.currentRevisionID {
+            let revisionDiffers = current.currentRevisionID != backup.currentRevisionID
+            // Trashing keeps the revision, so a backup trashed after this copy
+            // was last edited differs only in `deletedAt`.
+            let trashedOnlyInBackup = backup.deletedAt != nil && current.deletedAt == nil
+            guard revisionDiffers || trashedOnlyInBackup else { continue }
+            if revisionDiffers {
                 conflicts.append((current, backup))
-                if mode == .replace || backup.updatedAt > current.updatedAt {
-                    upserts.append(backup)
-                }
+            }
+            if mode == .replace || backup.updatedAt > current.updatedAt {
+                upserts.append(backup)
             }
         }
         let tombstones =
@@ -207,9 +212,17 @@ public struct JournalRestoreExecutor {
                 try repository.moveToTrash(entryID: id, deviceID: deviceID, at: date)
             }
             for entry in plan.upserts {
-                var draft = entry.draft
-                draft.id = entry.id
-                _ = try repository.save(draft, deviceID: deviceID, at: date)
+                if try repository.entry(id: entry.id)?.currentRevisionID != entry.currentRevisionID
+                {
+                    var draft = entry.draft
+                    draft.id = entry.id
+                    _ = try repository.save(draft, deviceID: deviceID, at: date)
+                }
+                // The draft carries no `deletedAt`; without this a trashed
+                // entry comes back live (JournalScopeMigrationService does the same).
+                if let deletedAt = entry.deletedAt {
+                    try repository.moveToTrash(entryID: entry.id, deviceID: deviceID, at: deletedAt)
+                }
             }
             for revision in contents.revisions {
                 try repository.importRevision(revision)
