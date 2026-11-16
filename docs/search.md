@@ -9,4 +9,5 @@
 - 두 글자 이하 검색은 `LIKE` fallback을 사용한다.
 - 검색 데이터는 derived data이며 CloudKit이나 백업에 넣지 않는다.
 - 로컬 저장과 원격 history가 entry ID를 indexing queue에 넣는다.
+- CloudKit import가 끝나면 전체 재구축 대신 `synchronize(with:)`로 `updatedAt`이 달라진 entry만 다시 쓰고 사라진 entry를 지운다. 실패하면 전체 재구축으로 돌아간다.
 - history token이 맞지 않거나 integrity check가 실패하면 canonical store에서 재구축한다.

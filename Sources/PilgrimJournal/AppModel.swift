@@ -317,7 +317,7 @@ final class AppModel: ObservableObject {
             syncState = .synced(completedAt)
             // Imported entries may still carry a kind this catalog deleted.
             reconcileKinds()
-            rebuildSearchIndex()
+            synchronizeSearchIndex()
             refresh()
         }
     }

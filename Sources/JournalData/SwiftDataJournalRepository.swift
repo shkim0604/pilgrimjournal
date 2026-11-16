@@ -29,19 +29,7 @@ public final class SwiftDataJournalRepository:
         includeDeleted: Bool = false,
         limit: Int = 200
     ) throws -> [JournalEntryRecord] {
-        var descriptor = FetchDescriptor<JournalEntryEntity>(
-            sortBy: [
-                SortDescriptor(\JournalEntryEntity.occurredAt, order: .reverse),
-                SortDescriptor(\JournalEntryEntity.stableID),
-            ]
-        )
-        descriptor.fetchLimit = limit
-        let entities = try context.fetch(descriptor)
-        return try entities.compactMap { entity in
-            guard includeDeleted || entity.deletedAt == nil else { return nil }
-            if let kind, entity.kindRaw != kind.rawValue { return nil }
-            return try map(entity)
-        }
+        try timelineEntities(kind: kind, includeDeleted: includeDeleted, limit: limit).map(map)
     }
 
     public func page(
@@ -50,35 +38,60 @@ public final class SwiftDataJournalRepository:
         after cursor: JournalTimelineCursor?,
         limit: Int
     ) throws -> JournalTimelinePage {
-        let descriptor = FetchDescriptor<JournalEntryEntity>(
+        let pageSize = max(1, limit)
+        var entities: [JournalEntryEntity] = []
+        if let cursor {
+            // Entries at the cursor's instant order by UUID string, which a
+            // predicate can't compare, so this (usually tiny) slice filters here.
+            entities = try timelineEntities(
+                kind: kind, includeDeleted: includeDeleted, at: cursor.occurredAt
+            ).filter { $0.stableID.uuidString > cursor.entryID.uuidString }
+        }
+        if entities.count <= pageSize {
+            entities += try timelineEntities(
+                kind: kind, includeDeleted: includeDeleted, before: cursor?.occurredAt,
+                limit: pageSize + 1 - entities.count)
+        }
+        // Only the page itself is decoded; the extra row just answers "has more".
+        let values = try entities.prefix(pageSize).map(map)
+        let nextCursor =
+            entities.count > pageSize
+            ? values.last.map {
+                JournalTimelineCursor(occurredAt: $0.occurredAt, entryID: $0.id)
+            } : nil
+        return JournalTimelinePage(entries: values, nextCursor: nextCursor)
+    }
+
+    /// Timeline-ordered rows passing the cheap column filters, fetched with
+    /// `limit` in the store and not decoded. `at` keeps one instant only;
+    /// `before` keeps strictly older rows.
+    private func timelineEntities(
+        kind: JournalKind?,
+        includeDeleted: Bool,
+        at instant: Date? = nil,
+        before bound: Date? = nil,
+        limit: Int? = nil
+    ) throws -> [JournalEntryEntity] {
+        let anyKind = kind == nil
+        let kindRaw = kind?.rawValue ?? ""
+        let anyInstant = instant == nil
+        let instantValue = instant ?? .distantPast
+        let unbounded = bound == nil
+        let boundValue = bound ?? .distantFuture
+        var descriptor = FetchDescriptor<JournalEntryEntity>(
+            predicate: #Predicate { entity in
+                (includeDeleted || entity.deletedAt == nil)
+                    && (anyKind || entity.kindRaw == kindRaw)
+                    && (anyInstant || entity.occurredAt == instantValue)
+                    && (unbounded || entity.occurredAt < boundValue)
+            },
             sortBy: [
                 SortDescriptor(\JournalEntryEntity.occurredAt, order: .reverse),
                 SortDescriptor(\JournalEntryEntity.stableID),
             ]
         )
-        let pageSize = max(1, limit)
-        let candidates: [JournalEntryRecord] = try context.fetch(descriptor).compactMap {
-            entity -> JournalEntryRecord? in
-            guard includeDeleted || entity.deletedAt == nil else { return nil }
-            if let kind, entity.kindRaw != kind.rawValue { return nil }
-            if let cursor {
-                if entity.occurredAt > cursor.occurredAt { return nil }
-                if entity.occurredAt == cursor.occurredAt,
-                    entity.stableID.uuidString <= cursor.entryID.uuidString
-                {
-                    return nil
-                }
-            }
-            return try map(entity)
-        }
-        let values = Array(candidates.prefix(pageSize))
-        let hasMore = candidates.count > values.count
-        let nextCursor =
-            hasMore
-            ? values.last.map {
-                JournalTimelineCursor(occurredAt: $0.occurredAt, entryID: $0.id)
-            } : nil
-        return JournalTimelinePage(entries: values, nextCursor: nextCursor)
+        descriptor.fetchLimit = limit
+        return try context.fetch(descriptor)
     }
 
     public func entry(id: UUID) throws -> JournalEntryRecord? {

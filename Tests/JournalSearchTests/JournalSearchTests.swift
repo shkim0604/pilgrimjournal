@@ -2,6 +2,7 @@
 import Foundation
 import JournalDomain
 import JournalSearch
+import SQLite3
 import XCTest
 
 final class JournalSearchTests: XCTestCase {
@@ -210,7 +211,32 @@ final class JournalSearchTests: XCTestCase {
             try index.search(JournalSearchQuery(text: "유니크메모")).map(\.id), [record.id])
     }
 
-    func testFiveThousandEntryRebuildAndKoreanSearchPerformance() throws {
+    /// An index written before `updated_at` existed must open, take writes,
+    /// and treat its old rows as stale so the next sync rewrites them.
+    func testIndexFromBeforeUpdatedAtColumnUpgradesAndResyncs() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appending(path: "\(UUID().uuidString).sqlite")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let record = makeRecord(
+            kind: .diary, title: "옛 기록", body: "예전 인덱스", tags: [], date: .now)
+        var database: OpaquePointer?
+        XCTAssertEqual(sqlite3_open(url.path, &database), SQLITE_OK)
+        XCTAssertEqual(
+            sqlite3_exec(
+                database,
+                """
+                CREATE TABLE journal_search_meta (id TEXT PRIMARY KEY NOT NULL, local_day TEXT NOT NULL);
+                INSERT INTO journal_search_meta VALUES ('\(record.id.uuidString)', '2026-01-01');
+                """, nil, nil, nil), SQLITE_OK)
+        sqlite3_close(database)
+
+        let index = try JournalSearchIndex(url: url)
+        XCTAssertEqual(try index.synchronize(with: [record]).upserted, [record.id])
+        XCTAssertEqual(try index.search(JournalSearchQuery(text: "예전 인덱스")).map(\.id), [record.id])
+        XCTAssertTrue(try index.synchronize(with: [record]).upserted.isEmpty)
+    }
+
+    func testFiveThousandEntryRebuildSearchAndIncrementalSyncPerformance() throws {
         let url = FileManager.default.temporaryDirectory
             .appending(path: "\(UUID().uuidString).sqlite")
         defer {
@@ -243,6 +269,30 @@ final class JournalSearchTests: XCTestCase {
         XCTAssertEqual(hits.map(\.title), ["합성 기록 4321"])
         XCTAssertLessThan(rebuildDuration, .seconds(15))
         XCTAssertLessThan(searchDuration, .seconds(2))
+
+        // A synced edit, a deletion and a new entry: only those rows change.
+        var synced = entries
+        synced[10].body = "다른 기기에서 고친 문장"
+        synced[10].updatedAt = .now
+        let deleted = synced.remove(at: 20)
+        let added = makeRecord(
+            kind: .diary, title: "새 기록", body: "새로 동기화된 본문", tags: [], date: .now)
+        synced.append(added)
+
+        let syncStarted = ContinuousClock.now
+        let result = try index.synchronize(with: synced)
+        let syncDuration = syncStarted.duration(to: .now)
+        print("5,000-entry search index: rebuild \(rebuildDuration), synchronize \(syncDuration)")
+
+        XCTAssertEqual(result.upserted, [synced[10].id, added.id])
+        XCTAssertEqual(result.removed, [deleted.id])
+        XCTAssertEqual(
+            try index.search(JournalSearchQuery(text: "다른 기기에서")).map(\.id), [synced[10].id])
+        XCTAssertEqual(try index.search(JournalSearchQuery(text: "새로 동기화")).map(\.id), [added.id])
+        XCTAssertEqual(try index.indexedEntryIDs(), Set(synced.map(\.id)))
+        let unchanged = try index.synchronize(with: synced)
+        XCTAssertTrue(unchanged.upserted.isEmpty && unchanged.removed.isEmpty)
+        try index.integrityCheck()
     }
 
     private func makeRecord(
