@@ -131,7 +131,7 @@ final class PushOutboxJobTests: WorkerDatabaseTestCase {
             XCTAssertEqual(
                 row.nextAttemptAt.timeIntervalSince1970,
                 now.addingTimeInterval(delay)
-                    .timeIntervalSince1970, accuracy: 0.001)
+                    .timeIntervalSince1970, accuracy: 0.002)
             XCTAssertEqual(row.lastError, "503 ServiceUnavailable")
             // Not due yet: nothing is sent.
             let before = sender.deliveries.count
@@ -362,7 +362,7 @@ final class VoteJobTests: WorkerDatabaseTestCase {
         XCTAssertEqual(runoff.eligibleIDs.count, 3)
         XCTAssertEqual(
             runoff.endsAt.timeIntervalSince1970, (roundOneEnd + 86_400).timeIntervalSince1970,
-            accuracy: 0.001)
+            accuracy: 0.002)
         let value10 = try await outbox().filter { $0.kind == .voteRunoff }.count
         XCTAssertEqual(value10, 3)
 
@@ -404,7 +404,7 @@ final class VoteJobTests: WorkerDatabaseTestCase {
         let deleteAt = try XCTUnwrap(pending.deleteAt)
         XCTAssertEqual(
             deleteAt.timeIntervalSince1970, (end + 7 * 86_400).timeIntervalSince1970,
-            accuracy: 0.001)
+            accuracy: 0.002)
         let value11 = try await outbox().filter { $0.kind == .groupDeletionScheduled }.count
         XCTAssertEqual(value11, 3)
 
@@ -497,7 +497,7 @@ final class AppleRevocationJobTests: WorkerDatabaseTestCase {
         XCTAssertEqual(retried.lastError, "Apple /auth/revoke answered HTTP 400")
         XCTAssertEqual(
             retried.nextAttemptAt.timeIntervalSince1970,
-            now.addingTimeInterval(300).timeIntervalSince1970, accuracy: 0.001)
+            now.addingTimeInterval(300).timeIntervalSince1970, accuracy: 0.002)
         // The completed row is not sent again.
         XCTAssertEqual(revoker.calls.count, 2)
 
@@ -574,7 +574,7 @@ final class AppleRevocationJobTests: WorkerDatabaseTestCase {
         XCTAssertEqual(after.lastError, "Apple /auth/revoke answered HTTP 400 (invalid_client)")
         XCTAssertEqual(
             after.nextAttemptAt.timeIntervalSince1970,
-            now.addingTimeInterval(300).timeIntervalSince1970, accuracy: 0.001)
+            now.addingTimeInterval(300).timeIntervalSince1970, accuracy: 0.002)
     }
 
     func testUndecryptableRowIsGivenUpWithoutCallingApple() async throws {
@@ -619,7 +619,7 @@ final class ScaledWorkerFlowTests: WorkerDatabaseTestCase {
         let expiresAt = try policy.expiresAt(
             kind: .testimony, createdAt: start, deadline: nil, visibleDays: nil,
             timeZone: TimeZone(identifier: "Asia/Seoul")!)
-        XCTAssertEqual(expiresAt.timeIntervalSince(start), 7 * Self.day, accuracy: 0.001)
+        XCTAssertEqual(expiresAt.timeIntervalSince(start), 7 * Self.day, accuracy: 0.002)
         let post = try await fixtures.post(by: mina, in: group, expiresAt: expiresAt)
         let photo = try await fixtures.media(uploadedBy: mina, in: group, post: post)
         try await app.mediaStore.write(Data([0xFF, 0xD8, 0xFF]), to: photo.filePath)

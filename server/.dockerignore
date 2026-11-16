@@ -1,11 +1,11 @@
+# Tests/ stays in the build context: Package.swift declares the test targets, and SwiftPM
+# refuses the manifest (overlapping sources) when their folder is missing, even for --product.
 .build/
 PilgrimAPI/.build/
 .swiftpm/
 PilgrimAPI/.swiftpm/
 .media/
 .env*
-Tests/
-PilgrimAPI/Tests/
 *.xcodeproj
 .DS_Store
 docker-compose*.yml

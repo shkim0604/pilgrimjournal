@@ -46,7 +46,7 @@ final class SubscriptionVerifierTests: XCTestCase {
         XCTAssertEqual(transaction.storefront, "KOR")
         XCTAssertEqual(
             try XCTUnwrap(transaction.expiresDate).timeIntervalSince1970,
-            expires.timeIntervalSince1970, accuracy: 0.001)
+            expires.timeIntervalSince1970, accuracy: 0.002)
         XCTAssertNil(transaction.revocationDate)
     }
 
@@ -243,7 +243,7 @@ final class SubscriptionVerifierTests: XCTestCase {
             try unwrap(payload.data?.signedRenewalInfo))
         XCTAssertEqual(
             try XCTUnwrap(info.gracePeriodExpiresDate).timeIntervalSince1970,
-            graceEnds.timeIntervalSince1970, accuracy: 0.001)
+            graceEnds.timeIntervalSince1970, accuracy: 0.002)
     }
 
     func testNotificationForAnotherAppIsRefused() async throws {

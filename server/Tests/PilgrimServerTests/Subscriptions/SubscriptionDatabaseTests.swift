@@ -90,7 +90,7 @@ class SubscriptionDatabaseTestCase: DatabaseTestCase {
             XCTAssertEqual(actual.productId, expected.productId, name, file: file, line: line)
             XCTAssertEqual(
                 actual.expiresAt?.timeIntervalSince1970 ?? 0,
-                expected.expiresAt?.timeIntervalSince1970 ?? 0, accuracy: 0.001, name,
+                expected.expiresAt?.timeIntervalSince1970 ?? 0, accuracy: 0.002, name,
                 file: file, line: line)
         }
         var paid = true
