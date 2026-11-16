@@ -1,0 +1,77 @@
+# Shared definition. Run through the Makefile, which adds the environment override:
+#   make dev   → -p pilgrim-dev  + docker-compose.dev.yml  (.env.dev)
+#   make prod  → -p pilgrim-prod + docker-compose.prod.yml (.env.prod)
+# api and worker are the same image with different commands (design.md "구성").
+#
+# api also joins the shared network pilgrim-edge as `pilgrim-api`, so the admin console
+# (web/admin, project pilgrim-admin) reaches http://pilgrim-api:3100/internal/admin/v1 without
+# going through the tunnel. postgres and worker stay on the project's own network.
+# The network is external: `make edge-network` creates it (every make target here does that first).
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set in .env.dev or .env.prod}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env.dev or .env.prod}
+      POSTGRES_DB: ${POSTGRES_DB:?set in .env.dev or .env.prod}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    image: pilgrim-server:local
+    build:
+      context: .
+    command: ["serve"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment: &server-env
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+      HTTP_HOST: 0.0.0.0
+      PORT: 3100
+      MEDIA_ROOT: /data/media
+    volumes:
+      - media:/data/media
+    networks:
+      default:
+      edge:
+        aliases:
+          - pilgrim-api
+
+  worker:
+    image: pilgrim-server:local
+    command: ["worker"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment: *server-env
+    volumes:
+      - media:/data/media
+
+  # Applies pending migrations, then exits; api and worker start after it.
+  migrate:
+    image: pilgrim-server:local
+    command: ["migrate", "--yes"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment: *server-env
+
+volumes:
+  pgdata:
+  # Photos (MEDIA_ROOT). Backed up with the database by scripts/backup.sh.
+  media:
+
+networks:
+  edge:
+    name: pilgrim-edge
+    external: true

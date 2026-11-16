@@ -65,6 +65,31 @@ test('reads flags, port, absolute paths and github pair', () => {
   assert.deepEqual(config.github, { token: 't', repo: 'o/r' });
 });
 
+const TOKEN = 'x'.repeat(32);
+
+test('admin API is off without a token', () => {
+  assert.equal(loadConfig(minimal, base).adminApi, null);
+  assert.throws(() => loadConfig({ ...minimal, ADMIN_API_URL: 'http://pilgrim-api:3100' }, base), ConfigError);
+});
+
+test('admin API defaults to the internal Docker address and keeps the token verbatim', () => {
+  assert.deepEqual(loadConfig({ ...minimal, ADMIN_API_TOKEN: TOKEN }, base).adminApi, {
+    baseUrl: 'http://pilgrim-api:3100',
+    token: TOKEN,
+  });
+  assert.deepEqual(
+    loadConfig({ ...minimal, ADMIN_API_TOKEN: TOKEN, ADMIN_API_URL: 'http://127.0.0.1:3100/' }, base).adminApi,
+    { baseUrl: 'http://127.0.0.1:3100', token: TOKEN },
+  );
+});
+
+test('admin API rejects a short token and odd URLs', () => {
+  assert.throws(() => loadConfig({ ...minimal, ADMIN_API_TOKEN: 'short' }, base), ConfigError);
+  for (const url of ['pilgrim-api:3100', 'ftp://pilgrim-api', 'http://user:pw@pilgrim-api:3100', 'http://x/?a=1']) {
+    assert.throws(() => loadConfig({ ...minimal, ADMIN_API_TOKEN: TOKEN, ADMIN_API_URL: url }, base), ConfigError, url);
+  }
+});
+
 test('rejects an invalid port', () => {
   assert.throws(() => loadConfig({ ...minimal, PORT: 'abc' }, base), ConfigError);
 });
