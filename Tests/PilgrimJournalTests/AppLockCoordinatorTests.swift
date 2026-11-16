@@ -63,6 +63,83 @@ final class AppLockCoordinatorTests: XCTestCase {
     }
 
     @MainActor
+    func testJournalIsNotReadyUntilTheLockHasBootstrapped() async throws {
+        let service = AppLockService(store: InMemorySecureValueStore(), iterations: 10)
+        try await service.configure(
+            password: "startup-password",
+            confirmation: "startup-password",
+            timeout: .fiveMinutes,
+            allowsBiometrics: false
+        )
+        let coordinator = AppLockCoordinator(
+            service: service,
+            authenticator: SuccessfulAuthenticator()
+        )
+        // `isLocked` reads false before the settings load; the app gates on this.
+        XCTAssertFalse(coordinator.isBootstrapped)
+
+        await coordinator.bootstrap()
+
+        XCTAssertTrue(coordinator.isBootstrapped)
+        XCTAssertTrue(coordinator.isLocked)
+        coordinator.resetAfterAccountDeletion()
+        XCTAssertFalse(coordinator.isBootstrapped)
+    }
+
+    @MainActor
+    func testUnreadableConfigurationStaysLockedUntilDeviceOwnerAuthenticates() async {
+        let store = InMemorySecureValueStore()
+        store.save(Data("not a lock state".utf8))
+        let service = AppLockService(store: store, iterations: 10)
+        let failing = AppLockCoordinator(service: service, authenticator: FailingAuthenticator())
+
+        await failing.bootstrap()
+
+        XCTAssertTrue(failing.isBootstrapped)
+        XCTAssertTrue(failing.isLocked)
+        XCTAssertTrue(failing.isConfigurationUnreadable)
+        XCTAssertTrue(failing.configuration.isEnabled)
+        let didUnlockWithPassword = await failing.unlock(password: "anything")
+        XCTAssertFalse(didUnlockWithPassword)
+        let didUnlockWithFailedAuth = await failing.unlockWithDeviceOwner()
+        XCTAssertFalse(didUnlockWithFailedAuth)
+        XCTAssertTrue(failing.isLocked)
+        // Still fails closed on the next resign.
+        failing.sceneWillResignActive()
+        XCTAssertTrue(failing.isPrivacyShieldVisible)
+
+        let coordinator = AppLockCoordinator(
+            service: service,
+            authenticator: SuccessfulAuthenticator()
+        )
+        await coordinator.bootstrap()
+        let didUnlock = await coordinator.unlockWithDeviceOwner()
+        XCTAssertTrue(didUnlock)
+        XCTAssertFalse(coordinator.isLocked)
+    }
+
+    @MainActor
+    func testDeviceOwnerUnlockIsOnlyForAnUnreadableConfiguration() async throws {
+        let service = AppLockService(store: InMemorySecureValueStore(), iterations: 10)
+        try await service.configure(
+            password: "readable-password",
+            confirmation: "readable-password",
+            timeout: .immediately,
+            allowsBiometrics: false
+        )
+        let coordinator = AppLockCoordinator(
+            service: service,
+            authenticator: SuccessfulAuthenticator()
+        )
+        await coordinator.bootstrap()
+
+        let didUnlock = await coordinator.unlockWithDeviceOwner()
+
+        XCTAssertFalse(didUnlock)
+        XCTAssertTrue(coordinator.isLocked)
+    }
+
+    @MainActor
     func testTimeoutHonorsGracePeriodAndLocksAfterBoundary() async throws {
         let service = AppLockService(
             store: InMemorySecureValueStore(),

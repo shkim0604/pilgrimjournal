@@ -8,6 +8,12 @@ final class AppLockCoordinator: ObservableObject {
     @Published private(set) var isLocked = false
     @Published private(set) var isPrivacyShieldVisible = false
     @Published private(set) var retryAfter: Date?
+    /// False until the stored settings have been read; the journal must not
+    /// be shown before then, or it is visible for a moment with the lock on.
+    @Published private(set) var isBootstrapped = false
+    /// The stored settings could not be read. The lock then stays on (a read
+    /// error must never turn it off) and only device-owner authentication opens it.
+    @Published private(set) var isConfigurationUnreadable = false
     @Published var errorMessage: String? {
         didSet { isShowingRetryMessage = false }
     }
@@ -18,7 +24,7 @@ final class AppLockCoordinator: ObservableObject {
     private let service: AppLockService
     private let authenticator: any DeviceOwnerAuthenticating
     private var backgroundedAt: Date?
-    private var hasBootstrapped = false
+    private var didStartBootstrap = false
     private var retryTask: Task<Void, Never>?
     private var systemAuthenticationGraceUntil: Date?
 
@@ -31,11 +37,12 @@ final class AppLockCoordinator: ObservableObject {
     }
 
     func bootstrap() async {
-        guard !hasBootstrapped else { return }
-        hasBootstrapped = true
+        guard !didStartBootstrap else { return }
+        didStartBootstrap = true
         await reloadConfiguration()
         isLocked = configuration.isEnabled
         isPrivacyShieldVisible = false
+        isBootstrapped = true
     }
 
     func sceneWillResignActive(at date: Date = .now) {
@@ -128,6 +135,28 @@ final class AppLockCoordinator: ObservableObject {
             errorMessage = String(localized: "생체 인증을 사용할 수 없습니다. 비밀번호를 입력하세요.")
             return false
         }
+    }
+
+    /// Opens a lock whose stored settings could not be read, with the device
+    /// passcode or biometrics, then tries to read the settings again.
+    func unlockWithDeviceOwner() async -> Bool {
+        guard isConfigurationUnreadable else { return false }
+        errorMessage = nil
+        systemAuthenticationGraceUntil = .now.addingTimeInterval(120)
+        defer {
+            systemAuthenticationGraceUntil = .now.addingTimeInterval(2)
+        }
+        do {
+            try await authenticator.authenticateDeviceOwner(
+                reason: String(localized: "Pilgrim Journal의 기록을 여세요.")
+            )
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+        isLocked = false
+        await reloadConfiguration()
+        return true
     }
 
     func configure(
@@ -241,14 +270,22 @@ final class AppLockCoordinator: ObservableObject {
         errorMessage = nil
         backgroundedAt = nil
         systemAuthenticationGraceUntil = nil
-        hasBootstrapped = false
+        isConfigurationUnreadable = false
+        didStartBootstrap = false
+        isBootstrapped = false
     }
 
     private func reloadConfiguration() async {
         do {
             configuration = try await service.configuration()
+            isConfigurationUnreadable = false
         } catch {
-            configuration = AppLockConfiguration()
+            // Fail closed: lock immediately on every resign until the settings read again.
+            isConfigurationUnreadable = true
+            if !configuration.isEnabled {
+                configuration = AppLockConfiguration(
+                    isEnabled: true, timeout: .immediately, allowsBiometrics: false)
+            }
             errorMessage = error.localizedDescription
         }
     }

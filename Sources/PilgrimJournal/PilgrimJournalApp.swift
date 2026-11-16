@@ -247,7 +247,9 @@ struct PilgrimJournalApp: App {
                 case .checking:
                     AppleAuthenticationCheckingView()
                 case .authenticated:
-                    if let appModel = journalSession.appModel {
+                    // Until the lock settings are read, `isLocked` is not yet
+                    // known, so the journal must not appear even for a frame.
+                    if let appModel = journalSession.appModel, appLock.isBootstrapped {
                         ContentView()
                             .environmentObject(appModel)
                             .allowsHitTesting(!appLock.isLocked)
@@ -571,11 +573,12 @@ struct PilgrimJournalApp: App {
         } else {
             return
         }
-        await journalSession.activate(appleUserIdentifier: identifier)
-        guard let appModel = journalSession.appModel else { return }
+        // Before the store opens, so the journal never mounts unlocked.
         await appLock.bootstrap()
         // Group notification taps wait until the lock state is known (and unlocked).
         GroupNotificationOpener.shared.appLockDidBootstrap(appLock)
+        await journalSession.activate(appleUserIdentifier: identifier)
+        guard let appModel = journalSession.appModel else { return }
         await appModel.refreshCloudAccountState()
         #if DEBUG
         if Self.isVisualTesting {
