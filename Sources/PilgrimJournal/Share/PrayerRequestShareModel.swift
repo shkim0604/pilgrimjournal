@@ -30,6 +30,8 @@ final class PrayerRequestShareModel: ObservableObject {
         var text: String
         var language: RequestLanguage
         var topic: PrayerRequestTopic?
+        /// Who the request is for, as the model labelled it ("어머니", "나"); nil for a typed row.
+        var who: String? = nil
         var isSelected: Bool
         var isEdited: Bool
     }
@@ -91,7 +93,7 @@ final class PrayerRequestShareModel: ObservableObject {
             rows = drafts.map {
                 Row(
                     id: $0.id, text: $0.text, language: $0.language, topic: $0.topic,
-                    isSelected: true, isEdited: false)
+                    who: $0.who, isSelected: true, isEdited: false)
             }
             if let language = drafts.first?.language { shareLanguage = language }
             phase = .ready

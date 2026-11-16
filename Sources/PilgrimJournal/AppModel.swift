@@ -150,8 +150,22 @@ final class AppModel: ObservableObject {
     /// when the journal store closes.
     var familySharing: FamilySharingController?
     #endif
+    /// The private groups, set while `GroupsFeature` is on. Groups live on the group server,
+    /// so unlike `familySharing` this does not depend on the iCloud scope.
+    var groups: GroupsController?
+    /// The group whose feed replaces the entry list. Exclusive with a kind, notebook, shared
+    /// notebook or settings selection (see `selectGroup(_:)`).
+    @Published var selectedGroupID: UUID?
+    /// The post shown in the detail column while a group is selected.
+    @Published var selectedGroupPostID: UUID?
     /// The shared notebook shown in the list instead of a kind or notebook.
-    @Published var selectedSharedSpaceID: UUID?
+    @Published var selectedSharedSpaceID: UUID? {
+        didSet {
+            // `selectSharedSpace` lives with the sharing code; this keeps it exclusive with a
+            // group selection without that code knowing about groups.
+            if selectedSharedSpaceID != nil { clearGroupSelection() }
+        }
+    }
     /// The shared notebook a new entry goes into, captured when the editor opened.
     var newEntrySharedSpaceID: UUID?
     /// For each open shared entry, the revision its editor started from, so a save

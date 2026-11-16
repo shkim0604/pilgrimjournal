@@ -247,5 +247,5 @@ Phase 2에서만 고친다. Phase 1 작업끼리는 맡는 파일이 겹치지 �
       로컬 시나리오(가입·초대·글·스크랩·기한·안전·Daily Report·투표·구독·계정 삭제), `xcrun simctl push`
 - [ ] 3.4 맥미니 배포, 터널 ingress(콘솔 규칙보다 앞), Cloudflare 봇 규칙 예외(`/api`, `/.well-known`), 실기기
       체크리스트(`docs/device-verification.md`)
-- [ ] 3.5 main에 조각내어 합치기: 서버·CI 먼저, 앱은 Release `GroupsFeature.isEnabled = false`. entitlement는 1.2.0
-      출시 뒤
+- [ ] 3.5 main에 조각내어 합치기: 서버·CI 먼저(2026-11-16 #43 완료), 앱은 Release `GroupsFeature.isEnabled = false`.
+      entitlement는 1.2.0 출시 뒤(출시됨)

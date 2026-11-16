@@ -1,14 +1,17 @@
 import Foundation
 
 public enum KindColorToken: String, Codable, CaseIterable, Sendable {
-    // Order is fixed: the first six are the current colors of the six built-in kinds.
+    // Order is fixed: the first seven are the colors of the seven built-in kinds, in
+    // `BuiltInKind.allCases` order (teal is scrap's).
     case amber, sage, slate, clay, iris, stone, teal, rose
 }
 
 public enum KindIconCatalog {
+    // Order is fixed, as for `KindColorToken`: one per built-in kind, in
+    // `BuiltInKind.allCases` order (`bookmark` is scrap's).
     private static let builtInSymbols = [
         "hands.sparkles", "book.closed", "books.vertical", "pencil.and.scribble", "note.text",
-        "tray",
+        "tray", "bookmark",
     ]
 
     public static let symbols: [String] =
@@ -106,9 +109,14 @@ public enum KindCatalogError: LocalizedError, Equatable, Sendable {
     }
 }
 
-/// User edits to journal kinds. Only edited kinds are stored; untouched built-ins are derived.
+/// User edits to journal kinds. Only edited kinds are stored; untouched built-ins are derived,
+/// except those that appear on first use (scrap), which are listed only once stored.
 public struct KindCatalog: Codable, Equatable, Sendable {
     public static let maxNameLength = 20
+
+    /// The scrap kind's name when an active kind is already called "스크랩" (a user-made one,
+    /// say) at the moment it first appears.
+    public static let scrapAlternateName = "그룹 스크랩"
 
     /// Always sorted by `kind.id` so equal catalogs compare equal regardless of edit history.
     public private(set) var definitions: [KindDefinition] {
@@ -162,7 +170,7 @@ public struct KindCatalog: Codable, Equatable, Sendable {
     public var allDefinitions: [KindDefinition] {
         let stored = Set(definitions.map(\.id))
         let defaults = BuiltInKind.allCases
-            .filter { !stored.contains($0.rawValue) }
+            .filter { !stored.contains($0.rawValue) && !$0.appearsOnFirstUse }
             .map { Self.defaultDefinition(for: $0) }
         return definitions + defaults
     }
@@ -173,8 +181,16 @@ public struct KindCatalog: Codable, Equatable, Sendable {
         return sorted + active.filter { $0.kind.isUnclassified }
     }
 
-    public var creatableKinds: [KindDefinition] {
+    /// Active kinds the user can rename, recolour, reorder and delete: every active kind but
+    /// unclassified, scrap included once it has appeared.
+    public var manageableKinds: [KindDefinition] {
         activeKinds.filter { !$0.kind.isUnclassified }
+    }
+
+    /// Kinds a new entry, a classification rule or a batch move may pick: the manageable
+    /// kinds without those that only arise on their own (scrap).
+    public var creatableKinds: [KindDefinition] {
+        manageableKinds.filter { $0.kind.builtIn?.canCreateManually ?? true }
     }
 
     public var deletedBuiltIns: [KindDefinition] {
@@ -245,7 +261,7 @@ public struct KindCatalog: Codable, Equatable, Sendable {
         guard !kind.isUnclassified else { throw KindCatalogError.systemKindLocked }
         let clean = try validatedName(name, excluding: kind)
         var edited = definition(for: kind)
-        if !isKnown(kind) { edited.order = nextOrder() }
+        if !isKnown(kind) || isAwaitingFirstUse(kind) { edited.order = nextOrder() }
         edited.name = clean
         edited.colorToken = colorToken
         edited.iconToken = iconToken
@@ -299,6 +315,27 @@ public struct KindCatalog: Codable, Equatable, Sendable {
         store(edited)
     }
 
+    /// Makes a kind that appears on first use (scrap) active and listed, and returns its
+    /// definition. An active stored definition is returned untouched. Otherwise the kind is
+    /// stored (or, if the user deleted it, restored) at the end of the list, keeping a name
+    /// the user gave it when no other active kind has taken it meanwhile; on a clash it falls
+    /// back to the default name, then to "그룹 스크랩" (numbered if even that is taken).
+    /// Never throws: the first scrap must always find its kind.
+    @discardableResult
+    public mutating func materialize(
+        _ builtIn: BuiltInKind, deviceID: String, at date: Date
+    ) -> KindDefinition {
+        let kind = JournalKind(id: builtIn.rawValue)
+        var edited = definition(for: kind)
+        if definitions.contains(where: { $0.kind == kind }), edited.isActive { return edited }
+        edited.name = availableName(for: builtIn, preferring: edited.name)
+        edited.state = .active
+        edited.order = nextOrder()
+        edited.stamp(deviceID: deviceID, at: date)
+        store(edited)
+        return edited
+    }
+
     public func merged(with other: KindCatalog) -> KindCatalog {
         var result = definitions
         for candidate in other.definitions {
@@ -339,9 +376,31 @@ public struct KindCatalog: Codable, Equatable, Sendable {
         lhs.compare(rhs, options: [.caseInsensitive, .diacriticInsensitive]) == .orderedSame
     }
 
+    /// After every listed kind but unclassified. Without scrap this is the same list as
+    /// `creatableKinds`, so existing catalogs get the orders they always got.
     private func nextOrder() -> Int {
-        let top = creatableKinds.map(\.order).max() ?? -1
+        let top = manageableKinds.map(\.order).max() ?? -1
         return top == Int.max ? top : top + 1
+    }
+
+    /// A first-use kind (scrap) with no stored definition yet: not listed anywhere.
+    private func isAwaitingFirstUse(_ kind: JournalKind) -> Bool {
+        guard let builtIn = kind.builtIn, builtIn.appearsOnFirstUse else { return false }
+        return !definitions.contains { $0.kind == kind }
+    }
+
+    private func availableName(for builtIn: BuiltInKind, preferring current: String) -> String {
+        let kind = JournalKind(id: builtIn.rawValue)
+        let taken = activeKinds.filter { $0.kind != kind }.map(\.name)
+        func isFree(_ name: String) -> Bool {
+            !name.isEmpty && !taken.contains { Self.sameName($0, name) }
+        }
+        var candidates = [current, builtIn.defaultName]
+        if builtIn == .scrap {
+            candidates.append(Self.scrapAlternateName)
+            candidates += (2...99).map { "\(Self.scrapAlternateName) \($0)" }
+        }
+        return candidates.first(where: isFree) ?? candidates.last ?? builtIn.defaultName
     }
 
     private func validatedName(_ raw: String, excluding kind: JournalKind?) throws -> String {

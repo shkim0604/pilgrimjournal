@@ -6,12 +6,32 @@
 
 ## 대기 중
 
+- **비공개 그룹 — Phase 2 통합의 남은 것** (2026-11-15, 브랜치 `feat/groups`, openspec
+  `add-private-groups` tasks 3.3~3.5) — 앱 연결(3.2, A5~A8, A4)은 2026-11-16 `groups/p2-app`에서,
+  현지화(3.1)는 같은 날 `groups/p2-l10n`에서 끝났다(아래 완료). 남은 것:
+  - **화면 빈틈:** 투표 중·삭제 예정 배너(`GroupStatusBanner`)를 피드 맨 위에(지금은 그룹 설정에만).
+    프로필 사진은 아직 앱 쪽 `GroupProfilePhotoPreparer`로 줄인다(글·댓글·스티커는
+    `ImageCompressor`, 같은 기준) — 하나로 합칠지. 업데이트 안내의 App Store 링크
+    (`GroupsAppStoreLink`)는 App Store ID가 정해질 때까지 검색 URL이다.
+  - **구매 테스트:** 앱이 호스트하는 테스트 타깃(`xctest`에는 StoreKit이 거래를 주지 않는다).
+  - **검증·배포(3.3~3.5):** `make -C server test`, CI, 로컬 시나리오(`PILGRIM_GROUP_SERVER_URL`로
+    `make -C server dev`에 붙여 가입·초대·글·스크랩·기한·안전·Daily Report·투표·구독·계정 삭제),
+    `xcrun simctl push` → 맥미니 배포·터널 → 실기기 세션 H → main에 조각내어 합치기. 서버 쪽
+    (`server/`, PilgrimAPI, 콘솔 신고 페이지, CI, openspec)은 2026-11-16 #43으로 main에 들어갔다. 남은
+    조각은 앱(Release에서 플래그 끔, 콘솔 스냅샷·`modules.ts` 포함)이다. 1.2.0은 출시됐으니 entitlement도 앱
+    조각에 넣어도 된다. 운영 준비 항목은 `docs/pre-release-checklist.md` "비공개 그룹 — 운영·출시 준비".
+    콘솔을 main에서 다시 배포하기 전에 `pilgrim-edge` 네트워크를 만들어야 한다(`make -C server edge-network`).
+  - 참고: `JournalDataTests.testFiveThousandEntryPaginationIsCompleteAndResponsive`(3초 한도)가
+    병렬 작업 부하에서 6.2초가 걸린 적이 있다. 부하 탓이며 회귀가 아니다.
+
 - **기도제목 나누기 — 1차에서 미룬 것** (2026-11-12, 브랜치 `feat/prayer-request-share`) —
   1차는 일기에서 기도제목을 제안·번역해 시스템 공유 시트로 넘기는 것까지다(아래 완료).
   남은 것:
-  - 간증·독후감 카드, 이미지 카드, 데드라인 추출.
+  - 간증·독후감 카드, 이미지 카드. (데드라인 추출은 그룹 올리기의 `DeadlineSuggester`로
+    했다 — 아래 완료 "비공개 그룹 Phase 1".)
   - 고른 기도제목을 기도노트 체크리스트에 저장.
-  - iCloud 공유 노트북이나 그룹 서버에 올리기(`docs/roadmap.md`).
+  - iCloud 공유 노트북에 올리기. (그룹 서버에 올리기는 기도제목 시트의 "그룹에 올리기"로
+    만들었다.)
   - 저장 뒤 자동으로 제안하는 배너.
   - 영어 프롬프트를 21개 일기로 평가(지금은 한국어 위주로 확인했다).
   - 한→영 번역이 문장 앞의 사람 명사를 호칭(부르는 말)으로 잘못 읽는 문제.
@@ -20,6 +40,8 @@
   Mac mini에서 `docker compose -f web/admin/docker-compose.yml up -d --build`, Cloudflare
   Zero Trust에 public hostname `pilgrim.delight-house.org` 등록, 첫 로그인 후 비밀번호 변경.
   절차는 `docs/development.md` "관리 콘솔". 로컬 Docker 실행과 브라우저 확인까지는 끝났다.
+  신고 페이지를 쓰려면 그룹 서버 배포 뒤 `.env`에 `ADMIN_API_TOKEN`을 넣고 `pilgrim-edge`
+  네트워크를 먼저 만든다(`docs/development.md` "그룹 서버" › "관리 콘솔 연결").
 
 - **가족 공유 노트북 (진행 중, 2026-11-03 착수)** — 노트북이나 노트 하나를 iCloud
   `CKShare`로 가족과 공유하고, 사이드바 "공유됨" 섹션에서 함께 본다(무료, 사진 포함).
@@ -136,6 +158,76 @@
   - `AppModel.autosaveOnEditorExit`는 앱 코드에서 부르는 곳이 없고 테스트만 쓴다.
 
 ## 완료
+
+- **비공개 그룹 — 현지화** (2026-11-16, 브랜치 `groups/p2-l10n`, openspec tasks 3.1) — 그룹 화면 전체
+  (가입·사이드바·피드·상세·작성·댓글·반응·스티커·초대/QR·멤버·관리자 투표·신고/차단/숨김·Daily Report·알림
+  설정·구독·"그룹에 올리기"·스크랩 메뉴·계정 삭제 그룹 단계)의 영어를 앱 catalog에 채웠다(빠진 `en` 0개).
+  푸시 `PushLocKey` 10개는 앱 catalog의 manual 항목(`ko`·`en`)이고, `GroupPushLocalizationTests`가 키마다
+  두 언어 문구와 `loc-args` 개수를 확인한다. 한국어 키가 겹쳐 영어가 달라야 하는 곳은 명시 키로 나눴다:
+  스크랩 메뉴(`groupPost.scrap`, "Save to Scraps" — 유형 이름 "스크랩"은 "Scraps"), 그룹 글 종류
+  "기도제목"(`groupPost.kind.prayer`, "Prayer request" — 기도노트 체크리스트는 "Prayer topics"),
+  Daily Report의 "새 글" 섹션(`dailyReport.newPosts`). 기도 기한의 "D-3"/"D-day"도 catalog를 거친다.
+  `InfoPlist.xcstrings`는 그대로다: 그룹은 새 권한 문구를 더하지 않았다(사진은 `PhotosPicker`, 알림은
+  Info.plist 문구가 필요 없고, QR은 시스템 카메라로 읽는다). 쓰지 않게 된 stale 키 8개를 지웠다.
+  스크랩 본문 문구("Scraps", "Posted on …")는 계속 JournalDomain의 고정 문자열이다.
+
+- **비공개 그룹 — Phase 2 서버 정리** (2026-11-16, 브랜치 `groups/p2-server`) — 계정 상태 검사는
+  `AccountStateMiddleware` 하나(그룹 라우트는 `PilgrimRoutes.groupMember`), 권한은
+  `SubscriptionEntitlement` 하나(`/me`의 null 정렬 버그도 고침), 그룹 조회·권한은 `GroupAccess`, 안 읽은 수는
+  `PostUnread.counts`(가입 전 글은 안 읽은 수에 넣지 않는다). 관리자 스티커 삭제는 `StickerService.delete`.
+  `invalid_grant`는 재시도하지 않고 끝낸다. `server/Package.swift`가 APNS·X509·SwiftASN1을 직접 선언하고
+  Vapor 하한을 4.122.0으로. `web/admin/.env.example`에 `ADMIN_API_TOKEN`·`ADMIN_API_URL`(주석). 주인이
+  확인한 결정(2026-11-16): 구독자가 아직 없어 플래그를 나중에 켜도 소급 처리가 필요 없다. 놓친 Daily Report는
+  건너뛰고, 삭제 예정 그룹의 쓰기는 409, 끝난 폐기 행은 7일 뒤 지운다. `/i` 링크는 App Store ID가 생길 때까지
+  검색 URL. CI의 Postgres 테스트까지 통과.
+
+- **비공개 그룹 — Phase 2 앱 연결** (2026-11-16, 브랜치 `groups/p2-app`, openspec tasks 3.2) —
+  자동 테스트와 서명 없는 iOS·macOS 빌드, iOS 시뮬레이터 테스트까지. 실제 서버·실기기는 아직이다.
+  - 실제 클라이언트: `GroupsFeature.defaultAPIFactory`가 기록장 Apple 사용자의 Keychain 계정으로
+    `URLSessionGroupAPI`를 만든다. 기본은 `https://pilgrim.delight-house.org`, Debug는
+    `PILGRIM_GROUP_SERVER_URL`로 바꾸고 `PILGRIM_GROUP_API=preview`면 `PreviewGroupAPI`. 테스트와
+    SwiftUI 미리보기는 늘 `PreviewGroupAPI`. Keychain 어댑터 `GroupKeychainCredentialStore`(같은 service
+    `com.dhouse.PilgrimJournal.group-session`, 가입 요청과 같은 설치 ID). 사진은 올리기 전에
+    `ImageCompressor`로 줄이고 메타데이터를 지운다(`GroupImagePreparation.current`가 그대로 보내고 있었다).
+  - 계정 삭제(A5): `AccountDeletionService`에 `remoteEraser: GroupAccountErasure`.
+  - 스크랩(A6): 글 상세 메뉴 "스크랩"(이미 했으면 확인 후 다시 저장), 유형 편집이 `manageableKinds`,
+    Day One 가져오기 유형 고르기에서 스크랩 제외. 스크랩 문구는 기기 언어가 아니라 **글의 언어**(한글이
+    있으면 한국어, 없으면 영어, `ScrapLanguage`)로 JournalDomain의 고정 문자열에서 쓰고, 노트북은 늘
+    "스크랩 · <그룹 이름>"(소유자 결정 2026-11-16).
+  - 알림(A7): 탭이 `GroupNotificationOpener`를 거쳐 앱 잠금을 기다린다. `appLockDidBootstrap`,
+    `ContentView`의 `groupNotificationHandling`.
+  - 구독(A8): scheme Run에 `PilgrimJournal.storekit`, 세션마다 `GroupSubscriptionController.shared.attach`,
+    사이드바 `.subscription` → `GroupSubscriptionSheet`.
+  - "그룹에 올리기"(A4): 그룹에 로그인하지 않았으면 그 자리에서 "그룹 시작하기"를 열고, 끝나면 작성 화면으로
+    잇는다.
+  - 가입 화면 아래 문구를 실제 저장 범위로 고치고, 그룹 이용 안내 초안 `docs/group-terms.md`.
+  - macOS: `CODE_SIGN_ENTITLEMENTS[sdk=macosx*]` = `PilgrimJournal-macOS.entitlements`
+    (`com.apple.developer.aps-environment`, 나머지는 공유 파일과 같음),
+    `ENABLE_OUTGOING_NETWORK_CONNECTIONS`(샌드박스 앱이 그룹 서버에 닿도록).
+
+- **비공개 그룹 Phase 1** (2026-11-15, 브랜치 `feat/groups`, openspec `add-private-groups`
+  tasks 0~2) — 자동 테스트와 서명 없는 빌드까지. Release는 `GroupsFeature.isEnabled`가 꺼져 있다.
+  앱 연결은 위 "비공개 그룹 — Phase 2 앱 연결", 남은 것은 "비공개 그룹 — Phase 2 통합의 남은 것", 실기기
+  확인은 `docs/pre-release-checklist.md`.
+  - 서버 `server/`(Swift + Vapor 4 + Postgres 17, `serve`·`worker`·`migrate`): Apple 로그인(JWKS,
+    code 교환, refresh token 암호화 저장), 세션 회전·재사용 감지, `/me`·기기, `DELETE /me`(투표
+    시작·폐기 대기열·cascade), 그룹·초대·AASA·`/i/:code`·위임 투표, 글·댓글·반응(멱등 `clientId`),
+    차단·숨김·신고와 `/internal/admin/v1`, 사진·스티커(JPEG 메타데이터 제거, 서명 URL), worker 루프
+    (outbox 푸시, 기한 삭제, 사진 파일, 투표, Daily Report, Apple 토큰 폐기, 구독, 정리), 구독 JWS
+    검증·Notifications V2·`SUBSCRIPTION_REQUIRED`(기본 false).
+  - 계약 패키지 `server/PilgrimAPI`(DTO, 오류 코드, 기한·투표·사진·초대 규칙).
+  - 앱 라이브러리 `JournalGroups`(`URLSessionGroupAPI`, `GroupSession` 토큰 갱신 단일 실행,
+    `ImageCompressor`, 업로드, `GroupStore`, 초대 링크 파서).
+  - 앱 화면 `Sources/PilgrimJournal/Groups/`: 사이드바 "그룹", 온보딩, 그룹 만들기·초대(QR)·참여,
+    멤버·투표, 피드·상세·작성·신고·차단·숨김, 알림 권한·기기 등록·Daily Report 화면, 구독 화면.
+    기도제목 시트의 "그룹에 올리기"와 독후감·간증 작성 화면(`DatePhraseResolver`를
+    `JournalShareDrafts`로 옮기고 `DeadlineSuggester` 추가). 계정 삭제의
+    `RemoteAccountDataErasing` 단계와 확인 화면. 스크랩(`BuiltInKind.scrap`, `ScrapComposer`,
+    `AppModel+Scrap`, CloudKit 스키마 변경 없음).
+  - 인프라: `make dev/test/prod/deploy`, `pilgrim-edge` 네트워크, restic → R2 백업(7일)과 복원,
+    `.env.*.example`, `aps-environment`·`applinks` entitlement(`feat/groups`에만). 콘솔 `web/admin`
+    신고 페이지. CI `server` job.
+  - 문서: `docs/privacy.md` "그룹 서버", `docs/development.md` "그룹 서버", 세션 H, 로드맵 갱신.
 
 - **기도제목 나누기 (1차)** (2026-11-12, 브랜치 `feat/prayer-request-share`) — 기록의
   `기도제목 나누기`(iOS 상세 동작, macOS 편집기 `기록 정보` 메뉴·도구 막대, 목록 행 메뉴;

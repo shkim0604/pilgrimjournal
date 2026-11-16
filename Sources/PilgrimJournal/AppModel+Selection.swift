@@ -47,6 +47,7 @@ extension AppModel {
         selectedKind = nil
         selectedNotebookName = nil
         selectedSharedSpaceID = nil
+        clearGroupSelection()
         refresh()
     }
 
@@ -55,6 +56,7 @@ extension AppModel {
         prayerScope = .notes
         selectedNotebookName = nil
         selectedSharedSpaceID = nil
+        clearGroupSelection()
         newEntryNotebookName = nil
         editingEntry = nil
         isPresentingEditor = false
@@ -67,6 +69,7 @@ extension AppModel {
         selectedKind = nil
         selectedNotebookName = name
         selectedSharedSpaceID = nil
+        clearGroupSelection()
         newEntryNotebookName = nil
         editingEntry = nil
         isPresentingEditor = false
@@ -162,6 +165,12 @@ extension AppModel {
     }
 
     func beginNewEntry() {
+        // A new note belongs to the journal: leave the group feed for the entry list, which
+        // the group selection left untouched.
+        if selectedGroupID != nil {
+            clearGroupSelection()
+            refresh()
+        }
         editingEntry = nil
         selectedEntryID = nil
         selectedEntryIDs.removeAll()
@@ -209,11 +218,61 @@ extension AppModel {
     }
 
     func showSettings() {
+        if selectedGroupID != nil {
+            clearGroupSelection()
+            refresh()
+        }
         selectedEntryID = nil
         editingEntry = nil
         isPresentingEditor = false
         isPresentingSettings = true
         endBatchSelection()
+    }
+
+    // MARK: Groups
+
+    /// Shows a group's feed instead of the entry list. Clears every other sidebar selection
+    /// and any open entry, editor or settings, the way `selectSharedSpace` does.
+    func selectGroup(_ groupID: UUID) {
+        selectedKind = nil
+        prayerScope = .notes
+        selectedNotebookName = nil
+        selectedSharedSpaceID = nil
+        newEntryNotebookName = nil
+        editingEntry = nil
+        isPresentingEditor = false
+        isPresentingSettings = false
+        endBatchSelection()
+        selectedEntryID = nil
+        if selectedGroupID != groupID {
+            selectedGroupPostID = nil
+        }
+        selectedGroupID = groupID
+    }
+
+    /// Opens a post of the selected group in the detail column (nil closes it).
+    func selectGroupPost(_ postID: UUID?) {
+        guard selectedGroupID != nil else { return }
+        selectedGroupPostID = postID
+    }
+
+    func clearGroupSelection() {
+        if selectedGroupID != nil { selectedGroupID = nil }
+        if selectedGroupPostID != nil { selectedGroupPostID = nil }
+    }
+
+    /// Follows a tapped group notification. The Daily Report screen arrives with A7; until
+    /// then that route leaves the selection alone.
+    func openGroupNotificationRoute(_ route: GroupNotificationRoute) {
+        switch route {
+        case .post(let groupID, let postID):
+            selectGroup(groupID)
+            selectGroupPost(postID)
+        case .group(let groupID):
+            selectGroup(groupID)
+        case .dailyReport:
+            break
+        }
     }
 
     func beginBatchSelection() {

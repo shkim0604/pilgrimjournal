@@ -214,12 +214,17 @@ extension AppModel {
 extension AppModel {
     /// Kinds a picker may offer. The current kind is kept in front when it is
     /// no longer offered (deleted or unknown) so the selection never vanishes.
+    ///
+    /// `activeOnly` (the Day One import table) also offers 미분류, but never the
+    /// scrap kind: scraps only come from group posts.
     func kindPickerOptions(
         including current: JournalKind? = nil,
         activeOnly: Bool = false
     ) -> [KindDefinition] {
         let base =
-            activeOnly ? kindCatalog.activeKinds : kindCatalog.creatableKinds
+            activeOnly
+            ? kindCatalog.activeKinds.filter { $0.kind.builtIn != .scrap }
+            : kindCatalog.creatableKinds
         guard let current, !base.contains(where: { $0.kind == current }) else {
             return base
         }

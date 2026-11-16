@@ -1,17 +1,9 @@
 {
   "sourceLanguage" : "ko",
   "strings" : {
-    "내가 공유한 노트북과 기록(함께 보던 가족에게서도 사라짐)과 참여 중인 공유" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Notebooks and entries you shared (they disappear for your family too), and shares you joined"
-          }
-        }
-      }
+    "" : {
+      "shouldTranslate" : false
     },
-    "" : {},
     "‘%@’ 태그를 모든 기록에서 제거할까요?" : {
       "localizations" : {
         "en" : {
@@ -52,9 +44,24 @@
         }
       }
     },
-    "#%@" : {},
+    "#%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "#%@"
+          }
+        }
+      }
+    },
     "%@  %@" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@  %@"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "new",
@@ -65,6 +72,12 @@
     },
     "%@ · %@" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · %@"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "new",
@@ -89,12 +102,98 @@
         }
       }
     },
+    "%@ 강퇴" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Removed %@"
+          }
+        }
+      }
+    },
+    "%@ 관리" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manage %@"
+          }
+        }
+      }
+    },
+    "%@ 님 숨기기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide %@"
+          }
+        }
+      }
+    },
+    "%@ 님 차단" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block %@"
+          }
+        }
+      }
+    },
+    "%@ 님의 글과 댓글이 다시 보여요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You'll see posts and comments from %@ again."
+          }
+        }
+      }
+    },
+    "%@ 위해" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "For %@"
+          }
+        }
+      }
+    },
+    "%@ 참여" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Joined %@"
+          }
+        }
+      }
+    },
     "%@ 태그 제거" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Remove tag %@"
+          }
+        }
+      }
+    },
+    "%@, %@, %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@, %@, %@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$@, %3$@"
           }
         }
       }
@@ -109,13 +208,150 @@
         }
       }
     },
-    "%lld" : {},
+    "%@까지" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Until %@"
+          }
+        }
+      }
+    },
+    "%@까지 보이게 돼요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "It will stay visible until %@."
+          }
+        }
+      }
+    },
+    "%@까지 쓸 수 있는 초대예요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This invite works until %@"
+          }
+        }
+      }
+    },
+    "%@님 강퇴" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove %@"
+          }
+        }
+      }
+    },
+    "%@님에게 넘기고 나가기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hand over to %@ and leave"
+          }
+        }
+      }
+    },
+    "%@님에게 넘기기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hand over to %@"
+          }
+        }
+      }
+    },
+    "%@님이 초대했어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invited by %@"
+          }
+        }
+      }
+    },
+    "%@에 그룹이 삭제돼요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The group will be deleted on %@"
+          }
+        }
+      }
+    },
+    "%@에 마감돼요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Closes on %@"
+          }
+        }
+      }
+    },
+    "%@에 만료 · %lld/%lld명 참여" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Expires %@ · %lld/%lld joined"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@에 만료 · %2$lld/%3$lld명 참여"
+          }
+        }
+      }
+    },
+    "%lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld"
+          }
+        }
+      }
+    },
     "%lld/%lld" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld/%lld"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$lld/%2$lld"
+          }
+        }
+      }
+    },
+    "%lld/%lld명 · %@에 만료" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld/%lld joined · Expires %@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld/%2$lld명 · %3$@에 만료"
           }
         }
       }
@@ -152,6 +388,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld selected"
+          }
+        }
+      }
+    },
+    "%lld개월" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld month"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld months"
+                }
+              }
+            }
           }
         }
       }
@@ -200,6 +458,132 @@
         }
       }
     },
+    "%lld년" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld year"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld years"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld명" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld person"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld people"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld명 중 %lld명이 투표했어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%2$lld of %1$lld have voted"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld명 중 %2$lld명이 투표했어요"
+          }
+        }
+      }
+    },
+    "%lld시간 뒤 사라져요" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Disappears in %lld hour"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Disappears in %lld hours"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld일" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld day"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld days"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld일 뒤 사라져요" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Disappears in %lld day"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Disappears in %lld days"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld자" : {
       "localizations" : {
         "en" : {
@@ -215,6 +599,28 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld characters"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld주" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld week"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld weeks"
                 }
               }
             }
@@ -244,7 +650,140 @@
         }
       }
     },
-    "•" : {},
+    "•" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "•"
+          }
+        }
+      }
+    },
+    "+%lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "+%lld"
+          }
+        }
+      }
+    },
+    "1차 투표가 동률이라 동률인 사람끼리 하루 동안 다시 뽑아요. 또 동률이면 그중 한 명이 무작위로 정해져요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The first round was a tie, so the tied members go to a one-day runoff. If it's a tie again, one of them is chosen at random."
+          }
+        }
+      }
+    },
+    "7일 뒤 삭제" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete in 7 days"
+          }
+        }
+      }
+    },
+    "ADMIN_VOTE_DECIDED" : {
+      "comment" : "Push body: the admin vote ended; %@ is the new admin's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ is the new admin"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@님이 새 관리자가 됐어요"
+          }
+        }
+      }
+    },
+    "ADMIN_VOTE_RUNOFF" : {
+      "comment" : "Push body: the admin vote tied and goes to a one-day runoff",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The vote was a tie, so there's a one-day runoff"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "투표가 동률이라 하루 동안 다시 투표해요"
+          }
+        }
+      }
+    },
+    "ADMIN_VOTE_STARTED" : {
+      "comment" : "Push body: the group started electing a new admin",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voting for a new admin has started. Please vote within 3 days."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "새 관리자를 뽑는 투표가 시작됐어요. 3일 안에 투표해 주세요."
+          }
+        }
+      }
+    },
+    "App Store 구독 관리 열기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open App Store subscriptions"
+          }
+        }
+      }
+    },
+    "App Store 열기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open App Store"
+          }
+        }
+      }
+    },
+    "App Store에서 구독 정보를 불러오지 못했어요. 네트워크를 확인하고 다시 열어 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't load the subscription from the App Store. Check your connection and open this again."
+          }
+        }
+      }
+    },
+    "App Store에서 구입을 확인하지 못했어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The App Store couldn't verify the purchase."
+          }
+        }
+      }
+    },
     "Apple 계정 · %@…%@" : {
       "localizations" : {
         "en" : {
@@ -277,6 +816,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sign in to Pilgrim Journal with your Apple Account."
+          }
+        }
+      }
+    },
+    "Apple 계정으로 인증하고 그룹 이름을 정합니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verifies with your Apple Account and sets your group name."
           }
         }
       }
@@ -411,6 +960,56 @@
         }
       }
     },
+    "Apple 인증을 마치지 못했어요. 다시 시도해 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple authentication didn't finish. Please try again."
+          }
+        }
+      }
+    },
+    "Apple 인증을 마치지 못했어요. 잠시 뒤 다시 시도해 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple authentication didn't finish. Please try again in a moment."
+          }
+        }
+      }
+    },
+    "Apple 인증을 마치지 않았어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple authentication wasn't completed."
+          }
+        }
+      }
+    },
+    "Apple 인증을 확인하지 못했어요. 다시 시도해 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't verify the Apple authentication. Please try again."
+          }
+        }
+      }
+    },
+    "Apple 인증이 이미 진행 중이에요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple authentication is already in progress."
+          }
+        }
+      }
+    },
     "CloudKit 동기화 대기" : {
       "localizations" : {
         "en" : {
@@ -481,7 +1080,152 @@
         }
       }
     },
-    "Day One export %@" : {},
+    "D-%lld" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld day left"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld days left"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "D-day" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Today"
+          }
+        }
+      }
+    },
+    "Daily Report" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Daily Report"
+          }
+        }
+      }
+    },
+    "Daily Report 보기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View Daily Report"
+          }
+        }
+      }
+    },
+    "Daily Report는 하루 한 번, 정한 시각까지 24시간 동안의 그룹 소식을 알려 줘요. 그룹마다 빼려면 그룹 설정에서 바꿀 수 있어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Once a day, Daily Report sums up the 24 hours of group news before the time you choose. To leave a group out, change it in that group's settings."
+          }
+        }
+      }
+    },
+    "Daily Report를 불러오지 못했어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't load the Daily Report"
+          }
+        }
+      }
+    },
+    "Daily Report에 넣기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Include in Daily Report"
+          }
+        }
+      }
+    },
+    "DAILY_REPORT_BODY" : {
+      "comment" : "Push body of the daily digest; %@ is the number of updates",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Group updates today: %@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "오늘 그룹 소식이 %@개 있어요"
+          }
+        }
+      }
+    },
+    "DAILY_REPORT_TITLE" : {
+      "comment" : "Push title of the daily digest",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Daily Report"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Daily Report"
+          }
+        }
+      }
+    },
+    "dailyReport.newPosts" : {
+      "comment" : "Daily Report section listing a group's new posts",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New posts"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "새 글"
+          }
+        }
+      }
+    },
+    "Day One export %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Day One export %@"
+          }
+        }
+      }
+    },
     "Day One ZIP을 선택하세요" : {
       "localizations" : {
         "en" : {
@@ -618,13 +1362,148 @@
         }
       }
     },
-    "Face ID / Touch ID" : {},
+    "Face ID / Touch ID" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Face ID / Touch ID"
+          }
+        }
+      }
+    },
     "Face ID / Touch ID 사용" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Use Face ID / Touch ID"
+          }
+        }
+      }
+    },
+    "GROUP_DELETION_SCHEDULED" : {
+      "comment" : "Push body: the admin scheduled the group's deletion in 7 days",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This group will be deleted in 7 days. Save any posts you want to keep to your journal."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "7일 뒤에 그룹이 삭제돼요. 필요한 글은 미리 스크랩해 두세요."
+          }
+        }
+      }
+    },
+    "GROUP_NEW_POST_BOOK_REPORT" : {
+      "comment" : "Push body: a member posted a book report; %@ is the author's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ posted a book report"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@님이 독후감을 올렸어요"
+          }
+        }
+      }
+    },
+    "GROUP_NEW_POST_PRAYER" : {
+      "comment" : "Push body: a member posted prayer requests; %@ is the author's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ shared a prayer request"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@님이 기도제목을 올렸어요"
+          }
+        }
+      }
+    },
+    "GROUP_NEW_POST_TESTIMONY" : {
+      "comment" : "Push body: a member posted a testimony; %@ is the author's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ shared a testimony"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@님이 간증을 올렸어요"
+          }
+        }
+      }
+    },
+    "GROUP_PUSH_TITLE" : {
+      "comment" : "Push title: the group's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@"
+          }
+        }
+      }
+    },
+    "groupPost.kind.prayer" : {
+      "comment" : "Group post kind: prayer requests shared with a group",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prayer request"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "기도제목"
+          }
+        }
+      }
+    },
+    "groupPost.scrap" : {
+      "comment" : "Menu action that copies a group post into the journal's scrap kind",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save to Scraps"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "스크랩"
           }
         }
       }
@@ -819,7 +1698,16 @@
         }
       }
     },
-    "Markdown" : {},
+    "Markdown" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Markdown"
+          }
+        }
+      }
+    },
     "Markdown 명령" : {
       "localizations" : {
         "en" : {
@@ -868,7 +1756,26 @@
         }
       }
     },
-    "Pilgrim Journal" : {},
+    "Pilgrim Journal" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pilgrim Journal"
+          }
+        }
+      }
+    },
+    "Pilgrim Journal 그룹에 초대합니다. 앱에서 링크를 열거나 초대 코드 %@를 입력해 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You're invited to a Pilgrim Journal group. Open the link in the app or enter the invite code %@."
+          }
+        }
+      }
+    },
     "Pilgrim Journal 앱 잠금 비밀번호를 재설정하세요." : {
       "localizations" : {
         "en" : {
@@ -919,6 +1826,16 @@
         }
       }
     },
+    "Pilgrim 그룹 초대" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pilgrim group invite"
+          }
+        }
+      }
+    },
     "Pilgrim에는 자체 서버가 없어 Apple 로그인 연결은 기기 설정에서 끊습니다. 삭제가 끝나면 다음 경로에서 ‘사용 중단’을 누르세요." : {
       "localizations" : {
         "en" : {
@@ -965,7 +1882,16 @@
         }
       }
     },
-    "Quiet Morning" : {},
+    "Quiet Morning" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quiet Morning"
+          }
+        }
+      }
+    },
     "sidebar.notebooks" : {
       "comment" : "Sidebar section header listing notebooks",
       "extractionState" : "extracted_with_value",
@@ -980,6 +1906,16 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "노트북"
+          }
+        }
+      }
+    },
+    "XXXX-XXXX-XXXX" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "XXXX-XXXX-XXXX"
           }
         }
       }
@@ -1014,6 +1950,76 @@
         }
       }
     },
+    "간증" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Testimony"
+          }
+        }
+      }
+    },
+    "간증은 7일 동안 보여요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Testimonies stay up for 7 days."
+          }
+        }
+      }
+    },
+    "강퇴" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove"
+          }
+        }
+      }
+    },
+    "강퇴 해제" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allow back"
+          }
+        }
+      }
+    },
+    "강퇴를 풀어도 바로 돌아오지는 않아요. 새 초대로 다시 참여할 수 있게 될 뿐이에요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allowing someone back doesn't return them to the group. It only lets them join again with a new invite."
+          }
+        }
+      }
+    },
+    "강퇴한 사람" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Removed people"
+          }
+        }
+      }
+    },
+    "강퇴한 사람은 강퇴를 풀기 전까지 어떤 초대로도 다시 들어올 수 없어요. 그 사람이 올린 글과 댓글은 남아요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A removed person can't rejoin with any invite until you allow them back. Their posts and comments stay."
+          }
+        }
+      }
+    },
     "같은 기록의 변경은 revision 충돌로 보존합니다." : {
       "localizations" : {
         "en" : {
@@ -1024,13 +2030,12 @@
         }
       }
     },
-    "개발" : {
-      "extractionState" : "stale",
+    "개발용 계정으로 시작하기" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Development"
+            "value" : "Start with a development account"
           }
         }
       }
@@ -1041,6 +2046,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Privacy"
+          }
+        }
+      }
+    },
+    "개인정보 처리방침" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Privacy Policy"
           }
         }
       }
@@ -1145,12 +2160,42 @@
         }
       }
     },
+    "결제가 되지 않아 구독이 멈췄어요. App Store에서 결제 정보를 확인해 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your subscription is paused because the payment didn't go through. Check your payment details in the App Store."
+          }
+        }
+      }
+    },
+    "결제가 되지 않았어요. App Store에서 결제 정보를 확인해 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The payment didn't go through. Check your payment details in the App Store."
+          }
+        }
+      }
+    },
     "경고" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Warnings"
+          }
+        }
+      }
+    },
+    "계속" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continue"
           }
         }
       }
@@ -1245,6 +2290,56 @@
         }
       }
     },
+    "계정을 삭제해도 App Store 구독은 자동으로 해지되지 않아요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deleting your account doesn't cancel your App Store subscription."
+          }
+        }
+      }
+    },
+    "계정이 일시 정지되어 그룹을 쓸 수 없어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your account is suspended, so groups are unavailable."
+          }
+        }
+      }
+    },
+    "계정이 일시 정지되었어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your account is suspended"
+          }
+        }
+      }
+    },
+    "고르기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose"
+          }
+        }
+      }
+    },
+    "고른 멤버가 바로 관리자가 되고, 나는 그룹에서 나가요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The member you choose becomes the admin right away, and you leave the group."
+          }
+        }
+      }
+    },
     "고요한 아침" : {
       "localizations" : {
         "en" : {
@@ -1281,6 +2376,56 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pinned"
+          }
+        }
+      }
+    },
+    "곧 그룹이 삭제돼요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This group will be deleted soon"
+          }
+        }
+      }
+    },
+    "곧 사라져요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disappears soon"
+          }
+        }
+      }
+    },
+    "곧 사라지는 글" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disappearing soon"
+          }
+        }
+      }
+    },
+    "공개 기간" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Visible for"
+          }
+        }
+      }
+    },
+    "공유" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Share"
           }
         }
       }
@@ -1405,6 +2550,86 @@
         }
       }
     },
+    "관리자" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Admin"
+          }
+        }
+      }
+    },
+    "관리자 넘기기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hand over admin"
+          }
+        }
+      }
+    },
+    "관리자 투표" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Admin vote"
+          }
+        }
+      }
+    },
+    "관리자를 넘기고 나갈까요?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hand over admin and leave?"
+          }
+        }
+      }
+    },
+    "관리자를 넘길까요?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hand over admin?"
+          }
+        }
+      }
+    },
+    "관리자를 누구에게 맡길까요?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Who should be the next admin?"
+          }
+        }
+      }
+    },
+    "관리자만 할 수 있어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only the admin can do this."
+          }
+        }
+      }
+    },
+    "괴롭힘·혐오" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Harassment or hate"
+          }
+        }
+      }
+    },
     "교체 복원" : {
       "localizations" : {
         "en" : {
@@ -1445,12 +2670,182 @@
         }
       }
     },
+    "구독 관리" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manage subscription"
+          }
+        }
+      }
+    },
+    "구독 없이 쓸 수 있어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No subscription needed"
+          }
+        }
+      }
+    },
+    "구독 중이에요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You're subscribed"
+          }
+        }
+      }
+    },
+    "구독은 App Store 설정에서 직접 해지해야 해요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel your subscription yourself in App Store settings"
+          }
+        }
+      }
+    },
+    "구독은 현재 기간이 끝나기 24시간 전까지 해지하지 않으면 자동으로 갱신돼요. 결제는 Apple 계정으로 청구되며, App Store 계정 설정에서 관리하거나 해지할 수 있어요. 구독은 지금 로그인한 그룹 계정에 연결돼요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The subscription renews automatically unless you cancel it at least 24 hours before the current period ends. Payment is charged to your Apple Account, and you can manage or cancel it in your App Store account settings. The subscription is linked to the group account you're signed in to now."
+          }
+        }
+      }
+    },
+    "구독을 복원했어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your subscription was restored."
+          }
+        }
+      }
+    },
+    "구독을 확인하지 못했어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The subscription couldn't be verified."
+          }
+        }
+      }
+    },
+    "구독을 확인했지만 지금은 사용 중이 아니에요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The subscription was verified, but it isn't active right now."
+          }
+        }
+      }
+    },
+    "구독이 만료됐어요. 다시 구독하면 그룹을 계속 쓸 수 있어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your subscription has expired. Subscribe again to keep using groups."
+          }
+        }
+      }
+    },
+    "구독이 필요해요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Subscription needed"
+          }
+        }
+      }
+    },
+    "구독이 환불되어 취소됐어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your subscription was refunded and canceled."
+          }
+        }
+      }
+    },
+    "구독하기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Subscribe"
+          }
+        }
+      }
+    },
     "구분선" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Divider"
+          }
+        }
+      }
+    },
+    "구입 복원" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore purchases"
+          }
+        }
+      }
+    },
+    "구입 승인을 기다리고 있어요. 승인되면 자동으로 확인해요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting for the purchase to be approved. It will be checked automatically once it is."
+          }
+        }
+      }
+    },
+    "구입은 끝났어요. 그룹 서버에 연결되면 구독을 확인해요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your purchase is complete. The subscription will be verified once the group server can be reached."
+          }
+        }
+      }
+    },
+    "구입을 복원하지 못했어요: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't restore purchases: %@"
+          }
+        }
+      }
+    },
+    "구입하지 못했어요: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't complete the purchase: %@"
           }
         }
       }
@@ -1475,6 +2870,512 @@
         }
       }
     },
+    "그 사람이 나눠도 괜찮다고 했는지 한 번 더 확인해 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please check once more that they're okay with you sharing it."
+          }
+        }
+      }
+    },
+    "그때까지 글을 읽고 내 기록장에 스크랩할 수 있지만, 새로 쓸 수는 없어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Until then, you can read posts and save them to your journal, but you can't write new ones."
+          }
+        }
+      }
+    },
+    "그룹" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Groups"
+          }
+        }
+      }
+    },
+    "그룹 가입 마치기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finish joining groups"
+          }
+        }
+      }
+    },
+    "그룹 가입을 먼저 마쳐 주세요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please finish joining groups first"
+          }
+        }
+      }
+    },
+    "그룹 구독" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Group subscription"
+          }
+        }
+      }
+    },
+    "그룹 나가기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leave group"
+          }
+        }
+      }
+    },
+    "그룹 멤버에게 보이는 이름이에요. 1~30자로 정해 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This is the name group members see. Use 1 to 30 characters."
+          }
+        }
+      }
+    },
+    "그룹 삭제" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete group"
+          }
+        }
+      }
+    },
+    "그룹 서버에 로그인하기 위해 Apple 계정으로 다시 인증합니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verifies again with your Apple Account to sign in to the group server."
+          }
+        }
+      }
+    },
+    "그룹 서버에 문제가 있어요. 잠시 뒤 다시 시도해 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Something went wrong on the group server. Please try again in a moment."
+          }
+        }
+      }
+    },
+    "그룹 서버에 연결할 수 없어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Can't connect to the group server"
+          }
+        }
+      }
+    },
+    "그룹 서버에 연결할 수 없어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Can't connect to the group server."
+          }
+        }
+      }
+    },
+    "그룹 서버에 연결할 수 없어요. 다시 시도해 주세요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Can't connect to the group server. Please try again"
+          }
+        }
+      }
+    },
+    "그룹 서버에 연결할 수 없어요. 다시 시도해 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Can't connect to the group server. Please try again."
+          }
+        }
+      }
+    },
+    "그룹 서버에는 그룹에서 보일 이름과 프로필 사진, 내 그룹과 멤버 정보, 올린 글과 사진, 댓글, 반응, 스티커, 알림용 기기 토큰, 숨김·차단 목록, 신고가 저장돼요. 기록장의 기록은 올라가지 않아요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The group server stores the name and profile photo you use in groups, your groups and their members, the posts and photos you share, comments, reactions, stickers, a device token for notifications, your hidden and blocked lists, and reports. Your journal entries are never uploaded."
+          }
+        }
+      }
+    },
+    "그룹 서버의 계정을 가장 먼저 지웁니다. 그룹 로그인이 만료됐다면 Apple 인증을 한 번 더 요청해요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your group server account is deleted first. If your group sign-in has expired, you'll be asked to verify with Apple again."
+          }
+        }
+      }
+    },
+    "그룹 서버의 내 계정과 내가 올린 글, 댓글, 반응, 스티커, 사진" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your group server account and the posts, comments, reactions, stickers, and photos you shared"
+          }
+        }
+      }
+    },
+    "그룹 서버의 응답을 이해하지 못했어요. 잠시 뒤 다시 시도해 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't understand the group server's response. Please try again in a moment."
+          }
+        }
+      }
+    },
+    "그룹 설정" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Group settings"
+          }
+        }
+      }
+    },
+    "그룹 스크랩" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Group Scraps"
+          }
+        }
+      }
+    },
+    "그룹 스티커 %lld/%lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Group stickers %lld/%lld"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "그룹 스티커 %1$lld/%2$lld"
+          }
+        }
+      }
+    },
+    "그룹 시작하기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Get started with groups"
+          }
+        }
+      }
+    },
+    "그룹 알림 켜기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turn on group notifications"
+          }
+        }
+      }
+    },
+    "그룹 열기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open group"
+          }
+        }
+      }
+    },
+    "그룹 이름" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Group name"
+          }
+        }
+      }
+    },
+    "그룹에 다시 로그인해 주세요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please sign in to groups again"
+          }
+        }
+      }
+    },
+    "그룹에 다시 로그인해 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please sign in to groups again."
+          }
+        }
+      }
+    },
+    "그룹에 로그인하면 Daily Report와 차단·숨김 목록을 여기서 관리할 수 있어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sign in to groups to manage your Daily Report and your blocked and hidden lists here."
+          }
+        }
+      }
+    },
+    "그룹에 로그인해 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please sign in to groups."
+          }
+        }
+      }
+    },
+    "그룹에 먼저 로그인해 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please sign in to groups first."
+          }
+        }
+      }
+    },
+    "그룹에 올리기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Post to group"
+          }
+        }
+      }
+    },
+    "그룹에 올리려면 구독이 필요해요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Posting to a group needs a subscription."
+          }
+        }
+      }
+    },
+    "그룹에 올릴 수 없어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Can't post to a group"
+          }
+        }
+      }
+    },
+    "그룹에 참여" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Join a group"
+          }
+        }
+      }
+    },
+    "그룹에서 나갈까요?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leave this group?"
+          }
+        }
+      }
+    },
+    "그룹에서 보일 이름" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Name shown in groups"
+          }
+        }
+      }
+    },
+    "그룹에서 쓰고 올린 것만 그룹 서버에 저장돼요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only what you write and post in groups is stored on the group server."
+          }
+        }
+      }
+    },
+    "그룹은 7일 뒤에 모든 글과 사진과 함께 지워지고, 되돌릴 수 없어요. 그동안 멤버는 글을 읽고 스크랩할 수 있지만 새로 쓸 수는 없어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In 7 days, the group is deleted along with all its posts and photos, and this can't be undone. Until then, members can read posts and save them to their journals, but can't write new ones."
+          }
+        }
+      }
+    },
+    "그룹은 구독자 전용이에요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Groups are for subscribers"
+          }
+        }
+      }
+    },
+    "그룹을 만들거나 참여하려면 월간 구독이 필요해요. 기록장은 구독 없이 그대로 쓸 수 있어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Creating or joining groups needs a monthly subscription. Your journal stays free to use without one."
+          }
+        }
+      }
+    },
+    "그룹을 만들고 참여할 수 있어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can create and join groups."
+          }
+        }
+      }
+    },
+    "그룹을 만들고 참여할 수 있어요. 다음 갱신일은 %@이에요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can create and join groups. Your next renewal is on %@."
+          }
+        }
+      }
+    },
+    "그룹을 불러오지 못했어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't load groups."
+          }
+        }
+      }
+    },
+    "그룹을 삭제할까요?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete this group?"
+          }
+        }
+      }
+    },
+    "그룹을 쓰려면 구독이 필요해요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Groups need a subscription."
+          }
+        }
+      }
+    },
+    "그룹을 쓰려면 먼저 가입을 마쳐 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please finish joining before using groups."
+          }
+        }
+      }
+    },
+    "그룹을 쓰려면 앱을 업데이트해 주세요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update the app to use groups"
+          }
+        }
+      }
+    },
+    "그룹을 쓰려면 앱을 업데이트해 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update the app to use groups."
+          }
+        }
+      }
+    },
+    "그룹이나 항목을 찾을 수 없어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't find the group or item."
+          }
+        }
+      }
+    },
     "근거" : {
       "localizations" : {
         "en" : {
@@ -1485,12 +3386,42 @@
         }
       }
     },
+    "글 내리기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Take down post"
+          }
+        }
+      }
+    },
+    "글 신고" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Report post"
+          }
+        }
+      }
+    },
     "글머리표 목록" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Bulleted List"
+          }
+        }
+      }
+    },
+    "글을 엽니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens the post."
           }
         }
       }
@@ -1531,39 +3462,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A per-device passcode and Face ID or Touch ID hide the app’s screens and its preview in the app switcher. They don’t encrypt the database or CloudKit records end to end with a separate password."
-          }
-        }
-      }
-    },
-    "기도 상태" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Prayer Status"
-          }
-        }
-      }
-    },
-    "기도 상태·응답일" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Prayer Status & Answered Date"
-          }
-        }
-      }
-    },
-    "기도 중" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Praying"
           }
         }
       }
@@ -1618,6 +3516,22 @@
         }
       }
     },
+    "기도제목 %lld/%lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prayer requests %lld/%lld"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "기도제목 %1$lld/%2$lld"
+          }
+        }
+      }
+    },
     "기도제목 나누기" : {
       "localizations" : {
         "en" : {
@@ -1638,6 +3552,16 @@
         }
       }
     },
+    "기도제목 줄 추가" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add a prayer request"
+          }
+        }
+      }
+    },
     "기도제목 추가" : {
       "localizations" : {
         "en" : {
@@ -1648,12 +3572,42 @@
         }
       }
     },
+    "기도제목 한 줄은 200자까지예요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Each prayer request can be up to 200 characters"
+          }
+        }
+      }
+    },
     "기도제목·기도 상태" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Prayer topics & status"
+          }
+        }
+      }
+    },
+    "기도제목·독후감·간증을 올려 보세요. 글은 기한이 지나면 사라져요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Share a prayer request, book report, or testimony. Posts disappear when their time is up."
+          }
+        }
+      }
+    },
+    "기도제목은 10줄까지 올릴 수 있어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can post up to 10 prayer requests"
           }
         }
       }
@@ -1674,6 +3628,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Check off a prayer topic and it will appear here with its answer date."
+          }
+        }
+      }
+    },
+    "기도제목을 한 줄 이상 써 주세요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Write at least one prayer request"
           }
         }
       }
@@ -1890,6 +3854,16 @@
         }
       }
     },
+    "기록에서 나누기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Share from an entry"
+          }
+        }
+      }
+    },
     "기록으로 돌아가기" : {
       "localizations" : {
         "en" : {
@@ -1990,6 +3964,76 @@
         }
       }
     },
+    "기록의 공유 메뉴에서 그 기록을 바로 올릴 수도 있어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can also post an entry straight from its Share menu."
+          }
+        }
+      }
+    },
+    "기록장 로그인 정보를 확인할 수 없어요. 앱을 다시 열어 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't check your journal sign-in. Please reopen the app."
+          }
+        }
+      }
+    },
+    "기록장에 로그인한 Apple 계정으로 인증해 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please authenticate with the Apple Account signed in to the journal."
+          }
+        }
+      }
+    },
+    "기록장에 로그인한 Apple 계정으로 한 번 더 인증해요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You'll verify once more with the Apple Account signed in to your journal."
+          }
+        }
+      }
+    },
+    "기록장은 그대로 내 기기와 iCloud에만 있어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your journal stays only on your devices and in iCloud."
+          }
+        }
+      }
+    },
+    "기록장은 그대로 쓸 수 있어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can keep using your journal."
+          }
+        }
+      }
+    },
+    "기록장의 ‘스크랩’ 유형에 저장했어요. 원래 글이 사라져도 남아요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saved to the ‘Scraps’ type in your journal. It stays even after the original post disappears."
+          }
+        }
+      }
+    },
     "기본 크기" : {
       "localizations" : {
         "en" : {
@@ -2040,6 +4084,102 @@
         }
       }
     },
+    "기타" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Other"
+          }
+        }
+      }
+    },
+    "기한 %@ · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Due %@ · %@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "기한 %1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "기한 지남" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Past due"
+          }
+        }
+      }
+    },
+    "기한이 지났거나 내려진 글입니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This post has expired or was taken down."
+          }
+        }
+      }
+    },
+    "꺼짐" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Off"
+          }
+        }
+      }
+    },
+    "나" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You"
+          }
+        }
+      }
+    },
+    "나 자신에게는 할 수 없어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can't do this to yourself."
+          }
+        }
+      }
+    },
+    "나가고 그룹 지우기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leave and delete group"
+          }
+        }
+      }
+    },
+    "나가고 투표로 정하기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leave and let members vote"
+          }
+        }
+      }
+    },
     "나가기" : {
       "localizations" : {
         "en" : {
@@ -2060,12 +4200,32 @@
         }
       }
     },
+    "나가면 그룹이 바로 지워져요. 내가 올린 글도 함께 사라져요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leaving deletes the group right away, along with your posts."
+          }
+        }
+      }
+    },
     "나가면 이 기기와 내 iCloud에서 공유 기록이 사라집니다. 공유한 사람의 기록은 그대로입니다." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Leaving removes the shared entries from this device and your iCloud. The owner's entries stay as they are."
+          }
+        }
+      }
+    },
+    "나누고 싶은 이야기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What you'd like to share"
           }
         }
       }
@@ -2120,12 +4280,42 @@
         }
       }
     },
+    "남은 멤버가 한 명이면 그 사람이 바로 관리자가 되고, 아무도 없으면 그룹이 삭제돼요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "If one member is left, they become the admin right away. If no one is left, the group is deleted."
+          }
+        }
+      }
+    },
     "내 iCloud 개인 저장 공간" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "My Private iCloud Storage"
+          }
+        }
+      }
+    },
+    "내 글에 남긴 반응" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reactions on my posts"
+          }
+        }
+      }
+    },
+    "내 글에 달린 댓글" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comments on my posts"
           }
         }
       }
@@ -2140,6 +4330,58 @@
         }
       }
     },
+    "내 투표" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "My vote"
+          }
+        }
+      }
+    },
+    "내가 공유한 노트북과 기록(함께 보던 가족에게서도 사라짐)과 참여 중인 공유" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notebooks and entries you shared (they disappear for your family too), and shares you joined"
+          }
+        }
+      }
+    },
+    "내가 관리하는 그룹 %lld개는 멤버 투표로 다음 관리자를 정해요" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Members of the group you manage will vote for its next admin"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Members of the %lld groups you manage will vote for their next admins"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "내가 올린 글과 댓글은 남아요. 다시 들어오려면 새 초대가 필요해요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your posts and comments stay. You'll need a new invite to come back."
+          }
+        }
+      }
+    },
     "내어쓰기" : {
       "localizations" : {
         "en" : {
@@ -2150,12 +4392,52 @@
         }
       }
     },
+    "내용은 2,000자까지 쓸 수 있어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The text can be up to 2,000 characters"
+          }
+        }
+      }
+    },
+    "내용을 써 주세요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Write something to share"
+          }
+        }
+      }
+    },
+    "넘기면 나는 일반 멤버가 되고, 초대·강퇴·삭제는 새 관리자만 할 수 있어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You'll become a regular member, and only the new admin can invite, remove, or delete."
+          }
+        }
+      }
+    },
     "네트워크 또는 CloudKit 서비스가 일시적으로 불안정합니다." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "There’s a temporary problem with the network or CloudKit."
+          }
+        }
+      }
+    },
+    "년" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "year"
           }
         }
       }
@@ -2280,12 +4562,62 @@
         }
       }
     },
+    "누가 누구에게 투표했는지, 몇 표인지는 아무에게도 보이지 않아요. 마감 전까지 바꿀 수 있어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No one can see who voted for whom or how many votes anyone got. You can change your vote until it closes."
+          }
+        }
+      }
+    },
+    "누구를 위한 기도인지는 30자까지예요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Who it's for can be up to 30 characters"
+          }
+        }
+      }
+    },
+    "누구를 위해 (선택)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "For whom (optional)"
+          }
+        }
+      }
+    },
     "누락 첨부" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Missing Attachments"
+          }
+        }
+      }
+    },
+    "눌러서 반응 취소" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap to remove your reaction"
+          }
+        }
+      }
+    },
+    "눌러서 반응하기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap to react"
           }
         }
       }
@@ -2350,6 +4682,26 @@
         }
       }
     },
+    "다른 사람의 사정이 담겨 있어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This includes someone else's story"
+          }
+        }
+      }
+    },
+    "다른 사진 고르기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose another photo"
+          }
+        }
+      }
+    },
     "다른 위치에 저장" : {
       "localizations" : {
         "en" : {
@@ -2400,6 +4752,36 @@
         }
       }
     },
+    "다시 보기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Review again"
+          }
+        }
+      }
+    },
+    "다시 불러오기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reload"
+          }
+        }
+      }
+    },
+    "다시 불러옵니다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reloads."
+          }
+        }
+      }
+    },
     "다시 시도" : {
       "localizations" : {
         "en" : {
@@ -2416,6 +4798,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Save Again"
+          }
+        }
+      }
+    },
+    "다시 확인" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check again"
           }
         }
       }
@@ -2450,6 +4842,26 @@
         }
       }
     },
+    "다음 날" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next day"
+          }
+        }
+      }
+    },
+    "다음 사진" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next photo"
+          }
+        }
+      }
+    },
     "다크" : {
       "localizations" : {
         "en" : {
@@ -2476,6 +4888,210 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Target Type"
+          }
+        }
+      }
+    },
+    "댓글 %lld" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld comment"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld comments"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "댓글 %lld개" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld comment"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld comments"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "댓글 더 보기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "More comments"
+          }
+        }
+      }
+    },
+    "댓글 메뉴" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comment menu"
+          }
+        }
+      }
+    },
+    "댓글 보내기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send comment"
+          }
+        }
+      }
+    },
+    "댓글 신고" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Report comment"
+          }
+        }
+      }
+    },
+    "댓글 쓰기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Write a comment"
+          }
+        }
+      }
+    },
+    "댓글 지우기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete comment"
+          }
+        }
+      }
+    },
+    "댓글은 %lld자까지 쓸 수 있어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comments can be up to %lld characters"
+          }
+        }
+      }
+    },
+    "더 보기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "More"
+          }
+        }
+      }
+    },
+    "더 이상 그룹을 만들거나 참여할 수 없어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can't create or join any more groups."
+          }
+        }
+      }
+    },
+    "덧붙이는 말 (선택)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A few more words (optional)"
+          }
+        }
+      }
+    },
+    "데드라인" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deadline"
+          }
+        }
+      }
+    },
+    "데드라인 정하기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set a deadline"
+          }
+        }
+      }
+    },
+    "데드라인과 공개 기간을 확인해 주세요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please check the deadline and how long it's visible"
+          }
+        }
+      }
+    },
+    "데드라인은 1년 안으로 골라 주세요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a deadline within a year"
+          }
+        }
+      }
+    },
+    "데드라인은 오늘 이후로 골라 주세요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose today or a later date for the deadline"
+          }
+        }
+      }
+    },
+    "데드라인이 지나고 3일 뒤에 사라져요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disappears 3 days after the deadline."
           }
         }
       }
@@ -2546,6 +5162,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Reading Notes"
+          }
+        }
+      }
+    },
+    "독후감" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Book report"
+          }
+        }
+      }
+    },
+    "독후감만 토론을 연장할 수 있어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only book reports can be extended for discussion"
+          }
+        }
+      }
+    },
+    "독후감은 7일 동안 보이고, 멤버 누구나 토론을 일주일씩 연장할 수 있어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Book reports stay up for 7 days, and any member can extend the discussion a week at a time."
           }
         }
       }
@@ -2690,12 +5336,62 @@
         }
       }
     },
+    "리포트 시간대" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Report time zone"
+          }
+        }
+      }
+    },
     "링크" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Link"
+          }
+        }
+      }
+    },
+    "링크 복사" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy link"
+          }
+        }
+      }
+    },
+    "마지막 멤버예요. 나갈까요?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You're the last member. Leave?"
+          }
+        }
+      }
+    },
+    "만든 사람이 관리자가 돼요. 그룹을 만든 뒤 초대 링크나 QR 코드로 멤버를 부를 수 있어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Whoever creates the group becomes its admin. Once it's created, invite members with a link or QR code."
+          }
+        }
+      }
+    },
+    "만들기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create"
           }
         }
       }
@@ -2710,6 +5406,78 @@
         }
       }
     },
+    "메모 추가" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add memo"
+          }
+        }
+      }
+    },
+    "멤버" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Members"
+          }
+        }
+      }
+    },
+    "멤버 %lld명" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld member"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld members"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "멤버를 강퇴할까요?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove this member?"
+          }
+        }
+      }
+    },
+    "멤버에게 직접 넘기기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hand over to a member"
+          }
+        }
+      }
+    },
+    "명" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "people"
+          }
+        }
+      }
+    },
     "명령" : {
       "localizations" : {
         "en" : {
@@ -2720,12 +5488,32 @@
         }
       }
     },
+    "모든 그룹에서 숨김" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hidden in all groups"
+          }
+        }
+      }
+    },
     "모든 기록에서 제거" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Remove from All Entries"
+          }
+        }
+      }
+    },
+    "모든 멤버에게서 바로 사라지고 되돌릴 수 없어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "It disappears for every member right away, and this can't be undone."
           }
         }
       }
@@ -2806,12 +5594,74 @@
         }
       }
     },
+    "반응" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reactions"
+          }
+        }
+      }
+    },
+    "반응 %lld개" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld reaction"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld reactions"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "반응 추가" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add reaction"
+          }
+        }
+      }
+    },
+    "반응은 한 글에 10개까지 남길 수 있어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can leave up to 10 reactions on a post"
+          }
+        }
+      }
+    },
     "발견한 선택 필드: %@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Optional fields found: %@"
+          }
+        }
+      }
+    },
+    "방금 만든 초대" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invite you just made"
           }
         }
       }
@@ -3016,6 +5866,16 @@
         }
       }
     },
+    "보내는 시각" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delivery time"
+          }
+        }
+      }
+    },
     "보라색" : {
       "localizations" : {
         "en" : {
@@ -3056,6 +5916,16 @@
         }
       }
     },
+    "복사했어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copied"
+          }
+        }
+      }
+    },
     "복원" : {
       "localizations" : {
         "en" : {
@@ -3092,6 +5962,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Restore complete."
+          }
+        }
+      }
+    },
+    "부적절한 내용" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inappropriate content"
           }
         }
       }
@@ -3266,6 +6146,36 @@
         }
       }
     },
+    "사라졌어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gone"
+          }
+        }
+      }
+    },
+    "사라지는 날: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disappears: %@"
+          }
+        }
+      }
+    },
+    "사람 신고" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Report person"
+          }
+        }
+      }
+    },
     "사용 불가: %@" : {
       "localizations" : {
         "en" : {
@@ -3282,6 +6192,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "No tags in use."
+          }
+        }
+      }
+    },
+    "사유" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reason"
           }
         }
       }
@@ -3306,6 +6226,32 @@
         }
       }
     },
+    "사진 %lld/%lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Photos %lld/%lld"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "사진 %1$lld/%2$lld"
+          }
+        }
+      }
+    },
+    "사진 고르기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a photo"
+          }
+        }
+      }
+    },
     "사진 넣기" : {
       "localizations" : {
         "en" : {
@@ -3326,12 +6272,92 @@
         }
       }
     },
+    "사진 붙이기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add photos"
+          }
+        }
+      }
+    },
+    "사진 빼기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove photo"
+          }
+        }
+      }
+    },
     "사진 삽입" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Insert Photo"
+          }
+        }
+      }
+    },
+    "사진은 4장까지 붙일 수 있어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can add up to 4 photos"
+          }
+        }
+      }
+    },
+    "사진은 기기에서 줄이고 위치 정보 같은 메타데이터를 지운 뒤 올려요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Photos are resized on your device and stripped of metadata such as location before they're uploaded."
+          }
+        }
+      }
+    },
+    "사진은 이 기기에서 줄이고 위치 같은 정보를 지운 뒤 올려요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The photo is resized on this device and stripped of details such as location before it's uploaded."
+          }
+        }
+      }
+    },
+    "사진을 내려받지 못했어요. 다시 시도해 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't download the photos. Please try again."
+          }
+        }
+      }
+    },
+    "사진을 올리지 못했어요. 다른 사진을 골라 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't upload the photo. Please choose another one."
+          }
+        }
+      }
+    },
+    "사진이 너무 커요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The photo is too large"
           }
         }
       }
@@ -3372,6 +6398,56 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Delete %lld"
+          }
+        }
+      }
+    },
+    "삭제 예정인 그룹에는 새로 쓸 수 없어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can't post in a group that's scheduled for deletion"
+          }
+        }
+      }
+    },
+    "삭제 예정인 그룹이라 새 초대를 만들 수 없어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This group is scheduled for deletion, so new invites can't be made."
+          }
+        }
+      }
+    },
+    "삭제 예정인 그룹이라 새로 쓸 수 없어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This group is scheduled for deletion, so you can't post"
+          }
+        }
+      }
+    },
+    "삭제 예정인 그룹이라 할 수 없어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This group is scheduled for deletion, so this isn't available."
+          }
+        }
+      }
+    },
+    "삭제 예정인 그룹이에요. 필요한 글은 삭제 전에 스크랩해 두세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This group is scheduled for deletion. Save any posts you want to keep to your journal before then."
           }
         }
       }
@@ -3436,6 +6512,36 @@
         }
       }
     },
+    "살아 있는 초대" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Active invites"
+          }
+        }
+      }
+    },
+    "살아 있는 초대가 없어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No active invites."
+          }
+        }
+      }
+    },
+    "살아 있는 초대는 그룹당 20개까지예요. 쓰지 않는 초대를 취소해 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A group can have up to 20 active invites. Please revoke the ones you don't use."
+          }
+        }
+      }
+    },
     "상단에 고정" : {
       "localizations" : {
         "en" : {
@@ -3456,12 +6562,122 @@
         }
       }
     },
+    "새 관리자 고르기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose the new admin"
+          }
+        }
+      }
+    },
+    "새 관리자 투표" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vote for a new admin"
+          }
+        }
+      }
+    },
+    "새 관리자를 뽑는 동안에는 초대할 수 없어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can't invite people while a new admin is being chosen."
+          }
+        }
+      }
+    },
+    "새 관리자를 뽑는 중이라 지금은 할 수 없어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This isn't available while the group chooses a new admin"
+          }
+        }
+      }
+    },
+    "새 관리자를 뽑는 중이라 지금은 할 수 없어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This isn't available while the group chooses a new admin."
+          }
+        }
+      }
+    },
+    "새 관리자를 뽑는 중이에요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choosing a new admin"
+          }
+        }
+      }
+    },
+    "새 관리자를 뽑는 중이에요 · %@ 마감" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choosing a new admin · Closes %@"
+          }
+        }
+      }
+    },
     "새 규칙" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "New Rule"
+          }
+        }
+      }
+    },
+    "새 글" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New post"
+          }
+        }
+      }
+    },
+    "새 그룹" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New group"
+          }
+        }
+      }
+    },
+    "새 글 쓰기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Write a new post"
+          }
+        }
+      }
+    },
+    "새 글 알림" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New post notifications"
           }
         }
       }
@@ -3536,12 +6752,22 @@
         }
       }
     },
-    "새 섹션" : {
+    "새 소식이 없어요" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "New section"
+            "value" : "Nothing new"
+          }
+        }
+      }
+    },
+    "새 초대" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New invite"
           }
         }
       }
@@ -3572,6 +6798,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Biometrics aren’t available. Enter your passcode."
+          }
+        }
+      }
+    },
+    "서로의 글·댓글·반응이 보이지 않게 돼요. 상대에게는 알리지 않아요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You won't see each other's posts, comments, or reactions. They won't be notified."
           }
         }
       }
@@ -3676,6 +6912,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Delete the selected entries?"
+          }
+        }
+      }
+    },
+    "설명" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Details"
+          }
+        }
+      }
+    },
+    "설명 (선택)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Details (optional)"
           }
         }
       }
@@ -3830,12 +7086,84 @@
         }
       }
     },
+    "소식 %lld개" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld update"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld updates"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "수정 이력" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Revision History"
+          }
+        }
+      }
+    },
+    "숨긴 글" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hidden posts"
+          }
+        }
+      }
+    },
+    "숨긴 글과 사람은 내 기기에서만 보이지 않아요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hidden posts and people are hidden only on your devices."
+          }
+        }
+      }
+    },
+    "숨긴 사람" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hidden people"
+          }
+        }
+      }
+    },
+    "숨긴 항목" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hidden items"
+          }
+        }
+      }
+    },
+    "숨긴 항목이 없어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nothing hidden"
           }
         }
       }
@@ -3850,12 +7178,122 @@
         }
       }
     },
+    "스크랩" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scraps"
+          }
+        }
+      }
+    },
+    "스크랩했어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saved to Scraps"
+          }
+        }
+      }
+    },
+    "스티커" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sticker"
+          }
+        }
+      }
+    },
+    "스티커 만들기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create sticker"
+          }
+        }
+      }
+    },
+    "스티커 붙이기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add sticker"
+          }
+        }
+      }
+    },
+    "스티커 빼기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove sticker"
+          }
+        }
+      }
+    },
+    "스티커 신고" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Report sticker"
+          }
+        }
+      }
+    },
+    "스티커 지우기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete sticker"
+          }
+        }
+      }
+    },
+    "스티커를 지울까요?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete this sticker?"
+          }
+        }
+      }
+    },
+    "스팸·광고" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spam or ads"
+          }
+        }
+      }
+    },
     "시스템 설정" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "System"
+          }
+        }
+      }
+    },
+    "시스템 설정에서 알림 켜기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turn on notifications in Settings"
           }
         }
       }
@@ -3886,6 +7324,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Get Started"
+          }
+        }
+      }
+    },
+    "신고가 접수되었어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Report received"
+          }
+        }
+      }
+    },
+    "신고하기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Report"
           }
         }
       }
@@ -3940,6 +7398,36 @@
         }
       }
     },
+    "아직 댓글이 없어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No comments yet."
+          }
+        }
+      }
+    },
+    "아직 스티커가 없어요. 사진으로 우리 그룹만의 스티커를 만들어 보세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No stickers yet. Make your group's own stickers from photos."
+          }
+        }
+      }
+    },
+    "아직 올라온 글이 없어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No posts yet"
+          }
+        }
+      }
+    },
     "아직 응답된 기도제목이 없습니다" : {
       "localizations" : {
         "en" : {
@@ -3960,6 +7448,26 @@
         }
       }
     },
+    "알 수 없음" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unknown"
+          }
+        }
+      }
+    },
+    "알림" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notifications"
+          }
+        }
+      }
+    },
     "앱 사용법" : {
       "localizations" : {
         "en" : {
@@ -3976,6 +7484,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Delete in the App"
+          }
+        }
+      }
+    },
+    "앱 업데이트가 필요해요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App update needed"
           }
         }
       }
@@ -4120,6 +7638,16 @@
         }
       }
     },
+    "없음" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "None"
+          }
+        }
+      }
+    },
     "여러 규칙이 일치하면 우선순위가 가장 높은 규칙을 사용합니다. 같은 우선순위에서 대상 유형이 다르면 미분류로 남깁니다." : {
       "localizations" : {
         "en" : {
@@ -4166,6 +7694,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Permanently Deleted"
+          }
+        }
+      }
+    },
+    "예: 수요 기도모임" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "e.g. Wednesday Prayer Group"
           }
         }
       }
@@ -4220,12 +7758,62 @@
         }
       }
     },
+    "올리기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Post"
+          }
+        }
+      }
+    },
+    "올린 때부터 고른 기간이 지나면 사라져요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disappears once the chosen time has passed since posting."
+          }
+        }
+      }
+    },
+    "올릴 그룹을 골라 주세요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a group to post to"
+          }
+        }
+      }
+    },
+    "올릴 수 있는 그룹이 없어요. 사이드바의 그룹에서 새 그룹을 만들거나 초대 코드로 참여해 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "There's no group to post to. Create one under Groups in the sidebar, or join one with an invite code."
+          }
+        }
+      }
+    },
     "완료" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Done"
+          }
+        }
+      }
+    },
+    "외 %lld개" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "+%lld more"
           }
         }
       }
@@ -4250,6 +7838,46 @@
         }
       }
     },
+    "왼쪽 피드에서 글을 고르세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a post from the feed on the left."
+          }
+        }
+      }
+    },
+    "요청을 처리하지 못했어요. 다시 시도해 주세요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't complete the request. Please try again"
+          }
+        }
+      }
+    },
+    "요청이 너무 많아요. 잠시 뒤 다시 시도해 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Too many requests. Please try again in a moment."
+          }
+        }
+      }
+    },
+    "요청이 취소됐어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The request was canceled."
+          }
+        }
+      }
+    },
     "우선순위 %lld" : {
       "localizations" : {
         "en" : {
@@ -4260,12 +7888,42 @@
         }
       }
     },
+    "운영자가 확인할게요. 더 보고 싶지 않다면 바로 숨기거나 차단할 수 있어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "We'll review it. If you'd rather not see more, you can hide or block right away."
+          }
+        }
+      }
+    },
     "원본 snapshot에는 Day One의 전체 메타데이터가 들어갈 수 있습니다. 필요할 때만 포함하고 백업 파일을 민감한 데이터로 다루세요." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "The original snapshot can contain all of Day One’s metadata. Include it only when you need it, and treat the backup file as sensitive data."
+          }
+        }
+      }
+    },
+    "월" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "month"
+          }
+        }
+      }
+    },
+    "위급한 상황이라면 109(자살예방 상담전화)나 112·119에 바로 연락해 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "If someone is in danger, contact local emergency services right away. In Korea, call 109 (suicide prevention hotline), 112, or 119."
           }
         }
       }
@@ -4426,17 +8084,6 @@
         }
       }
     },
-    "응답됨" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Answered"
-          }
-        }
-      }
-    },
     "응답으로 표시: %@" : {
       "localizations" : {
         "en" : {
@@ -4447,13 +8094,22 @@
         }
       }
     },
-    "응답일" : {
-      "extractionState" : "stale",
+    "이 Apple 계정에서 복원할 구독이 없어요." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Date Answered"
+            "value" : "There's no subscription to restore for this Apple Account."
+          }
+        }
+      }
+    },
+    "이 Apple 계정의 구독은 다른 그룹 계정에 연결되어 있어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This Apple Account's subscription is linked to another group account."
           }
         }
       }
@@ -4508,12 +8164,142 @@
         }
       }
     },
+    "이 그룹에 참여하려면 구독이 필요해요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Joining this group needs a subscription."
+          }
+        }
+      }
+    },
+    "이 그룹에만 적용돼요. 알림 문구에는 기도 내용이나 글 본문이 들어가지 않아요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Applies to this group only. Notifications never include prayer details or post text."
+          }
+        }
+      }
+    },
+    "이 그룹에서 내보내져 다시 참여할 수 없어요. 관리자에게 문의해 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You were removed from this group and can't rejoin. Please contact the admin."
+          }
+        }
+      }
+    },
+    "이 그룹에서 내보내졌어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You were removed from this group"
+          }
+        }
+      }
+    },
+    "이 그룹은 더 이상 볼 수 없어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This group is no longer available"
+          }
+        }
+      }
+    },
+    "이 그룹은 삭제될 예정이라 참여할 수 없어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This group is scheduled for deletion, so you can't join."
+          }
+        }
+      }
+    },
+    "이 그룹은 새 관리자를 뽑는 중이라 지금은 참여할 수 없어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This group is choosing a new admin, so you can't join right now."
+          }
+        }
+      }
+    },
+    "이 그룹의 스티커는 30개까지예요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This group can have up to 30 stickers"
+          }
+        }
+      }
+    },
+    "이 글 숨기기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide this post"
+          }
+        }
+      }
+    },
+    "이 글은 더 이상 볼 수 없어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This post is no longer available"
+          }
+        }
+      }
+    },
+    "이 글을 내릴까요?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Take down this post?"
+          }
+        }
+      }
+    },
+    "이 기기 시간대(%@)로 바꾸기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use this device's time zone (%@)"
+          }
+        }
+      }
+    },
     "이 기기만" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "This Device Only"
+          }
+        }
+      }
+    },
+    "이 기기에 그룹 로그인 정보를 저장하지 못했어요. 다시 시도해 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't save your group sign-in on this device. Please try again."
           }
         }
       }
@@ -4650,6 +8436,26 @@
         }
       }
     },
+    "이 날은 그룹에 새 글이나 내 글에 달린 댓글·반응이 없었어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No new posts in your groups and no comments or reactions on your posts that day."
+          }
+        }
+      }
+    },
+    "이 링크와 QR 코드로는 더 이상 참여할 수 없어요. 이미 참여한 멤버는 그대로예요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No one can join with this link or QR code anymore. Members who already joined stay."
+          }
+        }
+      }
+    },
     "이 버전으로 복원" : {
       "localizations" : {
         "en" : {
@@ -4670,6 +8476,66 @@
         }
       }
     },
+    "이 사람 차단하기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block this person"
+          }
+        }
+      }
+    },
+    "이 사람에게는 투표할 수 없어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can't vote for this person."
+          }
+        }
+      }
+    },
+    "이 사진은 쓸 수 없어요. 다른 사진을 골라 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This photo can't be used. Please choose another one."
+          }
+        }
+      }
+    },
+    "이 사진은 올릴 수 없어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This photo can't be uploaded"
+          }
+        }
+      }
+    },
+    "이 스티커로 한 반응이 사라지고, 댓글에는 ‘지워진 스티커’로 보여요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reactions with this sticker disappear, and comments show ‘Deleted sticker’ instead."
+          }
+        }
+      }
+    },
+    "이 작업을 할 권한이 없어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You don't have permission to do this"
+          }
+        }
+      }
+    },
     "이 저장소에서는 첨부 파일을 사용할 수 없습니다." : {
       "localizations" : {
         "en" : {
@@ -4680,12 +8546,62 @@
         }
       }
     },
+    "이 종류의 글이 없어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No posts of this kind"
+          }
+        }
+      }
+    },
     "이 첨부를 삭제할까요?" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Delete this attachment?"
+          }
+        }
+      }
+    },
+    "이 초대는 만료됐어요. 관리자에게 새 초대를 요청해 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This invite has expired. Ask the admin for a new invite."
+          }
+        }
+      }
+    },
+    "이 초대는 인원이 다 찼어요. 관리자에게 새 초대를 요청해 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This invite is full. Ask the admin for a new invite."
+          }
+        }
+      }
+    },
+    "이 초대는 취소됐어요. 관리자에게 새 초대를 요청해 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This invite was revoked. Ask the admin for a new invite."
+          }
+        }
+      }
+    },
+    "이 초대를 취소할까요?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Revoke this invite?"
           }
         }
       }
@@ -4716,6 +8632,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Name"
+          }
+        }
+      }
+    },
+    "일" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "day"
+          }
+        }
+      }
+    },
+    "이름 (선택)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Name (optional)"
           }
         }
       }
@@ -4770,6 +8706,36 @@
         }
       }
     },
+    "이모지" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emoji"
+          }
+        }
+      }
+    },
+    "이미 스크랩했어요. 한 번 더 저장할까요?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Already saved to Scraps. Save it again?"
+          }
+        }
+      }
+    },
+    "이미 참여한 그룹이에요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You're already in this group."
+          }
+        }
+      }
+    },
     "이미지를 아직 사용할 수 없음 · 동기화 대기 중" : {
       "localizations" : {
         "en" : {
@@ -4790,6 +8756,36 @@
         }
       }
     },
+    "이용 안내 보기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View the usage guide"
+          }
+        }
+      }
+    },
+    "이용 안내와 개인정보 처리 방침에 동의해요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I agree to the usage guide and privacy policy"
+          }
+        }
+      }
+    },
+    "이용약관(EULA)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terms of Use (EULA)"
+          }
+        }
+      }
+    },
     "이전 기록" : {
       "localizations" : {
         "en" : {
@@ -4800,13 +8796,22 @@
         }
       }
     },
-    "이제 유형을 추가하고 이름·색·아이콘과 순서를 바꿀 수 있습니다." : {
-      "extractionState" : "stale",
+    "이전 날" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "You can now add types and change their names, colors, icons and order."
+            "value" : "Previous day"
+          }
+        }
+      }
+    },
+    "이전 사진" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Previous photo"
           }
         }
       }
@@ -4817,6 +8822,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Inline Code"
+          }
+        }
+      }
+    },
+    "인상 깊은 구절 (선택)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A passage that stayed with you (optional)"
           }
         }
       }
@@ -4837,6 +8852,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Block Quote"
+          }
+        }
+      }
+    },
+    "인원" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "People"
+          }
+        }
+      }
+    },
+    "인원은 1명부터 100명까지 정할 수 있어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose between 1 and 100 people."
           }
         }
       }
@@ -4901,12 +8936,62 @@
         }
       }
     },
+    "입력한 내용을 다시 확인해 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please check what you entered."
+          }
+        }
+      }
+    },
+    "입력한 내용을 확인해 주세요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please check what you entered"
+          }
+        }
+      }
+    },
+    "입력한 내용이 너무 길어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What you entered is too long"
+          }
+        }
+      }
+    },
+    "자기 자신에게는 할 수 없어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can't do this to yourself"
+          }
+        }
+      }
+    },
     "자동 잠금" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Auto-Lock"
+          }
+        }
+      }
+    },
+    "자르는 위치" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crop position"
           }
         }
       }
@@ -4937,6 +9022,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "We Don’t Run Our Own Journal Servers"
+          }
+        }
+      }
+    },
+    "자해·자살 위험" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Self-harm or suicide risk"
+          }
+        }
+      }
+    },
+    "작성한 글을 버릴까요?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discard this post?"
           }
         }
       }
@@ -4991,6 +9096,16 @@
         }
       }
     },
+    "잠시 후 다시 시도해 주세요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please try again in a moment"
+          }
+        }
+      }
+    },
     "장미색" : {
       "localizations" : {
         "en" : {
@@ -5011,12 +9126,42 @@
         }
       }
     },
+    "재투표" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Runoff vote"
+          }
+        }
+      }
+    },
     "저자" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Author"
+          }
+        }
+      }
+    },
+    "저자 (선택)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Author (optional)"
+          }
+        }
+      }
+    },
+    "저자 이름은 60자까지예요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The author's name can be up to 60 characters"
           }
         }
       }
@@ -5191,12 +9336,32 @@
         }
       }
     },
+    "정사각형으로 잘라 256×256 스티커로 만들어요. 이 그룹 안에서만 쓸 수 있어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The photo is cropped to a square 256×256 sticker that only this group can use."
+          }
+        }
+      }
+    },
     "제목" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Title"
+          }
+        }
+      }
+    },
+    "제목 (선택)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Title (optional)"
           }
         }
       }
@@ -5261,12 +9426,52 @@
         }
       }
     },
+    "제목 없는 글" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Untitled post"
+          }
+        }
+      }
+    },
     "제목 없음" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Untitled"
+          }
+        }
+      }
+    },
+    "제목은 80자까지 쓸 수 있어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The title can be up to 80 characters"
+          }
+        }
+      }
+    },
+    "종류" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kind"
+          }
+        }
+      }
+    },
+    "주" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "week"
           }
         }
       }
@@ -5351,6 +9556,16 @@
         }
       }
     },
+    "지금은 App Store에 연결할 수 없어요. 잠시 뒤 다시 시도해 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Can't connect to the App Store right now. Please try again in a moment."
+          }
+        }
+      }
+    },
     "지금은 iCloud에 연결되어 있지 않습니다" : {
       "localizations" : {
         "en" : {
@@ -5361,12 +9576,52 @@
         }
       }
     },
+    "지금은 구독 없이 그룹을 만들고 참여할 수 있어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "For now, you can create and join groups without a subscription."
+          }
+        }
+      }
+    },
+    "지금은 할 수 없어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This isn't available right now."
+          }
+        }
+      }
+    },
+    "지우기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete"
+          }
+        }
+      }
+    },
     "지원" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Support"
+          }
+        }
+      }
+    },
+    "지워진 스티커" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deleted sticker"
           }
         }
       }
@@ -5387,6 +9642,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Support Page"
+          }
+        }
+      }
+    },
+    "직접 넘기면 바로 새 관리자가 정해져요. 투표로 정하면 남은 멤버가 3일 동안 투표하고, 그동안 관리자 기능은 쉬어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "If you hand it over, the new admin is set right away. With a vote, the remaining members vote for 3 days, and admin actions pause until then."
           }
         }
       }
@@ -5441,12 +9706,102 @@
         }
       }
     },
+    "차단 풀기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unblock"
+          }
+        }
+      }
+    },
+    "차단을 풀까요?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unblock this person?"
+          }
+        }
+      }
+    },
+    "차단하면 서로의 글·댓글·반응이 보이지 않아요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When you block someone, you won't see each other's posts, comments, or reactions."
+          }
+        }
+      }
+    },
+    "차단한 사람" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Blocked people"
+          }
+        }
+      }
+    },
+    "차단한 사람이 없어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No one is blocked"
+          }
+        }
+      }
+    },
+    "차단할까요?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block this person?"
+          }
+        }
+      }
+    },
     "참여자 관리" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Manage People"
+          }
+        }
+      }
+    },
+    "참여하기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Join"
+          }
+        }
+      }
+    },
+    "참여하면 이 그룹의 멤버가 내 이름과 프로필 사진, 내가 올린 글을 볼 수 있어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Once you join, this group's members can see your name, profile photo, and posts."
+          }
+        }
+      }
+    },
+    "책" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Book"
           }
         }
       }
@@ -5467,6 +9822,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Book Title · Author"
+          }
+        }
+      }
+    },
+    "책 제목은 100자까지예요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The book title can be up to 100 characters"
+          }
+        }
+      }
+    },
+    "책 제목을 써 주세요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter the book title"
           }
         }
       }
@@ -5571,6 +9946,178 @@
         }
       }
     },
+    "초대" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invites"
+          }
+        }
+      }
+    },
+    "초대 QR 코드" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invite QR code"
+          }
+        }
+      }
+    },
+    "초대 공유" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Share invite"
+          }
+        }
+      }
+    },
+    "초대 링크 끝의 12자예요. 대소문자와 하이픈은 상관없어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The 12 characters at the end of the invite link. Case and hyphens don't matter."
+          }
+        }
+      }
+    },
+    "초대 링크·QR" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invite link & QR code"
+          }
+        }
+      }
+    },
+    "초대 만들기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create invite"
+          }
+        }
+      }
+    },
+    "초대 취소" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Revoke invite"
+          }
+        }
+      }
+    },
+    "초대 코드" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invite code"
+          }
+        }
+      }
+    },
+    "초대 코드는 12자예요. 다시 확인해 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invite codes are 12 characters. Please check it again."
+          }
+        }
+      }
+    },
+    "초대 코드로 참여" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Join with an invite code"
+          }
+        }
+      }
+    },
+    "초대 확인하기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check invite"
+          }
+        }
+      }
+    },
+    "초대는 만든 때부터 %lld일 동안 쓸 수 있고, 정한 인원이 다 차면 더 받지 않아요." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "An invite works for %lld day after it's made and stops taking people once it's full."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "An invite works for %lld days after it's made and stops taking people once it's full."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "초대를 찾을 수 없어요. 코드를 다시 확인해 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't find the invite. Please check the code again."
+          }
+        }
+      }
+    },
+    "초대받은 그룹" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You're invited to"
+          }
+        }
+      }
+    },
+    "초대받은 사람끼리만 기도제목, 독후감, 간증을 나눠요. 올린 글은 정해진 기간이 지나면 사라져요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Share prayer requests, book reports, and testimonies with invited people only. Posts disappear after a set time."
+          }
+        }
+      }
+    },
+    "초대하기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invite"
+          }
+        }
+      }
+    },
     "촬영" : {
       "localizations" : {
         "en" : {
@@ -5603,6 +10150,16 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "최근 복원: %1$lld개 반영, %2$lld개 휴지통, 충돌 %3$lld개"
+          }
+        }
+      }
+    },
+    "최대 인원" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Up to"
           }
         }
       }
@@ -5685,6 +10242,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Code Block"
+          }
+        }
+      }
+    },
+    "코드 사용" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Redeem code"
           }
         }
       }
@@ -5859,6 +10426,108 @@
         }
       }
     },
+    "토론 연장 %lld회" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Discussion extended %lld time"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Discussion extended %lld times"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "토론 연장 +1주" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Extend discussion +1 week"
+          }
+        }
+      }
+    },
+    "토론을 일주일 연장할까요?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Extend the discussion by a week?"
+          }
+        }
+      }
+    },
+    "토론이 연장된 글" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Extended discussions"
+          }
+        }
+      }
+    },
+    "투표 바꾸기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change vote"
+          }
+        }
+      }
+    },
+    "투표가 끝날 때까지 초대, 강퇴, 삭제 같은 관리자 기능은 쉬어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Until the vote ends, admin actions such as inviting, removing, and deleting are paused."
+          }
+        }
+      }
+    },
+    "투표가 끝났어요. 그룹 상태를 새로 불러왔어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The vote is over. The group has been refreshed."
+          }
+        }
+      }
+    },
+    "투표가 이미 끝났어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The vote has already ended."
+          }
+        }
+      }
+    },
+    "투표하기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vote"
+          }
+        }
+      }
+    },
     "파일" : {
       "localizations" : {
         "en" : {
@@ -5919,6 +10588,26 @@
         }
       }
     },
+    "프로필 사진 (선택)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Profile photo (optional)"
+          }
+        }
+      }
+    },
+    "프로필 사진 고르기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a profile photo"
+          }
+        }
+      }
+    },
     "필요하면 먼저 전체 백업을 내보내세요" : {
       "localizations" : {
         "en" : {
@@ -5945,6 +10634,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Highlight"
+          }
+        }
+      }
+    },
+    "한 번 더 저장" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save again"
+          }
+        }
+      }
+    },
+    "함께 기도하는 작은 모임" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Small groups that pray together"
           }
         }
       }
@@ -6213,12 +10922,32 @@
         }
       }
     },
+    "확인했어요, 올리기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I checked, post it"
+          }
+        }
+      }
+    },
     "회색" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Gray"
+          }
+        }
+      }
+    },
+    "후보" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Candidates"
           }
         }
       }
@@ -6301,16 +11030,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Trash Is Empty"
-          }
-        }
-      }
-    },
-    "메모 추가" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Add memo"
           }
         }
       }

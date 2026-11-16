@@ -5,6 +5,7 @@ import JournalData
 import JournalDomain
 import JournalSharing
 import SwiftUI
+import UserNotifications
 
 #if os(iOS)
 import UIKit
@@ -311,10 +312,27 @@ private struct CloudSharingSheet: UIViewControllerRepresentable {
 }
 #endif
 
-// MARK: - Invitation delivery
+// MARK: - Invitation and notification delivery
+
+// The app and scene delegates carry two unrelated things that only the delegates see: shared-
+// notebook invitations (CloudKit) and, while `GroupsFeature` is on, private-group plumbing —
+// the APNs device token, notification taps (`GroupNotificationRouting`) and `/i/<code>` invite
+// Universal Links (`PendingGroupInvite`). Nothing here asks for notification permission or
+// registers for remote notifications; A7 does that when the user first creates or joins a group.
 
 #if os(iOS)
 final class FamilySharingAppDelegate: NSObject, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        // Set before launch finishes so a tap that cold-launched the app is delivered.
+        if GroupsFeature.isEnabled {
+            GroupNotificationCenterDelegate.install()
+        }
+        return true
+    }
+
     func application(
         _ application: UIApplication,
         configurationForConnecting connectingSceneSession: UISceneSession,
@@ -324,10 +342,28 @@ final class FamilySharingAppDelegate: NSObject, UIApplicationDelegate {
         if let metadata = options.cloudKitShareMetadata {
             PendingShareInvitations.shared.add(metadata)
         }
+        // A cold launch from a group invite link carries the Universal Link here.
+        for activity in options.userActivities {
+            PendingGroupInvite.shared.add(userActivity: activity)
+        }
         let configuration = UISceneConfiguration(
             name: nil, sessionRole: connectingSceneSession.role)
         configuration.delegateClass = FamilySharingSceneDelegate.self
         return configuration
+    }
+
+    func application(
+        _ application: UIApplication,
+        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+    ) {
+        GroupNotificationRouting.shared.didRegisterForRemoteNotifications(deviceToken: deviceToken)
+    }
+
+    func application(
+        _ application: UIApplication,
+        didFailToRegisterForRemoteNotificationsWithError error: any Error
+    ) {
+        GroupNotificationRouting.shared.didFailToRegisterForRemoteNotifications(error)
     }
 }
 
@@ -338,14 +374,47 @@ final class FamilySharingSceneDelegate: NSObject, UIWindowSceneDelegate {
     ) {
         PendingShareInvitations.shared.add(cloudKitShareMetadata)
     }
+
+    /// A group invite link opened while the app runs.
+    func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
+        PendingGroupInvite.shared.add(userActivity: userActivity)
+    }
 }
 #else
 final class FamilySharingAppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        if GroupsFeature.isEnabled {
+            GroupNotificationCenterDelegate.install()
+        }
+    }
+
     func application(
         _ application: NSApplication,
         userDidAcceptCloudKitShareWith metadata: CKShare.Metadata
     ) {
         PendingShareInvitations.shared.add(metadata)
+    }
+
+    func application(
+        _ application: NSApplication,
+        continue userActivity: NSUserActivity,
+        restorationHandler: @escaping ([any NSUserActivityRestoring]) -> Void
+    ) -> Bool {
+        PendingGroupInvite.shared.add(userActivity: userActivity)
+    }
+
+    func application(
+        _ application: NSApplication,
+        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+    ) {
+        GroupNotificationRouting.shared.didRegisterForRemoteNotifications(deviceToken: deviceToken)
+    }
+
+    func application(
+        _ application: NSApplication,
+        didFailToRegisterForRemoteNotificationsWithError error: any Error
+    ) {
+        GroupNotificationRouting.shared.didFailToRegisterForRemoteNotifications(error)
     }
 }
 #endif

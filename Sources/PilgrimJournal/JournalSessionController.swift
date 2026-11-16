@@ -2,6 +2,7 @@ import Combine
 import Foundation
 import JournalData
 import JournalDomain
+import JournalGroups
 import JournalSearch
 
 #if PILGRIM_SWIFTDATA
@@ -31,6 +32,13 @@ final class JournalSessionController: ObservableObject {
     private let cloudKitContainerIdentifier: String?
     private let isVisualTesting: Bool
     private let storageLocationProvider: () async -> JournalStorageLocation
+    /// Builds each session's group-server client; nil while `GroupsFeature` is off, which
+    /// leaves `AppModel.groups` nil and the journal exactly as it was without groups.
+    private let makeGroupAPI: GroupsFeature.APIFactory?
+    /// Opens tapped group notifications once the app lock allows it.
+    private let groupNotificationOpener: GroupNotificationOpener
+    /// Serves the shown session's group subscription (`.shared`); nil in tests.
+    private let groupSubscription: GroupSubscriptionController?
     private var registry: JournalAccountScopeRegistry
     /// Set while the storage folder could not be located. `activate` retries
     /// it, so the error screen's retry can recover from a transient failure.
@@ -40,11 +48,19 @@ final class JournalSessionController: ObservableObject {
         rootURL: URL,
         cloudKitContainerIdentifier: String?,
         isVisualTesting: Bool = false,
-        storageLocationProvider: (() async -> JournalStorageLocation)? = nil
+        storageLocationProvider: (() async -> JournalStorageLocation)? = nil,
+        makeGroupAPI: GroupsFeature.APIFactory? = GroupsFeature.defaultAPIFactory(),
+        groupNotificationOpener: GroupNotificationOpener? = nil,
+        attachesGroupSubscription: Bool = true
     ) {
         self.rootURL = rootURL
         self.cloudKitContainerIdentifier = cloudKitContainerIdentifier
         self.isVisualTesting = isVisualTesting
+        self.makeGroupAPI = makeGroupAPI
+        // Resolved here rather than as default arguments, which are not main-actor isolated in
+        // the app target's Swift 5 mode.
+        self.groupNotificationOpener = groupNotificationOpener ?? .shared
+        self.groupSubscription = attachesGroupSubscription ? .shared : nil
         registry = JournalAccountScopeRegistry(root: rootURL)
         if let storageLocationProvider {
             self.storageLocationProvider = storageLocationProvider
@@ -66,20 +82,23 @@ final class JournalSessionController: ObservableObject {
     convenience init(
         rootURLProvider: @escaping () throws -> URL,
         cloudKitContainerIdentifier: String?,
-        isVisualTesting: Bool = false
+        isVisualTesting: Bool = false,
+        makeGroupAPI: GroupsFeature.APIFactory? = GroupsFeature.defaultAPIFactory()
     ) {
         do {
             self.init(
                 rootURL: try rootURLProvider(),
                 cloudKitContainerIdentifier: cloudKitContainerIdentifier,
-                isVisualTesting: isVisualTesting
+                isVisualTesting: isVisualTesting,
+                makeGroupAPI: makeGroupAPI
             )
         } catch {
             // Placeholder only: nothing reads it before the root resolves.
             self.init(
                 rootURL: FileManager.default.temporaryDirectory,
                 cloudKitContainerIdentifier: cloudKitContainerIdentifier,
-                isVisualTesting: isVisualTesting
+                isVisualTesting: isVisualTesting,
+                makeGroupAPI: makeGroupAPI
             )
             unresolvedRootProvider = rootURLProvider
         }
@@ -353,6 +372,18 @@ final class JournalSessionController: ObservableObject {
             }
         }
         #endif
+        // Groups talk to the group server, so every scope gets them (local-only too); the
+        // visual-testing screenshots stay as they were. The group session is kept per Apple
+        // user, so both storage scopes of one user share it.
+        if let makeGroupAPI, !isVisualTesting {
+            let account = GroupCredentialStore.account(
+                forAppleUser: lastAppleUserIdentifier ?? scope.appleUserHash)
+            let groups = GroupsController(api: makeGroupAPI(account))
+            // Through the opener, which holds a tap until the app lock is settled and open.
+            let opener = groupNotificationOpener
+            groups.onOpenRoute = { route in opener.receive(route) }
+            model.groups = groups
+        }
         return model
     }
 
@@ -459,6 +490,10 @@ final class JournalSessionController: ObservableObject {
     }
 
     private func prepare(model: AppModel) {
+        if let groups = model.groups {
+            groups.attachToSystemEvents()
+            groupSubscription?.attach(to: groups)
+        }
         model.refreshNotebookCatalog()
         model.rebuildSearchIndex()
         model.refreshTrash()
