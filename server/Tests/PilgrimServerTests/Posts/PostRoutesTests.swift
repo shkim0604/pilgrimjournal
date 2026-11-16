@@ -352,4 +352,24 @@ final class PostRoutesTests: DatabaseTestCase {
             try await sendV1(.POST, path, as: bob, json: ExtendPostRequest(clientId: UUID())), 409,
             .groupPendingDeletion)
     }
+
+    /// Two extensions at once each add their 7 days (the row lock), not 7 between them.
+    func testConcurrentExtensionsBothCount() async throws {
+        let alice = try await fixtures.user()
+        let bob = try await fixtures.user()
+        let group = try await fixtures.group(admin: alice, members: [bob])
+        let created = try decode(
+            PostResponse.self,
+            from: try await createPost(PostRequests.bookReport(), in: group, as: alice))
+
+        let codes = try await sendV1Concurrently(
+            .POST, "posts/\(created.id)/extend",
+            [alice, bob].map { ($0, ExtendPostRequest(clientId: UUID())) })
+        XCTAssertEqual(codes, [201, 201])
+
+        let post = try await unwrap(try await Post.find(created.id, on: db))
+        XCTAssertEqual(
+            post.expiresAt.timeIntervalSince(created.expiresAt), 14 * 86_400, accuracy: 0.002)
+        XCTAssertEqual(post.extensionCount, 2)
+    }
 }
