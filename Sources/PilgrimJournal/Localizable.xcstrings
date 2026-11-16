@@ -690,6 +690,60 @@
         }
       }
     },
+    "ADMIN_VOTE_DECIDED" : {
+      "comment" : "Push body: the admin vote ended; %@ is the new admin's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ is the new admin"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@님이 새 관리자가 됐어요"
+          }
+        }
+      }
+    },
+    "ADMIN_VOTE_RUNOFF" : {
+      "comment" : "Push body: the admin vote tied and goes to a one-day runoff",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The vote was a tie, so there's a one-day runoff"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "투표가 동률이라 하루 동안 다시 투표해요"
+          }
+        }
+      }
+    },
+    "ADMIN_VOTE_STARTED" : {
+      "comment" : "Push body: the group started electing a new admin",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voting for a new admin has started. Please vote within 3 days."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "새 관리자를 뽑는 투표가 시작됐어요. 3일 안에 투표해 주세요."
+          }
+        }
+      }
+    },
     "App Store 구독 관리 열기" : {
       "localizations" : {
         "en" : {
@@ -1108,6 +1162,42 @@
         }
       }
     },
+    "DAILY_REPORT_BODY" : {
+      "comment" : "Push body of the daily digest; %@ is the number of updates",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Group updates today: %@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "오늘 그룹 소식이 %@개 있어요"
+          }
+        }
+      }
+    },
+    "DAILY_REPORT_TITLE" : {
+      "comment" : "Push title of the daily digest",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Daily Report"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Daily Report"
+          }
+        }
+      }
+    },
     "dailyReport.newPosts" : {
       "comment" : "Daily Report section listing a group's new posts",
       "extractionState" : "extracted_with_value",
@@ -1288,6 +1378,96 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Use Face ID / Touch ID"
+          }
+        }
+      }
+    },
+    "GROUP_DELETION_SCHEDULED" : {
+      "comment" : "Push body: the admin scheduled the group's deletion in 7 days",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This group will be deleted in 7 days. Save any posts you want to keep to your journal."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "7일 뒤에 그룹이 삭제돼요. 필요한 글은 미리 스크랩해 두세요."
+          }
+        }
+      }
+    },
+    "GROUP_NEW_POST_BOOK_REPORT" : {
+      "comment" : "Push body: a member posted a book report; %@ is the author's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ posted a book report"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@님이 독후감을 올렸어요"
+          }
+        }
+      }
+    },
+    "GROUP_NEW_POST_PRAYER" : {
+      "comment" : "Push body: a member posted prayer requests; %@ is the author's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ shared a prayer request"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@님이 기도제목을 올렸어요"
+          }
+        }
+      }
+    },
+    "GROUP_NEW_POST_TESTIMONY" : {
+      "comment" : "Push body: a member posted a testimony; %@ is the author's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ shared a testimony"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@님이 간증을 올렸어요"
+          }
+        }
+      }
+    },
+    "GROUP_PUSH_TITLE" : {
+      "comment" : "Push title: the group's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@"
           }
         }
       }
