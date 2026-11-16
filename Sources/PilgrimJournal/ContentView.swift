@@ -163,6 +163,9 @@ struct ContentView: View {
         .sheet(isPresented: $model.isPresentingKindManagement) {
             KindManagementSheet()
         }
+        // Opens tapped group notifications (after the app lock), starts the session's
+        // notification registrar and hosts the Daily Report sheet. Inert while groups are off.
+        .groupNotificationHandling(preferredCompactColumn: $preferredCompactColumn)
         #if os(iOS)
         // 지금 동기화 reopens the store, which rebuilds this view; on iPhone
         // it would otherwise come back on the sidebar instead of settings.
