@@ -75,6 +75,29 @@ final class AccountDeletionTests: DatabaseTestCase {
         XCTAssertEqual(posts, 0)
     }
 
+    func testCommentsWithTheDeletedUsersStickerShowARemovedSticker() async throws {
+        let alice = try await fixtures.user("앨리스")
+        let bob = try await fixtures.user("밥")
+        let group = try await fixtures.group(admin: bob, members: [alice])
+        let post = try await fixtures.post(by: bob, in: group)
+        let sticker = try await makeSticker(by: alice, in: group)
+        let created = try await sendV1(
+            .POST, "posts/\(try post.requireID())/comments", as: bob,
+            json: CreateCommentRequest(
+                clientId: UUID(), body: "", mediaIds: [], stickerId: try sticker.requireID()))
+        assertStatus(created, .created)
+
+        _ = try await deleteMe(alice)
+
+        // The sticker went with Alice's account (cascade); Bob's comment stays.
+        let page = try decode(
+            APIPage<CommentResponse>.self,
+            from: try await sendV1(.GET, "posts/\(try post.requireID())/comments", as: bob))
+        XCTAssertEqual(page.items.count, 1)
+        XCTAssertNil(page.items.first?.sticker)
+        XCTAssertEqual(page.items.first?.stickerRemoved, true)
+    }
+
     func testAppleTokensMoveToRevocationQueue() async throws {
         let me = try await fixtures.user()
         let cipher = app.authServices.appleTokenCipher
