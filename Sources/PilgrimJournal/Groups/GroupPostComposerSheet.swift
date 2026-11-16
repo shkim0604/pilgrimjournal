@@ -145,7 +145,7 @@ struct GroupPostComposerSheet: View {
         Section {
             ForEach($model.items) { $item in
                 VStack(alignment: .leading, spacing: 4) {
-                    TextField("기도제목", text: $item.text, axis: .vertical)
+                    TextField(PostKind.prayer.groupLabel, text: $item.text, axis: .vertical)
                         .lineLimit(1...4)
                     TextField("누구를 위해 (선택)", text: $item.who)
                         .font(.caption)

@@ -20,7 +20,11 @@ enum DailyReportSectionKind: String, CaseIterable, Sendable {
 
     var title: String {
         switch self {
-        case .newPosts: String(localized: "새 글")
+        // Its own key: the bare "새 글" is the feed's "new post" button.
+        case .newPosts:
+            String(
+                localized: "dailyReport.newPosts", defaultValue: "새 글",
+                comment: "Daily Report section listing a group's new posts")
         case .commentsOnMyPosts: String(localized: "내 글에 달린 댓글")
         case .reactionsOnMyPosts: String(localized: "내 글에 남긴 반응")
         case .extendedPosts: String(localized: "토론이 연장된 글")

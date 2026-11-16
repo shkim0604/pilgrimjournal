@@ -16,8 +16,8 @@ enum GroupExpiryText {
     /// "D-3", "D-day", or "기한 지남".
     static func deadlineCountdown(_ deadline: LocalDate, now: Date, calendar: Calendar) -> String {
         let days = daysUntilDeadline(deadline, now: now, calendar: calendar)
-        if days > 0 { return "D-\(days)" }
-        if days == 0 { return "D-day" }
+        if days > 0 { return String(localized: "D-\(days)") }
+        if days == 0 { return String(localized: "D-day") }
         return String(localized: "기한 지남")
     }
 
@@ -49,8 +49,12 @@ enum GroupExpiryText {
 
     /// "11월 23일까지".
     static func visibleUntil(_ expiresAt: Date, calendar: Calendar) -> String {
-        let day = lastVisibleDay(expiresAt, calendar: calendar)
-        return String(localized: "\(monthDay(day, calendar: calendar))까지")
+        String(localized: "\(lastVisibleMonthDay(expiresAt, calendar: calendar))까지")
+    }
+
+    /// "11월 23일": the last visible day on its own, for sentences that word "until" themselves.
+    static func lastVisibleMonthDay(_ expiresAt: Date, calendar: Calendar) -> String {
+        monthDay(lastVisibleDay(expiresAt, calendar: calendar), calendar: calendar)
     }
 
     /// "11월 20일" in the current locale.

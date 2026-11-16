@@ -187,7 +187,7 @@ private struct GroupPostDetailContent: View {
     @ViewBuilder
     private var extendMessage: some View {
         if let date = model.extendedExpiryPreview {
-            Text("\(GroupExpiryText.visibleUntil(date, calendar: .current)) 보이게 돼요.")
+            Text("\(GroupExpiryText.lastVisibleMonthDay(date, calendar: .current))까지 보이게 돼요.")
         }
     }
 
@@ -276,7 +276,13 @@ private struct GroupPostDetailContent: View {
 
     private func overflowMenu(_ post: PostResponse) -> some View {
         Menu {
-            Button("스크랩", systemImage: "bookmark") {
+            // Its own key: the bare "스크랩" is the built-in kind's name ("Scraps").
+            Button(
+                String(
+                    localized: "groupPost.scrap", defaultValue: "스크랩",
+                    comment: "Menu action that copies a group post into the journal's scrap kind"),
+                systemImage: "bookmark"
+            ) {
                 Task { await scrap(post, saveAgain: false) }
             }
             .disabled(isScrapping)

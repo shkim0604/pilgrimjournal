@@ -6,7 +6,11 @@ import SwiftUI
 extension PostKind {
     var groupLabel: String {
         switch self {
-        case .prayer: String(localized: "기도제목")
+        // Its own key: the bare "기도제목" is the prayer notes' checklist wording.
+        case .prayer:
+            String(
+                localized: "groupPost.kind.prayer", defaultValue: "기도제목",
+                comment: "Group post kind: prayer requests shared with a group")
         case .bookReport: String(localized: "독후감")
         case .testimony: String(localized: "간증")
         }
