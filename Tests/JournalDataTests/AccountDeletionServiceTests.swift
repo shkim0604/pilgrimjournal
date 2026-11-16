@@ -110,6 +110,45 @@ final class AccountDeletionServiceTests: XCTestCase {
         XCTAssertNil(session.boundUserIdentifier)
     }
 
+    /// A timed-out iCloud status reads as `.localOnly`; an iCloud scope on disk
+    /// means the records are also in iCloud, so nothing may be deleted yet.
+    func testLocalOnlyRequestWithAnICloudScopeDeletesNothing() async throws {
+        let fixture = try await makeFixture(storageLocation: .iCloud(accountHash: "cloud-a"))
+        let cloud = RecordingCloudEraser()
+        let remote = RecordingRemoteEraser()
+        let service = AccountDeletionService(
+            rootURLProvider: { [rootURL] in rootURL! },
+            cloudEraser: cloud,
+            remoteEraser: remote,
+            sessionService: fixture.sessionService,
+            appLockStore: fixture.appLockStore,
+            preferences: fixture.preferences
+        )
+        let closed = CallRecorder()
+
+        do {
+            try await service.deleteAccount(
+                AccountDeletionRequest(
+                    appleUserIdentifier: "apple-user-a", storageLocation: .localOnly)
+            ) { await closed.record("close") }
+            XCTFail("iCloud에 연결되지 않았으면 삭제를 멈춰야 합니다.")
+        } catch let error as AccountDeletionError {
+            guard case .cloudDeletionFailed = error else {
+                return XCTFail("예상과 다른 오류: \(error)")
+            }
+            XCTAssertTrue(error.leavesLocalDataIntact)
+        }
+
+        let closeCalls = await closed.calls
+        XCTAssertTrue(closeCalls.isEmpty)
+        XCTAssertFalse(remote.didErase)
+        XCTAssertTrue(cloud.erasedIdentifiers.isEmpty)
+        XCTAssertTrue(exists(fixture.scopePaths.root.appending(path: "scope.json")))
+        let session = try await fixture.sessionService.session()
+        XCTAssertEqual(session.currentUserIdentifier, "apple-user-a")
+        XCTAssertNotNil(fixture.appLockStore.load())
+    }
+
     func testLegacyStoreIsRemovedOnlyWhenThisUserClaimedIt() async throws {
         let fixture = try await makeFixture(storageLocation: .localOnly)
         let registry = JournalAccountScopeRegistry(root: rootURL)
@@ -382,6 +421,17 @@ private final class RecordingCloudEraser: CloudAccountDataErasing, @unchecked Se
     func eraseCloudData(appleUserIdentifier: String) async throws {
         if let error { throw error }
         lock.withLock { identifiers.append(appleUserIdentifier) }
+    }
+}
+
+private final class RecordingRemoteEraser: RemoteAccountDataErasing, @unchecked Sendable {
+    private let lock = NSLock()
+    private var erased = false
+
+    var didErase: Bool { lock.withLock { erased } }
+
+    func eraseRemoteData(appleUserIdentifier: String) async throws {
+        lock.withLock { erased = true }
     }
 }
 

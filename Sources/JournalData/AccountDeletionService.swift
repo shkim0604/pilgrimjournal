@@ -5,7 +5,9 @@ import Foundation
 public struct AccountDeletionRequest: Equatable, Sendable {
     public var appleUserIdentifier: String
     /// `.iCloud` runs the cloud step first; `.localOnly` skips it, because the
-    /// app cannot reach the user's private database from this device.
+    /// app cannot reach the user's private database from this device. A
+    /// `.localOnly` request is refused while the user still has an iCloud
+    /// scope on this device, since those records also live in iCloud.
     public var storageLocation: JournalStorageLocation
 
     public init(appleUserIdentifier: String, storageLocation: JournalStorageLocation) {
@@ -268,6 +270,23 @@ public struct AccountDeletionService: AccountDeleting {
             appleUserIdentifier: identifier,
             storageLocation: request.storageLocation
         ).appleUserHash
+        let usesICloud: Bool
+        if case .iCloud = request.storageLocation {
+            usesICloud = true
+        } else {
+            usesICloud = false
+        }
+        let registry = JournalAccountScopeRegistry(root: root)
+        let accountDirectory = registry.accountDirectory(appleUserHash: appleUserHash)
+        let scopeDirectoryNames = Self.directoryNames(in: accountDirectory)
+        // A timed-out or briefly unavailable iCloud reads as `.localOnly`; deleting
+        // the local copy then would report success while every record stays in iCloud.
+        if cloudEraser != nil, !usesICloud,
+            scopeDirectoryNames.contains(where: { $0.hasPrefix("icloud-") })
+        {
+            throw AccountDeletionError.cloudDeletionFailed(
+                String(localized: "지금 iCloud에 연결되어 있지 않습니다.", bundle: .module))
+        }
 
         await closeLocalStores()
 
@@ -281,12 +300,6 @@ public struct AccountDeletionService: AccountDeleting {
             }
         }
 
-        let usesICloud: Bool
-        if case .iCloud = request.storageLocation {
-            usesICloud = true
-        } else {
-            usesICloud = false
-        }
         if usesICloud, let cloudEraser {
             do {
                 try await cloudEraser.eraseCloudData(appleUserIdentifier: identifier)
@@ -297,9 +310,6 @@ public struct AccountDeletionService: AccountDeleting {
             }
         }
 
-        let registry = JournalAccountScopeRegistry(root: root)
-        let accountDirectory = registry.accountDirectory(appleUserHash: appleUserHash)
-        let scopeDirectoryNames = Self.directoryNames(in: accountDirectory)
         var failures: [String] = []
         func remove(_ url: URL) {
             do {
