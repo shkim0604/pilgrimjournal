@@ -114,18 +114,3 @@ public enum SubscriptionEntitlement {
         }
     }
 }
-
-/// 402 `SUBSCRIPTION_REQUIRED` for routes that need a subscription while
-/// `SUBSCRIPTION_REQUIRED=true` (after `UserAuthMiddleware`). A no-op while the flag is off.
-public struct SubscriptionRequiredMiddleware: AsyncMiddleware {
-    public init() {}
-
-    public func respond(to request: Request, chainingTo next: any AsyncResponder) async throws
-        -> Response
-    {
-        try await SubscriptionEntitlement.ensureEntitled(
-            try request.userID, subscriptionRequired: request.pilgrimConfig.subscriptionRequired,
-            on: request.db)
-        return try await next.respond(to: request)
-    }
-}

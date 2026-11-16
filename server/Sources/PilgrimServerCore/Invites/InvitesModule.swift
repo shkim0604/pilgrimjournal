@@ -11,7 +11,7 @@ import Vapor
 enum InvitesModule {
     static func register(_ app: Application) throws {
         let authenticated = app.pilgrimRoutes.authenticated
-        let member = authenticated.grouped(GroupAccountGate(.member))
+        let member = app.pilgrimRoutes.groupMember
 
         let groupInvites = member.grouped("groups", ":id", "invites")
 
@@ -45,7 +45,7 @@ enum InvitesModule {
 
         // The preview is open to signed-in users who have not finished sign-up or subscribed:
         // the join screen leads them through both. Accepting needs both.
-        authenticated.grouped(GroupAccountGate(.signedIn)).get("invites", ":code") {
+        authenticated.grouped(AccountStateMiddleware(requiresSignup: false)).get("invites", ":code") {
             req async throws -> Response in
             try .pilgrimJSON(
                 try await InviteService.preview(

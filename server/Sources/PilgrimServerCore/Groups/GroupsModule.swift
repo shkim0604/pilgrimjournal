@@ -8,13 +8,11 @@ import Vapor
 /// `configure` calls `register(_:)` once, after the shared route groups (`app.pilgrimRoutes`)
 /// exist, in both `serve` and `worker`. Only edit files in this folder.
 ///
-/// Every route sits behind `GroupAccountGate(.member)`; non-members get 404 for every
+/// Every route sits behind `PilgrimRoutes.groupMember`; non-members get 404 for every
 /// `groups/:id/**` route. Path parameters: `:id` for the group, `:userId` below it.
 enum GroupsModule {
     static func register(_ app: Application) throws {
-        let groups = app.pilgrimRoutes.authenticated
-            .grouped(GroupAccountGate(.member))
-            .grouped("groups")
+        let groups = app.pilgrimRoutes.groupMember.grouped("groups")
 
         groups.get { req async throws -> Response in
             let viewer = try req.userID

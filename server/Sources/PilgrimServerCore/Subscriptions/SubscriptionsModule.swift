@@ -12,8 +12,8 @@ import Vapor
 /// - the `subscriptions` worker job (10 min): expiry handling while `SUBSCRIPTION_REQUIRED=true`,
 ///   hourly re-check of stale rows when the In-App Purchase key is configured
 ///
-/// The entitlement every other module should ask is `SubscriptionEntitlement`;
-/// `SubscriptionRequiredMiddleware` is the 402 gate for routes outside `GroupAccountGate`.
+/// The entitlement every other module should ask is `SubscriptionEntitlement`; the 402 gate is
+/// `AccountStateMiddleware(requiresSubscription: true)` (`PilgrimRoutes.groupMember`).
 ///
 /// `configure` calls `register(_:)` once, after the shared route groups (`app.pilgrimRoutes`)
 /// exist, in both `serve` and `worker`. Only edit files in this folder.

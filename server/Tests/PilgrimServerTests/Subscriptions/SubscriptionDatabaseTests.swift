@@ -71,8 +71,7 @@ class SubscriptionDatabaseTestCase: DatabaseTestCase {
     }
 
     /// `/me`, `/me/entitlement`, `SubscriptionEntitlement`, the group gate and the invite
-    /// preview must give one answer. Until Phase 2 points S1 and S2 at
-    /// `SubscriptionEntitlement`, this pins their copies to it.
+    /// preview must give one answer; all of them now ask `SubscriptionEntitlement`.
     func assertEntitlementAgreesEverywhere(
         _ user: User, expected: EntitlementResponse, file: StaticString = #filePath,
         line: UInt = #line
@@ -94,16 +93,19 @@ class SubscriptionDatabaseTestCase: DatabaseTestCase {
                 expected.expiresAt?.timeIntervalSince1970 ?? 0, accuracy: 0.001, name,
                 file: file, line: line)
         }
-        var gate = true
+        var paid = true
         if config.subscriptionRequired {
-            gate = try await GroupEntitlement.isSubscribed(userID, on: db, now: Date())
+            paid = SubscriptionEntitlement.hasActiveSubscription(
+                try await SubscriptionEntitlement.rows(for: userID, on: db), now: Date())
         }
-        XCTAssertEqual(gate, expected.active, "group gate", file: file, line: line)
+        XCTAssertEqual(paid, expected.active, "hasActiveSubscription", file: file, line: line)
+        // The group gate (`AccountStateMiddleware(requiresSubscription:)`) and media uploads.
         let entitled = try await SubscriptionEntitlement.isEntitled(
             userID, subscriptionRequired: config.subscriptionRequired, on: db)
         XCTAssertEqual(entitled, expected.active, "isEntitled", file: file, line: line)
-        let preview = try await GroupEntitlement.requiresSubscription(
-            userID, config: config, on: db, now: Date())
+        // `InviteService.preview`.
+        let preview = try await SubscriptionEntitlement.requiresSubscription(
+            userID, subscriptionRequired: config.subscriptionRequired, on: db)
         XCTAssertEqual(preview, !expected.active, "invite preview", file: file, line: line)
     }
 }

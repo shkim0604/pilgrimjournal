@@ -120,18 +120,18 @@ final class AdminGuardTests: ServerTestCase {
 
     func testAccountGate() throws {
         let now = Date()
-        XCTAssertThrowsError(try ModerationAccountGate.check(nil, now: now)) {
+        XCTAssertThrowsError(try AccountStateMiddleware.check(nil, now: now)) {
             XCTAssertEqual(($0 as? APIError)?.code, .unauthenticated)
         }
         let unnamed = User(appleSub: "dev:a", displayName: nil, timeZone: "Asia/Seoul")
-        XCTAssertThrowsError(try ModerationAccountGate.check(unnamed, now: now)) {
+        XCTAssertThrowsError(try AccountStateMiddleware.check(unnamed, now: now)) {
             XCTAssertEqual(($0 as? APIError)?.code, .signupRequired)
         }
         let user = User(appleSub: "dev:b", displayName: "이름", timeZone: "Asia/Seoul")
-        XCTAssertNoThrow(try ModerationAccountGate.check(user, now: now))
+        XCTAssertNoThrow(try AccountStateMiddleware.check(user, now: now))
 
         user.suspendedAt = now.addingTimeInterval(-60)
-        XCTAssertThrowsError(try ModerationAccountGate.check(user, now: now)) {
+        XCTAssertThrowsError(try AccountStateMiddleware.check(user, now: now)) {
             XCTAssertEqual(($0 as? APIError)?.code, .accountSuspended)
         }
         XCTAssertEqual(ModerationPresenter.suspendedUntil(user, now: now), .distantFuture)
@@ -140,7 +140,7 @@ final class AdminGuardTests: ServerTestCase {
         XCTAssertEqual(ModerationPresenter.suspendedUntil(user, now: now), user.suspendedUntil)
 
         user.suspendedUntil = now.addingTimeInterval(-1)
-        XCTAssertNoThrow(try ModerationAccountGate.check(user, now: now))
+        XCTAssertNoThrow(try AccountStateMiddleware.check(user, now: now))
         XCTAssertNil(ModerationPresenter.suspendedUntil(user, now: now))
     }
 }

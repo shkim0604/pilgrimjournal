@@ -25,32 +25,7 @@ public enum MeResponseBuilder {
             suspendedUntil: user.isSuspended(at: now)
                 ? (user.suspendedUntil ?? .distantFuture) : nil,
             createdAt: user.createdAt ?? now,
-            entitlement: try await entitlement(for: userID, on: db, config: config, now: now))
-    }
-
-    /// `EntitlementResponse.notRequired` while `SUBSCRIPTION_REQUIRED=false` and the user has no
-    /// subscription; otherwise the user's best subscription row (S8 owns the full policy).
-    static func entitlement(
-        for userID: UUID, on db: any Database, config: AppConfig, now: Date
-    ) async throws -> EntitlementResponse {
-        let subscriptions = try await AppStoreSubscription.query(on: db)
-            .filter(\.$user.$id == userID)
-            .sort(\.$expiresAt, .descending)
-            .all()
-        let best =
-            subscriptions.first {
-                EntitlementPolicy.isActive(status: $0.status, expiresAt: $0.expiresAt, now: now)
-            } ?? subscriptions.first
-        guard let best else {
-            return config.subscriptionRequired
-                ? EntitlementResponse(subscriptionRequired: true, active: false, status: .none)
-                : .notRequired
-        }
-        let active = EntitlementPolicy.isActive(
-            status: best.status, expiresAt: best.expiresAt, now: now)
-        return EntitlementResponse(
-            subscriptionRequired: config.subscriptionRequired,
-            active: active || !config.subscriptionRequired, status: best.status,
-            productId: best.productID, expiresAt: best.expiresAt)
+            entitlement: try await SubscriptionEntitlement.response(
+                for: userID, subscriptionRequired: config.subscriptionRequired, on: db, now: now))
     }
 }

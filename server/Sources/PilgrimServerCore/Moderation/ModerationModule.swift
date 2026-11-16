@@ -15,7 +15,7 @@ import Vapor
 /// | `PUT /me/hides/users/:userId`, `DELETE` | 204 |
 /// | `POST /reports` | 201 `ReportReceipt` (200 for a repeated `clientId`) |
 ///
-/// Every route sits behind `ModerationAccountGate` (suspended → 403 `ACCOUNT_SUSPENDED`, no name
+/// Every route sits behind `PilgrimRoutes.signedUp` (suspended → 403 `ACCOUNT_SUSPENDED`, no name
 /// → 403 `SIGNUP_REQUIRED`). Blocking or hiding a person needs a shared group; hiding a post or
 /// reporting needs membership in its group (else 404). Self-targets are 422 `CANNOT_TARGET_SELF`.
 ///
@@ -23,7 +23,7 @@ import Vapor
 /// exist, in both `serve` and `worker`. Only edit files in this folder.
 enum ModerationModule {
     static func register(_ app: Application) throws {
-        let routes = app.pilgrimRoutes.authenticated.grouped(ModerationAccountGate())
+        let routes = app.pilgrimRoutes.signedUp
         let me = routes.grouped("me")
 
         me.get("blocks") { req async throws -> Response in

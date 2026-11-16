@@ -139,8 +139,8 @@ enum InviteService {
         return InvitePreviewResponse(
             code: invite.code, groupId: groupID, groupName: group.name, memberCount: memberCount,
             invitedBy: invitedBy, expiresAt: invite.expiresAt, alreadyMember: alreadyMember,
-            requiresSubscription: try await GroupEntitlement.requiresSubscription(
-                viewer, config: config, on: db, now: now))
+            requiresSubscription: try await SubscriptionEntitlement.requiresSubscription(
+                viewer, subscriptionRequired: config.subscriptionRequired, on: db, now: now))
     }
 
     /// `POST /invites/:code/accept`, in one transaction:

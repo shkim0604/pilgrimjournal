@@ -12,7 +12,7 @@ enum StickersModule {
     static func register(_ app: Application) throws {
         // Same account gate as the other group routes: signed up, not suspended, subscribed when
         // subscriptions are required.
-        let routes = app.pilgrimRoutes.authenticated.grouped(GroupAccountGate(.member))
+        let routes = app.pilgrimRoutes.groupMember
         StickerRoutes.register(routes)
     }
 }

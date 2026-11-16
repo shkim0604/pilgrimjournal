@@ -10,8 +10,7 @@ import Vapor
 /// exist, in both `serve` and `worker`. Only edit files in this folder.
 enum VotesModule {
     static func register(_ app: Application) throws {
-        let vote = app.pilgrimRoutes.authenticated
-            .grouped(GroupAccountGate(.member))
+        let vote = app.pilgrimRoutes.groupMember
             .grouped("groups", ":id", "vote")
 
         vote.get { req async throws -> Response in

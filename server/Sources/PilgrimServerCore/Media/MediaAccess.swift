@@ -75,19 +75,15 @@ enum MediaAccess {
 }
 
 /// The account checks of group photos (design.md "구독": uploads other than `profile` need the
-/// subscription when it is required): the same as `GroupAccountGate(.member)`
-/// — signed up and, while `SUBSCRIPTION_REQUIRED` is on, subscribed. Profile photos skip them so
-/// sign-up itself can upload one. Deleted and suspended accounts are refused earlier, by
-/// `AccountStateMiddleware`.
+/// subscription when it is required): the rest of `PilgrimRoutes.groupMember` — signed up and,
+/// while `SUBSCRIPTION_REQUIRED` is on, entitled (`SubscriptionEntitlement`). Profile photos skip
+/// them so sign-up itself can upload one. Deleted and suspended accounts are refused earlier, by
+/// `AccountStateMiddleware(requiresSignup: false)`.
 enum MediaAccountCheck {
     static func requireGroupMember(_ user: User, _ req: Request, now: Date = Date()) async throws {
-        if !user.profileComplete {
-            throw APIError(code: .signupRequired, message: "finish sign-up first")
-        }
-        if try await GroupEntitlement.requiresSubscription(
-            try user.requireID(), config: req.pilgrimConfig, on: req.db, now: now)
-        {
-            throw APIError(code: .subscriptionRequired, message: "subscription required")
-        }
+        try user.ensureSignedUp()
+        try await SubscriptionEntitlement.ensureEntitled(
+            try user.requireID(), subscriptionRequired: req.pilgrimConfig.subscriptionRequired,
+            on: req.db, now: now)
     }
 }

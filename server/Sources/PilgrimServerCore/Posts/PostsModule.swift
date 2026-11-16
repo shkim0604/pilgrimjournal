@@ -15,7 +15,7 @@ enum PostsModule {
     static func register(_ app: Application) throws {
         // Same account gate as the Groups routes: signed up, not suspended, subscribed when
         // subscriptions are required.
-        let routes = app.pilgrimRoutes.authenticated.grouped(GroupAccountGate(.member))
+        let routes = app.pilgrimRoutes.groupMember
         PostRoutes.register(routes)
         CommentRoutes.register(routes)
         ReactionRoutes.register(routes)

@@ -3,32 +3,54 @@ import Foundation
 import PilgrimAPI
 import Vapor
 
-/// Loads the signed-in user and checks their account state, after `UserAuthMiddleware`:
+/// The one account gate (design.md "가입 정보와 정지", "구독 검증과 권한"). Loads the signed-in
+/// user, after `UserAuthMiddleware`, and checks in this order:
 ///
 /// - user row gone (account deleted) → 401 `UNAUTHENTICATED`
 /// - suspended (`User.isSuspended(at:)`) → 403 `ACCOUNT_SUSPENDED`, unless `allowsSuspended`
 /// - no display name yet → 403 `SIGNUP_REQUIRED`, when `requiresSignup`
+/// - not entitled (`SubscriptionEntitlement`, only while `SUBSCRIPTION_REQUIRED=true`) → 402
+///   `SUBSCRIPTION_REQUIRED`, when `requiresSubscription`
 ///
 /// The loaded user is kept for the handler (`req.currentUser()`). Most routes use
-/// `PilgrimRoutes.signedUp`, which applies both checks.
+/// `PilgrimRoutes.signedUp`; group routes use `PilgrimRoutes.groupMember`.
 public struct AccountStateMiddleware: AsyncMiddleware {
     public var requiresSignup: Bool
     public var allowsSuspended: Bool
+    public var requiresSubscription: Bool
 
-    public init(requiresSignup: Bool = true, allowsSuspended: Bool = false) {
+    public init(
+        requiresSignup: Bool = true, allowsSuspended: Bool = false,
+        requiresSubscription: Bool = false
+    ) {
         self.requiresSignup = requiresSignup
         self.allowsSuspended = allowsSuspended
+        self.requiresSubscription = requiresSubscription
     }
 
     public func respond(to request: Request, chainingTo next: any AsyncResponder) async throws
         -> Response
     {
         let user = try await request.currentUser()
-        if !allowsSuspended { try user.ensureNotSuspended() }
-        if requiresSignup, !user.profileComplete {
-            throw APIError(code: .signupRequired, message: "finish sign-up first")
+        let now = Date()
+        try Self.check(
+            user, requiresSignup: requiresSignup, allowsSuspended: allowsSuspended, now: now)
+        if requiresSubscription {
+            try await SubscriptionEntitlement.ensureEntitled(
+                try user.requireID(),
+                subscriptionRequired: request.pilgrimConfig.subscriptionRequired, on: request.db,
+                now: now)
         }
         return try await next.respond(to: request)
+    }
+
+    /// The account-state part of the gate (no database): `user` is nil when the row is gone.
+    static func check(
+        _ user: User?, requiresSignup: Bool = true, allowsSuspended: Bool = false, now: Date
+    ) throws {
+        guard let user else { throw APIError.unauthenticated("account no longer exists") }
+        if !allowsSuspended { try user.ensureNotSuspended(at: now) }
+        if requiresSignup { try user.ensureSignedUp() }
     }
 }
 
@@ -38,6 +60,12 @@ extension PilgrimRoutes {
     public var signedUp: any RoutesBuilder {
         authenticated.grouped(AccountStateMiddleware())
     }
+
+    /// `signedUp` plus the subscription while `SUBSCRIPTION_REQUIRED` is on: `groups/**`,
+    /// posts, comments, reactions, stickers, votes and invite accept.
+    public var groupMember: any RoutesBuilder {
+        authenticated.grouped(AccountStateMiddleware(requiresSubscription: true))
+    }
 }
 
 extension User {
@@ -45,6 +73,12 @@ extension User {
     public func ensureNotSuspended(at now: Date = Date()) throws {
         guard isSuspended(at: now) else { return }
         throw APIError(code: .accountSuspended, message: "account is suspended")
+    }
+
+    /// Throws 403 `SIGNUP_REQUIRED` until the user has a display name.
+    public func ensureSignedUp() throws {
+        guard !profileComplete else { return }
+        throw APIError(code: .signupRequired, message: "finish sign-up first")
     }
 }
 
