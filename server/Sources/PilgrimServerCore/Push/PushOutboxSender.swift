@@ -57,7 +57,8 @@ public enum PushOutboxSender {
             return try await handleUnconfigured(
                 on: db, isProduction: isProduction, now: now, logger: logger)
         }
-        let due = try await loadDue(on: db, allowedBundleIDs: allowedBundleIDs, now: now)
+        let due = try await loadDue(
+            on: db, allowedBundleIDs: allowedBundleIDs, now: now, logger: logger)
         guard !due.isEmpty else { return Summary() }
 
         // Send outside any transaction; write the results afterwards.
@@ -220,18 +221,39 @@ public enum PushOutboxSender {
         }
     }
 
-    static func loadDue(on db: any Database, allowedBundleIDs: Set<String>, now: Date)
-        async throws -> [Due]
-    {
+    static func loadDue(
+        on db: any Database, allowedBundleIDs: Set<String>, now: Date, logger: Logger
+    ) async throws -> [Due] {
         let sql = try PushOutbox.sqlDatabase(db)
-        let rows = try await sql.raw(
+        let raw = try await sql.raw(
             """
             SELECT id, recipient_user_id, payload, collapse_id, attempts FROM push_outbox
             WHERE sent_at IS NULL AND failed_at IS NULL AND next_attempt_at <= \(bind: now)
             ORDER BY next_attempt_at, id
             LIMIT \(bind: batchSize)
             """
-        ).all(decoding: DueRow.self)
+        ).all()
+        // One at a time: a row this build cannot read (say a `PushKind` from a newer release,
+        // after a rollback) is failed on its own instead of blocking the head of the queue.
+        var rows: [DueRow] = []
+        for row in raw {
+            do {
+                rows.append(try row.decode(model: DueRow.self))
+            } catch {
+                let id = try row.decode(column: "id", as: UUID.self)
+                let message = "undecodable: \(String(describing: error))"
+                logger.error(
+                    "push outbox row cannot be decoded; marked failed",
+                    metadata: ["id": "\(id)", "error": "\(error)"])
+                try await sql.raw(
+                    """
+                    UPDATE push_outbox SET failed_at = \(bind: now),
+                        last_error = \(bind: String(message.prefix(500)))
+                    WHERE id = \(bind: id)
+                    """
+                ).run()
+            }
+        }
         guard !rows.isEmpty else { return [] }
 
         let recipients = Array(Set(rows.map(\.recipientUserId)))

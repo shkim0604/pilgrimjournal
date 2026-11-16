@@ -157,6 +157,51 @@ final class PushOutboxJobTests: WorkerDatabaseTestCase {
         XCTAssertNotNil(row.sentAt)
     }
 
+    func testUndecodableRowIsFailedAndTheRestAreSent() async throws {
+        let sender = FakeAPNSSender()
+        app.apnsSender = sender
+        let user = try await fixtures.user()
+        try await device(for: user, token: "token")
+        let start = Date()
+        // Older first, so it heads the queue: a kind from a newer release this build lacks.
+        try await PushOutbox.enqueue(
+            on: db, recipients: [try user.requireID()], payload: .dailyReport(itemCount: 1),
+            now: start.addingTimeInterval(-60))
+        let sql = try PushOutbox.sqlDatabase(db)
+        try await sql.raw(
+            """
+            UPDATE push_outbox
+            SET payload = jsonb_set(payload, '{pilgrim,kind}', '"futureKind"')
+            """
+        ).run()
+        try await PushOutbox.enqueue(
+            on: db, recipients: [try user.requireID()], payload: .dailyReport(itemCount: 2),
+            now: start)
+
+        let result = try await runJob("pushOutbox", at: start.addingTimeInterval(1))
+        XCTAssertEqual(result, .ran)
+
+        // Raw columns: the bad row's payload would not load as a `PushOutboxEntry` either.
+        struct Row: Decodable {
+            var sent: Bool
+            var failed: Bool
+            var lastError: String?
+        }
+        let rows = try await sql.raw(
+            """
+            SELECT sent_at IS NOT NULL AS sent, failed_at IS NOT NULL AS failed,
+                last_error AS "lastError"
+            FROM push_outbox ORDER BY next_attempt_at
+            """
+        ).all(decoding: Row.self)
+        XCTAssertEqual(rows.count, 2)
+        XCTAssertTrue(rows[0].failed)
+        XCTAssertFalse(rows[0].sent)
+        XCTAssertTrue(rows[0].lastError?.hasPrefix("undecodable") ?? false)
+        XCTAssertTrue(rows[1].sent)
+        XCTAssertEqual(sender.deliveries.map(\.payload), [.dailyReport(itemCount: 2)])
+    }
+
     func testWithoutAPNsDevelopmentDropsDueRows() async throws {
         let user = try await fixtures.user()
         try await device(for: user, token: "token")

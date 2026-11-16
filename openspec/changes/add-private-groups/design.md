@@ -355,7 +355,8 @@ server/
   환경은 기기 행의 `apns_environment`(Debug·TestFlight 구분).
 - APNs 응답 410 또는 `BadDeviceToken`/`Unregistered`/`DeviceTokenNotForTopic`이면 그 기기 토큰을 지운다.
   5xx·네트워크 오류는 30초·2분·10분 뒤 다시 보내고 그 뒤 실패로 남긴다. APNs 요청 하나는 30초 안에 답이 없으면
-  끊고(`timeout`) 네트워크 오류처럼 다시 보낸다.
+  끊고(`timeout`) 네트워크 오류처럼 다시 보낸다. 이 빌드가 읽을 수 없는 outbox 행(예: 롤백 뒤 새 `PushKind`)은
+  그 행만 `failed_at`으로 남기고(`last_error = undecodable: …`) 나머지는 보낸다.
 - 알림을 누르면 앱이 `pilgrim.kind`에 따라 그 글 상세, Daily Report 화면, 그룹 화면을 연다. 이미 사라진 글이면
   "이 글은 더 이상 볼 수 없어요"를 보인다.
 - 앱 아이콘 배지는 쓰지 않는다(0으로 둔다). 안 읽은 수는 사이드바에 보인다.
