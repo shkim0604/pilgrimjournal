@@ -229,18 +229,15 @@ enum AdminService {
         }
     }
 
-    /// Deletes the sticker's media row, which cascades to the sticker and its reactions; comments
-    /// that used it keep `had_sticker` and show "지워진 스티커". The file is queued by the trigger.
+    /// `StickerService.delete` (comments that used it keep `had_sticker` and show "지워진 스티커";
+    /// its reactions, row and photo go; the file is queued by the trigger) plus the audit entry,
+    /// in one transaction.
     static func deleteSticker(
         _ id: UUID, reportID: UUID?, actor: String, on db: any Database
     ) async throws {
         try await db.transaction { tx in
-            guard let sticker = try await Sticker.find(id, on: tx) else {
-                throw APIError.notFound()
-            }
-            let mediaID = sticker.$media.id
-            try await sticker.delete(on: tx)
-            try await Media.query(on: tx).filter(\.$id == mediaID).delete()
+            // Runs on `tx`: Fluent joins the enclosing transaction instead of opening another.
+            try await StickerService.delete(id, on: tx)
             try await log(
                 .deleteSticker, target: "sticker", id: id, reportID: reportID, actor: actor, on: tx)
         }

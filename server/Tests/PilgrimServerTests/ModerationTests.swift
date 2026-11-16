@@ -511,6 +511,10 @@ final class AdminRoutesTests: DatabaseTestCase {
             groupID: try scene.group.requireID(), createdByID: try scene.author.requireID(),
             mediaID: try media.requireID(), clientID: UUID())
         try await sticker.create(on: db)
+        let stickerComment = Comment(
+            postID: try scene.post.requireID(), authorID: try scene.author.requireID(), body: "",
+            stickerID: try sticker.requireID(), clientID: UUID())
+        try await stickerComment.create(on: db)
 
         try await app.test(
             .DELETE, "internal/admin/v1/comments/\(try comment.requireID())",
@@ -527,6 +531,10 @@ final class AdminRoutesTests: DatabaseTestCase {
         expectNil(try await Comment.find(try comment.requireID(), on: db))
         expectNil(try await Sticker.find(try sticker.requireID(), on: db))
         expectNil(try await Media.find(try media.requireID(), on: db))
+        // Like a member's delete (`StickerService.delete`): the comment stays as "지워진 스티커".
+        let kept = try unwrap(try await Comment.find(try stickerComment.requireID(), on: db))
+        XCTAssertNil(kept.$sticker.id)
+        XCTAssertTrue(kept.hadSticker)
         let actions = try await ModerationLogEntry.query(on: db).all().map(\.action)
         XCTAssertEqual(Set(actions), [.deleteComment, .deleteSticker])
     }
