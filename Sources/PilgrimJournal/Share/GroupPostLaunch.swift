@@ -6,6 +6,9 @@ import SwiftUI
 /// Whether "그룹에 올리기" can open the composer, and if not, what to tell the person.
 enum GroupPostReadiness: Equatable {
     case ready
+    /// Not signed in to groups, or the sign-up is unfinished: "그룹 시작하기" opens right where
+    /// the share flow is, then posting carries on.
+    case needsOnboarding
     case blocked(String)
 
     /// Decided from what the controller knows after `GroupsController.prepareForPosting()`.
@@ -16,8 +19,7 @@ enum GroupPostReadiness: Equatable {
         case .upgradeRequired:
             return .blocked(GroupMessages.upgradeRequired)
         case .signedOut, .needsProfile:
-            return .blocked(
-                String(localized: "그룹에 올리려면 먼저 사이드바의 그룹에서 ‘그룹 시작하기’를 마쳐 주세요."))
+            return .needsOnboarding
         case .needsSubscription:
             return .blocked(String(localized: "그룹에 올리려면 구독이 필요해요."))
         case .unknown:
@@ -52,8 +54,10 @@ struct GroupPostRequest: Identifiable, Equatable {
 
 extension View {
     /// Opens the group composer (`GroupPostComposerSheet`) for each `request` set: first makes
-    /// sure the person is signed in and in a group they can write to, and explains it in an
-    /// alert when not. Does nothing while `groups` is nil (`GroupsFeature` off).
+    /// sure the person is signed in and in a group they can write to. Someone not signed in to
+    /// groups gets "그룹 시작하기" here (the sidebar's sheet host may be off screen on iPhone)
+    /// and the composer once that is done; anything else that stands in the way is explained
+    /// in an alert. Does nothing while `groups` is nil (`GroupsFeature` off).
     ///
     /// `onPosted` runs after the composer has closed on a successful post, so a sheet that
     /// started it can close itself without racing the composer's own dismissal.
@@ -70,8 +74,12 @@ private struct GroupPostComposerPresenter: ViewModifier {
     let groups: GroupsController?
     let onPosted: (PostResponse) -> Void
     @State private var composing: GroupPostRequest?
+    /// The request waiting on "그룹 시작하기".
+    @State private var onboarding: GroupPostRequest?
     @State private var posted: PostResponse?
     @State private var blockedMessage: String?
+    /// `onboarding`'s request, kept for `continueAfterOnboarding` (the sheet clears its item).
+    @State private var waitingRequest: GroupPostRequest?
     @State private var isPreparing = false
 
     func body(content: Content) -> some View {
@@ -80,6 +88,11 @@ private struct GroupPostComposerPresenter: ViewModifier {
                 guard id != nil, let pending = request else { return }
                 request = nil
                 Task { await open(pending) }
+            }
+            .sheet(item: $onboarding, onDismiss: continueAfterOnboarding) { _ in
+                if let groups {
+                    GroupPostOnboardingSheet(groups: groups)
+                }
             }
             .sheet(item: $composing, onDismiss: finishPosting) { request in
                 if let groups {
@@ -99,21 +112,48 @@ private struct GroupPostComposerPresenter: ViewModifier {
             }
     }
 
-    private func open(_ pending: GroupPostRequest) async {
-        guard let groups, !isPreparing, composing == nil else { return }
+    private func open(_ pending: GroupPostRequest, afterOnboarding: Bool = false) async {
+        guard let groups, !isPreparing, composing == nil, onboarding == nil else { return }
         isPreparing = true
         defer { isPreparing = false }
         switch await groups.prepareForPosting() {
         case .ready:
             composing = pending
+        case .needsOnboarding:
+            // Closing "그룹 시작하기" without finishing it ends here, without a second sheet.
+            guard !afterOnboarding else { return }
+            waitingRequest = pending
+            onboarding = pending
         case .blocked(let message):
             blockedMessage = message
         }
+    }
+
+    /// After "그룹 시작하기" closes: on to the composer once the person can post.
+    private func continueAfterOnboarding() {
+        guard let pending = waitingRequest else { return }
+        waitingRequest = nil
+        guard groups?.accountState.hasGroupAccess == true else { return }
+        Task { await open(pending, afterOnboarding: true) }
     }
 
     private func finishPosting() {
         guard let post = posted else { return }
         posted = nil
         onPosted(post)
+    }
+}
+
+/// "그룹 시작하기" opened from "그룹에 올리기". Closes itself once the person is signed in and
+/// signed up, so the composer can follow.
+private struct GroupPostOnboardingSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject var groups: GroupsController
+
+    var body: some View {
+        GroupOnboardingSheet(groups: groups)
+            .onChange(of: groups.accountState.hasGroupAccess) { _, hasAccess in
+                if hasAccess { dismiss() }
+            }
     }
 }
