@@ -534,6 +534,49 @@ final class AppleRevocationJobTests: WorkerDatabaseTestCase {
         XCTAssertNil(after.completedAt)
     }
 
+    func testInvalidGrantCompletesWithoutRetrying() async throws {
+        let revoker = FakeAppleRevoker()
+        revoker.fail(status: 400, code: "invalid_grant")
+        let now = Date()
+        let row = AppleTokenRevocation(
+            clientID: BundleIDs.release, ciphertext: try cipher.encrypt("t"), nextAttemptAt: now)
+        try await row.create(on: db)
+
+        let summary = try await AppleRevocationSweep.run(
+            on: db, authorization: revoker, cipher: cipher, now: now, logger: app.logger)
+        XCTAssertEqual(summary, AppleRevocationSweep.Summary(alreadyInvalid: 1))
+        // Due again by any back-off, but done: Apple is not asked a second time.
+        try await AppleRevocationSweep.run(
+            on: db, authorization: revoker, cipher: cipher,
+            now: now.addingTimeInterval(86_400), logger: app.logger)
+        XCTAssertEqual(revoker.calls.count, 1)
+        let after = try await unwrapAsync(
+            try await AppleTokenRevocation.find(try row.requireID(), on: db))
+        XCTAssertEqual(after.attempts, 1)
+        XCTAssertNotNil(after.completedAt)
+        XCTAssertEqual(after.lastError, "Apple /auth/revoke answered HTTP 400 (invalid_grant)")
+    }
+
+    func testInvalidClientIsRetried() async throws {
+        let revoker = FakeAppleRevoker()
+        revoker.fail(status: 400, code: "invalid_client")
+        let now = Date()
+        let row = AppleTokenRevocation(
+            clientID: BundleIDs.release, ciphertext: try cipher.encrypt("t"), nextAttemptAt: now)
+        try await row.create(on: db)
+
+        let summary = try await AppleRevocationSweep.run(
+            on: db, authorization: revoker, cipher: cipher, now: now, logger: app.logger)
+        XCTAssertEqual(summary, AppleRevocationSweep.Summary(failed: 1))
+        let after = try await unwrapAsync(
+            try await AppleTokenRevocation.find(try row.requireID(), on: db))
+        XCTAssertNil(after.completedAt)
+        XCTAssertEqual(after.lastError, "Apple /auth/revoke answered HTTP 400 (invalid_client)")
+        XCTAssertEqual(
+            after.nextAttemptAt.timeIntervalSince1970,
+            now.addingTimeInterval(300).timeIntervalSince1970, accuracy: 0.001)
+    }
+
     func testUndecryptableRowIsGivenUpWithoutCallingApple() async throws {
         let revoker = FakeAppleRevoker()
         let other = AppleTokenCipher.ephemeral()

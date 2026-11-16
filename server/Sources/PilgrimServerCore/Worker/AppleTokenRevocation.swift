@@ -8,7 +8,8 @@ import SQLKit
 /// (`apple_token_revocations`, design.md 13절) with the Auth module's services: the tokens are
 /// opened with `AppleTokenCipher` and sent to Apple with `AppleAuthorizationClient.revoke`.
 /// Failures back off exponentially from five minutes; after `maximumAttempts` the row stays with
-/// its `last_error` for the operator.
+/// its `last_error` for the operator. A permanent answer (`AppleRevocationError.isPermanent`,
+/// `invalid_grant`) completes the row at once, keeping the answer in `last_error`.
 public enum AppleRevocationSweep {
     public static let batchSize = 50
     public static let maximumAttempts = 10
@@ -24,6 +25,8 @@ public enum AppleRevocationSweep {
 
     public struct Summary: Equatable, Sendable {
         public var revoked = 0
+        /// Apple answered `invalid_grant`: completed without a retry (`AppleRevocationError`).
+        public var alreadyInvalid = 0
         public var failed = 0
     }
 
@@ -85,6 +88,22 @@ public enum AppleRevocationSweep {
                     """
                 ).run()
                 summary.revoked += 1
+            } catch let error as AppleRevocationError where error.isPermanent {
+                // `invalid_grant`: Apple no longer knows the token, so it cannot be used either.
+                // Done, with the answer kept for the operator; retrying would only repeat it.
+                let message = String(error.description.prefix(500))
+                try await sql.raw(
+                    """
+                    UPDATE apple_token_revocations
+                    SET attempts = \(bind: attempt), completed_at = \(bind: now),
+                        last_error = \(bind: message)
+                    WHERE id = \(bind: row.id)
+                    """
+                ).run()
+                logger.notice(
+                    "Apple refresh token was already invalid; not retrying revocation",
+                    metadata: ["id": "\(row.id)", "error": "\(message)"])
+                summary.alreadyInvalid += 1
             } catch {
                 let message = String(String(describing: error).prefix(500))
                 let next = nextAttempt(afterFailedAttempts: attempt, now: now) ?? now

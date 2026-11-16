@@ -25,9 +25,35 @@ public protocol AppleAuthorizationClient: Sendable {
     func revoke(refreshToken: String, clientID: String) async throws
 }
 
+/// A non-2xx answer from Apple's `/auth/revoke`, with the `error` code of its JSON body
+/// (`{"error": "invalid_grant"}`) when there was one.
 public struct AppleRevocationError: Error, Equatable, CustomStringConvertible {
     public var status: Int
-    public var description: String { "Apple /auth/revoke answered HTTP \(status)" }
+    /// Apple's `ErrorResponse.error` (`invalid_request`, `invalid_client`, `invalid_grant`, …).
+    public var code: String?
+
+    public init(status: Int, code: String? = nil) {
+        self.status = status
+        self.code = code
+    }
+
+    /// Reads `code` from the response body; a body that is not Apple's error JSON leaves it nil.
+    public init(status: Int, body: Data?) {
+        struct ErrorBody: Decodable { var error: String? }
+        let code = body.flatMap { try? JSONDecoder().decode(ErrorBody.self, from: $0) }?.error
+        self.init(status: status, code: code.flatMap { $0.isEmpty ? nil : $0 })
+    }
+
+    /// Retrying cannot change the answer: `invalid_grant` means Apple no longer knows the
+    /// refresh token (already revoked, expired, or issued to another client), so there is
+    /// nothing left to revoke. Every other error — `invalid_client` included, which a fixed key
+    /// or client secret clears — is retried.
+    public var isPermanent: Bool { code == "invalid_grant" }
+
+    public var description: String {
+        guard let code else { return "Apple /auth/revoke answered HTTP \(status)" }
+        return "Apple /auth/revoke answered HTTP \(status) (\(code))"
+    }
 }
 
 /// Talks to `https://appleid.apple.com`.
@@ -126,7 +152,8 @@ public struct LiveAppleAuthorizationClient: AppleAuthorizationClient {
             try request.content.encode(form, as: .urlEncodedForm)
         }
         guard (200..<300).contains(response.status.code) else {
-            throw AppleRevocationError(status: Int(response.status.code))
+            throw AppleRevocationError(
+                status: Int(response.status.code), body: response.body.map { Data(buffer: $0) })
         }
     }
 

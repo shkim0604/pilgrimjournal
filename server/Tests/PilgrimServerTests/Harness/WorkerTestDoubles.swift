@@ -38,8 +38,11 @@ final class FakeAppleRevoker: AppleAuthorizationClient {
 
     var calls: [(token: String, clientID: String)] { state.withLockedValue { $0.calls } }
 
-    func fail(status: Int?) {
-        state.withLockedValue { $0.failure = status.map { AppleRevocationError(status: $0) } }
+    /// `code` is the `error` of Apple's JSON body (`invalid_grant`, …).
+    func fail(status: Int?, code: String? = nil) {
+        state.withLockedValue {
+            $0.failure = status.map { AppleRevocationError(status: $0, code: code) }
+        }
     }
 
     func exchange(authorizationCode: String, clientID: String) async throws
