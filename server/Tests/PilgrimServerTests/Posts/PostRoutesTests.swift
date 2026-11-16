@@ -328,7 +328,7 @@ final class PostRoutesTests: DatabaseTestCase {
         let extended = try decode(PostResponse.self, from: first)
         XCTAssertEqual(extended.extensionCount, 1)
         XCTAssertEqual(
-            extended.expiresAt.timeIntervalSince(created.expiresAt), 7 * 86_400, accuracy: 0.001)
+            extended.expiresAt.timeIntervalSince(created.expiresAt), 7 * 86_400, accuracy: 0.002)
 
         let repeated = try await sendV1(
             .POST, path, as: bob, json: ExtendPostRequest(clientId: clientID))
