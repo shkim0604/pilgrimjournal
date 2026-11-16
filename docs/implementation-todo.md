@@ -23,8 +23,6 @@
     `ImageCompressor`, 같은 기준) — 하나로 합칠지. 업데이트 안내의 App Store 링크
     (`GroupsAppStoreLink`)는 App Store ID가 정해질 때까지 검색 URL이다.
   - **구매 테스트:** 앱이 호스트하는 테스트 타깃(`xctest`에는 StoreKit이 거래를 주지 않는다).
-  - **콘솔(W1):** `web/admin/.env.example`에 `ADMIN_API_TOKEN`, `ADMIN_API_URL`(기본
-    `http://pilgrim-api:3100`) 두 줄.
   - **검증·배포(3.3~3.5):** `make -C server test`, CI, 로컬 시나리오(`PILGRIM_GROUP_SERVER_URL`로
     `make -C server dev`에 붙여 가입·초대·글·스크랩·기한·안전·Daily Report·투표·구독·계정 삭제),
     `xcrun simctl push` → 맥미니 배포·터널 → 실기기 세션 H → main에 조각내어(서버·CI 먼저, 앱은
@@ -32,28 +30,6 @@
     "비공개 그룹 — 운영·출시 준비".
   - 참고: `JournalDataTests.testFiveThousandEntryPaginationIsCompleteAndResponsive`(3초 한도)가
     병렬 작업 부하에서 6.2초가 걸린 적이 있다. 부하 탓이며 회귀가 아니다.
-
-- **비공개 그룹 — 서버 정리와 확인할 결정** (2026-11-15, 브랜치 `feat/groups`) — Phase 1 서버
-  작업이 남긴 중복과, design.md에 없거나 다시 볼 결정.
-  - 중복 합치기: 계정 상태 검사(`AccountStateMiddleware`·`pilgrimRoutes.signedUp`,
-    `GroupAccountGate`, `ModerationAccountGate`), 안 읽은 수(`GroupViews`, `PostUnread.counts`),
-    멤버 확인(`ContentAccess`, `GroupAccess.memberGroup`).
-  - 권한을 `SubscriptionEntitlement` 하나로: `MeResponseBuilder.entitlement`(만료 시각 null 정렬이
-    Postgres에서 틀림), `GroupEntitlement.isSubscribed`/`requiresSubscription`(`GroupAccountGate`,
-    `InviteService.preview`), `GroupAccountGate` 밖의 업로드·스티커(`SubscriptionRequiredMiddleware`/
-    `ensureEntitled`). `SUBSCRIPTION_REQUIRED=false`인 동안은 결과가 같다.
-  - `server/Package.swift`에 직접 import하는 제품을 선언: `APNS`·`APNSCore`(`LiveAPNSSender`),
-    swift-certificates의 `X509`·`SwiftASN1`(지금은 app-store-server-library-swift를 거쳐 들어온다).
-  - `AppleRevocationError`가 상태 코드만 가져 `invalid_grant`도 10번 재시도한다 — 본문을 읽어 바로
-    포기할지.
-  - `AdminService.deleteSticker`가 `StickerService.delete`를 써서 댓글 `had_sticker` 표시를 맞추게.
-  - `/i/:code` 페이지의 App Store 링크가 App Store ID를 알 때까지 검색 URL이다.
-  - 확인할 결정: 끝난 `apple_token_revocations` 행을 7일 뒤 지움(design.md에 없음). Daily Report의
-    `expiringSoon`은 `now + dayLength`(축소 시간)인데 리포트 범위는 실제 24시간이고, 놓친 날은 나중에
-    보내지 않으며, 정지됐거나 리포트를 켠 그룹이 없는 사용자는 로그 행 없이 건너뜀. 구독 재확인은
-    플래그가 꺼져도 돈다(행만 고침). 나중에 `SUBSCRIPTION_REQUIRED`를 켜면 꺼져 있던 동안 만료된
-    사람이 그룹에서 빠진다. 삭제 예정 그룹의 새 글·댓글·반응·연장·업로드는 409, 연장은 처음 201
-    다음 200. 스티커 이름은 한 줄만.
 
 - **기도제목 나누기 — 1차에서 미룬 것** (2026-11-12, 브랜치 `feat/prayer-request-share`) —
   1차는 일기에서 기도제목을 제안·번역해 시스템 공유 시트로 넘기는 것까지다(아래 완료).
@@ -189,6 +165,16 @@
   - `AppModel.autosaveOnEditorExit`는 앱 코드에서 부르는 곳이 없고 테스트만 쓴다.
 
 ## 완료
+
+- **비공개 그룹 — Phase 2 서버 정리** (2026-11-16, 브랜치 `groups/p2-server`) — 계정 상태 검사는
+  `AccountStateMiddleware` 하나(그룹 라우트는 `PilgrimRoutes.groupMember`), 권한은
+  `SubscriptionEntitlement` 하나(`/me`의 null 정렬 버그도 고침), 그룹 조회·권한은 `GroupAccess`, 안 읽은 수는
+  `PostUnread.counts`(가입 전 글은 안 읽은 수에 넣지 않는다). 관리자 스티커 삭제는 `StickerService.delete`.
+  `invalid_grant`는 재시도하지 않고 끝낸다. `server/Package.swift`가 APNS·X509·SwiftASN1을 직접 선언하고
+  Vapor 하한을 4.122.0으로. `web/admin/.env.example`에 `ADMIN_API_TOKEN`·`ADMIN_API_URL`(주석). 주인이
+  확인한 결정(2026-11-16): 구독자가 아직 없어 플래그를 나중에 켜도 소급 처리가 필요 없다. 놓친 Daily Report는
+  건너뛰고, 삭제 예정 그룹의 쓰기는 409, 끝난 폐기 행은 7일 뒤 지운다. `/i` 링크는 App Store ID가 생길 때까지
+  검색 URL. CI의 Postgres 테스트까지 통과.
 
 - **비공개 그룹 — Phase 2 앱 연결** (2026-11-16, 브랜치 `groups/p2-app`, openspec tasks 3.2) —
   자동 테스트와 서명 없는 iOS·macOS 빌드, iOS 시뮬레이터 테스트까지. 실제 서버·실기기는 아직이다.
