@@ -359,7 +359,16 @@ final class SubscriptionDatabaseTests: SubscriptionDatabaseTestCase {
             try await ContentVisibility.membership(
                 of: try member.requireID(), in: try group.requireID(), on: db))
         expectNotNil(try await Post.find(try post.requireID(), on: db))
-        expectNil(try await subscriptionRow()?.removalProcessedAt)
+        // Marked processed without removing anyone, so turning the flag on later does not
+        // remove this member for an expiry from before the switch.
+        expectNotNil(try await subscriptionRow()?.removalProcessedAt)
+        let afterSwitch = try await SubscriptionRemovalSweep.run(
+            on: db, dayLength: app.pilgrimConfig.dayLength, now: Date())
+        XCTAssertEqual(afterSwitch, [])
+        expectNotNil(
+            try await ContentVisibility.membership(
+                of: try member.requireID(), in: try group.requireID(), on: db))
+        expectNotNil(try await Post.find(try post.requireID(), on: db))
     }
 
     // MARK: - Re-check
@@ -460,33 +469,6 @@ final class SubscriptionRequiredDatabaseTests: SubscriptionDatabaseTestCase {
         XCTAssertEqual(created.status, .created, created.body.string)
     }
 
-    func testExpiryRemovesTheMemberOnce() async throws {
-        // Spec "플래그가 켜진 상태의 만료".
-        let member = try await fixtures.user("멤버")
-        let admin = try await fixtures.user("관리자")
-        let other = try await fixtures.user("다른 멤버")
-        let shared = try await fixtures.group(admin: admin, members: [member, other])
-        let own = try await fixtures.group("내 모임", admin: member, members: [other])
-        let memberID = try member.requireID()
-
-        let memberPost = try await fixtures.post(by: member, in: shared)
-        let photo = try await fixtures.media(uploadedBy: member, in: shared, post: memberPost)
-        let adminPost = try await fixtures.post(by: admin, in: shared)
-        let comment = Comment(
-            postID: try adminPost.requireID(), authorID: memberID, body: "아멘", clientID: UUID())
-        try await comment.create(on: db)
-        let reaction = Reaction(
-            postID: try adminPost.requireID(), userID: memberID, key: .emoji("🙏"))
-        try await reaction.create(on: db)
-        let profile = try await fixtures.media(uploadedBy: member, in: nil, purpose: .profile)
-
-        _ = try await subscriptionNotify(
-            type: "EXPIRED", subtype: "BILLING_RETRY",
-            transaction: AppStoreTestPayloads.transaction(
-                expires: Date().addingTimeInterval(-60), appAccountToken: memberID))
-
-        let removals = try await SubscriptionRemovalSweep.run(
-            on: db, dayLength: app.pilgrimConfig.dayLength, now: Date())
     func testDailyReportNeedsTheSubscription() async throws {
         let member = try await fixtures.user("멤버")
         let paid = try await fixtures.user("구독자")
@@ -516,6 +498,33 @@ final class SubscriptionRequiredDatabaseTests: SubscriptionDatabaseTestCase {
         XCTAssertEqual(logged, [try paid.requireID()])
     }
 
+    func testExpiryRemovesTheMemberOnce() async throws {
+        // Spec "플래그가 켜진 상태의 만료".
+        let member = try await fixtures.user("멤버")
+        let admin = try await fixtures.user("관리자")
+        let other = try await fixtures.user("다른 멤버")
+        let shared = try await fixtures.group(admin: admin, members: [member, other])
+        let own = try await fixtures.group("내 모임", admin: member, members: [other])
+        let memberID = try member.requireID()
+
+        let memberPost = try await fixtures.post(by: member, in: shared)
+        let photo = try await fixtures.media(uploadedBy: member, in: shared, post: memberPost)
+        let adminPost = try await fixtures.post(by: admin, in: shared)
+        let comment = Comment(
+            postID: try adminPost.requireID(), authorID: memberID, body: "아멘", clientID: UUID())
+        try await comment.create(on: db)
+        let reaction = Reaction(
+            postID: try adminPost.requireID(), userID: memberID, key: .emoji("🙏"))
+        try await reaction.create(on: db)
+        let profile = try await fixtures.media(uploadedBy: member, in: nil, purpose: .profile)
+
+        _ = try await subscriptionNotify(
+            type: "EXPIRED", subtype: "BILLING_RETRY",
+            transaction: AppStoreTestPayloads.transaction(
+                expires: Date().addingTimeInterval(-60), appAccountToken: memberID))
+
+        let removals = try await SubscriptionRemovalSweep.run(
+            on: db, dayLength: app.pilgrimConfig.dayLength, now: Date())
         XCTAssertEqual(removals.count, 1)
         XCTAssertEqual(removals.first?.removedFromGroups, true)
 

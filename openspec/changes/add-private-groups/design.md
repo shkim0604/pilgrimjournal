@@ -395,7 +395,9 @@ server/
 - 권한(`EntitlementPolicy`): `status ∈ {active, gracePeriod}`이고 `expires_at > now`면 구독 중.
 - 서버 설정 **`SUBSCRIPTION_REQUIRED`(출시 때 `false`)**:
   - `false`: 모두 구독 중으로 본다. `GET /me/entitlement`의 `subscriptionRequired = false`. 앱은 구독 화면을
-    건너뛴다. 만료 처리는 아무것도 하지 않는다.
+    건너뛴다. 만료 처리는 아무도 빼지 않고, `expired`·`revoked`가 된 행에 `removal_processed_at`만 채운다. 그래서
+    나중에 `true`로 바꾸면 그 뒤에 끝난 구독만 처리되고, 꺼져 있는 동안 끝난 구독(TestFlight Sandbox 포함) 때문에
+    멤버가 한꺼번에 빠지거나 글이 지워지지 않는다.
   - `true`: 그룹 API(`groups/**`, `posts/**`, `comments/**`, `stickers/**`, `invites` 만들기·수락, 사진
     업로드 중 `profile` 외, `GET /me/daily-report`)가 구독 중이 아닌 사용자에게 402 `SUBSCRIPTION_REQUIRED`.
     `GET /invites/:code`는 되고 `requiresSubscription = true`를 돌려준다(앱이 구독 화면을 보인다). 인증, `/me`,
@@ -997,7 +999,7 @@ NULL, `last_error_at` NULL.
 | `votes` | 60초 | `ends_at <= now()`인 열린 투표를 `AdminVoteRules.close`로 마감, 결과 알림. `pendingDeletion`이고 `delete_at <= now()`인 그룹 삭제 |
 | `dailyReport` | 60초 | 지금 리포트 시각이 지났고 오늘 `daily_report_log`가 없는 사용자 → 집계, 0이면 `skipped`, 아니면 outbox |
 | `appleRevocation` | 5분 | `apple_token_revocations`를 Apple `/auth/revoke`로. 실패하면 지수 백오프(최대 10회, 그 뒤 `last_error`로 남김) |
-| `subscriptions` | 10분 | `SUBSCRIPTION_REQUIRED=true`일 때만: 만료 처리(12절). 1시간마다 오래된 구독 재확인 |
+| `subscriptions` | 10분 | `SUBSCRIPTION_REQUIRED=true`일 때만 만료 처리(12절), `false`면 끝난 구독을 처리됨으로 표시만. 1시간마다 오래된 구독 재확인 |
 | `invites` | 1시간 | `expires_at`이 7일 넘게 지난 초대 행 삭제 |
 | `retention` | 1시간 | 신고 90일, `push_outbox` 보낸 지 7일·실패 30일, `daily_report_log` 30일, `appstore_notifications` 90일, 만료·폐기된 refresh token 7일 지난 것 삭제 |
 
