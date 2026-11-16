@@ -286,7 +286,7 @@ final class GroupsSessionTests: XCTestCase {
             storageLocationProvider: { .localOnly },
             makeGroupAPI: makeGroupAPI,
             groupNotificationOpener: opener,
-            groupSubscription: nil
+            attachesGroupSubscription: false
         )
     }
 

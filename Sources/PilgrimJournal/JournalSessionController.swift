@@ -37,7 +37,7 @@ final class JournalSessionController: ObservableObject {
     private let makeGroupAPI: GroupsFeature.APIFactory?
     /// Opens tapped group notifications once the app lock allows it.
     private let groupNotificationOpener: GroupNotificationOpener
-    /// Serves the shown session's group subscription; nil leaves it unattached (tests).
+    /// Serves the shown session's group subscription (`.shared`); nil in tests.
     private let groupSubscription: GroupSubscriptionController?
     private var registry: JournalAccountScopeRegistry
     /// Set while the storage folder could not be located. `activate` retries
@@ -50,15 +50,17 @@ final class JournalSessionController: ObservableObject {
         isVisualTesting: Bool = false,
         storageLocationProvider: (() async -> JournalStorageLocation)? = nil,
         makeGroupAPI: GroupsFeature.APIFactory? = GroupsFeature.defaultAPIFactory(),
-        groupNotificationOpener: GroupNotificationOpener = .shared,
-        groupSubscription: GroupSubscriptionController? = .shared
+        groupNotificationOpener: GroupNotificationOpener? = nil,
+        attachesGroupSubscription: Bool = true
     ) {
         self.rootURL = rootURL
         self.cloudKitContainerIdentifier = cloudKitContainerIdentifier
         self.isVisualTesting = isVisualTesting
         self.makeGroupAPI = makeGroupAPI
-        self.groupNotificationOpener = groupNotificationOpener
-        self.groupSubscription = groupSubscription
+        // Resolved here rather than as default arguments, which are not main-actor isolated in
+        // the app target's Swift 5 mode.
+        self.groupNotificationOpener = groupNotificationOpener ?? .shared
+        self.groupSubscription = attachesGroupSubscription ? .shared : nil
         registry = JournalAccountScopeRegistry(root: rootURL)
         if let storageLocationProvider {
             self.storageLocationProvider = storageLocationProvider
