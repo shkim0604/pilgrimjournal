@@ -1,6 +1,7 @@
 import Fluent
 import Foundation
 import Logging
+import NIOConcurrencyHelpers
 import PilgrimAPI
 import SQLKit
 
@@ -259,9 +260,14 @@ public enum PushOutboxSender {
         }
     }
 
-    static func sendAll(_ deliveries: [APNSDelivery], with sender: any APNSSending) async
-        -> [APNSDeliveryResult]
-    {
+    /// How long one APNs request may take. APNSwift waits forever (`deadline: .distantFuture`),
+    /// so a request whose connection dies after sending would otherwise stall the loop.
+    static let sendTimeout: Duration = .seconds(30)
+
+    static func sendAll(
+        _ deliveries: [APNSDelivery], with sender: any APNSSending,
+        timeout: Duration = sendTimeout
+    ) async -> [APNSDeliveryResult] {
         guard !deliveries.isEmpty else { return [] }
         var results = [APNSDeliveryResult](
             repeating: .retryLater("not sent"), count: deliveries.count)
@@ -272,7 +278,7 @@ public enum PushOutboxSender {
                 let index = next
                 let delivery = deliveries[index]
                 next += 1
-                group.addTask { (index, await sender.send(delivery)) }
+                group.addTask { (index, await send(delivery, with: sender, timeout: timeout)) }
             }
             for _ in 0..<min(maximumConcurrentSends, deliveries.count) { addNext() }
             while let (index, result) = await group.next() {
@@ -281,6 +287,55 @@ public enum PushOutboxSender {
             }
         }
         return results
+    }
+
+    /// One send, answered with `.retryLater("timeout")` after `timeout`. The send runs in an
+    /// unstructured task that is cancelled on timeout (which cancels the HTTP request): a task
+    /// group would instead wait for a child that ignores cancellation.
+    static func send(_ delivery: APNSDelivery, with sender: any APNSSending, timeout: Duration)
+        async -> APNSDeliveryResult
+    {
+        struct State {
+            var continuation: CheckedContinuation<APNSDeliveryResult, Never>?
+            var tasks: [Task<Void, Never>] = []
+            var done = false
+        }
+        let state = NIOLockedValueBox(State())
+        // The first caller wins; it cancels the loser (the timer, or the send that timed out).
+        @Sendable func finish(_ result: APNSDeliveryResult) {
+            let (continuation, tasks) = state.withLockedValue { state in
+                state.done = true
+                defer { state.continuation = nil }
+                return (state.continuation, state.tasks)
+            }
+            tasks.forEach { $0.cancel() }
+            continuation?.resume(returning: result)
+        }
+        return await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                let alreadyCancelled = state.withLockedValue { state in
+                    if !state.done { state.continuation = continuation }
+                    return state.done
+                }
+                guard !alreadyCancelled else {
+                    continuation.resume(returning: .retryLater("cancelled"))
+                    return
+                }
+                let sending = Task { finish(await sender.send(delivery)) }
+                let timer = Task {
+                    guard (try? await Task.sleep(for: timeout)) != nil else { return }
+                    finish(.retryLater("timeout"))
+                }
+                let finished = state.withLockedValue { state in
+                    state.tasks = [sending, timer]
+                    return state.done
+                }
+                // Finished before the tasks were stored: cancel what is still running.
+                if finished { [sending, timer].forEach { $0.cancel() } }
+            }
+        } onCancel: {
+            finish(.retryLater("cancelled"))
+        }
     }
 
     /// No APNs key. Production keeps the rows queued and fails the iteration so the operator

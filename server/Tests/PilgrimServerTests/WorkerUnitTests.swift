@@ -104,6 +104,23 @@ final class PushRulesTests: XCTestCase {
             Set(sender.deliveries.map(\.deviceToken)), Set(deliveries.map(\.deviceToken)))
     }
 
+    func testSendAllTimesOutAHungSendAndCancelsIt() async {
+        let sender = HangingAPNSSender()
+        let deliveries = ["hang", "ok"].map { token in
+            APNSDelivery(
+                deviceToken: token, topic: BundleIDs.release, environment: .production,
+                payload: .dailyReport(itemCount: 1), collapseID: nil)
+        }
+        let results = await PushOutboxSender.sendAll(
+            deliveries, with: sender, timeout: .milliseconds(100))
+        XCTAssertEqual(results, [.retryLater("timeout"), .delivered])
+        // The abandoned request is cancelled, not left running.
+        for _ in 0..<100 where !sender.wasCancelled {
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertTrue(sender.wasCancelled)
+    }
+
     func testUnconfiguredSenderIsTheDefault() async throws {
         let sender = UnconfiguredAPNSSender()
         XCTAssertFalse(sender.isConfigured)
