@@ -396,9 +396,9 @@ server/
   - `false`: 모두 구독 중으로 본다. `GET /me/entitlement`의 `subscriptionRequired = false`. 앱은 구독 화면을
     건너뛴다. 만료 처리는 아무것도 하지 않는다.
   - `true`: 그룹 API(`groups/**`, `posts/**`, `comments/**`, `stickers/**`, `invites` 만들기·수락, 사진
-    업로드 중 `profile` 외)가 구독 중이 아닌 사용자에게 402 `SUBSCRIPTION_REQUIRED`. `GET /invites/:code`는
-    되고 `requiresSubscription = true`를 돌려준다(앱이 구독 화면을 보인다). 인증, `/me`, 기기, 차단·숨김 목록,
-    구독 검증, 계정 삭제는 언제나 된다.
+    업로드 중 `profile` 외, `GET /me/daily-report`)가 구독 중이 아닌 사용자에게 402 `SUBSCRIPTION_REQUIRED`.
+    `GET /invites/:code`는 되고 `requiresSubscription = true`를 돌려준다(앱이 구독 화면을 보인다). 인증, `/me`,
+    기기, 차단·숨김 목록, 구독 검증, 계정 삭제는 언제나 된다. Daily Report 알림도 구독 중인 사용자에게만 보낸다.
   - 만료 처리(`true`일 때만): 구독 행의 상태가 `expired`·`revoked`가 되고 `removal_processed_at`이 비어 있으면
     worker가 그 사람을 모든 그룹에서 빼고(관리자면 투표 시작) 그 사람이 올린 글·댓글·반응·스티커·사진을 지운다.
     스크랩은 각자의 기록장에 있으므로 남는다. 다시 구독하면 초대로 다시 들어온다.

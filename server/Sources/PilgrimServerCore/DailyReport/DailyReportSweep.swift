@@ -79,7 +79,10 @@ public enum DailyReportSweep {
     public static func run(
         on db: any Database, config: AppConfig, now: Date, logger: Logger
     ) async throws -> Outcome {
-        let due = due(try await candidates(on: db), now: now)
+        let due = due(
+            try await candidates(
+                on: db, subscriptionRequired: config.subscriptionRequired, now: now),
+            now: now)
         var outcome = Outcome()
         var firstError: (any Error)?
         for item in due {
@@ -140,8 +143,11 @@ public enum DailyReportSweep {
         "daily-report-\(date.description)"
     }
 
-    /// Users who could get a report, with their latest logged date.
-    static func candidates(on db: any Database) async throws -> [Candidate] {
+    /// Users who could get a report, with their latest logged date. While
+    /// `SUBSCRIPTION_REQUIRED` is on, only entitled users (`EntitlementPolicy.isActive`).
+    static func candidates(on db: any Database, subscriptionRequired: Bool, now: Date)
+        async throws -> [Candidate]
+    {
         let sql = try PushOutbox.sqlDatabase(db)
         let rows = try await sql.raw(
             """
@@ -152,6 +158,11 @@ public enum DailyReportSweep {
             WHERE u.daily_report_enabled AND u.display_name IS NOT NULL
               AND EXISTS (SELECT 1 FROM memberships AS m
                   WHERE m.user_id = u.id AND m.daily_report_enabled)
+              AND (NOT \(bind: subscriptionRequired) OR EXISTS (
+                  SELECT 1 FROM subscriptions AS s
+                  WHERE s.user_id = u.id AND s.expires_at > \(bind: now)
+                    AND s.status IN (\(bind: SubscriptionStatus.active.rawValue),
+                        \(bind: SubscriptionStatus.gracePeriod.rawValue))))
             ORDER BY u.id
             """
         ).all()

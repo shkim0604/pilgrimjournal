@@ -469,6 +469,35 @@ final class SubscriptionRequiredDatabaseTests: SubscriptionDatabaseTestCase {
 
         let removals = try await SubscriptionRemovalSweep.run(
             on: db, dayLength: app.pilgrimConfig.dayLength, now: Date())
+    func testDailyReportNeedsTheSubscription() async throws {
+        let member = try await fixtures.user("멤버")
+        let paid = try await fixtures.user("구독자")
+        let admin = try await fixtures.user("관리자")
+        _ = try await fixtures.group(admin: admin, members: [member, paid])
+        let verified = try await subscriptionVerify(
+            AppStoreTestPayloads.transaction(
+                expires: Date().addingTimeInterval(86_400), appAccountToken: try paid.requireID()),
+            as: paid)
+        XCTAssertEqual(verified.status, .ok, verified.body.string)
+
+        try assertError(
+            try await send(.GET, "/api/v1/me/daily-report", as: member), .subscriptionRequired)
+        let report = try await send(.GET, "/api/v1/me/daily-report", as: paid)
+        XCTAssertEqual(report.status, .ok, report.body.string)
+
+        // Both reports are due this minute; the nightly sweep builds only the entitled one.
+        let now = Date()
+        for user in [member, paid] {
+            user.timeZone = "UTC"
+            user.dailyReportMinute = Int(now.timeIntervalSince1970) % 86_400 / 60
+            try await user.update(on: db)
+        }
+        _ = try await DailyReportSweep.run(
+            on: db, config: app.pilgrimConfig, now: now, logger: app.logger)
+        let logged = try await DailyReportLogEntry.query(on: db).all().map(\.$user.id)
+        XCTAssertEqual(logged, [try paid.requireID()])
+    }
+
         XCTAssertEqual(removals.count, 1)
         XCTAssertEqual(removals.first?.removedFromGroups, true)
 
