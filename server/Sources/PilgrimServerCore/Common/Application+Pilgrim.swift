@@ -93,12 +93,15 @@ extension Request {
 /// - `root`: no checks (AASA, `/i/:code`, signed media files, App Store webhook).
 /// - `v1`: `/api/v1` with the `X-Pilgrim-Client` gate and the per-IP limit — for the
 ///   sign-in endpoints that run before there is a user.
+/// - `clientGated`: `/api/v1` with only the client gate, for a route that brings its own limit
+///   (`auth/refresh`).
 /// - `authenticated`: `v1` plus a valid access token (`req.userID`) and the per-user limit.
 /// - `admin`: `/internal/admin/v1` with no client gate. The operator guard (`X-Admin-Token`,
 ///   `Cf-Ray` refusal) is added by the Internal/Moderation module (S4).
 public struct PilgrimRoutes: @unchecked Sendable {
     public var root: any RoutesBuilder
     public var v1: any RoutesBuilder
+    public var clientGated: any RoutesBuilder
     public var authenticated: any RoutesBuilder
     public var admin: any RoutesBuilder
 }

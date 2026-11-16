@@ -141,6 +141,29 @@ final class MiddlewareTests: ServerTestCase {
         }
     }
 
+    func testRefreshHasItsOwnPerIPBucket() async throws {
+        app.pilgrimConfig.rateLimits.unauthenticatedPerIP = RateLimitRule(requests: 2, window: 600)
+        app.pilgrimConfig.rateLimits.refreshPerIP = RateLimitRule(requests: 40, window: 600)
+        var headers = try headers()
+        headers.replaceOrAdd(name: "Cf-Connecting-IP", value: "203.0.113.9")
+        // No body: the limiter runs, then decoding fails before any database work.
+        for attempt in 0..<40 {
+            try await app.test(.POST, "api/v1/auth/refresh", headers: headers) {
+                res async throws in
+                XCTAssertNotEqual(res.status.code, 429, "refresh \(attempt)")
+            }
+        }
+        try await app.test(.POST, "api/v1/auth/refresh", headers: headers) { res async throws in
+            XCTAssertEqual(res.status.code, 429)
+        }
+        // Refreshes left the sign-in bucket untouched.
+        for _ in 0..<2 {
+            try await app.test(.GET, "api/v1/test/open", headers: headers) { res async throws in
+                XCTAssertEqual(res.status, .ok)
+            }
+        }
+    }
+
     func testHealthWithoutDatabaseIs503() async throws {
         try await app.test(.GET, "api/health") { res async throws in
             XCTAssertEqual(res.status.code, 503)

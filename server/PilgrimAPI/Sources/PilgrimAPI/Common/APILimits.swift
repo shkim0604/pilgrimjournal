@@ -74,4 +74,6 @@ public enum RateLimitDefaults {
     public static let other = Rule(requests: 600, window: 600)
     /// Unauthenticated endpoints, per IP (`Cf-Connecting-IP`).
     public static let unauthenticatedPerIP = Rule(requests: 30, window: 600)
+    /// `auth/refresh`, per IP: a congregation on one Wi-Fi refreshes at once after a service.
+    public static let refreshPerIP = Rule(requests: 600, window: 600)
 }

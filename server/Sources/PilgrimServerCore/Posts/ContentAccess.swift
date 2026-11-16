@@ -18,6 +18,22 @@ enum ContentAccess {
         return post
     }
 
+    /// An unexpired post in a group the viewer belongs to, else 404 — without the block and hide
+    /// filters, so people can still take down their own post, comment or reaction after the
+    /// post's author blocks them or while they hide the author or the post.
+    static func memberPost(_ postID: UUID, viewer: UUID, on db: any Database, now: Date = Date())
+        async throws -> (post: Post, group: Group)
+    {
+        guard
+            let post = try await Post.query(on: db)
+                .filter(\.$id == postID)
+                .filter(\.$expiresAt > now)
+                .first()
+        else { throw APIError.notFound() }
+        let (group, _) = try await GroupAccess.memberGroup(post.$group.id, viewer: viewer, on: db)
+        return (post, group)
+    }
+
     /// A sticker of `groupID`, or 404: another group's sticker looks like an unknown one
     /// (design.md 8절).
     @discardableResult

@@ -244,6 +244,7 @@ public struct RateLimits: Sendable, Equatable {
     public var inviteCreation: RateLimitRule
     public var other: RateLimitRule
     public var unauthenticatedPerIP: RateLimitRule
+    public var refreshPerIP: RateLimitRule
 
     public init() {
         posts = RateLimitRule(RateLimitDefaults.posts)
@@ -254,6 +255,7 @@ public struct RateLimits: Sendable, Equatable {
         inviteCreation = RateLimitRule(RateLimitDefaults.inviteCreation)
         other = RateLimitRule(RateLimitDefaults.other)
         unauthenticatedPerIP = RateLimitRule(RateLimitDefaults.unauthenticatedPerIP)
+        refreshPerIP = RateLimitRule(RateLimitDefaults.refreshPerIP)
     }
 
     init(environment env: [String: String]) throws {
@@ -276,6 +278,7 @@ public struct RateLimits: Sendable, Equatable {
         try read("INVITES", into: &inviteCreation)
         try read("OTHER", into: &other)
         try read("UNAUTHENTICATED", into: &unauthenticatedPerIP)
+        try read("REFRESH", into: &refreshPerIP)
     }
 }
 
