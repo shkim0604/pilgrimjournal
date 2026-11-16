@@ -199,28 +199,93 @@ final class ScrapComposerTests: XCTestCase {
         )
     }
 
-    func testOtherLanguageLabels() {
-        let english = ScrapLabels(
-            locale: Locale(identifier: "en_US"), scrap: "Scrap", prayerKind: "Prayer request",
-            bookReportKind: "Book report", testimonyKind: "Testimony",
-            posted: { "posted \($0)" }, deadline: { "deadline \($0)" },
-            prayerTitle: { "\($0)'s prayer request" }, testimonyTitle: { "\($0)'s testimony" },
-            comments: "Comments", sticker: "(sticker)", topicName: { $0 })
+    private func englishPost() -> ScrapPost {
+        var post = prayerPost()
+        post.items = [
+            .init(
+                text: "Pray that Mom's test results come back clear", topic: "health", who: "Mom"),
+            .init(text: "Calm for my interview this week"),
+        ]
+        return post
+    }
+
+    func testEnglishPostIsWrittenInEnglishButKeepsTheKoreanNotebook() {
         let scrap = ScrapComposer.compose(
-            post: prayerPost(),
-            comments: [ScrapComment(authorName: "Junho", body: "Praying", createdAt: postedAt)],
-            labels: english)
-        XCTAssertEqual(scrap.draft.title, "민지's prayer request")
-        XCTAssertEqual(scrap.notebookName, "Scrap · 수요 기도모임")
+            post: englishPost(),
+            comments: [
+                ScrapComment(authorName: "Junho", body: "Praying", createdAt: postedAt),
+                ScrapComment(
+                    authorName: "수아", body: "", createdAt: postedAt.addingTimeInterval(86_400),
+                    hasSticker: true),
+            ])
+        XCTAssertEqual(scrap.draft.title, "민지's prayer requests")
+        XCTAssertEqual(scrap.notebookName, "스크랩 · 수요 기도모임")
+        XCTAssertEqual(scrap.draft.notebookName, "스크랩 · 수요 기도모임")
+        XCTAssertEqual(
+            scrap.draft.body,
+            """
+            > Scraps · 수요 기도모임
+            > 민지 · Prayer requests · Posted on November 14, 2026 · Deadline November 20, 2026
+            > \(marker)
+
+            - Pray that Mom's test results come back clear (Mom/health)
+            - Calm for my interview this week
+
+            ---
+
+            **Comments**
+
+            > Junho · November 14: Praying
+            > 수아 · November 15: (sticker)
+            """)
+    }
+
+    func testEnglishUntitledTestimonyAndBookReport() {
+        var testimony = englishPost()
+        testimony.kind = .testimony
+        testimony.items = []
+        testimony.deadline = nil
+        testimony.body = "God provided a way."
+        XCTAssertEqual(ScrapComposer.title(testimony), "민지's testimony")
+        let body = ScrapComposer.compose(post: testimony, comments: []).draft.body
+        XCTAssertTrue(body.contains("> 민지 · Testimony · Posted on November 14, 2026\n"), body)
+
+        var report = testimony
+        report.kind = .bookReport
+        report.book = .init(title: "Mere Christianity", author: "C. S. Lewis")
+        XCTAssertEqual(ScrapComposer.title(report), "Mere Christianity")
         XCTAssertTrue(
-            scrap.draft.body.hasPrefix(
-                """
-                > Scrap · 수요 기도모임
-                > 민지 · Prayer request · posted November 14, 2026 · deadline November 20, 2026
-                > \(marker)
-                """), scrap.draft.body)
-        XCTAssertTrue(scrap.draft.body.contains("(엄마/health)"))
-        XCTAssertTrue(scrap.draft.body.hasSuffix("> Junho · November 14: Praying"))
+            ScrapComposer.compose(post: report, comments: []).draft.body.contains(
+                " · Book report · "))
+    }
+
+    func testOneGroupsKoreanAndEnglishPostsShareTheNotebook() {
+        let korean = ScrapComposer.compose(post: prayerPost(), comments: [])
+        let english = ScrapComposer.compose(post: englishPost(), comments: [])
+        XCTAssertEqual(korean.notebookName, english.notebookName)
+        XCTAssertEqual(
+            ScrapComposer.notebookName(groupName: "Wednesday prayer"), "스크랩 · Wednesday prayer")
+        XCTAssertEqual(ScrapComposer.notebookPrefix, "스크랩")
+    }
+
+    func testFixedWordSetsNeverComeFromTheDevice() {
+        XCTAssertEqual(ScrapLabels.korean.scrap, "스크랩")
+        XCTAssertEqual(ScrapLabels.english.scrap, "Scraps")
+        XCTAssertEqual(ScrapLabels.korean.locale.identifier, "ko_KR")
+        XCTAssertEqual(ScrapLabels.english.locale.identifier, "en_US")
+        XCTAssertEqual(ScrapLabels.english.posted("x"), "Posted on x")
+        XCTAssertEqual(ScrapLabels.english.deadline("x"), "Deadline x")
+        XCTAssertEqual(ScrapLabels.english.prayerTitle("Minji"), "Minji's prayer requests")
+        XCTAssertEqual(ScrapLabels.english.testimonyTitle("Minji"), "Minji's testimony")
+        XCTAssertEqual(ScrapLabels.english.comments, "Comments")
+        XCTAssertEqual(ScrapLabels.english.sticker, "(sticker)")
+        XCTAssertEqual(ScrapLabels.english.topicName("finances"), "finances")
+        XCTAssertNil(ScrapLabels.english.topicName("unknown-topic"))
+        XCTAssertEqual(ScrapLabels.korean.topicName("finances"), "재정")
+        XCTAssertEqual(
+            Set(ScrapLabels.englishTopicNames.keys), Set(ScrapLabels.koreanTopicNames.keys))
+        XCTAssertEqual(ScrapLabels.labels(for: .english).scrap, "Scraps")
+        XCTAssertEqual(ScrapLabels.labels(for: prayerPost()).scrap, "스크랩")
     }
 
     func testMarkerParsing() {
@@ -243,6 +308,61 @@ final class ScrapComposerTests: XCTestCase {
         let second = ScrapComposer.compose(
             post: prayerPost(photos: [photo1]), comments: [], makeAttachmentID: sequentialIDs())
         XCTAssertEqual(first, second)
+    }
+}
+
+final class ScrapLanguageTests: XCTestCase {
+    private func post(
+        title: String? = nil, body: String? = nil, items: [ScrapPost.PrayerLine] = [],
+        author: String = "민지", groupName: String = "수요 기도모임", book: ScrapPost.Book? = nil
+    ) -> ScrapPost {
+        ScrapPost(
+            id: UUID(), groupID: UUID(), groupName: groupName, kind: .prayer, authorName: author,
+            title: title, body: body, items: items, book: book, createdAt: Date(),
+            timeZoneIdentifier: "Asia/Seoul")
+    }
+
+    func testAnyHangulInTitleBodyOrItemsMakesItKorean() {
+        XCTAssertEqual(ScrapLanguage.of(post(title: "기도 부탁")), .korean)
+        XCTAssertEqual(ScrapLanguage.of(post(body: "Please pray 감사합니다")), .korean)
+        XCTAssertEqual(ScrapLanguage.of(post(items: [.init(text: "건강")])), .korean)
+        XCTAssertEqual(ScrapLanguage.of(post(items: [.init(text: "health", who: "엄마")])), .korean)
+        XCTAssertEqual(
+            ScrapLanguage.of(post(title: "Prayer", body: "Mostly English, one word 은혜.")), .korean)
+    }
+
+    func testNoHangulIsEnglish() {
+        XCTAssertEqual(ScrapLanguage.of(post(body: "Please pray for my exams")), .english)
+        XCTAssertEqual(ScrapLanguage.of(post(items: [.init(text: "Job", who: "Dad")])), .english)
+        XCTAssertEqual(ScrapLanguage.of(post()), .english, "nothing to read")
+        XCTAssertEqual(ScrapLanguage.of(post(body: "   \n")), .english)
+        XCTAssertEqual(ScrapLanguage.of(post(body: "🙏 2026-11-20 !!")), .english)
+        XCTAssertEqual(ScrapLanguage.of(post(body: "お祈りください 祈祷")), .english, "Japanese, Chinese")
+    }
+
+    func testNamesDoNotDecide() {
+        XCTAssertEqual(
+            ScrapLanguage.of(
+                post(
+                    body: "Thank you all", author: "김민지", groupName: "수요 기도모임",
+                    book: .init(title: "순전한 기독교", author: "루이스"))),
+            .english)
+    }
+
+    func testEveryHangulBlockCounts() {
+        for text in [
+            "가", "힣", // syllables
+            "\u{1100}", "\u{11FF}", // conjoining jamo
+            "ㄱ", "ㅋㅋ", "ㅏ", // compatibility jamo
+            "\u{A960}", "\u{D7B0}", "\u{D7FB}", // extended A and B
+            "\u{FFA1}", "\u{FFDC}", // halfwidth
+            "가\u{0301}", // with a combining mark
+        ] {
+            XCTAssertTrue(ScrapLanguage.containsHangul(text), text)
+        }
+        for text in ["", "abc", "\u{10FF}", "\u{3190}", "\u{D7A4}", "\u{FFDD}", "é", "ü"] {
+            XCTAssertFalse(ScrapLanguage.containsHangul(text), text)
+        }
     }
 }
 #endif

@@ -105,13 +105,55 @@ public struct ScrapComment: Equatable, Sendable {
     }
 }
 
-/// The words of a scrap's header, title and comment section, in the app's language at the
-/// moment of the scrap. They become stored text and are never translated later, so the app
-/// passes its localized strings; `korean` is the source language.
+/// The language a scrap is written in: the shared post's own language, never the device's,
+/// so every device writes the same words for the same post.
+public enum ScrapLanguage: String, Equatable, Sendable {
+    case korean
+    case english
+
+    /// Korean when the post's text (title, body, prayer lines and who they are for) holds any
+    /// Hangul syllable or jamo, otherwise English. Deterministic and the same on every OS
+    /// version, unlike a statistical language recognizer. Names (author, group, book) are left
+    /// out: a Korean name does not make an English post Korean.
+    public static func of(_ post: ScrapPost) -> ScrapLanguage {
+        var texts = [post.title, post.body]
+        for item in post.items {
+            texts.append(item.text)
+            texts.append(item.who)
+        }
+        return texts.contains { containsHangul($0 ?? "") } ? .korean : .english
+    }
+
+    /// Whether `text` has a Hangul syllable or jamo (conjoining, compatibility, the extended
+    /// blocks or the halfwidth forms).
+    public static func containsHangul(_ text: String) -> Bool {
+        text.unicodeScalars.contains { isHangul($0.value) }
+    }
+
+    private static func isHangul(_ value: UInt32) -> Bool {
+        switch value {
+        case 0xAC00...0xD7A3, // Hangul Syllables
+            0x1100...0x11FF, // Hangul Jamo
+            0x3130...0x318F, // Hangul Compatibility Jamo
+            0xA960...0xA97F, // Hangul Jamo Extended-A
+            0xD7B0...0xD7FF, // Hangul Jamo Extended-B
+            0xFFA0...0xFFDC: // Halfwidth Hangul
+            return true
+        default:
+            return false
+        }
+    }
+}
+
+/// The words of a scrap's header, title and comment section. They become stored text and are
+/// never translated later, so both sets are fixed here instead of coming from the app's
+/// String Catalog: the result depends only on the post (`ScrapLanguage.of`), not on the
+/// device's language. The notebook name is not among them; it is always Korean
+/// (`ScrapComposer.notebookPrefix`).
 public struct ScrapLabels: Sendable {
     /// Formats the post and comment dates.
     public var locale: Locale
-    /// "스크랩": the header's first word and the notebook name's prefix.
+    /// "스크랩" / "Scraps": the header's first word.
     public var scrap: String
     public var prayerKind: String
     public var bookReportKind: String
@@ -167,11 +209,28 @@ public struct ScrapLabels: Sendable {
         }
     }
 
+    /// The fixed set for `language`.
+    public static func labels(for language: ScrapLanguage) -> ScrapLabels {
+        switch language {
+        case .korean: korean
+        case .english: english
+        }
+    }
+
+    /// The fixed set for the post's own language.
+    public static func labels(for post: ScrapPost) -> ScrapLabels {
+        labels(for: ScrapLanguage.of(post))
+    }
+
     /// The Korean names of the group server's prayer topics.
     public static let koreanTopicNames: [String: String] = [
         "health": "건강", "family": "가정", "work": "직장", "study": "학업",
         "finances": "재정", "relationships": "관계", "faith": "신앙", "career": "진로",
     ]
+
+    /// The English names, the raw values as `PrayerRequestTopic.name(in: .english)` gives them.
+    public static let englishTopicNames: [String: String] = Dictionary(
+        uniqueKeysWithValues: koreanTopicNames.keys.map { ($0, $0) })
 
     public static let korean = ScrapLabels(
         locale: Locale(identifier: "ko_KR"),
@@ -186,6 +245,20 @@ public struct ScrapLabels: Sendable {
         comments: "댓글",
         sticker: "(스티커)",
         topicName: { ScrapLabels.koreanTopicNames[$0] })
+
+    public static let english = ScrapLabels(
+        locale: Locale(identifier: "en_US"),
+        scrap: "Scraps",
+        prayerKind: "Prayer requests",
+        bookReportKind: "Book report",
+        testimonyKind: "Testimony",
+        posted: { "Posted on \($0)" },
+        deadline: { "Deadline \($0)" },
+        prayerTitle: { "\($0)'s prayer requests" },
+        testimonyTitle: { "\($0)'s testimony" },
+        comments: "Comments",
+        sticker: "(sticker)",
+        topicName: { ScrapLabels.englishTopicNames[$0] })
 }
 
 /// A photo the scrap's body refers to, still to be downloaded and saved as an attachment
@@ -212,7 +285,7 @@ public struct ScrapComposition: Equatable, Sendable {
     public var draft: JournalEntryDraft
     /// The post's photos first, then each comment's, in body order.
     public var attachments: [ScrapAttachment]
-    /// "스크랩 · <그룹 이름>".
+    /// "스크랩 · <그룹 이름>", always in Korean whatever the post's language.
     public var notebookName: String
 
     public init(draft: JournalEntryDraft, attachments: [ScrapAttachment], notebookName: String) {

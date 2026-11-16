@@ -20,15 +20,24 @@ import Foundation
 /// ```
 ///
 /// A book report puts `**<책 제목>** · <저자>` right after the header. Comment photos follow
-/// their comment's quote as image lines. No comments, no comment section. Pure: the same
-/// input (and attachment IDs) always gives the same entry.
+/// their comment's quote as image lines. No comments, no comment section.
+///
+/// The words follow the post's own language (`ScrapLanguage.of`: Korean if its text has any
+/// Hangul, otherwise English) from fixed sets (`ScrapLabels.korean` / `.english`), never the
+/// device's language, so every device stores the same text for the same post. The notebook is
+/// always "스크랩 · <그룹 이름>" in Korean, so one group's Korean and English posts share it.
+/// Pure: the same input (and attachment IDs) always gives the same entry.
 public enum ScrapComposer {
+    /// The notebook name's first word, stored in Korean like the built-in kind "스크랩" and
+    /// never translated: one notebook per group whatever language its posts are in.
+    public static let notebookPrefix = "스크랩"
+
     public static func compose(
         post: ScrapPost,
         comments: [ScrapComment],
-        labels: ScrapLabels = .korean,
         makeAttachmentID: () -> UUID = { UUID() }
     ) -> ScrapComposition {
+        let labels = ScrapLabels.labels(for: post)
         let timeZone = TimeZone(identifier: post.timeZoneIdentifier) ?? .current
         var attachments: [ScrapAttachment] = []
         func imageLines(_ mediaIDs: [UUID]) -> String {
@@ -68,7 +77,7 @@ public enum ScrapComposer {
             if !quotes.isEmpty { blocks.append(quotes.joined(separator: "\n")) }
         }
 
-        let notebookName = notebookName(groupName: post.groupName, labels: labels)
+        let notebookName = notebookName(groupName: post.groupName)
         var draft = JournalEntryDraft(
             kind: .scrap,
             title: title(post, labels: labels),
@@ -81,15 +90,19 @@ public enum ScrapComposer {
     }
 
     /// "스크랩 · <그룹 이름>" (U+00B7 with one space either side), or just "스크랩" for a
-    /// nameless group.
-    public static func notebookName(groupName: String, labels: ScrapLabels = .korean) -> String {
-        guard let name = clean(groupName) else { return labels.scrap }
-        return "\(labels.scrap) · \(name)"
+    /// nameless group. Korean whatever the post's language.
+    public static func notebookName(groupName: String) -> String {
+        guard let name = clean(groupName) else { return notebookPrefix }
+        return "\(notebookPrefix) · \(name)"
     }
 
     /// The post's title; otherwise a book report's book title, or "<작성자>의 기도제목" /
-    /// "<작성자>의 간증".
-    public static func title(_ post: ScrapPost, labels: ScrapLabels = .korean) -> String {
+    /// "<작성자>의 간증", in the post's language.
+    public static func title(_ post: ScrapPost) -> String {
+        title(post, labels: ScrapLabels.labels(for: post))
+    }
+
+    private static func title(_ post: ScrapPost, labels: ScrapLabels) -> String {
         if let title = clean(post.title) { return title }
         let author = clean(post.authorName) ?? ""
         switch post.kind {
