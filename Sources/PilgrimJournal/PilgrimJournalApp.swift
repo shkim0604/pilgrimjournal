@@ -221,23 +221,26 @@ struct PilgrimJournalApp: App {
                 )
             )
         }
+        let journalSession = JournalSessionController(
+            rootURLProvider: {
+                isVisualTesting ? visualTestingRoot : try JournalPaths.applicationRoot()
+            },
+            cloudKitContainerIdentifier: cloudKitEnabled ? requestedCloudIdentifier : nil,
+            isVisualTesting: isVisualTesting,
+            // The bypass user is never bound (see above), so nothing could verify it.
+            requiresVerifiedCloudIdentity: Self.developerSignInBypassUser == nil
+        )
+        _journalSession = StateObject(wrappedValue: journalSession)
         _authentication = StateObject(
             wrappedValue: AppleAuthenticationCoordinator(
                 service: sessionService,
                 cloudIdentityChecker: cloudIdentityChecker,
                 accountDeleter: accountDeleter,
+                cloudIdentityVerification: journalSession,
                 bypassForVisualTesting: Self.isVisualTesting
                     || Self.developerSignInBypassUser != nil
             )
         )
-        _journalSession = StateObject(
-            wrappedValue: JournalSessionController(
-                rootURLProvider: {
-                    isVisualTesting ? visualTestingRoot : try JournalPaths.applicationRoot()
-                },
-                cloudKitContainerIdentifier: cloudKitEnabled ? requestedCloudIdentifier : nil,
-                isVisualTesting: isVisualTesting
-            ))
     }
 
     var body: some Scene {

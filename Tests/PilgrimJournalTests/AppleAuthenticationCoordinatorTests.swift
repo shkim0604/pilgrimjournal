@@ -189,6 +189,122 @@ final class AppleAuthenticationCoordinatorTests: XCTestCase {
     }
 
     @MainActor
+    func testMismatchLeavesNothingThatLetsTheNextLaunchIn() async throws {
+        let service = AppleAuthenticationSessionService(store: InMemorySecureValueStore())
+        let verification = RecordingCloudIdentityVerification(canOpen: true)
+        let coordinator = AppleAuthenticationCoordinator(
+            service: service,
+            credentialChecker: StubCredentialChecker(result: .success(.authorized)),
+            cloudIdentityChecker: StubCloudIdentityChecker(result: .mismatch),
+            cloudIdentityVerification: verification
+        )
+
+        await coordinator.acceptAuthorizedUser(identifier: "apple-user-b")
+
+        XCTAssertEqual(coordinator.state, .blockedCloudAccountMismatch)
+        XCTAssertEqual(verification.forgotten, ["apple-user-b"])
+        XCTAssertTrue(verification.verified.isEmpty)
+        let session = try await service.session()
+        XCTAssertFalse(session.hasOfflineSession)
+
+        for result: Result<AppleCredentialState, Error> in [
+            .failure(StubError.offline), .success(.authorized),
+        ] {
+            let relaunched = AppleAuthenticationCoordinator(
+                service: service,
+                credentialChecker: StubCredentialChecker(result: result),
+                cloudIdentityChecker: StubCloudIdentityChecker(result: .mismatch),
+                cloudIdentityVerification: verification
+            )
+            await relaunched.bootstrap()
+            XCTAssertEqual(relaunched.state, .signedOut)
+            XCTAssertFalse(relaunched.canAccessJournal)
+        }
+    }
+
+    @MainActor
+    func testCloudRecheckAfterMismatchLetsTheUserBackIn() async throws {
+        let service = AppleAuthenticationSessionService(store: InMemorySecureValueStore())
+        let cloudChecker = SwitchableCloudIdentityChecker(result: .mismatch)
+        let verification = RecordingCloudIdentityVerification(canOpen: true)
+        let coordinator = AppleAuthenticationCoordinator(
+            service: service,
+            credentialChecker: StubCredentialChecker(result: .success(.authorized)),
+            cloudIdentityChecker: cloudChecker,
+            cloudIdentityVerification: verification
+        )
+        await coordinator.acceptAuthorizedUser(identifier: "apple-user")
+        XCTAssertEqual(coordinator.state, .blockedCloudAccountMismatch)
+
+        // The user switched to their own iCloud and pressed ‘iCloud 연결 다시 확인’.
+        await cloudChecker.set(.matched)
+        await coordinator.refreshCloudIdentityBinding()
+
+        XCTAssertEqual(coordinator.state, .authenticated(offline: false))
+        XCTAssertEqual(verification.verified, ["apple-user"])
+        let session = try await service.session()
+        XCTAssertEqual(session.currentUserIdentifier, "apple-user")
+    }
+
+    @MainActor
+    func testUnverifiedICloudPairWaitsForTheCheckInsteadOfOpeningAtOnce() async throws {
+        let service = AppleAuthenticationSessionService(store: InMemorySecureValueStore())
+        try await service.acceptAuthorizedUser(identifier: "apple-user")
+        let checker = SuspendingCredentialChecker()
+        let verification = RecordingCloudIdentityVerification(canOpen: false)
+        let coordinator = AppleAuthenticationCoordinator(
+            service: service,
+            credentialChecker: checker,
+            cloudIdentityChecker: StubCloudIdentityChecker(result: .matched),
+            cloudIdentityVerification: verification
+        )
+
+        let bootstrap = Task { await coordinator.bootstrap() }
+        while !checker.didStart {
+            await Task.yield()
+        }
+        XCTAssertEqual(coordinator.state, .checking)
+        XCTAssertFalse(coordinator.canAccessJournal)
+
+        checker.finish(with: .authorized)
+        await bootstrap.value
+        XCTAssertEqual(coordinator.state, .authenticated(offline: false))
+        XCTAssertEqual(verification.verified, ["apple-user"])
+    }
+
+    @MainActor
+    func testVerifiedPairStillOpensWhenAppleCannotBeReached() async throws {
+        let service = AppleAuthenticationSessionService(store: InMemorySecureValueStore())
+        try await service.acceptAuthorizedUser(identifier: "apple-user")
+        let coordinator = AppleAuthenticationCoordinator(
+            service: service,
+            credentialChecker: StubCredentialChecker(result: .failure(StubError.offline)),
+            cloudIdentityChecker: StubCloudIdentityChecker(result: .mismatch),
+            cloudIdentityVerification: RecordingCloudIdentityVerification(canOpen: true)
+        )
+
+        await coordinator.bootstrap()
+
+        XCTAssertEqual(coordinator.state, .authenticated(offline: true))
+    }
+
+    @MainActor
+    func testSignOutForgetsTheVerifiedPairs() async {
+        let verification = RecordingCloudIdentityVerification(canOpen: true)
+        let coordinator = AppleAuthenticationCoordinator(
+            service: AppleAuthenticationSessionService(store: InMemorySecureValueStore()),
+            credentialChecker: StubCredentialChecker(result: .success(.authorized)),
+            cloudIdentityChecker: StubCloudIdentityChecker(result: .bound),
+            cloudIdentityVerification: verification
+        )
+        await coordinator.acceptAuthorizedUser(identifier: "apple-user")
+
+        await coordinator.signOut()
+
+        XCTAssertEqual(verification.forgotten, ["apple-user"])
+    }
+
+    @MainActor
     func testUnavailableICloudKeepsLocalOnlyJournalAccess() async {
         let coordinator = AppleAuthenticationCoordinator(
             service: AppleAuthenticationSessionService(
@@ -400,6 +516,45 @@ private struct StubCloudIdentityChecker: CloudIdentityBindingChecking {
         userIdentifier: String
     ) async -> CloudIdentityBindingResult {
         result
+    }
+}
+
+private actor SwitchableCloudIdentityChecker: CloudIdentityBindingChecking {
+    private var result: CloudIdentityBindingResult
+
+    init(result: CloudIdentityBindingResult) {
+        self.result = result
+    }
+
+    func set(_ result: CloudIdentityBindingResult) {
+        self.result = result
+    }
+
+    func verifyOrBind(userIdentifier: String) async -> CloudIdentityBindingResult {
+        result
+    }
+}
+
+@MainActor
+private final class RecordingCloudIdentityVerification: CloudIdentityVerificationRecording {
+    let canOpen: Bool
+    private(set) var verified: [String] = []
+    private(set) var forgotten: [String] = []
+
+    init(canOpen: Bool) {
+        self.canOpen = canOpen
+    }
+
+    func canOpenBeforeVerification(appleUserIdentifier: String) async -> Bool {
+        canOpen && !forgotten.contains(appleUserIdentifier)
+    }
+
+    func markCloudIdentityVerified(appleUserIdentifier: String) async {
+        verified.append(appleUserIdentifier)
+    }
+
+    func forgetCloudIdentity(appleUserIdentifier: String) {
+        forgotten.append(appleUserIdentifier)
     }
 }
 #endif

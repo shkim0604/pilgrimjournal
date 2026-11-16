@@ -30,6 +30,17 @@ struct SystemAppleCredentialStateChecker: AppleCredentialStateChecking {
     }
 }
 
+/// Remembers which (Apple user, iCloud account) pairs passed the cloud
+/// identity check, so an unchecked pair never opens the iCloud scope.
+@MainActor
+protocol CloudIdentityVerificationRecording: AnyObject {
+    func canOpenBeforeVerification(appleUserIdentifier: String) async -> Bool
+    func markCloudIdentityVerified(appleUserIdentifier: String) async
+    func forgetCloudIdentity(appleUserIdentifier: String)
+}
+
+extension JournalSessionController: CloudIdentityVerificationRecording {}
+
 @MainActor
 final class AppleAuthenticationCoordinator: ObservableObject {
     enum State: Equatable {
@@ -65,6 +76,7 @@ final class AppleAuthenticationCoordinator: ObservableObject {
     private let credentialChecker: any AppleCredentialStateChecking
     private let cloudIdentityChecker: (any CloudIdentityBindingChecking)?
     private let accountDeleter: (any AccountDeleting)?
+    private let cloudIdentityVerification: (any CloudIdentityVerificationRecording)?
     private let bypassForVisualTesting: Bool
 
     init(
@@ -72,6 +84,7 @@ final class AppleAuthenticationCoordinator: ObservableObject {
         credentialChecker: (any AppleCredentialStateChecking)? = nil,
         cloudIdentityChecker: (any CloudIdentityBindingChecking)? = nil,
         accountDeleter: (any AccountDeleting)? = nil,
+        cloudIdentityVerification: (any CloudIdentityVerificationRecording)? = nil,
         bypassForVisualTesting: Bool = false
     ) {
         self.service = service
@@ -80,6 +93,7 @@ final class AppleAuthenticationCoordinator: ObservableObject {
             ?? SystemAppleCredentialStateChecker()
         self.cloudIdentityChecker = cloudIdentityChecker
         self.accountDeleter = accountDeleter
+        self.cloudIdentityVerification = cloudIdentityVerification
         #if DEBUG
         self.bypassForVisualTesting = bypassForVisualTesting
         #else
@@ -123,10 +137,14 @@ final class AppleAuthenticationCoordinator: ObservableObject {
                 email: session.accountEmail,
                 identifier: identifier
             )
-            if session.hasOfflineSession {
+            if session.hasOfflineSession,
+                await cloudIdentityVerification?.canOpenBeforeVerification(
+                    appleUserIdentifier: identifier) ?? true
+            {
                 // The Keychain session is the last successful authorization.
                 // Let returning users in immediately while Apple and CloudKit
-                // state are refreshed without covering the journal UI.
+                // state are refreshed without covering the journal UI. An
+                // iCloud pair never verified on this device waits instead.
                 state = .authenticated(offline: true)
                 errorMessage = nil
             }
@@ -177,6 +195,7 @@ final class AppleAuthenticationCoordinator: ObservableObject {
     func signOut() async {
         do {
             try await service.clearCurrentSession()
+            forgetCloudIdentity()
             accountDisplayName = nil
             currentUserIdentifier = nil
             state = .signedOut
@@ -274,12 +293,18 @@ final class AppleAuthenticationCoordinator: ObservableObject {
         #endif
         do {
             try await service.clearCurrentSession()
+            forgetCloudIdentity()
             accountDisplayName = nil
             currentUserIdentifier = nil
         } catch {
             errorMessage = error.localizedDescription
         }
         state = .signedOut
+    }
+
+    private func forgetCloudIdentity() {
+        guard let currentUserIdentifier else { return }
+        cloudIdentityVerification?.forgetCloudIdentity(appleUserIdentifier: currentUserIdentifier)
     }
 
     func refreshCredentialState() async {
@@ -312,7 +337,10 @@ final class AppleAuthenticationCoordinator: ObservableObject {
         guard !isDeletingAccount else { return }
         do {
             let session = try await service.session()
-            guard let identifier = session.currentUserIdentifier else {
+            // After a mismatch the saved session is gone on purpose.
+            let blockedIdentifier =
+                state == .blockedCloudAccountMismatch ? currentUserIdentifier : nil
+            guard let identifier = session.currentUserIdentifier ?? blockedIdentifier else {
                 currentUserIdentifier = nil
                 state = .signedOut
                 return
@@ -336,6 +364,7 @@ final class AppleAuthenticationCoordinator: ObservableObject {
                 await completeAuthentication(identifier: identifier, offline: false)
             case .revoked, .notFound, .transferred:
                 try await service.clearCurrentSession()
+                cloudIdentityVerification?.forgetCloudIdentity(appleUserIdentifier: identifier)
                 accountDisplayName = nil
                 currentUserIdentifier = nil
                 state = .signedOut
@@ -365,11 +394,21 @@ final class AppleAuthenticationCoordinator: ObservableObject {
             userIdentifier: identifier
         ) {
         case .matched, .bound:
+            if state == .blockedCloudAccountMismatch {
+                // The mismatch cleared the saved session; this launch's sign-in stands again.
+                _ = try? await service.acceptAuthorizedUser(identifier: identifier)
+            }
+            await cloudIdentityVerification?.markCloudIdentityVerified(
+                appleUserIdentifier: identifier)
             state = .authenticated(offline: offline)
             errorMessage = nil
         case .mismatch:
             state = .blockedCloudAccountMismatch
             errorMessage = Self.cloudAccountMismatchMessage
+            // Leave nothing that lets the next launch in. `currentUserIdentifier`
+            // stays for this launch only, so ‘iCloud 연결 다시 확인’ still works.
+            cloudIdentityVerification?.forgetCloudIdentity(appleUserIdentifier: identifier)
+            try? await service.clearCurrentSession()
         case let .unavailable(reason):
             state = .authenticated(offline: offline)
             errorMessage = String(localized: "iCloud 연결을 확인하지 못해 이 기기에서만 사용합니다: \(reason)")

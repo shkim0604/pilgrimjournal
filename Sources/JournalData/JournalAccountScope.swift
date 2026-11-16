@@ -82,7 +82,25 @@ public enum JournalAccountScopeError: LocalizedError, Equatable, Sendable {
     }
 }
 
+/// Whether an iCloud scope's (Apple user, iCloud account) pair passed the
+/// cloud identity check on this device.
+public enum CloudIdentityVerification: Equatable, Sendable {
+    /// `.matched` or `.bound` was recorded for this pair.
+    case verified
+    /// The scope already existed when this device started recording checks.
+    /// Trusted only while a check cannot run, so returning users keep their
+    /// journal offline; a `.mismatch` clears it.
+    case carriedOver
+    case unverified
+}
+
 public struct JournalAccountScopeRegistry: Sendable {
+    private struct CloudIdentityRecord: Codable, Equatable {
+        var version = 1
+        var verified: Set<String> = []
+        var carriedOver: Set<String> = []
+    }
+
     private struct LegacyClaim: Codable, Equatable {
         var version = 1
         var appleUserHash: String
@@ -196,7 +214,8 @@ public struct JournalAccountScopeRegistry: Sendable {
         root.appending(path: "Accounts/\(appleUserHash)", directoryHint: .isDirectory)
     }
 
-    /// Migration receipts kept for one Apple user: `AccountScopes/<hash>/`.
+    /// Migration receipts and the cloud identity record kept for one Apple
+    /// user: `AccountScopes/<hash>/`.
     public func bookkeepingDirectory(appleUserHash: String) -> URL {
         root.appending(path: "AccountScopes/\(appleUserHash)", directoryHint: .isDirectory)
     }
@@ -217,6 +236,64 @@ public struct JournalAccountScopeRegistry: Sendable {
     public func removeLegacyClaim() throws {
         guard FileManager.default.fileExists(atPath: legacyClaimURL.path) else { return }
         try FileManager.default.removeItem(at: legacyClaimURL)
+    }
+
+    public func cloudIdentityVerification(
+        for scope: JournalAccountScope
+    ) throws -> CloudIdentityVerification {
+        let record = try cloudIdentityRecord(appleUserHash: scope.appleUserHash)
+        let name = scope.storageLocation.directoryName
+        if record.verified.contains(name) { return .verified }
+        if record.carriedOver.contains(name) { return .carriedOver }
+        return .unverified
+    }
+
+    /// Records a `.matched`/`.bound` check. Returns whether it was new.
+    @discardableResult
+    public func markCloudIdentityVerified(_ scope: JournalAccountScope) throws -> Bool {
+        var record = try cloudIdentityRecord(appleUserHash: scope.appleUserHash)
+        guard record.verified.insert(scope.storageLocation.directoryName).inserted else {
+            return false
+        }
+        try writeAtomically(record, to: cloudIdentityURL(appleUserHash: scope.appleUserHash))
+        return true
+    }
+
+    /// Forgets every verified and carried-over pair of this Apple user. The
+    /// emptied record stays, so the one-time carry-over never runs again.
+    public func clearCloudIdentityVerification(appleUserHash: String) throws {
+        try writeAtomically(
+            CloudIdentityRecord(),
+            to: cloudIdentityURL(appleUserHash: appleUserHash)
+        )
+    }
+
+    /// Loads the record, creating it on first use. Builds before this record
+    /// existed opened the iCloud scope on any saved sign-in, so the scopes
+    /// already on disk then are carried over. New scopes are only prepared
+    /// after a check, which reads (and so creates) the record first.
+    private func cloudIdentityRecord(appleUserHash: String) throws -> CloudIdentityRecord {
+        let url = cloudIdentityURL(appleUserHash: appleUserHash)
+        if FileManager.default.fileExists(atPath: url.path) {
+            return try decode(CloudIdentityRecord.self, at: url)
+        }
+        let accountDirectory = accountDirectory(appleUserHash: appleUserHash)
+        let names =
+            (try? FileManager.default.contentsOfDirectory(atPath: accountDirectory.path)) ?? []
+        let record = CloudIdentityRecord(
+            carriedOver: Set(
+                names.filter {
+                    $0.hasPrefix("icloud-")
+                        && FileManager.default.fileExists(
+                            atPath: accountDirectory.appending(path: "\($0)/scope.json").path)
+                })
+        )
+        try writeAtomically(record, to: url)
+        return record
+    }
+
+    private func cloudIdentityURL(appleUserHash: String) -> URL {
+        bookkeepingDirectory(appleUserHash: appleUserHash).appending(path: "cloud-identity.json")
     }
 
     private var legacyClaimURL: URL {
