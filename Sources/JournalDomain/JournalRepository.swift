@@ -64,7 +64,9 @@ public protocol JournalRepository: AnyObject {
     func entry(sourceUUID: String) throws -> JournalEntryRecord?
     func save(_ draft: JournalEntryDraft, deviceID: String, at date: Date) throws
         -> JournalEntryRecord
-    func revisions(entryID: UUID) throws -> [EntryRevisionRecord]
+    /// Newest first, at most `limit` (`nil` = every revision). Backups and
+    /// migrations pass `nil`; `revisions(entryID:)` keeps the history UI's cap.
+    func revisions(entryID: UUID, limit: Int?) throws -> [EntryRevisionRecord]
     func restore(entryID: UUID, revisionID: UUID, deviceID: String, at date: Date) throws
         -> JournalEntryRecord
     func moveToTrash(entryID: UUID, deviceID: String, at date: Date) throws
@@ -145,6 +147,13 @@ public protocol AttachmentRepository: AnyObject {
     /// with `id` existed (idempotent under races).
     @discardableResult
     func deleteAttachment(id: UUID) throws -> String?
+}
+
+extension JournalRepository {
+    /// The newest 1,000 revisions, enough for the history UI.
+    public func revisions(entryID: UUID) throws -> [EntryRevisionRecord] {
+        try revisions(entryID: entryID, limit: 1_000)
+    }
 }
 
 @MainActor

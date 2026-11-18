@@ -76,34 +76,9 @@ public final class JournalSearchIndex: @unchecked Sendable {
 
     public func upsert(_ entry: JournalEntryRecord) throws {
         try withLock {
-            try execute(
-                "DELETE FROM journal_fts WHERE id = ?",
-                bindings: [.text(entry.id.uuidString)]
-            )
-            try execute(
-                "DELETE FROM journal_search_meta WHERE id = ?",
-                bindings: [.text(entry.id.uuidString)]
-            )
+            try deleteRow(id: entry.id)
             guard !entry.isDeleted else { return }
-            let details = Self.detailsPayload(for: entry)
-            let tagPayload = "\n" + entry.tags.joined(separator: "\n") + "\n"
-            try execute(
-                """
-                INSERT INTO journal_fts
-                    (id, kind, occurred_at, title, body, tags, details)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                """,
-                bindings: [
-                    .text(entry.id.uuidString),
-                    .text(entry.kind.rawValue),
-                    .double(entry.occurredAt.timeIntervalSince1970),
-                    .text(entry.title),
-                    .text(entry.body),
-                    .text(tagPayload),
-                    .text(details),
-                ]
-            )
-            try insertSearchMetadata(for: entry)
+            try insertRow(for: entry)
         }
     }
 
@@ -124,16 +99,43 @@ public final class JournalSearchIndex: @unchecked Sendable {
     }
 
     public func remove(id: UUID) throws {
+        try withLock { try deleteRow(id: id) }
+    }
+
+    /// Brings the index in line with `entries`, the live journal, rewriting
+    /// only rows whose `updatedAt` differs from the indexed one and dropping
+    /// rows no longer in it — a cheap alternative to `rebuild` after a sync.
+    /// Returns the IDs it rewrote and removed.
+    @discardableResult
+    public func synchronize(with entries: [JournalEntryRecord]) throws -> (
+        upserted: Set<UUID>, removed: Set<UUID>
+    ) {
         try withLock {
-            try execute(
-                "DELETE FROM journal_fts WHERE id = ?",
-                bindings: [.text(id.uuidString)]
-            )
-            try execute(
-                "DELETE FROM journal_search_meta WHERE id = ?",
-                bindings: [.text(id.uuidString)]
-            )
+            let indexed = try indexedVersions()
+            let live = entries.filter { !$0.isDeleted }
+            let stale = live.filter { indexed[$0.id] != $0.updatedAt.timeIntervalSince1970 }
+            let removed = Set(indexed.keys).subtracting(live.map(\.id))
+            guard !stale.isEmpty || !removed.isEmpty else { return ([], []) }
+            try execute("BEGIN IMMEDIATE")
+            do {
+                for id in removed { try deleteRow(id: id) }
+                for entry in stale {
+                    try deleteRow(id: entry.id)
+                    try insertRow(for: entry)
+                }
+                try execute("COMMIT")
+            } catch {
+                try? execute("ROLLBACK")
+                throw error
+            }
+            return (Set(stale.map(\.id)), removed)
         }
+    }
+
+    private func deleteRow(id: UUID) throws {
+        try execute("DELETE FROM journal_fts WHERE id = ?", bindings: [.text(id.uuidString)])
+        try execute(
+            "DELETE FROM journal_search_meta WHERE id = ?", bindings: [.text(id.uuidString)])
     }
 
     public func rebuild(from entries: [JournalEntryRecord]) throws {
@@ -143,25 +145,7 @@ public final class JournalSearchIndex: @unchecked Sendable {
                 try execute("DELETE FROM journal_fts")
                 try execute("DELETE FROM journal_search_meta")
                 for entry in entries where !entry.isDeleted {
-                    let details = Self.detailsPayload(for: entry)
-                    let tagPayload = "\n" + entry.tags.joined(separator: "\n") + "\n"
-                    try execute(
-                        """
-                        INSERT INTO journal_fts
-                            (id, kind, occurred_at, title, body, tags, details)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
-                        """,
-                        bindings: [
-                            .text(entry.id.uuidString),
-                            .text(entry.kind.rawValue),
-                            .double(entry.occurredAt.timeIntervalSince1970),
-                            .text(entry.title),
-                            .text(entry.body),
-                            .text(tagPayload),
-                            .text(details),
-                        ]
-                    )
-                    try insertSearchMetadata(for: entry)
+                    try insertRow(for: entry)
                 }
                 try execute("COMMIT")
             } catch {
@@ -238,36 +222,44 @@ public final class JournalSearchIndex: @unchecked Sendable {
     }
 
     public func indexedEntryIDs() throws -> Set<UUID> {
-        try withLock {
-            guard let database else {
-                throw JournalSearchError.sqlite(String(localized: "연결이 닫혔습니다.", bundle: .module))
-            }
-            var statement: OpaquePointer?
-            guard
-                sqlite3_prepare_v2(
-                    database,
-                    "SELECT id FROM journal_search_meta",
-                    -1,
-                    &statement,
-                    nil
-                ) == SQLITE_OK
-            else {
-                throw sqliteError()
-            }
-            defer { sqlite3_finalize(statement) }
-            var identifiers = Set<UUID>()
-            while true {
-                let status = sqlite3_step(statement)
-                if status == SQLITE_DONE { break }
-                guard status == SQLITE_ROW else { throw sqliteError() }
-                if let value = sqlite3_column_text(statement, 0),
-                    let identifier = UUID(uuidString: String(cString: value))
-                {
-                    identifiers.insert(identifier)
-                }
-            }
-            return identifiers
+        try withLock { Set(try indexedVersions().keys) }
+    }
+
+    /// Indexed `updatedAt` per entry (seconds since 1970; nil for rows
+    /// written before the column existed). Call inside `withLock`.
+    private func indexedVersions() throws -> [UUID: Double?] {
+        guard let database else {
+            throw JournalSearchError.sqlite(String(localized: "연결이 닫혔습니다.", bundle: .module))
         }
+        var statement: OpaquePointer?
+        guard
+            sqlite3_prepare_v2(
+                database,
+                "SELECT id, updated_at FROM journal_search_meta",
+                -1,
+                &statement,
+                nil
+            ) == SQLITE_OK
+        else {
+            throw sqliteError()
+        }
+        defer { sqlite3_finalize(statement) }
+        var versions: [UUID: Double?] = [:]
+        while true {
+            let status = sqlite3_step(statement)
+            if status == SQLITE_DONE { break }
+            guard status == SQLITE_ROW else { throw sqliteError() }
+            if let value = sqlite3_column_text(statement, 0),
+                let identifier = UUID(uuidString: String(cString: value))
+            {
+                // updateValue, since assigning nil through the subscript would drop the key.
+                versions.updateValue(
+                    sqlite3_column_type(statement, 1) == SQLITE_NULL
+                        ? nil : sqlite3_column_double(statement, 1),
+                    forKey: identifier)
+            }
+        }
+        return versions
     }
 
     private func createSchema() throws {
@@ -275,10 +267,14 @@ public final class JournalSearchIndex: @unchecked Sendable {
             """
             CREATE TABLE IF NOT EXISTS journal_search_meta (
                 id TEXT PRIMARY KEY NOT NULL,
-                local_day TEXT NOT NULL
+                local_day TEXT NOT NULL,
+                updated_at REAL
             )
             """
         )
+        // Indexes built before `updated_at` existed gain it here (the error
+        // when it already exists is expected); their NULLs read as stale.
+        try? execute("ALTER TABLE journal_search_meta ADD COLUMN updated_at REAL")
         do {
             try execute(
                 """
@@ -315,12 +311,31 @@ public final class JournalSearchIndex: @unchecked Sendable {
         }
     }
 
-    private func insertSearchMetadata(for entry: JournalEntryRecord) throws {
+    private func insertRow(for entry: JournalEntryRecord) throws {
+        let details = Self.detailsPayload(for: entry)
+        let tagPayload = "\n" + entry.tags.joined(separator: "\n") + "\n"
         try execute(
-            "INSERT OR REPLACE INTO journal_search_meta (id, local_day) VALUES (?, ?)",
+            """
+            INSERT INTO journal_fts
+                (id, kind, occurred_at, title, body, tags, details)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            bindings: [
+                .text(entry.id.uuidString),
+                .text(entry.kind.rawValue),
+                .double(entry.occurredAt.timeIntervalSince1970),
+                .text(entry.title),
+                .text(entry.body),
+                .text(tagPayload),
+                .text(details),
+            ]
+        )
+        try execute(
+            "INSERT OR REPLACE INTO journal_search_meta (id, local_day, updated_at) VALUES (?, ?, ?)",
             bindings: [
                 .text(entry.id.uuidString),
                 .text(Self.originalLocalDay(for: entry)),
+                .double(entry.updatedAt.timeIntervalSince1970),
             ]
         )
     }

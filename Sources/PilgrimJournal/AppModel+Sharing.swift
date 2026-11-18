@@ -382,7 +382,7 @@ extension AppModel {
                 moved.tags = NotebookTagCodec.assigning(nil, to: entry.tags)
                 return (
                     entry: moved,
-                    revisions: try repository.revisions(entryID: entry.id),
+                    revisions: try repository.revisions(entryID: entry.id, limit: nil),
                     kind: SharedKindSnapshot(kindDefinition(for: entry.kind))
                 )
             }

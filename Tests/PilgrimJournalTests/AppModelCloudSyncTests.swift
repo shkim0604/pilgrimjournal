@@ -89,6 +89,18 @@ extension AppModelNavigationTests {
                 errorDescription: nil
             ))
         XCTAssertEqual(model.entries.map(\.id), [remoteRecord.id])
+        XCTAssertEqual(
+            try model.searchIndex.search(JournalSearchQuery(text: "다른 기기")).map(\.id),
+            [remoteRecord.id])
+
+        // Another device trashes it: the next import drops it from search.
+        try repository.moveToTrash(
+            entryID: remoteRecord.id, deviceID: "remote-device", at: completedAt)
+        model.handleCloudSyncStoreEvent(
+            CloudSyncStoreEvent(
+                operation: .importing, completedAt: completedAt, succeeded: true,
+                errorDescription: nil))
+        XCTAssertTrue(try model.searchIndex.indexedEntryIDs().isEmpty)
 
         model.handleCloudSyncStoreEvent(
             CloudSyncStoreEvent(

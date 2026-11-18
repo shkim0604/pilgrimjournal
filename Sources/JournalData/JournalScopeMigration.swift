@@ -36,7 +36,7 @@ public struct JournalScopeMigrationService {
             limit: 1_000_000
         )
         let sourceRevisions = try sourceEntries.flatMap {
-            try source.revisions(entryID: $0.id)
+            try source.revisions(entryID: $0.id, limit: nil)
         }
         let sourceRules = try source.classificationRules()
         let sourceAttachments = try source.allAttachments()

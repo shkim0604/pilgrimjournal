@@ -18,6 +18,18 @@ extension AppModel {
         }
     }
 
+    /// After a CloudKit import: rewrites only entries whose `updatedAt` moved
+    /// and drops removed ones, instead of rewriting the whole FTS table on
+    /// every synced edit. Falls back to the full rebuild if that fails.
+    func synchronizeSearchIndex() {
+        do {
+            try searchIndex.synchronize(
+                with: try repository.list(kind: nil, includeDeleted: false, limit: 100_000))
+        } catch {
+            rebuildSearchIndex()
+        }
+    }
+
     func prepareBackup() async {
         isWorking = true
         lastBackupExportMessage = nil
@@ -53,7 +65,7 @@ extension AppModel {
                 limit: 100_000
             )
             let revisions = try allEntries.flatMap {
-                try repository.revisions(entryID: $0.id)
+                try repository.revisions(entryID: $0.id, limit: nil)
             }
             let attachments: [BackupAttachment]
             if let attachmentRepository = repository as? any AttachmentRepository {
@@ -211,7 +223,7 @@ extension AppModel {
             limit: 100_000
         )
         let revisions = try allEntries.flatMap {
-            try repository.revisions(entryID: $0.id)
+            try repository.revisions(entryID: $0.id, limit: nil)
         }
         let attachments: [BackupAttachment]
         if let attachmentRepository = repository as? any AttachmentRepository {

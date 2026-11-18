@@ -1017,6 +1017,91 @@ final class JournalDataTests: XCTestCase {
         XCTAssertLessThan(duration, .seconds(3))
     }
 
+    /// The SwiftData page filters in the store and decodes only the page; its
+    /// pages, cursors and `list` must match the in-memory reference exactly,
+    /// including runs of entries sharing one instant across page boundaries.
+    func testSwiftDataPagesMatchInMemoryReferenceAcrossTiesKindsAndTrash() throws {
+        let store = try makeRepository()
+        let reference = InMemoryJournalRepository()
+        let kinds: [JournalKind] = [.memo, .diary, .prayer]
+        try store.performRestoreTransaction {
+            for value in 0..<240 {
+                let draft = JournalEntryDraft(
+                    id: UUID(), kind: kinds[value % 3], body: "기록 \(value)",
+                    occurredAt: Date(timeIntervalSince1970: TimeInterval(value / 7)))
+                let at = Date(timeIntervalSince1970: 1)
+                _ = try store.save(draft, deviceID: "Mac", at: at)
+                _ = try reference.save(draft, deviceID: "Mac", at: at)
+                if value % 11 == 0, let id = draft.id {
+                    try store.moveToTrash(entryID: id, deviceID: "Mac", at: at)
+                    try reference.moveToTrash(entryID: id, deviceID: "Mac", at: at)
+                }
+            }
+        }
+
+        func walk(_ repository: any JournalRepository, kind: JournalKind?, deleted: Bool, size: Int)
+            throws -> [[UUID]]
+        {
+            var pages: [[UUID]] = []
+            var cursor: JournalTimelineCursor?
+            repeat {
+                let page = try repository.page(
+                    kind: kind, includeDeleted: deleted, after: cursor, limit: size)
+                pages.append(page.entries.map(\.id))
+                cursor = page.nextCursor
+                if let cursor { XCTAssertEqual(cursor.entryID, page.entries.last?.id) }
+            } while cursor != nil
+            return pages
+        }
+        for kind in [nil, .memo, .prayer] as [JournalKind?] {
+            for deleted in [false, true] {
+                for size in [1, 6, 7, 50, 500] {
+                    XCTAssertEqual(
+                        try walk(store, kind: kind, deleted: deleted, size: size),
+                        try walk(reference, kind: kind, deleted: deleted, size: size),
+                        "kind \(String(describing: kind)) deleted \(deleted) size \(size)")
+                }
+                XCTAssertEqual(
+                    try store.list(kind: kind, includeDeleted: deleted, limit: 30).map(\.id),
+                    try reference.list(kind: kind, includeDeleted: deleted, limit: 30).map(\.id))
+            }
+        }
+    }
+
+    func testSwiftDataFiveThousandEntryPaginationIsResponsive() throws {
+        // Rows go in directly: 5,000 `save` calls in one context take ~20s.
+        let container = try JournalContainerFactory.make(inMemory: true)
+        let seeding = ModelContext(container)
+        let tags = try JSONEncoder().encode(["태그", "기도"])
+        let details = try JSONEncoder().encode(EntryDetails(scriptureReference: "요한복음 3:16"))
+        for value in 0..<5_000 {
+            let entity = JournalEntryEntity()
+            entity.kindRaw = (value.isMultiple(of: 2) ? JournalKind.memo : .diary).rawValue
+            entity.title = "합성 기록 \(value)"
+            entity.occurredAt = Date(timeIntervalSince1970: TimeInterval(value))
+            entity.tagsData = tags
+            entity.detailsData = details
+            seeding.insert(entity)
+        }
+        try seeding.save()
+        let repository = SwiftDataJournalRepository(container: container)
+
+        let started = ContinuousClock.now
+        var cursor: JournalTimelineCursor?
+        var count = 0
+        repeat {
+            let page = try repository.page(
+                kind: .memo, includeDeleted: false, after: cursor, limit: 200)
+            count += page.entries.count
+            cursor = page.nextCursor
+        } while cursor != nil
+        let duration = started.duration(to: .now)
+        print("SwiftData 5,000-entry page walk: \(duration)")
+
+        XCTAssertEqual(count, 2_500)
+        XCTAssertLessThan(duration, .seconds(3))
+    }
+
     @MainActor
     func testBatchOrganizationChangesKindAddsUniqueTagsAndCreatesRevisions() throws {
         let repository = InMemoryJournalRepository()
@@ -1226,6 +1311,34 @@ final class JournalDataTests: XCTestCase {
         XCTAssertEqual(result.migratedRevisions, 2)
         XCTAssertEqual(result.migratedRules, 1)
         XCTAssertEqual(result.migratedAttachments, 1)
+    }
+
+    /// Autosave writes a revision per typing pause, so a long-edited entry
+    /// passes the history UI's 1,000 cap; migration must still carry them all.
+    func testScopeMigrationCarriesMoreThanAThousandRevisionsOfOneEntry() throws {
+        let source = try makeRepository()
+        let entry = try source.save(
+            JournalEntryDraft(kind: .diary, body: "오래 고친 기록"), deviceID: "Mac",
+            at: Date(timeIntervalSince1970: 0))
+        try source.performRestoreTransaction {
+            for index in 1...1_100 {
+                try source.importRevision(
+                    EntryRevisionRecord(
+                        entryID: entry.id, parentRevisionID: nil, snapshot: entry.draft,
+                        createdAt: Date(timeIntervalSince1970: Double(index)), deviceID: "Mac"))
+            }
+        }
+        XCTAssertEqual(try source.revisions(entryID: entry.id).count, 1_000)
+        XCTAssertEqual(try source.revisions(entryID: entry.id, limit: nil).count, 1_101)
+
+        let destination = InMemoryJournalRepository()
+        let result = try JournalScopeMigrationService().migrate(from: source, to: destination)
+
+        XCTAssertEqual(result.migratedRevisions, 1_101)
+        XCTAssertTrue(
+            Set(try source.revisions(entryID: entry.id, limit: nil).map(\.id))
+                .isSubset(
+                    of: Set(try destination.revisions(entryID: entry.id, limit: nil).map(\.id))))
     }
 
     private func assertJSONRoundTrip<T>(_ value: T) throws
