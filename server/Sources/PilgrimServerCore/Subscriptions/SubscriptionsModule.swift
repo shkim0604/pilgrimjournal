@@ -89,6 +89,8 @@ enum SubscriptionWorker {
             try await SubscriptionRemovalSweep.run(
                 on: context.db, dayLength: config.dayLength, now: context.now,
                 logger: context.logger)
+        } else {
+            try await SubscriptionRemovalSweep.markWithoutRemoving(on: context.db, now: context.now)
         }
         let services = context.application.subscriptionServices
         if let client = services.statusClient, recheckGate.isDue(at: context.now) {

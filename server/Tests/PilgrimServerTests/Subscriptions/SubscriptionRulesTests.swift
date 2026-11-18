@@ -272,16 +272,24 @@ final class SubscriptionRulesTests: XCTestCase {
         let other = UUID()
         XCTAssertEqual(
             try SubscriptionOwnership.ownerForVerify(
-                caller: caller, existingOwner: nil, appAccountToken: nil), caller)
+                caller: caller, existingOwner: nil, appAccountToken: nil, tokenUserExists: false),
+            caller)
         XCTAssertEqual(
             try SubscriptionOwnership.ownerForVerify(
-                caller: caller, existingOwner: caller, appAccountToken: caller), caller)
+                caller: caller, existingOwner: caller, appAccountToken: caller,
+                tokenUserExists: true), caller)
+        // The token's account was deleted: it names no one.
+        XCTAssertEqual(
+            try SubscriptionOwnership.ownerForVerify(
+                caller: caller, existingOwner: nil, appAccountToken: other,
+                tokenUserExists: false), caller)
         for (existing, token) in [(other, nil), (nil, other), (caller, other), (other, caller)]
             as [(UUID?, UUID?)]
         {
             XCTAssertThrowsError(
                 try SubscriptionOwnership.ownerForVerify(
-                    caller: caller, existingOwner: existing, appAccountToken: token)
+                    caller: caller, existingOwner: existing, appAccountToken: token,
+                    tokenUserExists: true)
             ) { error in
                 XCTAssertEqual((error as? APIError)?.code, .subscriptionOwnedByOtherUser)
             }

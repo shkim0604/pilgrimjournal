@@ -30,6 +30,21 @@ final class FakeAPNSSender: APNSSending {
     }
 }
 
+/// Never answers token `hang` until cancelled (a request whose connection died); delivers others.
+final class HangingAPNSSender: APNSSending {
+    private let cancelled = NIOLockedValueBox(false)
+    let isConfigured = true
+
+    var wasCancelled: Bool { cancelled.withLockedValue { $0 } }
+
+    func send(_ delivery: APNSDelivery) async -> APNSDeliveryResult {
+        guard delivery.deviceToken == "hang" else { return .delivered }
+        try? await Task.sleep(for: .seconds(3600))
+        cancelled.withLockedValue { $0 = Task.isCancelled }
+        return .retryLater("cancelled")
+    }
+}
+
 /// Records `revoke` calls and fails them while `failure` is set. `exchange` always fails.
 final class FakeAppleRevoker: AppleAuthorizationClient {
     private let state = NIOLockedValueBox<

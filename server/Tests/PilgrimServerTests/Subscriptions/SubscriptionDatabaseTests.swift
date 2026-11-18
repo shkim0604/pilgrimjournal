@@ -177,6 +177,24 @@ final class SubscriptionDatabaseTests: SubscriptionDatabaseTestCase {
         expectEqual(try await subscriptionRow()?.$user.id, try owner.requireID())
     }
 
+    func testVerifyLetsANewAccountClaimADeletedAccountsPurchase() async throws {
+        // Deleted and signed up again while the App Store subscription keeps renewing: the
+        // purchase still carries the old account's ID as its `appAccountToken`.
+        let old = try await fixtures.user()
+        let oldID = try old.requireID()
+        let first = try await subscriptionVerify(
+            AppStoreTestPayloads.transaction(expires: later, appAccountToken: oldID), as: old)
+        XCTAssertEqual(first.status, .ok, first.body.string)
+        try await sql.raw("DELETE FROM users WHERE id = \(bind: oldID)").run()
+
+        let fresh = try await fixtures.user()
+        let response = try await subscriptionVerify(
+            AppStoreTestPayloads.transaction(expires: later, appAccountToken: oldID), as: fresh)
+        XCTAssertEqual(response.status, .ok, response.body.string)
+        XCTAssertTrue(try decode(EntitlementResponse.self, from: response).active)
+        expectEqual(try await subscriptionRow()?.$user.id, try fresh.requireID())
+    }
+
     func testVerifyRefusesInvalidData() async throws {
         let user = try await fixtures.user()
         let garbage = try await send(
@@ -341,7 +359,16 @@ final class SubscriptionDatabaseTests: SubscriptionDatabaseTestCase {
             try await ContentVisibility.membership(
                 of: try member.requireID(), in: try group.requireID(), on: db))
         expectNotNil(try await Post.find(try post.requireID(), on: db))
-        expectNil(try await subscriptionRow()?.removalProcessedAt)
+        // Marked processed without removing anyone, so turning the flag on later does not
+        // remove this member for an expiry from before the switch.
+        expectNotNil(try await subscriptionRow()?.removalProcessedAt)
+        let afterSwitch = try await SubscriptionRemovalSweep.run(
+            on: db, dayLength: app.pilgrimConfig.dayLength, now: Date())
+        XCTAssertEqual(afterSwitch, [])
+        expectNotNil(
+            try await ContentVisibility.membership(
+                of: try member.requireID(), in: try group.requireID(), on: db))
+        expectNotNil(try await Post.find(try post.requireID(), on: db))
     }
 
     // MARK: - Re-check
@@ -440,6 +467,35 @@ final class SubscriptionRequiredDatabaseTests: SubscriptionDatabaseTestCase {
             .POST, "/api/v1/groups", as: user,
             json: CreateGroupRequest(clientId: UUID(), name: "새벽 기도"))
         XCTAssertEqual(created.status, .created, created.body.string)
+    }
+
+    func testDailyReportNeedsTheSubscription() async throws {
+        let member = try await fixtures.user("멤버")
+        let paid = try await fixtures.user("구독자")
+        let admin = try await fixtures.user("관리자")
+        _ = try await fixtures.group(admin: admin, members: [member, paid])
+        let verified = try await subscriptionVerify(
+            AppStoreTestPayloads.transaction(
+                expires: Date().addingTimeInterval(86_400), appAccountToken: try paid.requireID()),
+            as: paid)
+        XCTAssertEqual(verified.status, .ok, verified.body.string)
+
+        try assertError(
+            try await send(.GET, "/api/v1/me/daily-report", as: member), .subscriptionRequired)
+        let report = try await send(.GET, "/api/v1/me/daily-report", as: paid)
+        XCTAssertEqual(report.status, .ok, report.body.string)
+
+        // Both reports are due this minute; the nightly sweep builds only the entitled one.
+        let now = Date()
+        for user in [member, paid] {
+            user.timeZone = "UTC"
+            user.dailyReportMinute = Int(now.timeIntervalSince1970) % 86_400 / 60
+            try await user.update(on: db)
+        }
+        _ = try await DailyReportSweep.run(
+            on: db, config: app.pilgrimConfig, now: now, logger: app.logger)
+        let logged = try await DailyReportLogEntry.query(on: db).all().map(\.$user.id)
+        XCTAssertEqual(logged, [try paid.requireID()])
     }
 
     func testExpiryRemovesTheMemberOnce() async throws {

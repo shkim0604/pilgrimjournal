@@ -44,6 +44,33 @@ extension ServerTestCase {
             method, path, as: user, body: try PilgrimJSON.encode(json), file: file, line: line)
     }
 
+    /// Sends every `(user, json)` to `/api/v1/<path>` at the same time; the status codes in the
+    /// order they finish.
+    func sendV1Concurrently(
+        _ method: HTTPMethod, _ path: String, _ requests: [(user: User, json: any Encodable)]
+    ) async throws -> [UInt] {
+        var built: [XCTHTTPRequest] = []
+        for (user, json) in requests {
+            var headers = try headers(as: user)
+            headers.contentType = .json
+            built.append(
+                XCTHTTPRequest(
+                    method: method, url: URI(string: "/api/v1/\(path)"), headers: headers,
+                    body: ByteBuffer(data: try PilgrimJSON.encode(json))))
+        }
+        let application: Application = app
+        return try await withThrowingTaskGroup(of: UInt.self) { tasks in
+            for request in built {
+                tasks.addTask {
+                    try await application.testable().performTest(request: request).status.code
+                }
+            }
+            var codes: [UInt] = []
+            for try await code in tasks { codes.append(code) }
+            return codes
+        }
+    }
+
     /// Asserts the status (a plain function, so the response can be awaited in the argument).
     func assertStatus(
         _ response: XCTHTTPResponse, _ status: HTTPResponseStatus,

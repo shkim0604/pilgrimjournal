@@ -211,9 +211,13 @@ enum SubscriptionService {
     ) async throws -> UUID? {
         switch rule {
         case .verifiedBy(let caller):
+            var tokenUserExists = false
+            if let token = transaction.appAccountToken, token != caller {
+                tokenUserExists = try await User.find(token, on: db) != nil
+            }
             return try SubscriptionOwnership.ownerForVerify(
                 caller: caller, existingOwner: existing,
-                appAccountToken: transaction.appAccountToken)
+                appAccountToken: transaction.appAccountToken, tokenUserExists: tokenUserExists)
         case .fromNotification:
             var tokenUserExists = false
             if existing == nil, let token = transaction.appAccountToken {

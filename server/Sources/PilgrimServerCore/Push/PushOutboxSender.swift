@@ -1,6 +1,7 @@
 import Fluent
 import Foundation
 import Logging
+import NIOConcurrencyHelpers
 import PilgrimAPI
 import SQLKit
 
@@ -56,7 +57,8 @@ public enum PushOutboxSender {
             return try await handleUnconfigured(
                 on: db, isProduction: isProduction, now: now, logger: logger)
         }
-        let due = try await loadDue(on: db, allowedBundleIDs: allowedBundleIDs, now: now)
+        let due = try await loadDue(
+            on: db, allowedBundleIDs: allowedBundleIDs, now: now, logger: logger)
         guard !due.isEmpty else { return Summary() }
 
         // Send outside any transaction; write the results afterwards.
@@ -219,18 +221,39 @@ public enum PushOutboxSender {
         }
     }
 
-    static func loadDue(on db: any Database, allowedBundleIDs: Set<String>, now: Date)
-        async throws -> [Due]
-    {
+    static func loadDue(
+        on db: any Database, allowedBundleIDs: Set<String>, now: Date, logger: Logger
+    ) async throws -> [Due] {
         let sql = try PushOutbox.sqlDatabase(db)
-        let rows = try await sql.raw(
+        let raw = try await sql.raw(
             """
             SELECT id, recipient_user_id, payload, collapse_id, attempts FROM push_outbox
             WHERE sent_at IS NULL AND failed_at IS NULL AND next_attempt_at <= \(bind: now)
             ORDER BY next_attempt_at, id
             LIMIT \(bind: batchSize)
             """
-        ).all(decoding: DueRow.self)
+        ).all()
+        // One at a time: a row this build cannot read (say a `PushKind` from a newer release,
+        // after a rollback) is failed on its own instead of blocking the head of the queue.
+        var rows: [DueRow] = []
+        for row in raw {
+            do {
+                rows.append(try row.decode(model: DueRow.self))
+            } catch {
+                let id = try row.decode(column: "id", as: UUID.self)
+                let message = "undecodable: \(String(describing: error))"
+                logger.error(
+                    "push outbox row cannot be decoded; marked failed",
+                    metadata: ["id": "\(id)", "error": "\(error)"])
+                try await sql.raw(
+                    """
+                    UPDATE push_outbox SET failed_at = \(bind: now),
+                        last_error = \(bind: String(message.prefix(500)))
+                    WHERE id = \(bind: id)
+                    """
+                ).run()
+            }
+        }
         guard !rows.isEmpty else { return [] }
 
         let recipients = Array(Set(rows.map(\.recipientUserId)))
@@ -259,9 +282,14 @@ public enum PushOutboxSender {
         }
     }
 
-    static func sendAll(_ deliveries: [APNSDelivery], with sender: any APNSSending) async
-        -> [APNSDeliveryResult]
-    {
+    /// How long one APNs request may take. APNSwift waits forever (`deadline: .distantFuture`),
+    /// so a request whose connection dies after sending would otherwise stall the loop.
+    static let sendTimeout: Duration = .seconds(30)
+
+    static func sendAll(
+        _ deliveries: [APNSDelivery], with sender: any APNSSending,
+        timeout: Duration = sendTimeout
+    ) async -> [APNSDeliveryResult] {
         guard !deliveries.isEmpty else { return [] }
         var results = [APNSDeliveryResult](
             repeating: .retryLater("not sent"), count: deliveries.count)
@@ -272,7 +300,7 @@ public enum PushOutboxSender {
                 let index = next
                 let delivery = deliveries[index]
                 next += 1
-                group.addTask { (index, await sender.send(delivery)) }
+                group.addTask { (index, await send(delivery, with: sender, timeout: timeout)) }
             }
             for _ in 0..<min(maximumConcurrentSends, deliveries.count) { addNext() }
             while let (index, result) = await group.next() {
@@ -281,6 +309,55 @@ public enum PushOutboxSender {
             }
         }
         return results
+    }
+
+    /// One send, answered with `.retryLater("timeout")` after `timeout`. The send runs in an
+    /// unstructured task that is cancelled on timeout (which cancels the HTTP request): a task
+    /// group would instead wait for a child that ignores cancellation.
+    static func send(_ delivery: APNSDelivery, with sender: any APNSSending, timeout: Duration)
+        async -> APNSDeliveryResult
+    {
+        struct State {
+            var continuation: CheckedContinuation<APNSDeliveryResult, Never>?
+            var tasks: [Task<Void, Never>] = []
+            var done = false
+        }
+        let state = NIOLockedValueBox(State())
+        // The first caller wins; it cancels the loser (the timer, or the send that timed out).
+        @Sendable func finish(_ result: APNSDeliveryResult) {
+            let (continuation, tasks) = state.withLockedValue { state in
+                state.done = true
+                defer { state.continuation = nil }
+                return (state.continuation, state.tasks)
+            }
+            tasks.forEach { $0.cancel() }
+            continuation?.resume(returning: result)
+        }
+        return await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                let alreadyCancelled = state.withLockedValue { state in
+                    if !state.done { state.continuation = continuation }
+                    return state.done
+                }
+                guard !alreadyCancelled else {
+                    continuation.resume(returning: .retryLater("cancelled"))
+                    return
+                }
+                let sending = Task { finish(await sender.send(delivery)) }
+                let timer = Task {
+                    guard (try? await Task.sleep(for: timeout)) != nil else { return }
+                    finish(.retryLater("timeout"))
+                }
+                let finished = state.withLockedValue { state in
+                    state.tasks = [sending, timer]
+                    return state.done
+                }
+                // Finished before the tasks were stored: cancel what is still running.
+                if finished { [sending, timer].forEach { $0.cancel() } }
+            }
+        } onCancel: {
+            finish(.retryLater("cancelled"))
+        }
     }
 
     /// No APNs key. Production keeps the rows queued and fails the iteration so the operator

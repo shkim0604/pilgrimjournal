@@ -297,6 +297,43 @@ final class AuthRouteTests: DatabaseTestCase {
         XCTAssertEqual(live, 1)
     }
 
+    /// Two refreshes of one token at once (the app retrying): `lock`'s `FOR UPDATE` makes the
+    /// second a same-installation retry, so the family ends with one live successor, not two.
+    func testConcurrentRefreshesLeaveOneLiveSuccessor() async throws {
+        let user = try await fixtures.user()
+        let installation = UUID()
+        let accessTokens = app.authServices.accessTokens
+        let database = app.db
+        let session = try await SessionService.startSession(
+            userID: try user.requireID(), installationID: installation,
+            accessTokens: accessTokens, on: database)
+        let token = session.refreshToken
+
+        let rotated = await withTaskGroup(of: Bool.self) { tasks in
+            for _ in 0..<2 {
+                tasks.addTask {
+                    (try? await SessionService.rotate(
+                        refreshToken: token, installationID: installation,
+                        accessTokens: accessTokens, on: database)) != nil
+                }
+            }
+            var results: [Bool] = []
+            for await result in tasks { results.append(result) }
+            return results
+        }
+        XCTAssertEqual(rotated, [true, true])
+
+        let original = try await unwrapAsync(
+            try await RefreshToken.query(on: db)
+                .filter(\.$tokenHash == SessionService.hash(refreshToken: token)).first())
+        let successors = try await RefreshToken.query(on: db)
+            .filter(\.$familyID == session.familyID)
+            .filter(\.$id != (try original.requireID()))
+            .filter(\.$revokedAt == nil)
+            .count()
+        XCTAssertEqual(successors, 1)
+    }
+
     func testExpiredAccessTokenIs401TokenExpired() async throws {
         let user = try await fixtures.user()
         let issued = try app.authServices.accessTokens.issue(

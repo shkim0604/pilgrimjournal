@@ -278,4 +278,28 @@ final class CommentAndReactionTests: DatabaseTestCase {
         try assertError(
             try await react(.emoji("👍"), on: post, as: alice), 409, .groupPendingDeletion)
     }
+
+    /// One short of the cap, two new reactions at once: the advisory lock lets only one in.
+    func testConcurrentReactionsHoldTheCap() async throws {
+        let alice = try await fixtures.user()
+        let bob = try await fixtures.user()
+        let group = try await fixtures.group(admin: alice, members: [bob])
+        let post = try await fixtures.post(by: alice, in: group)
+        let postID = try post.requireID()
+        let bobID = try bob.requireID()
+        let emoji = ["🙏", "❤️", "👍", "😊", "😭", "🔥", "✨", "🌱", "📖", "🕊️", "🎉"]
+        let cap = APILimits.reactionsPerUserPerPost
+        XCTAssertEqual(emoji.count, cap + 1)
+        for value in emoji.prefix(cap - 1) {
+            try await Reaction(postID: postID, userID: bobID, key: .emoji(value)).create(on: db)
+        }
+
+        let codes = try await sendV1Concurrently(
+            .PUT, "posts/\(postID)/reactions",
+            emoji.suffix(2).map { (bob, ReactionRequest(key: .emoji($0))) })
+        XCTAssertEqual(codes.sorted(), [200, 422])
+        let count = try await Reaction.query(on: db)
+            .filter(\.$post.$id == postID).filter(\.$user.$id == bobID).count()
+        XCTAssertEqual(count, cap)
+    }
 }

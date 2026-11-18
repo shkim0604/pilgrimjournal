@@ -137,7 +137,8 @@ APNs topic, StoreKit 검증 모두).
   (Apple 공식 `app-store-server-library-swift`).
 - App Store Server Notifications V2를 `/api/appstore/notifications`로 받아 갱신·만료·환불을 반영한다.
 - 서버 설정 **`SUBSCRIPTION_REQUIRED`** (출시 때 `false`):
-  - `false`: 모두 쓸 수 있다. 앱은 구독 화면을 띄우지 않는다. 만료 처리도 하지 않는다.
+  - `false`: 모두 쓸 수 있다. 앱은 구독 화면을 띄우지 않는다. 만료돼도 아무도 빼지 않고 처리됨으로 표시만 해서,
+    나중에 `true`로 바꾸면 그 뒤의 만료만 반영된다.
   - `true`: 그룹 API를 매 요청 서버 DB 기준으로 구독자에게만 연다 — CloudKit 검토에서 "약화"였던 구독자
     전용 가입이 여기서 **유지**가 된다. 초대 링크를 연 비구독자에게는 구독 화면을 보인다. 구독이 만료되면
     로드맵 결정대로 그 사람을 그룹에서 빼고 그 사람이 올린 내용을 지운다(스크랩은 남는다). 이 처리는
@@ -219,7 +220,7 @@ APNs topic, StoreKit 검증 모두).
 | 투표 | 60초 | 마감(3일) → 동률이면 재투표(1일) → 또 동률이면 무작위 → 아무도 안 했으면 1주 유예 후 그룹 삭제 |
 | Daily Report | 60초 | 리포트 시각이 지난 사용자 집계·발송 |
 | Apple 토큰 폐기 | 5분 | 계정 삭제한 사용자의 Apple 토큰 `/auth/revoke` 재시도 |
-| 구독 | 10분 | `SUBSCRIPTION_REQUIRED=true`일 때만: 만료 반영, 웹훅을 놓쳤을 때를 대비한 재확인 |
+| 구독 | 10분 | `SUBSCRIPTION_REQUIRED=true`일 때만 만료 반영(`false`면 끝난 구독을 처리됨으로 표시만), 웹훅을 놓쳤을 때를 대비한 재확인 |
 | 정리 | 1시간 | 오래된 초대·신고(90일)·보낸 알림·리포트 기록·토큰 삭제 |
 
 개발과 테스트에서는 `TIME_SCALE_DAY_SECONDS`로 "하루"를 몇 초로 줄여 기한·투표·유예·초대 만료를 확인한다.

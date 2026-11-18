@@ -13,7 +13,8 @@ enum DailyReportModule {
     static let interval: Duration = .seconds(60)
 
     static func register(_ app: Application) throws {
-        app.pilgrimRoutes.signedUp.get("me", "daily-report", use: getReport)
+        // Group content: 402 while `SUBSCRIPTION_REQUIRED` is on and the user is not entitled.
+        app.pilgrimRoutes.groupMember.get("me", "daily-report", use: getReport)
         app.workerJobs.register(job())
     }
 

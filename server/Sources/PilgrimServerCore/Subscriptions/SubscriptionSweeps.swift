@@ -4,7 +4,8 @@ import Logging
 import PilgrimAPI
 import SQLKit
 
-/// Expiry handling (design.md 12절, only while `SUBSCRIPTION_REQUIRED=true`): a subscription
+/// Expiry handling (design.md 12절, only while `SUBSCRIPTION_REQUIRED=true`; while it is off,
+/// `markWithoutRemoving` only marks the rows): a subscription
 /// that became `expired` or `revoked` and has no `removal_processed_at` takes its owner out of
 /// every group (an admin's groups go to a vote, as on leaving) and deletes what they posted —
 /// posts, comments, reactions, stickers and photos. Scraps live in each member's own journal and
@@ -47,6 +48,18 @@ enum SubscriptionRemovalSweep {
             }
         }
         return removals
+    }
+
+    /// While `SUBSCRIPTION_REQUIRED=false`: marks expired and revoked rows processed without
+    /// removing anyone, so turning the flag on later acts only on expiries after the switch
+    /// instead of wiping everyone whose subscription (or TestFlight sandbox one) lapsed before.
+    static func markWithoutRemoving(on db: any Database, now: Date) async throws {
+        try await PushOutbox.sqlDatabase(db).raw(
+            """
+            UPDATE subscriptions SET removal_processed_at = \(bind: now)
+             WHERE status IN ('expired', 'revoked') AND removal_processed_at IS NULL
+            """
+        ).run()
     }
 
     /// One row in its own transaction; nil when another worker got there first or the row

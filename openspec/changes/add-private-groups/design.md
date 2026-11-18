@@ -354,7 +354,9 @@ server/
   `PushPayload`(Codable)로 정의한다. `apns-topic`은 기기 행의 `bundle_id`, `apns-push-type: alert`,
   환경은 기기 행의 `apns_environment`(Debug·TestFlight 구분).
 - APNs 응답 410 또는 `BadDeviceToken`/`Unregistered`/`DeviceTokenNotForTopic`이면 그 기기 토큰을 지운다.
-  5xx·네트워크 오류는 30초·2분·10분 뒤 다시 보내고 그 뒤 실패로 남긴다.
+  5xx·네트워크 오류는 30초·2분·10분 뒤 다시 보내고 그 뒤 실패로 남긴다. APNs 요청 하나는 30초 안에 답이 없으면
+  끊고(`timeout`) 네트워크 오류처럼 다시 보낸다. 이 빌드가 읽을 수 없는 outbox 행(예: 롤백 뒤 새 `PushKind`)은
+  그 행만 `failed_at`으로 남기고(`last_error = undecodable: …`) 나머지는 보낸다.
 - 알림을 누르면 앱이 `pilgrim.kind`에 따라 그 글 상세, Daily Report 화면, 그룹 화면을 연다. 이미 사라진 글이면
   "이 글은 더 이상 볼 수 없어요"를 보인다.
 - 앱 아이콘 배지는 쓰지 않는다(0으로 둔다). 안 읽은 수는 사이드바에 보인다.
@@ -382,8 +384,9 @@ server/
 - 구매 때 `appAccountToken = 서버 사용자 ID`(`GET /me`의 `id`)를 넣는다.
 - 앱이 `Transaction.jwsRepresentation`을 `POST /subscriptions/verify { signedTransaction, bundleId }`로
   보낸다. 서버는 `app-store-server-library-swift`의 `SignedDataVerifier`(Apple 루트 인증서, 두 bundleId,
-  Production·Sandbox)로 검증하고 `original_transaction_id`로 upsert한다. `appAccountToken`이 다른 사용자거나
-  그 거래가 이미 다른 사용자에 묶여 있으면 409 `SUBSCRIPTION_OWNED_BY_OTHER_USER`. 검증 실패는 422
+  Production·Sandbox)로 검증하고 `original_transaction_id`로 upsert한다. `appAccountToken`이 (아직 있는) 다른
+  사용자거나 그 거래가 이미 다른 사용자에 묶여 있으면 409 `SUBSCRIPTION_OWNED_BY_OTHER_USER`. 계정을 지우고 다시
+  가입한 경우처럼 `appAccountToken`의 사용자가 더 이상 없으면 아무도 아닌 것으로 보고 새 계정이 가져간다. 검증 실패는 422
   `SUBSCRIPTION_INVALID`. 앱은 실행 때와 `Transaction.updates`마다 보낸다.
 - App Store Server Notifications V2: `POST /api/appstore/notifications { signedPayload }`. `notificationUUID`로
   중복을 거르고(`appstore_notifications`), `SUBSCRIBED`·`DID_RENEW`·`DID_CHANGE_RENEWAL_STATUS`·
@@ -392,11 +395,13 @@ server/
 - 권한(`EntitlementPolicy`): `status ∈ {active, gracePeriod}`이고 `expires_at > now`면 구독 중.
 - 서버 설정 **`SUBSCRIPTION_REQUIRED`(출시 때 `false`)**:
   - `false`: 모두 구독 중으로 본다. `GET /me/entitlement`의 `subscriptionRequired = false`. 앱은 구독 화면을
-    건너뛴다. 만료 처리는 아무것도 하지 않는다.
+    건너뛴다. 만료 처리는 아무도 빼지 않고, `expired`·`revoked`가 된 행에 `removal_processed_at`만 채운다. 그래서
+    나중에 `true`로 바꾸면 그 뒤에 끝난 구독만 처리되고, 꺼져 있는 동안 끝난 구독(TestFlight Sandbox 포함) 때문에
+    멤버가 한꺼번에 빠지거나 글이 지워지지 않는다.
   - `true`: 그룹 API(`groups/**`, `posts/**`, `comments/**`, `stickers/**`, `invites` 만들기·수락, 사진
-    업로드 중 `profile` 외)가 구독 중이 아닌 사용자에게 402 `SUBSCRIPTION_REQUIRED`. `GET /invites/:code`는
-    되고 `requiresSubscription = true`를 돌려준다(앱이 구독 화면을 보인다). 인증, `/me`, 기기, 차단·숨김 목록,
-    구독 검증, 계정 삭제는 언제나 된다.
+    업로드 중 `profile` 외, `GET /me/daily-report`)가 구독 중이 아닌 사용자에게 402 `SUBSCRIPTION_REQUIRED`.
+    `GET /invites/:code`는 되고 `requiresSubscription = true`를 돌려준다(앱이 구독 화면을 보인다). 인증, `/me`,
+    기기, 차단·숨김 목록, 구독 검증, 계정 삭제는 언제나 된다. Daily Report 알림도 구독 중인 사용자에게만 보낸다.
   - 만료 처리(`true`일 때만): 구독 행의 상태가 `expired`·`revoked`가 되고 `removal_processed_at`이 비어 있으면
     worker가 그 사람을 모든 그룹에서 빼고(관리자면 투표 시작) 그 사람이 올린 글·댓글·반응·스티커·사진을 지운다.
     스크랩은 각자의 기록장에 있으므로 남는다. 다시 구독하면 초대로 다시 들어온다.
@@ -994,7 +999,7 @@ NULL, `last_error_at` NULL.
 | `votes` | 60초 | `ends_at <= now()`인 열린 투표를 `AdminVoteRules.close`로 마감, 결과 알림. `pendingDeletion`이고 `delete_at <= now()`인 그룹 삭제 |
 | `dailyReport` | 60초 | 지금 리포트 시각이 지났고 오늘 `daily_report_log`가 없는 사용자 → 집계, 0이면 `skipped`, 아니면 outbox |
 | `appleRevocation` | 5분 | `apple_token_revocations`를 Apple `/auth/revoke`로. 실패하면 지수 백오프(최대 10회, 그 뒤 `last_error`로 남김) |
-| `subscriptions` | 10분 | `SUBSCRIPTION_REQUIRED=true`일 때만: 만료 처리(12절). 1시간마다 오래된 구독 재확인 |
+| `subscriptions` | 10분 | `SUBSCRIPTION_REQUIRED=true`일 때만 만료 처리(12절), `false`면 끝난 구독을 처리됨으로 표시만. 1시간마다 오래된 구독 재확인 |
 | `invites` | 1시간 | `expires_at`이 7일 넘게 지난 초대 행 삭제 |
 | `retention` | 1시간 | 신고 90일, `push_outbox` 보낸 지 7일·실패 30일, `daily_report_log` 30일, `appstore_notifications` 90일, 만료·폐기된 refresh token 7일 지난 것 삭제 |
 

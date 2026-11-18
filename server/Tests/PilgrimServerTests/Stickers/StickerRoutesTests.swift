@@ -116,6 +116,50 @@ final class StickerRoutesTests: DatabaseTestCase {
             .created)
     }
 
+    /// Two creates at 29 stickers: the group lock keeps the group at 30.
+    func testConcurrentCreatesHoldTheCap() async throws {
+        let admin = try await fixtures.user()
+        let group = try await fixtures.group(admin: admin)
+        let groupID = try group.requireID()
+        let adminID = try admin.requireID()
+        for _ in 0..<(APILimits.stickersPerGroup - 1) {
+            try await makeSticker(by: admin, in: group)
+        }
+        var requests: [CreateStickerRequest] = []
+        for _ in 0..<2 {
+            requests.append(
+                CreateStickerRequest(
+                    clientId: UUID(), mediaId: try await stickerUpload(by: admin, in: group),
+                    name: nil))
+        }
+
+        let database = app.db
+        let codes = await withTaskGroup(of: APIErrorCode?.self) { tasks in
+            for request in requests {
+                tasks.addTask {
+                    do {
+                        try await database.transaction { tx in
+                            _ = try await StickerService.create(
+                                request, in: groupID, by: adminID, now: Date(), on: tx)
+                        }
+                        return nil
+                    } catch let error as APIError {
+                        return error.code
+                    } catch {
+                        return .internal
+                    }
+                }
+            }
+            var codes: [APIErrorCode?] = []
+            for await code in tasks { codes.append(code) }
+            return codes
+        }
+        XCTAssertEqual(codes.filter { $0 == nil }.count, 1)
+        XCTAssertEqual(codes.compactMap { $0 }, [.stickerLimitReached])
+        let count = try await Sticker.query(on: db).filter(\.$group.$id == groupID).count()
+        XCTAssertEqual(count, APILimits.stickersPerGroup)
+    }
+
     func testNameRulesAndGroupState() async throws {
         let admin = try await fixtures.user()
         let group = try await fixtures.group(admin: admin)
