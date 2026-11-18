@@ -46,13 +46,16 @@ esac
 mkdir -p "$BACKUP_DIR/db" "$BACKUP_DIR/staging"
 chmod 700 "$BACKUP_DIR"
 
-# One run at a time (launchd catching up after sleep + a manual run).
+# One run at a time (launchd catching up after sleep + a manual run). The trap comes first so a
+# refused run still pings <url>/fail; it only cleans up a lock this run owns.
 LOCK="$BACKUP_DIR/.lock"
-mkdir "$LOCK" 2>/dev/null || die "another backup is running (remove $LOCK if it is stale)"
+own_lock=0
 finish() {
   local status=$?
-  rm -rf "$LOCK" "$BACKUP_DIR/staging/media.new"
-  rm -f "$BACKUP_DIR/db/"*.tmp
+  if ((own_lock)); then
+    rm -rf "$LOCK" "$BACKUP_DIR/staging/media.new"
+    rm -f "$BACKUP_DIR/db/"*.tmp
+  fi
   # Optional dead-man switch (healthchecks.io style): <url> on success, <url>/fail on failure.
   if [[ -n "${BACKUP_HEALTHCHECK_URL:-}" ]]; then
     local url="$BACKUP_HEALTHCHECK_URL"
@@ -62,6 +65,23 @@ finish() {
   ((status == 0)) || log "backup FAILED (exit $status)"
 }
 trap finish EXIT
+
+take_lock() { mkdir "$LOCK" 2>/dev/null && echo $$ >"$LOCK/pid"; }
+# A run killed without its trap (power cut, a macOS update restart) leaves the lock behind.
+if ! take_lock; then
+  holder="$(cat "$LOCK/pid" 2>/dev/null || true)"
+  # Between another run's mkdir and its pid write.
+  [[ -n "$holder" ]] || { sleep 1 && holder="$(cat "$LOCK/pid" 2>/dev/null || true)"; }
+  # A pid reused after a reboot (even by this run) is not that backup, so check the command too.
+  if [[ -n "$holder" && "$holder" != "$$" ]] &&
+    [[ "$(ps -p "$holder" -o command= 2>/dev/null || true)" == *backup.sh* ]]; then
+    die "another backup is running (pid $holder)"
+  fi
+  log "taking over stale lock $LOCK (pid ${holder:-unknown} is not a running backup)"
+  rm -rf "$LOCK"
+  take_lock || die "could not take $LOCK"
+fi
+own_lock=1
 
 # Keeps the launchd log from growing forever.
 if [[ -f "$BACKUP_DIR/backup.log" ]] && (($(wc -c <"$BACKUP_DIR/backup.log") > 5000000)); then
