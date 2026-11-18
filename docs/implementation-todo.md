@@ -14,13 +14,16 @@
     `ImageCompressor`, 같은 기준) — 하나로 합칠지. 업데이트 안내의 App Store 링크
     (`GroupsAppStoreLink`)는 App Store ID가 정해질 때까지 검색 URL이다.
   - **구매 테스트:** 앱이 호스트하는 테스트 타깃(`xctest`에는 StoreKit이 거래를 주지 않는다).
-  - **검증·배포(3.3~3.5):** `make -C server test`, CI, 로컬 시나리오(`PILGRIM_GROUP_SERVER_URL`로
-    `make -C server dev`에 붙여 가입·초대·글·스크랩·기한·안전·Daily Report·투표·구독·계정 삭제),
-    `xcrun simctl push` → 맥미니 배포·터널 → 실기기 세션 H → main에 조각내어 합치기. 서버 쪽
-    (`server/`, PilgrimAPI, 콘솔 신고 페이지, CI, openspec)은 2026-11-16 #43으로 main에 들어갔다. 남은
-    조각은 앱(Release에서 플래그 끔, 콘솔 스냅샷·`modules.ts` 포함)이다. 1.2.0은 출시됐으니 entitlement도 앱
-    조각에 넣어도 된다. 운영 준비 항목은 `docs/pre-release-checklist.md` "비공개 그룹 — 운영·출시 준비".
-    콘솔을 main에서 다시 배포하기 전에 `pilgrim-edge` 네트워크를 만들어야 한다(`make -C server edge-network`).
+  - **남은 검증:** 로컬 시나리오(3.3)·맥미니 배포(3.4)·main 합치기(3.5)는 끝났다(아래 완료). 남은 것은
+    `xcrun simctl push`, 실기기 세션 H(실제 Apple 로그인·APNs·StoreKit·Universal Link), restic 백업(R2).
+    운영 준비 항목은 `docs/pre-release-checklist.md` "비공개 그룹 — 운영·출시 준비".
+  - **로컬 시나리오에서 본 화면 다듬을 점(2026-11-18):** 스크랩 본문과 목록 미리보기에 출처 줄
+    `pilgrim-scrap: group=… post=…`가 UUID째 보인다. 영어 화면에서 스크랩 노트북 이름이 "스크랩 · …"로
+    나온다(이름을 한국어로 저장하기 때문 — 표시할 때만 바꿀지). 글쓰기 메뉴의 "기록에서 올리기" 설명이 잘리고,
+    그룹 피드 위쪽에 그룹 이름이 없다.
+  - **시뮬레이터에서 직접 실행:** `CODE_SIGNING_ALLOWED=NO` 빌드는 CloudKit 권한이 없어 시작하자마자 끝난다.
+    `CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM=`(로컬 서명)으로 빌드하면 권한이
+    실행 파일에 들어가 돈다. 환경 변수는 `SIMCTL_CHILD_PILGRIM_GROUP_SERVER_URL=… xcrun simctl launch`로 준다.
   - 참고: `JournalDataTests.testFiveThousandEntryPaginationIsCompleteAndResponsive`(3초 한도)가
     병렬 작업 부하에서 6.2초가 걸린 적이 있다. 부하 탓이며 회귀가 아니다.
 
