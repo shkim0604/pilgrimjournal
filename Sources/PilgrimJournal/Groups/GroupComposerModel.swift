@@ -129,16 +129,38 @@ struct GroupComposerItem: Identifiable, Equatable {
     var id = UUID()
     var text: String
     var topic: String?
-    var who: String
 
-    init(text: String = "", topic: String? = nil, who: String = "") {
+    init(text: String = "", topic: String? = nil) {
         self.text = text
         self.topic = topic
-        self.who = who
+    }
+}
+
+/// Prayer lines under one heading, like a prayer note's section. An empty name is the lines
+/// above the first heading.
+struct GroupComposerSection: Identifiable, Equatable {
+    var id = UUID()
+    var name: String
+    var items: [GroupComposerItem]
+
+    init(name: String = "", items: [GroupComposerItem] = [GroupComposerItem()]) {
+        self.name = name
+        self.items = items
     }
 
-    init(_ item: PrayerItem) {
-        self.init(text: item.text, topic: item.topic, who: item.who ?? "")
+    /// Consecutive items with the same section become one section, in order.
+    static func sections(from items: [PrayerItem]) -> [GroupComposerSection] {
+        var sections: [GroupComposerSection] = []
+        for item in items {
+            let name = item.section ?? ""
+            let line = GroupComposerItem(text: item.text, topic: item.topic)
+            if sections.last?.name == name {
+                sections[sections.count - 1].items.append(line)
+            } else {
+                sections.append(GroupComposerSection(name: name, items: [line]))
+            }
+        }
+        return sections
     }
 }
 
@@ -151,7 +173,7 @@ enum GroupComposerIssue: Equatable {
     case itemsRequired
     case tooManyItems
     case itemTooLong
-    case whoTooLong
+    case sectionTooLong
     case bookTitleRequired
     case bookTitleTooLong
     case bookAuthorTooLong
@@ -167,7 +189,7 @@ enum GroupComposerIssue: Equatable {
         case .itemsRequired: String(localized: "기도제목을 한 줄 이상 써 주세요")
         case .tooManyItems: String(localized: "기도제목은 10줄까지 올릴 수 있어요")
         case .itemTooLong: String(localized: "기도제목 한 줄은 200자까지예요")
-        case .whoTooLong: String(localized: "누구를 위한 기도인지는 30자까지예요")
+        case .sectionTooLong: String(localized: "섹션 이름은 30자까지예요")
         case .bookTitleRequired: String(localized: "책 제목을 써 주세요")
         case .bookTitleTooLong: String(localized: "책 제목은 100자까지예요")
         case .bookAuthorTooLong: String(localized: "저자 이름은 60자까지예요")
@@ -188,7 +210,7 @@ final class GroupComposerModel: ObservableObject {
     @Published var kind: PostKind
     @Published var title: String
     @Published var body: String
-    @Published var items: [GroupComposerItem]
+    @Published var sections: [GroupComposerSection]
     @Published var bookTitle: String
     @Published var bookAuthor: String
     @Published var quote: String
@@ -244,7 +266,7 @@ final class GroupComposerModel: ObservableObject {
         kind = draft.kind
         title = draft.title
         body = draft.body
-        items = draft.items.map(GroupComposerItem.init)
+        sections = GroupComposerSection.sections(from: draft.items)
         bookTitle = draft.bookTitle
         bookAuthor = draft.bookAuthor
         quote = draft.quote
@@ -261,7 +283,7 @@ final class GroupComposerModel: ObservableObject {
         self.groupID =
             groupID.flatMap { id in writable.contains { $0.id == id } ? id : nil }
             ?? (writable.count == 1 ? writable.first?.id : nil)
-        if items.isEmpty, kind == .prayer { items = [GroupComposerItem()] }
+        if sections.isEmpty { sections = [GroupComposerSection()] }
         if draft.photos.count > Self.maxPhotos {
             notice = GroupComposerIssue.tooManyPhotos.message
         }
@@ -273,16 +295,35 @@ final class GroupComposerModel: ObservableObject {
 
     // MARK: Editing
 
-    func addItem() {
+    /// Every line, in section order.
+    var items: [GroupComposerItem] { sections.flatMap(\.items) }
+
+    /// Adds an empty line to `sectionID`, or to the last section.
+    func addItem(to sectionID: UUID? = nil) {
         guard items.count < Self.maxItems else {
             notice = GroupComposerIssue.tooManyItems.message
             return
         }
-        items.append(GroupComposerItem())
+        let index = sections.firstIndex { $0.id == sectionID } ?? sections.count - 1
+        sections[index].items.append(GroupComposerItem())
     }
 
+    /// A new heading with one empty line under it.
+    func addSection() {
+        guard items.count < Self.maxItems else {
+            notice = GroupComposerIssue.tooManyItems.message
+            return
+        }
+        sections.append(GroupComposerSection(name: ""))
+    }
+
+    /// Removes a line; a named section left empty goes with it, and one section always stays.
     func removeItem(_ id: UUID) {
-        items.removeAll { $0.id == id }
+        for index in sections.indices {
+            sections[index].items.removeAll { $0.id == id }
+        }
+        sections.removeAll { $0.items.isEmpty && !$0.name.isEmpty }
+        if sections.isEmpty { sections = [GroupComposerSection()] }
     }
 
     /// Adds picked photos up to the limit of four; the rest are dropped with a notice.
@@ -324,11 +365,13 @@ final class GroupComposerModel: ObservableObject {
     }
 
     var filledItems: [PrayerItem] {
-        items.compactMap { item in
-            let text = item.text.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !text.isEmpty else { return nil }
-            let who = item.who.trimmingCharacters(in: .whitespacesAndNewlines)
-            return PrayerItem(text: text, topic: item.topic, who: who.isEmpty ? nil : who)
+        sections.flatMap { section -> [PrayerItem] in
+            let name = section.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            return section.items.compactMap { item -> PrayerItem? in
+                let text = item.text.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !text.isEmpty else { return nil }
+                return PrayerItem(text: text, topic: item.topic, section: name.nilIfEmpty)
+            }
         }
     }
 
@@ -395,8 +438,11 @@ final class GroupComposerModel: ObservableObject {
             if filled.contains(where: { $0.text.count > APILimits.prayerItemTextMax }) {
                 issues.append(.itemTooLong)
             }
-            if filled.contains(where: { ($0.who?.count ?? 0) > APILimits.prayerItemWhoMax }) {
-                issues.append(.whoTooLong)
+            if sections.contains(where: {
+                $0.name.trimmingCharacters(in: .whitespacesAndNewlines).count
+                    > APILimits.prayerItemSectionMax
+            }) {
+                issues.append(.sectionTooLong)
             }
             if let deadline {
                 do {
@@ -423,9 +469,9 @@ final class GroupComposerModel: ObservableObject {
 
     var canSubmit: Bool { issues.isEmpty && !isSubmitting }
 
-    /// Prayer lines naming someone else need one more confirmation before they go up.
+    /// Sections usually name people (가족, a friend): one more confirmation before they go up.
     var needsOthersConfirmation: Bool {
-        kind == .prayer && filledItems.contains { $0.who != nil }
+        kind == .prayer && filledItems.contains { $0.section != nil }
     }
 
     /// Whether anything was typed or picked (closing would lose it).

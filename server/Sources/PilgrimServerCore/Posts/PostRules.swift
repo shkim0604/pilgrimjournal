@@ -115,15 +115,16 @@ enum PostRules {
             guard text.count <= APILimits.prayerItemTextMax else {
                 throw APIError.limitExceeded(field: "items", limit: APILimits.prayerItemTextMax)
             }
-            let who = trimmed(item.who)
-            if let who, who.count > APILimits.prayerItemWhoMax {
-                throw APIError.limitExceeded(field: "items", limit: APILimits.prayerItemWhoMax)
+            let section = trimmed(item.section)
+            if let section, section.count > APILimits.prayerItemSectionMax {
+                throw APIError.limitExceeded(
+                    field: "items", limit: APILimits.prayerItemSectionMax)
             }
             let topic = trimmed(item.topic)
             if let topic, topic.count > prayerItemTopicMax {
                 throw APIError.validationFailed(field: "items", "an item topic is too long")
             }
-            return PrayerItem(text: text, topic: topic, who: who)
+            return PrayerItem(text: text, topic: topic, section: section)
         }
     }
 

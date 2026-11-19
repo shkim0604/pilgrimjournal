@@ -13,12 +13,13 @@ public struct ScrapPost: Equatable, Sendable {
         /// The topic's raw value (`health`, `family`, …), named through `ScrapLabels.topicName`.
         public var topic: String?
         /// Who it is for.
-        public var who: String?
+        /// The group item's section (a prayer note's heading, or a name).
+        public var section: String?
 
-        public init(text: String, topic: String? = nil, who: String? = nil) {
+        public init(text: String, topic: String? = nil, section: String? = nil) {
             self.text = text
             self.topic = topic
-            self.who = who
+            self.section = section
         }
     }
 
@@ -119,7 +120,7 @@ public enum ScrapLanguage: String, Equatable, Sendable {
         var texts = [post.title, post.body]
         for item in post.items {
             texts.append(item.text)
-            texts.append(item.who)
+            texts.append(item.section)
         }
         return texts.contains { containsHangul($0 ?? "") } ? .korean : .english
     }

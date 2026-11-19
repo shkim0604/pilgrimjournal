@@ -13,7 +13,7 @@ public final class Post: Model, @unchecked Sendable {
     @Enum(key: "kind") public var kind: PostKind
     @OptionalField(key: "title") public var title: String?
     @OptionalField(key: "body") public var body: String?
-    /// Prayer requests only; stored as a jsonb array `[{"text","topic","who"}]`.
+    /// Prayer requests only; stored as a jsonb array `[{"text","topic","section"}]`.
     @OptionalField(key: "items") public var items: JSONBArray<PrayerItem>?
     @OptionalField(key: "book_title") public var bookTitle: String?
     @OptionalField(key: "book_author") public var bookAuthor: String?

@@ -126,9 +126,9 @@ final class GroupPostLaunchTests: XCTestCase {
         XCTAssertEqual(
             items,
             [
-                PrayerItem(text: "어머니가 회복하시도록", topic: "health", who: "어머니"),
-                PrayerItem(text: "시험을 잘 준비하도록", topic: "study", who: nil),
-                PrayerItem(text: "친구의 이사를 위해", topic: nil, who: nil),
+                PrayerItem(text: "어머니가 회복하시도록", topic: "health", section: "어머니"),
+                PrayerItem(text: "시험을 잘 준비하도록", topic: "study", section: nil),
+                PrayerItem(text: "친구의 이사를 위해", topic: nil, section: nil),
             ])
     }
 

@@ -27,7 +27,7 @@ final class ScrapComposerTests: XCTestCase {
             id: postID, groupID: groupID, groupName: "수요 기도모임", kind: .prayer,
             authorName: "민지",
             items: [
-                .init(text: "어머니 검사 결과가 좋게 나오도록 기도해 주세요", topic: "health", who: "엄마"),
+                .init(text: "어머니 검사 결과가 좋게 나오도록 기도해 주세요", topic: "health", section: "엄마"),
                 .init(text: "이번 주 면접을 차분히 볼 수 있도록 기도해 주세요"),
             ],
             deadline: .init(year: 2026, month: 11, day: 20),
@@ -175,7 +175,7 @@ final class ScrapComposerTests: XCTestCase {
         var post = prayerPost()
         post.groupName = "수요\n기도모임"
         post.authorName = " 민지\n"
-        post.items = [.init(text: "건강", topic: "unknown-topic", who: "  ")]
+        post.items = [.init(text: "건강", topic: "unknown-topic", section: "  ")]
         let scrap = ScrapComposer.compose(post: post, comments: [])
         let lines = scrap.draft.body.components(separatedBy: "\n")
         XCTAssertEqual(lines[0], "> 스크랩 · 수요 기도모임")
@@ -203,7 +203,8 @@ final class ScrapComposerTests: XCTestCase {
         var post = prayerPost()
         post.items = [
             .init(
-                text: "Pray that Mom's test results come back clear", topic: "health", who: "Mom"),
+                text: "Pray that Mom's test results come back clear", topic: "health",
+                section: "Mom"),
             .init(text: "Calm for my interview this week"),
         ]
         return post
@@ -351,14 +352,16 @@ final class ScrapLanguageTests: XCTestCase {
         XCTAssertEqual(ScrapLanguage.of(post(title: "기도 부탁")), .korean)
         XCTAssertEqual(ScrapLanguage.of(post(body: "Please pray 감사합니다")), .korean)
         XCTAssertEqual(ScrapLanguage.of(post(items: [.init(text: "건강")])), .korean)
-        XCTAssertEqual(ScrapLanguage.of(post(items: [.init(text: "health", who: "엄마")])), .korean)
+        XCTAssertEqual(
+            ScrapLanguage.of(post(items: [.init(text: "health", section: "엄마")])), .korean)
         XCTAssertEqual(
             ScrapLanguage.of(post(title: "Prayer", body: "Mostly English, one word 은혜.")), .korean)
     }
 
     func testNoHangulIsEnglish() {
         XCTAssertEqual(ScrapLanguage.of(post(body: "Please pray for my exams")), .english)
-        XCTAssertEqual(ScrapLanguage.of(post(items: [.init(text: "Job", who: "Dad")])), .english)
+        XCTAssertEqual(
+            ScrapLanguage.of(post(items: [.init(text: "Job", section: "Dad")])), .english)
         XCTAssertEqual(ScrapLanguage.of(post()), .english, "nothing to read")
         XCTAssertEqual(ScrapLanguage.of(post(body: "   \n")), .english)
         XCTAssertEqual(ScrapLanguage.of(post(body: "🙏 2026-11-20 !!")), .english)

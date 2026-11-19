@@ -551,7 +551,7 @@ enum SubscriptionStatus: String { case active, gracePeriod, billingRetry, expire
 struct MediaRef { id: UUID; width: Int; height: Int; byteCount: Int; url: URL; urlExpiresAt: Date }
 struct UserSummary { id: UUID; displayName: String; profilePhoto: MediaRef? }
 struct Page<T> { items: [T]; nextCursor: String? }
-struct PrayerItem { text: String; topic: String?; who: String? }      // topic: PrayerRequestTopic raw 값
+struct PrayerItem { text: String; topic: String?; section: String? }  // topic: PrayerRequestTopic raw 값, section: 기도노트처럼 묶는 머리(2026-11-19, `who`에서 바꿈)
 struct BookInfo { title: String; author: String? }
 enum ReactionKey { case emoji(String), sticker(UUID) }
   // JSON {"type":"emoji","emoji":"🙏"} | {"type":"sticker","stickerId":"<uuid>"}
@@ -892,7 +892,7 @@ users CASCADE, `created_at`, `updated_at`. UNIQUE(`vote_id`, `voter_id`).
 | `kind` | text NOT NULL CHECK ('prayer','bookReport','testimony') | |
 | `title` | text NULL | |
 | `body` | text NULL | |
-| `items` | jsonb NULL | `[{"text","topic","who"}]` |
+| `items` | jsonb NULL | `[{"text","topic","section"}]` (0006에서 `who` → `section`) |
 | `book_title`, `book_author` | text NULL | |
 | `deadline` | text NULL CHECK `~ '^\d{4}-\d{2}-\d{2}$'` | `LocalDate` 그대로 |
 | `visible_days` | smallint NULL CHECK (3,7,14,30) | |
@@ -1013,7 +1013,7 @@ NULL, `last_error_at` NULL.
 | 그룹 이름 | 1~40자, 줄바꿈 없음 |
 | 글 제목 | ≤ 80자 |
 | 글 본문 | ≤ 2,000자 |
-| 기도제목 항목 | 1~10개, 항목당 ≤ 200자, `who` ≤ 30자 |
+| 기도제목 항목 | 1~10개, 항목당 ≤ 200자, `section` ≤ 30자 |
 | 책 제목 / 저자 | ≤ 100자 / ≤ 60자 |
 | 댓글 | ≤ 500자 |
 | 사진 | 글·댓글당 ≤ 4장, 장당 ≤ 500KB, 긴 변 ≤ 1600px |

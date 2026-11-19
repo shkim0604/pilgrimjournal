@@ -152,16 +152,6 @@
         }
       }
     },
-    "%@ 위해" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "For %@"
-          }
-        }
-      }
-    },
     "%@ 참여" : {
       "localizations" : {
         "en" : {
@@ -4582,26 +4572,6 @@
         }
       }
     },
-    "누구를 위한 기도인지는 30자까지예요" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Who it's for can be up to 30 characters"
-          }
-        }
-      }
-    },
-    "누구를 위해 (선택)" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "For whom (optional)"
-          }
-        }
-      }
-    },
     "누락 첨부" : {
       "localizations" : {
         "en" : {
@@ -7086,6 +7056,26 @@
         }
       }
     },
+    "섹션 이름 (선택, 예: 가족·감사)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Section name (optional, e.g. Family, Thanks)"
+          }
+        }
+      }
+    },
+    "섹션 이름은 30자까지예요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A section name can be up to 30 characters"
+          }
+        }
+      }
+    },
     "섹션 추가" : {
       "localizations" : {
         "en" : {
@@ -7814,16 +7804,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Done"
-          }
-        }
-      }
-    },
-    "외 %lld개" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "+%lld more"
           }
         }
       }

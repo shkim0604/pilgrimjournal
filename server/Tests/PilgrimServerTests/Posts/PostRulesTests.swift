@@ -30,9 +30,10 @@ final class PostRulesTests: XCTestCase {
 
     func testPrayerDefaultsToSevenVisibleDaysAndTrimsText() throws {
         let valid = try validate(
-            PostRequests.prayer(items: [PrayerItem(text: "  건강  ", topic: " health ", who: " ")])
+            PostRequests.prayer(items: [PrayerItem(text: "  건강  ", topic: " health ", section: " ")]
+            )
         )
-        XCTAssertEqual(valid.items, [PrayerItem(text: "건강", topic: "health", who: nil)])
+        XCTAssertEqual(valid.items, [PrayerItem(text: "건강", topic: "health", section: nil)])
         XCTAssertEqual(valid.visibleDays, 7)
         XCTAssertNil(valid.deadline)
         XCTAssertEqual(valid.expiresAt, now + 7 * 86_400)
@@ -59,7 +60,7 @@ final class PostRulesTests: XCTestCase {
             .limitExceeded, field: "items")
         assertRejected(
             PostRequests.prayer(
-                items: [PrayerItem(text: "기도", who: String(repeating: "가", count: 31))]),
+                items: [PrayerItem(text: "기도", section: String(repeating: "가", count: 31))]),
             .limitExceeded, field: "items")
         var noItems = PostRequests.prayer()
         noItems.items = nil

@@ -11,7 +11,7 @@ public enum APILimits {
     /// Prayer items per post.
     public static let prayerItems = 1...10
     public static let prayerItemTextMax = 200
-    public static let prayerItemWhoMax = 30
+    public static let prayerItemSectionMax = 30
     public static let bookTitleMax = 100
     public static let bookAuthorMax = 60
     public static let commentBodyMax = 500

@@ -238,7 +238,7 @@ extension AppModel {
             title: post.title,
             body: post.body,
             items: (post.items ?? []).map {
-                ScrapPost.PrayerLine(text: $0.text, topic: $0.topic, who: $0.who)
+                ScrapPost.PrayerLine(text: $0.text, topic: $0.topic, section: $0.section)
             },
             book: post.book.map { ScrapPost.Book(title: $0.title, author: $0.author) },
             deadline: post.deadline.map {
