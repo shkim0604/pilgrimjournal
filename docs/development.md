@@ -376,7 +376,7 @@ npm test && npm run typecheck
 | `server/Sources/PilgrimServer/` | 진입점: `serve` / `worker` / `migrate` |
 | `server/Tests/PilgrimServerTests/` | 서버 테스트. Postgres 테스트는 `TEST_DATABASE_URL`이 있을 때만 돈다 |
 | `server/Makefile`, `docker-compose*.yml`, `Dockerfile` | 로컬·운영 실행(arm64 이미지 하나로 api·worker·migrate) |
-| `server/scripts/` | 백업·복원(restic → R2)과 launchd 설치 |
+| `server/scripts/` | 백업·복원(restic → iCloud Drive)과 launchd 설치 |
 
 ### 테스트
 
@@ -522,29 +522,37 @@ ssh delight 'cd Developments/pilgrim-server && ./scripts/set-apple-key.sh siwa,a
   https://pilgrim.delight-house.org/.well-known/apple-app-site-association`(JSON, 리디렉트 없음),
   `https://pilgrim.delight-house.org/admin`이 여전히 콘솔인지.
 
-### 백업과 복원 (restic → Cloudflare R2)
+### 백업과 복원 (restic → 운영자 iCloud Drive)
 
-맥미니에서 매일 04:00 DB 덤프와 사진 볼륨을 restic 스냅샷 하나로 R2에 올리고 7일 넘은 것을 지운다
-(`--keep-within 7d`, 개인정보 처리방침의 "최대 7일"). 로컬 덤프도 `~/backups/pilgrim/db`에 7개 남는다.
+맥미니에서 매일 04:00 DB 덤프와 사진 볼륨을 restic 스냅샷 하나로 암호화해 운영자 iCloud Drive의
+`Pilgrim Server Backup` 폴더에 넣고(macOS가 올린다) 7일 넘은 것을 지운다(`--keep-within 7d`). 지운
+조각은 iCloud "최근 삭제된 항목"에 30일 더 남으므로 개인정보 처리방침은 "최대 37일"이다. 로컬 덤프도
+`~/backups/pilgrim/db`에 7개 남는다. 설정만 바꾸면 R2(S3)로도 쓸 수 있다(`backup.env.example`).
 
-1. `brew install restic`.
+1. `brew install restic && brew pin restic`. restic은 ad-hoc 서명이라 실행 파일이 바뀌면 아래 전체
+   디스크 접근 권한이 풀린다 — 올릴 때는 `brew unpin`·`upgrade`·`pin` 뒤 권한을 새 경로로 다시 준다.
 2. 설정: `mkdir -p ~/.config/pilgrim-backup && cp server/scripts/backup.env.example
    ~/.config/pilgrim-backup/env && chmod 600 ~/.config/pilgrim-backup/env`. `RESTIC_REPOSITORY`
-   (R2 S3 엔드포인트), 이 버킷에만 쓰기 권한이 있는 R2 토큰(`AWS_ACCESS_KEY_ID`·
-   `AWS_SECRET_ACCESS_KEY`), restic 비밀번호(`RESTIC_PASSWORD_FILE` 또는 `RESTIC_PASSWORD_COMMAND`),
-   선택으로 `BACKUP_HEALTHCHECK_URL`. restic 비밀번호는 맥미니 밖에도 보관한다 — 없으면 백업을
-   읽을 수 없다.
-3. 맥미니 배포 폴더에서:
+   (기본값이 iCloud Drive 폴더), restic 비밀번호(`RESTIC_PASSWORD_FILE` 또는
+   `RESTIC_PASSWORD_COMMAND`), 선택으로 `BACKUP_HEALTHCHECK_URL`. 비밀번호 파일은
+   `(umask 077; openssl rand -base64 32 > ~/.config/pilgrim-backup/restic-password)`로 만들고 맥미니
+   밖(운영자 암호 관리자)에도 보관한다 — 없으면 백업을 읽을 수 없다.
+3. **전체 디스크 접근 권한**(맥미니 화면에서, 시스템 설정 › 개인정보 보호 및 보안): `/bin/bash`와
+   `/opt/homebrew/Cellar/restic/<버전>/bin/restic`. launchd 작업은 iCloud Drive를 열 때 묻는 창을 띄우지
+   못하고, 권한이 없으면 `operation not permitted`로 실패하거나 한 시간가량 멈췄다 실패한다. SSH로
+   돌리면 원격 로그인 권한 덕에 되므로, 설치 뒤 꼭 `launchctl kickstart`로 한 번 확인한다.
+4. 맥미니 배포 폴더에서:
 
    ```sh
-   make backup-init        # R2에 restic 저장소 만들기 (한 번, 이미 있으면 그대로)
+   make backup-init        # restic 저장소 만들기 (한 번, 이미 있으면 그대로)
    make backup             # 지금 한 번 백업
    make backup-schedule    # 매일 04:00 launchd 작업 설치 (com.dhouse.pilgrim.backup)
    make backup-snapshots   # 스냅샷 목록
    make backup-unschedule
+   launchctl kickstart gui/$(id -u)/com.dhouse.pilgrim.backup   # launchd로 한 번 (권한 확인)
    ```
 
-4. 복원(`server/scripts/restore.sh --help`):
+5. 복원(`server/scripts/restore.sh --help`):
 
    ```sh
    make restore ARGS='--into dev'                                   # 최신 스냅샷을 개발 Mac 로컬 스택에

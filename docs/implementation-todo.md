@@ -15,7 +15,7 @@
     (`GroupsAppStoreLink`)는 App Store ID가 정해질 때까지 검색 URL이다.
   - **구매 테스트:** 앱이 호스트하는 테스트 타깃(`xctest`에는 StoreKit이 거래를 주지 않는다).
   - **남은 검증:** 로컬 시나리오(3.3)·맥미니 배포(3.4)·main 합치기(3.5)는 끝났다(아래 완료). 남은 것은
-    `xcrun simctl push`, 실기기 세션 H(실제 Apple 로그인·APNs·StoreKit·Universal Link), restic 백업(R2).
+    `xcrun simctl push`, 실기기 세션 H(실제 Apple 로그인·APNs·StoreKit·Universal Link).
     운영 준비 항목은 `docs/pre-release-checklist.md` "비공개 그룹 — 운영·출시 준비".
   - **로컬 시나리오에서 본 화면 다듬을 점(2026-11-18):** 스크랩 본문과 목록 미리보기에 출처 줄
     `pilgrim-scrap: group=… post=…`가 UUID째 보인다. 영어 화면에서 스크랩 노트북 이름이 "스크랩 · …"로
@@ -227,7 +227,7 @@
     `JournalShareDrafts`로 옮기고 `DeadlineSuggester` 추가). 계정 삭제의
     `RemoteAccountDataErasing` 단계와 확인 화면. 스크랩(`BuiltInKind.scrap`, `ScrapComposer`,
     `AppModel+Scrap`, CloudKit 스키마 변경 없음).
-  - 인프라: `make dev/test/prod/deploy`, `pilgrim-edge` 네트워크, restic → R2 백업(7일)과 복원,
+  - 인프라: `make dev/test/prod/deploy`, `pilgrim-edge` 네트워크, restic → iCloud Drive 백업(7일, 2026-11-18 R2에서 바꿈)과 복원,
     `.env.*.example`, `aps-environment`·`applinks` entitlement(`feat/groups`에만). 콘솔 `web/admin`
     신고 페이지. CI `server` job.
   - 문서: `docs/privacy.md` "그룹 서버", `docs/development.md` "그룹 서버", 세션 H, 로드맵 갱신.

@@ -30,9 +30,9 @@ compose() {
     -f "$SERVER_DIR/docker-compose.yml" -f "$SERVER_DIR/docker-compose.$env.yml" "$@"
 }
 
-# Loads restic settings (RESTIC_REPOSITORY, RESTIC_PASSWORD_FILE or RESTIC_PASSWORD_COMMAND,
-# AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY) from BACKUP_ENV_FILE, outside the repo so the R2
-# keys never reach .env.prod or the containers. Template: scripts/backup.env.example.
+# Loads restic settings (RESTIC_REPOSITORY, RESTIC_PASSWORD_FILE or RESTIC_PASSWORD_COMMAND, and
+# AWS_* for an s3: repository) from BACKUP_ENV_FILE, outside the repo so the backup secrets never
+# reach .env.prod or the containers. Template: scripts/backup.env.example.
 load_backup_env() {
   BACKUP_ENV_FILE="${BACKUP_ENV_FILE:-$HOME/.config/pilgrim-backup/env}"
   [[ -f "$BACKUP_ENV_FILE" ]] ||
@@ -45,8 +45,12 @@ load_backup_env() {
   . "$BACKUP_ENV_FILE"
   set +a
   : "${RESTIC_REPOSITORY:?set RESTIC_REPOSITORY in $BACKUP_ENV_FILE}"
-  : "${AWS_ACCESS_KEY_ID:?set AWS_ACCESS_KEY_ID in $BACKUP_ENV_FILE}"
-  : "${AWS_SECRET_ACCESS_KEY:?set AWS_SECRET_ACCESS_KEY in $BACKUP_ENV_FILE}"
+  if [[ "$RESTIC_REPOSITORY" == s3:* ]]; then
+    : "${AWS_ACCESS_KEY_ID:?set AWS_ACCESS_KEY_ID in $BACKUP_ENV_FILE}"
+    : "${AWS_SECRET_ACCESS_KEY:?set AWS_SECRET_ACCESS_KEY in $BACKUP_ENV_FILE}"
+    # R2 speaks S3 but has a single region.
+    export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-auto}"
+  fi
   if [[ -z "${RESTIC_PASSWORD_FILE:-}" && -z "${RESTIC_PASSWORD_COMMAND:-}" ]]; then
     die "set RESTIC_PASSWORD_FILE or RESTIC_PASSWORD_COMMAND in $BACKUP_ENV_FILE"
   fi
@@ -55,8 +59,6 @@ load_backup_env() {
     export RESTIC_PASSWORD_FILE
     [[ -s "$RESTIC_PASSWORD_FILE" ]] || die "restic password file $RESTIC_PASSWORD_FILE is missing or empty"
   fi
-  # R2 speaks S3 but has a single region.
-  export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-auto}"
   # Snapshots are grouped by this host name, so retention never touches another machine's.
   BACKUP_HOST_TAG="${BACKUP_HOST_TAG:-pilgrim-prod}"
 }

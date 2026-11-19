@@ -78,6 +78,6 @@ Vapor 4 + Postgres 서버를 두고 `pilgrim.delight-house.org`로 연다. 2026-
   데이터를 다루지 않는다는 문장, 계정 삭제의 Apple 토큰 폐기 설명. App Store 개인정보 라벨. 문서 갱신은 D1
   작업이 맡는다.
 - 운영: 맥미니 compose 프로젝트 `pilgrim-prod`, 터널 ingress 추가, Apple 키(.p8) 두 개, App Store Server
-  Notifications V2 URL, restic → R2 백업. 서버가 꺼져도 기록장은 그대로 동작한다.
+  Notifications V2 URL, restic → iCloud Drive 백업. 서버가 꺼져도 기록장은 그대로 동작한다.
 - CI: `server` job(Linux, Postgres 서비스) 추가, `scripts/check.sh`가 `server/` lint와 PilgrimAPI 테스트를
   돌린다.

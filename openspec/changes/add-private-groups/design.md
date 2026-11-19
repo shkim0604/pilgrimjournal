@@ -52,7 +52,7 @@ iPhone/Mac 앱 ──HTTPS──▶ Cloudflare ──Tunnel──▶ 맥미니 (
                                                  ├─ docker compose -p pilgrim-admin
                                                  │    └─ admin    127.0.0.1:8420  ──▶ http://pilgrim-api:3100/internal/admin/v1
                                                  │                                  (공유 Docker 네트워크 pilgrim-edge)
-                                                 └─ 볼륨: postgres, media / restic → Cloudflare R2 (launchd)
+                                                 └─ 볼륨: postgres, media / restic → 운영자 iCloud Drive (launchd)
 ```
 
 - `/internal/admin/v1`은 터널 규칙에 없으므로 인터넷에서 오면 콘솔(8420)로 가고, 콘솔은 그 경로를 처리하지
