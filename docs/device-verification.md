@@ -498,7 +498,15 @@ Mac은 시뮬레이터가 없으므로 실기기에서 Light·Dark × 넓은 창
 - **서로 다른 Apple ID의 iPhone 2대**(A = 그룹을 만드는 사람, B = 초대받는 사람)와 A의 두 번째
   기기(같은 Apple ID, iPhone 또는 Mac). 모두 서명한 빌드. Debug(`.debug`, APNs sandbox)와
   TestFlight(production)를 각각 한 번씩.
-- 관리 콘솔 로그인(신고 확인용)과 App Store Connect 샌드박스 테스트 계정(H-9).
+- 관리 콘솔 로그인(신고 확인용).
+- **H-8은 기록장·iCloud까지 지운다. 테스트용 Apple ID로만 한다.**
+- Debug 빌드도 `PILGRIM_GROUP_SERVER_URL`이 없으면 운영 서버에 붙는다. 여기서 만든 그룹·계정은
+  운영 DB에 남으므로 이름에 `[테스트]`를 붙이고, 끝나면 목록을 남겨 출시 전에 지운다.
+
+순서: H-1 → H-12 → H-2 → H-3 → H-4 → H-5 → H-6 → H-7 → H-11 → H-10 → H-9 → H-8(마지막).
+운영 서버(하루 86400초)에서는 시간이 지나야 보이는 결과(초대 3일 만료, 투표 마감·유예)를 그 자리에서
+볼 수 없다. 배너·알림이 오는지까지만 보고, 마감 뒤 결과는 3.3 시뮬레이터 시나리오와 서버 검사로
+갈음한다고 적는다. 초대 만료 문구는 며칠 뒤 실제 시간으로 한 번 본다.
 
 ### H-1. 그룹 시작하기 (Sign in with Apple → 그룹 서버)
 
@@ -601,20 +609,15 @@ Mac은 시뮬레이터가 없으므로 실기기에서 Light·Dark × 넓은 창
 - A의 기기 설정 › Apple 계정 › Apple로 로그인 목록에서 Pilgrim 연결이 끊긴다
 - 그룹 Keychain 항목이 지워져 다시 로그인하면 새 사용자로 시작한다. B가 스크랩한 A의 글은 B에게 남는다
 
-### H-9. 구독 (StoreKit 샌드박스)
+### H-9. 구독 화면이 뜨지 않는지 (`SUBSCRIPTION_REQUIRED=false`)
 
-출시 값은 `SUBSCRIPTION_REQUIRED=false`다. 이 항목은 개발 서버(또는 잠시 바꾼 운영 서버)에서
-`true`로 한다.
+출시 값은 `SUBSCRIPTION_REQUIRED=false`다(지금은 모두 무료). 구매·복원·만료는 아래 "보류"의
+H-9b로 옮겼다.
 
-1. `false`: 가입·초대·글이 구독 화면 없이 된다.
-2. `true`: 비구독 B가 초대 링크를 연다 → 구독 화면 → 샌드박스 계정으로 구매 → 참여.
-3. 다른 기기에서 구매 복원. 샌드박스 구독을 해지하고 만료(샌드박스는 몇 분)를 기다린다.
-4. 환불 요청 또는 App Store Connect 샌드박스에서 만료를 만든다.
+1. 비구독 A·B로 H-1~H-8을 도는 동안 구독 화면이 한 번이라도 뜨는지 본다(가입, 초대 참여, 그룹
+   만들기, 글 올리기).
 
-- 구매 직후 서버 `subscriptions` 행이 생기고(Sandbox 환경) 그룹이 열린다
-- App Store Server Notifications V2(Sandbox URL)가 서버 로그에 들어오고 상태가 바뀐다
-- 만료 뒤 B가 모든 그룹에서 빠지고 B의 글·댓글이 지워진다. 다른 사람이 스크랩한 B의 글은 남는다
-- 다른 Apple ID 사용자의 거래를 보내면 거부된다(`SUBSCRIPTION_OWNED_BY_OTHER_USER`)
+- 구독 화면(`GroupSubscriptionSheet`)·402 차단이 한 번도 보이지 않는다
 
 ### H-10. 서버가 꺼졌을 때
 
@@ -623,9 +626,44 @@ Mac은 시뮬레이터가 없으므로 실기기에서 Light·Dark × 넓은 창
 - 기록장은 그대로 동작한다(쓰기·동기화·검색)
 - 그룹 화면은 "그룹 서버에 연결할 수 없어요"를 보이고 작성 중인 글을 잃지 않는다
 
+### H-11. macOS 푸시와 네트워크 entitlement
+
+macOS는 `PilgrimJournal-macOS.entitlements`(`com.apple.developer.aps-environment`)로 서명하고,
+샌드박스 앱은 `ENABLE_OUTGOING_NETWORK_CONNECTIONS`로 밖에 나간다.
+
+1. A의 Mac에 서명한 빌드(Debug, 그다음 TestFlight)를 설치하고 그룹에 들어간다.
+2. B가 글을 올린다. Mac 앱을 끈 상태, 다른 앱이 앞에 있는 상태에서 각각 받는다.
+3. Mac에서 사진이 든 글을 스크랩하고, 그룹 피드의 사진을 연다.
+
+- 빌드가 프로비저닝 프로필 오류 없이 서명되고 실행된다
+- 서버 `devices`에 Mac의 APNs 토큰이 생기고(macOS 번들·환경), 새 글 알림이 온다. 탭하면 그 글이 열린다
+- 그룹 서버 요청과 사진 URL(스크랩 첨부 포함)이 샌드박스에서 막히지 않는다(콘솔에 `deny network-outbound` 없음)
+
+### H-12. 그룹에 가입하지 않은 상태의 "그룹에 올리기"
+
+1. 그룹에 가입하지 않은 계정으로 기록(기도노트·독후감·간증)을 열고 "그룹에 올리기"를 누른다.
+   iPhone(compact)과 Mac 각각.
+2. 열린 "그룹 시작하기"를 끝까지 마친다. 한 번은 중간에 닫는다.
+
+- 그 자리에서 "그룹 시작하기"가 열린다(다른 화면으로 튕기지 않는다)
+- 가입을 마치면 같은 기록의 작성 화면으로 이어지고 내용이 채워져 있다
+- 중간에 닫으면 기록 화면으로 돌아오고 아무것도 올라가지 않는다
+
 ---
 
 ## 보류
+
+- **H-9b 구독 켜기 (StoreKit 샌드박스)** — 구독을 켤 때(`SUBSCRIPTION_REQUIRED=true`) 개발 서버나
+  잠시 바꾼 운영 서버에서 한다. 그때 필요한 App Store Connect 작업(In-App Purchase 키, Notifications
+  V2 URL, 구독 상품)도 같이 한다.
+  1. 비구독 B가 초대 링크를 연다 → 구독 화면 → 샌드박스 계정으로 구매 → 참여.
+  2. 다른 기기에서 구매 복원. 샌드박스 구독을 해지하고 만료(샌드박스는 몇 분)를 기다린다.
+  3. 환불 요청 또는 App Store Connect 샌드박스에서 만료를 만든다.
+  4. Xcode Run의 로컬 StoreKit(`PilgrimJournal.storekit`)으로 구매·복원.
+  - 구매 직후 서버 `subscriptions` 행이 생기고(Sandbox 환경) 그룹이 열린다
+  - App Store Server Notifications V2(Sandbox URL)가 서버 로그에 들어오고 상태가 바뀐다
+  - 만료 뒤 B가 모든 그룹에서 빠지고 B의 글·댓글이 지워진다. 다른 사람이 스크랩한 B의 글은 남는다
+  - 다른 Apple ID 사용자의 거래를 보내면 거부된다(`SUBSCRIPTION_OWNED_BY_OTHER_USER`)
 
 - **task 8.9** — 태그·첨부가 포함된 추가 익명 실제 샘플이 확보되면 adapter
   compatibility regression을 보강한다. 샘플이 없으면 진행할 수 없다.
