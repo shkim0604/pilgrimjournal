@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pilgrim 그룹 이용 안내 · Group Usage Guide</title>
+  <meta name="description" content="Pilgrim 그룹 이용 안내: 글이 사라지는 때, 스크랩, 그룹 운영, 지켜 주세요, 신고와 차단, 계정 삭제. Terms for Pilgrim groups.">
+  <meta name="color-scheme" content="light dark">
+  <style>
+    :root {
+      --bg: #f7f4ee;
+      --surface: #ffffff;
+      --ink: #2b2620;
+      --ink-secondary: #6b6258;
+      --rule: #e4ddd2;
+      --accent: #a24f1c;
+      --accent-soft: #f4e4d6;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1b1916;
+        --surface: #26231f;
+        --ink: #efe9e1;
+        --ink-secondary: #b3a99c;
+        --rule: #3a352f;
+        --accent: #f0a46c;
+        --accent-soft: #3a2a1e;
+      }
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 17px/1.65 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", "Noto Sans KR", sans-serif;
+      word-break: keep-all;
+      overflow-wrap: anywhere;
+    }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 64px; }
+    h1 { font-size: 2rem; line-height: 1.25; margin: 0 0 8px; }
+    h2 { font-size: 1.35rem; margin: 40px 0 12px; padding-top: 16px; border-top: 1px solid var(--rule); }
+    h3 { font-size: 1.05rem; margin: 24px 0 6px; }
+    .lead, .muted { color: var(--ink-secondary); }
+    a { color: var(--accent); text-underline-offset: 2px; }
+    nav.lang { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0 0; }
+    nav.lang a {
+      display: inline-block; padding: 6px 14px; border-radius: 999px;
+      background: var(--accent-soft); text-decoration: none; font-weight: 600;
+    }
+    .card {
+      background: var(--surface); border: 1px solid var(--rule); border-radius: 14px;
+      padding: 12px 18px; margin: 16px 0;
+    }
+    .table-wrap { overflow-x: auto; }
+    table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 0.95rem; }
+    th, td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--rule); }
+    th { color: var(--ink-secondary); font-weight: 600; }
+    ol, ul { padding-left: 1.3em; }
+    li { margin: 4px 0; }
+    section.language { scroll-margin-top: 16px; }
+    hr.split { border: 0; border-top: 3px double var(--rule); margin: 56px 0 0; }
+    footer { margin-top: 48px; font-size: 0.9rem; color: var(--ink-secondary); }
+  </style>
+</head>
+<body>
+<main>
+  <!-- Published copy of docs/group-terms.md. Change both together. -->
+  <header>
+    <h1>Pilgrim 그룹 이용 안내</h1>
+    <p class="lead">Usage guide for Pilgrim groups</p>
+    <nav class="lang" aria-label="Language">
+      <a href="#ko" hreflang="ko">한국어</a>
+      <a href="#en" hreflang="en">English</a>
+      <a href="./">지원 · 개인정보 / Support · Privacy</a>
+    </nav>
+  </header>
+
+  <section id="ko" class="language" lang="ko">
+    <div class="card">
+      <!-- 시행일: fill in with the release that turns groups on. -->
+      <p>시행일: 그룹 기능을 여는 앱 업데이트와 함께 적습니다.<br>
+      운영자: Seonghoon Kim · 문의: <a href="mailto:d.house0827@gmail.com">d.house0827@gmail.com</a>, <a href="./">지원 페이지</a></p>
+    </div>
+
+    <h2>1. 그룹은 어떤 곳인가요</h2>
+    <p>Pilgrim 그룹은 초대받은 사람끼리 기도제목, 독후감, 간증을 나누는 작은 비공개 모임입니다.</p>
+    <ul>
+      <li>그룹은 <strong>기록장과 따로</strong> 움직입니다. 기록장의 기록은 지금처럼 내 기기와 내 iCloud에만 있고, 그룹에는 내가 직접 올린 것만 갑니다.</li>
+      <li>그룹 안의 내용은 <strong>같은 그룹 멤버에게만</strong> 보입니다. 멤버가 아니면 그룹이 있는지도 알 수 없습니다.</li>
+      <li>그룹 서버는 운영자가 직접 운영합니다. 전송 중에는 암호화하고 서버 디스크도 암호화하지만, 종단 간 암호화는 하지 않으므로 <strong>운영자는 서버에 있는 내용을 볼 수 있습니다.</strong> 신고를 처리할 때와 서비스를 지키는 데 필요할 때만 봅니다.</li>
+    </ul>
+
+    <h2>2. 시작하기</h2>
+    <ul>
+      <li>“그룹 시작하기”에서 기록장에 로그인한 Apple 계정으로 한 번 더 인증합니다. 다른 Apple 계정으로는 시작할 수 없습니다. 이름이나 이메일은 Apple에서 받지 않습니다.</li>
+      <li>그룹에서 보일 이름(1~30자)을 정하고, 원하면 프로필 사진을 올립니다.</li>
+      <li>이 안내와 <a href="./#ko-privacy">개인정보 처리방침</a>에 동의해야 그룹을 쓸 수 있습니다.</li>
+    </ul>
+
+    <h2>3. 그룹 서버에 저장되는 것</h2>
+    <p>그룹에서 보일 이름과 프로필 사진, 내 그룹과 멤버 정보, 올린 글과 사진, 댓글, 반응, 스티커, 알림을 받을 기기 토큰, 숨김·차단 목록, 신고. 자세한 항목과 보관 기간은 <a href="./#ko-privacy">개인정보 처리방침</a>에 있습니다.</p>
+    <p>일기 원문, 기록장 데이터, 스크랩, 이메일과 실명, 결제 수단은 그룹 서버에 저장하지 않습니다.</p>
+
+    <h2>4. 글은 정해진 기간이 지나면 사라집니다</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>글</th><th>사라지는 때</th></tr></thead>
+        <tbody>
+          <tr><td>기도제목(데드라인 있음)</td><td>데드라인 날이 끝나고 3일 뒤(올린 사람의 시간대 기준)</td></tr>
+          <tr><td>기도제목(데드라인 없음)</td><td>올린 때부터 3일·7일·14일·30일 중 고른 기간 뒤(기본 7일)</td></tr>
+          <tr><td>독후감</td><td>7일 뒤. 멤버 누구나 “토론 연장 +1주”를 누를 때마다 7일씩 늘어납니다</td></tr>
+          <tr><td>간증</td><td>7일 뒤</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul>
+      <li>글의 댓글, 반응, 사진은 글과 함께 사라집니다.</li>
+      <li>올린 사람은 언제든 먼저 내릴 수 있고, 내리면 모든 멤버에게서 바로 사라집니다.</li>
+      <li>지워진 내용도 암호화된 서버 백업에는 최대 37일 남았다가 지워집니다.</li>
+    </ul>
+
+    <h2>5. 스크랩</h2>
+    <ul>
+      <li>멤버는 그룹의 글을 자기 기록장에 <strong>스크랩</strong>(복사)할 수 있습니다. 글, 보이는 댓글, 사진이 그 사람의 기록장과 그 사람의 iCloud에 새 기록으로 저장됩니다.</li>
+      <li>스크랩한 사본은 원래 글이 기한으로 사라지거나, 올린 사람이 내리거나, 계정을 지워도 <strong>스크랩한 사람의 기록장에 남습니다.</strong> 운영자도 지울 수 없습니다.</li>
+      <li>그러니 다른 사람이 간직해도 괜찮은 내용만 올려 주세요.</li>
+    </ul>
+
+    <h2>6. 그룹 운영</h2>
+    <ul>
+      <li><strong>관리자:</strong> 그룹을 만든 사람이 관리자입니다. 관리자만 초대를 만들고, 멤버를 내보내고, 그룹 이름을 바꾸고, 그룹을 지울 수 있습니다. 관리자는 다른 멤버에게 관리자를 넘길 수 있습니다.</li>
+      <li><strong>초대:</strong> 초대 링크·QR·코드는 관리자가 만들고, 정한 인원(1~100명)까지 쓸 수 있으며 3일 뒤 만료됩니다. 링크의 웹 페이지에는 그룹 이름이나 인원 같은 그룹 정보가 나오지 않습니다.</li>
+      <li><strong>내보내기:</strong> 관리자가 내보낸 사람은 관리자가 풀어 주기 전까지 어떤 초대로도 다시 들어올 수 없습니다. 그 사람이 올린 글과 댓글은 기한까지 남습니다.</li>
+      <li><strong>그룹 삭제:</strong> 관리자가 그룹을 지우면 7일 동안 읽기와 스크랩만 되고, 그 뒤 그룹과 모든 글·사진이 지워집니다. 멤버가 모두 나가면 바로 지워집니다.</li>
+    </ul>
+    <h3>관리자 위임 투표</h3>
+    <p>관리자가 그룹을 나가거나 계정을 지우면, 남은 멤버가 투표로 새 관리자를 정합니다.</p>
+    <ul>
+      <li>남은 멤버가 한 명이면 투표 없이 그 사람이 관리자가 되고, 아무도 없으면 그룹이 지워집니다.</li>
+      <li>투표는 3일 동안 열리고 남은 멤버 모두가 후보이자 투표권자입니다(자기 자신도 됩니다). 마감 전까지 표를 바꿀 수 있고, 득표 수는 아무에게도 보이지 않습니다.</li>
+      <li>가장 많이 받은 사람이 한 명이면 관리자가 됩니다. 동률이면 동률인 사람끼리 하루 동안 다시 투표하고, 또 동률이거나 아무도 투표하지 않으면 그 후보 중 무작위로 정합니다.</li>
+      <li>첫 투표에 아무도 참여하지 않으면 그룹은 삭제 예정이 되어 7일 뒤 지워집니다.</li>
+      <li>투표 중에는 관리자가 없으므로 초대, 내보내기, 그룹 이름 변경, 그룹 삭제를 할 수 없습니다. 글, 댓글, 반응, 스티커, 스크랩은 그대로 됩니다.</li>
+    </ul>
+
+    <h2>7. 지켜 주세요</h2>
+    <p>다음과 같은 글, 댓글, 사진, 스티커, 이름을 올리지 마세요.</p>
+    <ul>
+      <li>법을 어기거나 다른 사람의 권리(저작권, 초상권 등)를 침해하는 것</li>
+      <li>괴롭힘, 위협, 혐오 표현, 차별</li>
+      <li>음란하거나 폭력적인 것</li>
+      <li>다른 사람의 개인정보를 그 사람의 동의 없이 올리는 것</li>
+      <li>다른 사람을 사칭하는 것, 광고와 스팸</li>
+    </ul>
+    <p>함께 기도하는 모임이라는 것을 기억하고, 다른 사람의 사정을 올릴 때는 그 사람이 원하는지 먼저 생각해 주세요.</p>
+
+    <h2>8. 숨김, 차단, 신고</h2>
+    <ul>
+      <li><strong>숨기기:</strong> 글 하나 또는 사람을 숨길 수 있습니다. 내 화면에서만 사라지고, 사람을 숨기면 모든 그룹에서 그 사람의 글·댓글·반응이 보이지 않습니다. 설정의 “숨긴 항목”에서 되돌립니다.</li>
+      <li><strong>차단:</strong> 차단하면 나와 상대 <strong>모두</strong> 서로의 글·댓글·반응을 보지 못하고 서로에게 알림이 가지 않습니다. 같은 그룹 멤버로는 남고, 상대에게 차단 사실을 알리지 않습니다. 차단한 사람만 풀 수 있습니다.</li>
+      <li><strong>신고:</strong> 글, 댓글, 스티커, 사람을 신고할 수 있습니다. 신고하면 그 시점의 내용(작성자, 제목, 본문, 기도 항목, 책 정보, 사진 목록)이 운영자 확인용으로 90일 동안 보관됩니다.</li>
+      <li>운영자는 신고를 확인하고 이 안내를 어긴 글·댓글·스티커를 지우거나 계정을 정지할 수 있습니다. 정지된 동안에는 그룹을 쓸 수 없지만 계정 삭제는 언제든 할 수 있습니다.</li>
+    </ul>
+
+    <h2>9. 알림</h2>
+    <p>새 글, Daily Report, 관리자 투표 알림을 보냅니다. 잠금 화면 알림에는 기도 내용이 실리지 않고 그룹 이름과 작성자 이름만 나옵니다. 알림은 그룹 설정과 기기 설정에서 끌 수 있습니다.</p>
+
+    <h2>10. 계정 삭제</h2>
+    <p>앱의 설정 › Apple 로그인 › 계정 삭제에서 언제든 지울 수 있습니다.</p>
+    <ul>
+      <li>그룹 서버의 계정이 <strong>가장 먼저</strong> 지워집니다. 내가 올린 글·댓글·반응·스티커·사진, 멤버십, 기기 토큰, 숨김·차단 목록이 함께 지워집니다.</li>
+      <li>내가 관리하는 그룹은 남은 멤버의 위임 투표로 넘어갑니다(6절).</li>
+      <li>다른 사람이 나를 신고했거나 내가 한 신고의 내용은 누구인지 알 수 있는 정보를 지운 채 90일까지 남습니다.</li>
+      <li>다른 멤버가 스크랩한 내 글은 그 사람의 기록장에 있으므로 지워지지 않습니다(5절).</li>
+      <li>그룹 로그인에 쓴 Apple 연결은 서버가 끊습니다. App Store 구독이 있다면 App Store 설정에서 직접 해지해야 합니다.</li>
+    </ul>
+
+    <h2>11. 요금</h2>
+    <p>지금은 그룹을 <strong>무료</strong>로 씁니다. 구독 기능은 만들어 두었지만 꺼 두었습니다.</p>
+    <ul>
+      <li>유료로 바꾸게 되면 미리 앱과 이 페이지에서 알립니다.</li>
+      <li>유료로 바뀐 뒤 구독이 끝나거나 환불되면 그 사람은 그룹에서 빠지고, 그 사람이 올린 글·댓글·반응·스티커·사진이 지워집니다. 스크랩은 각자의 기록장에 남습니다. 다시 구독하면 초대로 다시 들어올 수 있습니다.</li>
+      <li>결제와 해지는 Apple App Store가 처리합니다.</li>
+    </ul>
+
+    <h2>12. 그 밖에</h2>
+    <ul>
+      <li>그룹 서버는 한 사람이 운영하는 서비스라 점검이나 장애로 잠시 쓸 수 없을 때가 있습니다. 그래도 기록장은 그대로 쓸 수 있습니다.</li>
+      <li>이 안내를 바꾸면 시행 전에 앱과 이 페이지에서 알립니다.</li>
+      <li>궁금한 점은 <a href="mailto:d.house0827@gmail.com">d.house0827@gmail.com</a> 또는 <a href="./">지원 페이지</a>로 문의해 주세요.</li>
+    </ul>
+  </section>
+
+  <hr class="split">
+
+  <section id="en" class="language" lang="en">
+    <div class="card">
+      <p>Effective date: set with the app update that opens groups.<br>
+      Operator: Seonghoon Kim · Contact: <a href="mailto:d.house0827@gmail.com">d.house0827@gmail.com</a>, <a href="./">support page</a></p>
+    </div>
+
+    <h2>1. What groups are</h2>
+    <p>A Pilgrim group is a small private circle where invited people share prayer requests, book reports and testimonies.</p>
+    <ul>
+      <li>Groups are <strong>separate from your journal</strong>. Your journal entries stay on your devices and in your iCloud as before; only what you post yourself goes to a group.</li>
+      <li>What’s in a group is visible <strong>only to members of that group</strong>. Non-members can’t even tell the group exists.</li>
+      <li>The operator runs the group server. Data is encrypted in transit and on the server’s disk, but not end-to-end, so <strong>the operator can see what is on the server.</strong> The operator looks only to handle reports and to keep the service safe.</li>
+    </ul>
+
+    <h2>2. Getting started</h2>
+    <ul>
+      <li>“Get started with groups” asks you to sign in with Apple again, using the Apple account you use for your journal. Another Apple account can’t start groups. Your name and email aren’t requested from Apple.</li>
+      <li>Choose the name other members see (1–30 characters) and, if you like, a profile photo.</li>
+      <li>You need to agree to this usage guide and the <a href="./#en-privacy">privacy policy</a> to use groups.</li>
+    </ul>
+
+    <h2>3. What the group server stores</h2>
+    <p>Your group name and profile photo, your groups and their members, the posts and photos you share, comments, reactions, stickers, device tokens for notifications, your hidden and blocked lists, and reports. The <a href="./#en-privacy">privacy policy</a> lists every item and how long it is kept.</p>
+    <p>Your diary text, journal data, scraps, email, real name and payment details are never stored on the group server.</p>
+
+    <h2>4. Posts disappear after a set time</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Post</th><th>Disappears</th></tr></thead>
+        <tbody>
+          <tr><td>Prayer request with a deadline</td><td>3 days after the deadline day ends (in the poster’s time zone)</td></tr>
+          <tr><td>Prayer request without a deadline</td><td>After the period chosen when posting: 3, 7, 14 or 30 days (7 by default)</td></tr>
+          <tr><td>Book report</td><td>After 7 days. Each time any member taps “Extend discussion +1 week”, 7 more days</td></tr>
+          <tr><td>Testimony</td><td>After 7 days</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul>
+      <li>A post’s comments, reactions and photos disappear with it.</li>
+      <li>The poster can take a post down at any time, and it disappears for every member at once.</li>
+      <li>Deleted content stays in the encrypted server backups for up to 37 days before it is gone.</li>
+    </ul>
+
+    <h2>5. Scraps</h2>
+    <ul>
+      <li>Members can <strong>scrap</strong> (copy) a group post into their own journal. The post, the comments they can see and the photos are saved as a new entry in that person’s journal and iCloud.</li>
+      <li>A scrapped copy <strong>stays in that person’s journal</strong> even after the original expires, is taken down, or its author deletes their account. The operator can’t delete it either.</li>
+      <li>So please share only what you’re comfortable with others keeping.</li>
+    </ul>
+
+    <h2>6. Running a group</h2>
+    <ul>
+      <li><strong>Admin:</strong> whoever creates a group is its admin. Only the admin can create invites, remove members, rename the group and delete it. The admin can hand the role to another member.</li>
+      <li><strong>Invites:</strong> the admin creates invite links, QR codes and codes. Each works for the number of people set (1–100) and expires after 3 days. The invite’s web page shows no group details such as the name or member count.</li>
+      <li><strong>Removing members:</strong> someone the admin removes can’t rejoin with any invite until the admin lets them back. Their posts and comments stay until they expire.</li>
+      <li><strong>Deleting a group:</strong> when the admin deletes a group, it stays readable and scrappable for 7 days, then the group and all its posts and photos are deleted. If every member leaves, it is deleted right away.</li>
+    </ul>
+    <h3>Admin vote</h3>
+    <p>When the admin leaves the group or deletes their account, the remaining members vote for a new admin.</p>
+    <ul>
+      <li>If one member remains, they become admin without a vote. If no one remains, the group is deleted.</li>
+      <li>The vote is open for 3 days. Every remaining member is both a candidate and a voter (you can vote for yourself). You can change your vote until it closes, and no one sees the counts.</li>
+      <li>If one person has the most votes, they become admin. On a tie, the tied people go to a one-day runoff; if that ties too, or no one votes in it, one of them is picked at random.</li>
+      <li>If no one votes in the first round, the group is scheduled for deletion and deleted after 7 days.</li>
+      <li>While the vote is open there is no admin, so no one can invite, remove members, rename or delete the group. Posts, comments, reactions, stickers and scraps work as usual.</li>
+    </ul>
+
+    <h2>7. Please don’t post</h2>
+    <p>Don’t post, comment, upload photos or stickers, or choose names that:</p>
+    <ul>
+      <li>break the law or infringe others’ rights (copyright, likeness and so on)</li>
+      <li>harass, threaten, or express hate or discrimination</li>
+      <li>are sexual or violent</li>
+      <li>share someone else’s personal information without their consent</li>
+      <li>impersonate someone, or are advertising or spam</li>
+    </ul>
+    <p>Remember this is a circle that prays together. Before sharing someone else’s situation, think about whether they would want it shared.</p>
+
+    <h2>8. Hiding, blocking and reporting</h2>
+    <ul>
+      <li><strong>Hide:</strong> hide a single post or a person. It disappears only from your screen; hiding a person hides their posts, comments and reactions in every group. Undo it in Settings under “Hidden items”.</li>
+      <li><strong>Block:</strong> when you block someone, <strong>neither of you</strong> sees the other’s posts, comments or reactions, and neither gets notifications about the other. You both stay members of the group, and they aren’t told. Only the person who blocked can unblock.</li>
+      <li><strong>Report:</strong> you can report a post, comment, sticker or person. A report keeps a copy of the content at that moment (author, title, text, prayer items, book details, photo list) for the operator to review, for 90 days.</li>
+      <li>The operator reviews reports and may delete posts, comments or stickers that break these terms, or suspend an account. A suspended account can’t use groups but can always be deleted.</li>
+    </ul>
+
+    <h2>9. Notifications</h2>
+    <p>We send notifications for new posts, the Daily Report and admin votes. Lock Screen notifications never include prayer content, only the group name and the author’s name. Turn them off in the group’s settings or in your device settings.</p>
+
+    <h2>10. Deleting your account</h2>
+    <p>Delete it at any time in the app under Settings › Sign in with Apple › Delete Account.</p>
+    <ul>
+      <li>Your group server account is deleted <strong>first</strong>, together with your posts, comments, reactions, stickers, photos, memberships, device tokens and hidden and blocked lists.</li>
+      <li>Groups you run go to an admin vote among the remaining members (section 6).</li>
+      <li>Reports about you, and reports you made, stay for up to 90 days with the details that identify you removed.</li>
+      <li>Your posts that other members scrapped are in their journals, so they aren’t deleted (section 5).</li>
+      <li>The server disconnects the Sign in with Apple link used for groups. If you have an App Store subscription, cancel it yourself in App Store settings.</li>
+    </ul>
+
+    <h2>11. Price</h2>
+    <p>Groups are <strong>free</strong> for now. A subscription is built but turned off.</p>
+    <ul>
+      <li>If groups become paid, we’ll tell you in advance in the app and on this page.</li>
+      <li>Once paid, when someone’s subscription ends or is refunded, they leave their groups and their posts, comments, reactions, stickers and photos are deleted. Scraps stay in each person’s journal. Subscribing again lets them rejoin by invite.</li>
+      <li>Apple’s App Store handles payment and cancellation.</li>
+    </ul>
+
+    <h2>12. Other</h2>
+    <ul>
+      <li>The group server is run by one person, so it may sometimes be unavailable for maintenance or outages. Your journal keeps working.</li>
+      <li>If these terms change, we’ll tell you in the app and on this page before the change takes effect.</li>
+      <li>Questions: <a href="mailto:d.house0827@gmail.com">d.house0827@gmail.com</a> or the <a href="./">support page</a>.</li>
+    </ul>
+  </section>
+
+  <footer>
+    <p>© 2026 Pilgrim Journal · <a href="./">지원 · Support</a> · <a href="mailto:d.house0827@gmail.com">d.house0827@gmail.com</a></p>
+  </footer>
+</main>
+</body>
+</html>

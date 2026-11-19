@@ -76,8 +76,8 @@ enum WebModule {
 
     // MARK: - Invite page
 
-    /// Where "App Store" points until the app's own listing ID is fixed.
-    static let appStoreURL = "https://apps.apple.com/search?term=Pilgrim%20Journal"
+    /// The app's App Store listing (App Store Connect › 앱 정보 › Apple ID).
+    static let appStoreURL = "https://apps.apple.com/app/id6799469852"
 
     /// The same page for every code, valid or not: a well-formed code is shown grouped
     /// (`XXXX-XXXX-XXXX`) for typing in by hand, anything else is shown as given.

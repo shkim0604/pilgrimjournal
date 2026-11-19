@@ -283,10 +283,9 @@ enum GroupDateText {
     }
 }
 
-/// The App Store page the upgrade notice links to. Phase 2 replaces the search link with the
-/// app's own page once its App Store ID is fixed.
+/// The App Store page the upgrade notice links to (App Store Connect › 앱 정보 › Apple ID).
 enum GroupsAppStoreLink {
-    static let url = URL(string: "https://apps.apple.com/search?term=Pilgrim%20Journal")!
+    static let url = URL(string: "https://apps.apple.com/app/id6799469852")!
 }
 
 // MARK: - Sheet models

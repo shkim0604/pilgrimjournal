@@ -80,7 +80,7 @@
 
   <section id="ko" class="language" lang="ko">
     <h2>앱 소개</h2>
-    <p>Pilgrim Journal(홈 화면 이름 “Pilgrim”)은 iPhone과 Mac에서 쓰는 개인 기록 앱입니다. 기도노트, 성경공부, 독서노트, 일기와 메모를 유형별로 정리하고, Day One에서 내보낸 기록을 가져올 수 있습니다. 기록은 기기와 사용자의 iCloud 개인 저장 공간에만 저장됩니다.</p>
+    <p>Pilgrim Journal(홈 화면 이름 “Pilgrim”)은 iPhone과 Mac에서 쓰는 개인 기록 앱입니다. 기도노트, 성경공부, 독서노트, 일기와 메모를 유형별로 정리하고, Day One에서 내보낸 기록을 가져올 수 있습니다. 기록은 기기와 사용자의 iCloud 개인 저장 공간에만 저장됩니다. 비공개 그룹을 쓰면 그룹에 직접 올린 글만 운영자의 그룹 서버에 저장됩니다(<a href="group-terms.html">그룹 이용 안내</a>).</p>
 
     <h2>문의</h2>
     <div class="card">
@@ -110,21 +110,39 @@
       <ol>
         <li>앱에서 설정 › Apple 로그인 › <span class="path">계정 삭제</span>를 엽니다.</li>
         <li>삭제되는 항목과 안내를 확인하고 <strong>계정 삭제</strong>를 누른 뒤 한 번 더 확인합니다.</li>
+        <li>그룹을 썼다면 그룹 서버의 계정과 내가 올린 글·댓글·반응·스티커·사진이 가장 먼저 지워지고, 내가 관리하던 그룹은 남은 멤버의 투표로 넘어갑니다.</li>
         <li>iCloud에 저장된 모든 기록과 첨부, 이 기기의 기록과 설정, 이 기기에 저장된 Apple 로그인 정보와 앱 잠금 설정이 삭제되고 로그인 화면으로 돌아갑니다.</li>
         <li>Apple 로그인 연결도 끊으려면 iPhone의 <span class="path">설정 › Apple 계정 › Apple로 로그인 › Pilgrim › 사용 중단</span>을 누릅니다(Mac은 시스템 설정의 같은 경로).</li>
       </ol>
       <p class="muted">삭제는 되돌릴 수 없습니다. 다른 iPhone이나 Mac에서도 앱을 쓰고 있다면 그 기기에서 먼저 앱을 삭제하세요. 그대로 두면 그 기기에 남은 기록이 iCloud에 다시 올라갈 수 있습니다. iCloud에 연결되지 않은 상태에서 삭제하면 이 기기의 데이터만 지워집니다.</p>
-      <p class="muted">앱을 쓸 수 없는 상황이라면 위 이메일로 요청해 주세요. Pilgrim에는 자체 서버가 없어 개발자가 사용자의 기록을 보거나 지울 수는 없으므로, 삭제 방법을 안내해 드립니다.</p>
+      <p class="muted">앱을 쓸 수 없는 상황이라면 위 이메일로 요청해 주세요. 기록장 기록은 iCloud에만 있어 개발자가 보거나 지울 수 없으므로 삭제 방법을 안내해 드립니다. 그룹 서버의 계정과 올린 내용은 본인 확인 뒤 운영자가 지워 드립니다.</p>
     </div>
 
-    <h2>개인정보 요약</h2>
+    <h2 id="ko-privacy">개인정보 처리방침</h2>
+    <h3>기록장</h3>
     <ul>
-      <li>기록은 기기의 로컬 저장소와 사용자의 iCloud 개인 데이터베이스에만 저장됩니다. 자체 기록 서버, 광고·분석 SDK, 공개·공유 CloudKit 데이터베이스를 쓰지 않습니다.</li>
+      <li>기록은 기기의 로컬 저장소와 사용자의 iCloud 개인 데이터베이스에만 저장됩니다. 기록장을 받는 자체 서버, 광고·분석 SDK, 공개 CloudKit 데이터베이스를 쓰지 않습니다. 사용자가 고른 iCloud 사용자에게 노트북이나 기록을 공유할 때만 iCloud 공유(CKShare)를 씁니다.</li>
       <li>Apple 로그인은 앱 접근에만 씁니다. 이름은 요청하지 않으며, Apple이 준 이메일(가림 처리된 주소일 수 있음)과 사용자 식별자는 계정 표시를 위해 기기 Keychain에만 저장하고 iCloud에는 올리지 않습니다.</li>
       <li>iCloud 저장 공간이 어느 Apple 로그인 사용자 것인지 확인하기 위해 사용자 식별자를 단방향 해시한 값 하나만 iCloud 개인 데이터베이스에 저장합니다.</li>
       <li>노트북·유형 이름 목록은 기기 간 공유를 위해 iCloud 키-값 저장소에 둡니다. 기록 본문은 넣지 않습니다.</li>
       <li>검색 인덱스와 Day One 원본 snapshot은 각 기기에만 남습니다.</li>
       <li>앱 잠금 비밀번호 원문은 저장하지 않습니다. 검증값만 기기 Keychain에 저장합니다.</li>
+      <li>기도제목 제안과 번역은 기기 안에서 이루어지고, 그 결과는 저장하거나 보내지 않습니다.</li>
+    </ul>
+
+    <h3>비공개 그룹 (그룹을 쓸 때만)</h3>
+    <p>그룹에 올린 글과 그룹 활동은 운영자(Seonghoon Kim)가 직접 관리하는 그룹 서버(운영자 집의 Mac mini)에 저장됩니다. 서버 디스크와 전송은 암호화하지만 종단 간 암호화는 하지 않으므로, 운영자는 신고 처리와 서비스 보호에 필요할 때 서버의 내용을 볼 수 있습니다. 자세한 규칙은 <a href="group-terms.html">그룹 이용 안내</a>에 있습니다.</p>
+    <ul>
+      <li><strong>저장하는 것:</strong> Apple 로그인 사용자 식별자, 그룹에서 보일 이름과 프로필 사진(선택), 시간대·언어·Daily Report 설정, 그룹 계정 연결을 끊는 데 쓰는 암호화된 Apple 토큰, 알림용 기기 토큰과 앱 버전, 내 그룹·멤버·초대·관리자 투표, 올린 기도제목·독후감·간증과 사진, 댓글, 반응, 스티커, 숨김·차단 목록, 신고.</li>
+      <li><strong>저장하지 않는 것:</strong> 일기 원문과 기록장 데이터, 스크랩, 이메일과 실명, iCloud 정보, 결제 수단. 요청 IP는 남용을 막는 횟수 제한에만 잠깐 메모리에서 쓰고 저장하지 않습니다.</li>
+      <li><strong>누가 보나:</strong> 같은 그룹 멤버만 봅니다. 차단하면 서로의 글·댓글·반응과 알림이 막힙니다. 초대 링크의 웹 페이지에는 그룹 정보를 싣지 않습니다.</li>
+      <li><strong>사진:</strong> 앱이 기기에서 크기를 줄이고 위치(GPS)·촬영 정보 같은 메타데이터를 지운 뒤 올리고, 서버가 한 번 더 지웁니다. 멤버만 짧게 유효한 주소로 내려받습니다.</li>
+      <li><strong>알림:</strong> Apple 푸시 알림 서비스(APNs)로 보냅니다. 잠금 화면 알림에는 기도 내용 없이 그룹 이름과 작성자 이름만 나옵니다.</li>
+      <li><strong>보관 기간:</strong> 기도제목은 데드라인 날이 끝나고 3일 뒤 또는 고른 공개 기간(3·7·14·30일, 기본 7일) 뒤, 독후감과 간증은 7일 뒤(독후감은 토론 연장마다 7일 더) 서버에서 지워지고 댓글·반응·사진도 함께 지워집니다. 작성자는 언제든 먼저 내릴 수 있습니다. 신고 내용은 90일, 알림 대기열과 발송 기록은 최대 30일 뒤 지웁니다.</li>
+      <li><strong>백업:</strong> 매일 서버 데이터를 암호화한 뒤 운영자의 iCloud Drive(Apple)에 백업하고 7일이 지난 백업은 지웁니다. 지운 암호화 조각은 iCloud에 최대 30일 더 남으므로, 지워진 내용도 백업에는 최대 37일 남습니다.</li>
+      <li><strong>함께 처리하는 곳:</strong> Cloudflare(앱과 서버 사이의 연결 중계와 TLS), Apple(Apple 로그인, 푸시 알림, 백업 보관). 그 밖의 제3자에게 제공하거나 팔지 않고, 광고·분석에 쓰지 않습니다.</li>
+      <li><strong>지우기:</strong> 앱의 계정 삭제가 그룹 서버의 계정과 올린 내용을 가장 먼저 지웁니다. 남이 나를 신고했거나 내가 한 신고는 나를 알아볼 수 있는 정보를 지운 채 90일까지 남습니다. 다른 멤버가 스크랩한 사본은 그 사람의 기록장에 남습니다.</li>
+      <li><strong>요청:</strong> 내 그룹 정보를 보거나 고치거나 지우고 싶다면 앱에서 직접 하거나 위 이메일로 요청해 주세요.</li>
     </ul>
   </section>
 
@@ -132,7 +150,7 @@
 
   <section id="en" class="language" lang="en">
     <h2>About</h2>
-    <p>Pilgrim Journal (shown as “Pilgrim” on the Home Screen) is a private journal for iPhone and Mac. Organize prayer notes, Bible study, reading notes, diary entries and memos by kind, and bring in entries exported from Day One. Your entries are stored only on your devices and in your own iCloud private storage.</p>
+    <p>Pilgrim Journal (shown as “Pilgrim” on the Home Screen) is a private journal for iPhone and Mac. Organize prayer notes, Bible study, reading notes, diary entries and memos by kind, and bring in entries exported from Day One. Your entries are stored only on your devices and in your own iCloud private storage. If you use private groups, only what you post to a group is stored on the operator’s group server (<a href="group-terms.html#en">group usage guide</a>).</p>
 
     <h2>Contact</h2>
     <div class="card">
@@ -162,21 +180,39 @@
       <ol>
         <li>In the app, open Settings › Sign in with Apple › <span class="path">Delete Account</span>.</li>
         <li>Review what will be deleted, tap <strong>Delete Account</strong> and confirm once more.</li>
+        <li>If you used groups, your group server account and the posts, comments, reactions, stickers and photos you shared are deleted first, and groups you ran go to a vote among the remaining members.</li>
         <li>All entries and attachments in iCloud, this device’s entries and settings, and the Apple sign-in details and App Lock settings stored on this device are deleted, and the app returns to the sign-in screen.</li>
         <li>To also disconnect Sign in with Apple, go to <span class="path">Settings › Apple Account › Sign in with Apple › Pilgrim › Stop Using</span> on your iPhone (the same path in System Settings on a Mac).</li>
       </ol>
       <p class="muted">Deletion can’t be undone. If you also use the app on another iPhone or Mac, delete the app there first; otherwise the entries left on that device may upload to iCloud again. Deleting while not connected to iCloud removes this device’s data only.</p>
-      <p class="muted">If you can’t use the app, email the address above. Pilgrim has no server of its own, so the developer can’t see or delete your entries, but we’ll walk you through deleting them.</p>
+      <p class="muted">If you can’t use the app, email the address above. Journal entries live only in your iCloud, so the developer can’t see or delete them, but we’ll walk you through deleting them. Your group server account and posts the operator deletes once we’ve confirmed it’s you.</p>
     </div>
 
-    <h2>Privacy summary</h2>
+    <h2 id="en-privacy">Privacy policy</h2>
+    <h3>Journal</h3>
     <ul>
-      <li>Entries are stored only on your device and in your iCloud private database. No journal server of our own, no advertising or analytics SDKs, no public or shared CloudKit database.</li>
+      <li>Entries are stored only on your device and in your iCloud private database. No server of our own receives your journal, no advertising or analytics SDKs, no public CloudKit database. iCloud sharing (CKShare) is used only when you share a notebook or entry with iCloud users you choose.</li>
       <li>Sign in with Apple only controls access to the app. Your name isn’t requested. The email Apple provides (which may be a private relay address) and your user identifier are kept in this device’s Keychain to show the signed-in account, and never uploaded to iCloud.</li>
       <li>To tell which Apple sign-in user owns an iCloud storage space, only a one-way hash of the user identifier is stored in your iCloud private database.</li>
       <li>Notebook and kind names are kept in the iCloud key-value store so your devices share them. Entry text is never put there.</li>
       <li>The search index and the original Day One snapshots stay on each device.</li>
       <li>The App Lock passcode itself is never stored; only a verifier is kept in the device Keychain.</li>
+      <li>Prayer request suggestions and translations happen on the device; their results are not stored or sent anywhere.</li>
+    </ul>
+
+    <h3>Private groups (only if you use them)</h3>
+    <p>What you post to a group, and your group activity, is stored on a group server run by the operator (Seonghoon Kim) on a Mac mini at the operator’s home. Data is encrypted on the server’s disk and in transit, but not end-to-end, so the operator can see what is on the server when handling reports or protecting the service. The <a href="group-terms.html#en">group usage guide</a> has the full rules.</p>
+    <ul>
+      <li><strong>What is stored:</strong> your Sign in with Apple user identifier, the name and optional profile photo other members see, your time zone, language and Daily Report settings, an encrypted Apple token used only to disconnect Sign in with Apple when you delete your account, device tokens and app version for notifications, your groups, members, invites and admin votes, the prayer requests, book reports, testimonies and photos you post, comments, reactions, stickers, your hidden and blocked lists, and reports.</li>
+      <li><strong>What is not stored:</strong> your diary text and journal data, scraps, email, real name, iCloud details and payment details. Your IP address is used briefly in memory to rate-limit abuse and is not saved.</li>
+      <li><strong>Who sees it:</strong> only members of the same group. Blocking stops each other’s posts, comments, reactions and notifications. Invite web pages show no group details.</li>
+      <li><strong>Photos:</strong> the app shrinks photos and removes metadata such as GPS location and camera details before upload, and the server removes it again. Only members can download them, through short-lived links.</li>
+      <li><strong>Notifications:</strong> sent through the Apple Push Notification service (APNs). Lock Screen notifications carry only the group name and author name, never prayer content.</li>
+      <li><strong>Retention:</strong> prayer requests are deleted from the server 3 days after their deadline day ends or after the period chosen (3, 7, 14 or 30 days; 7 by default); book reports and testimonies after 7 days (each discussion extension adds 7 days to a book report). Comments, reactions and photos go with their post, and authors can take posts down at any time. Reports are kept for 90 days; notification queues and delivery logs for up to 30 days.</li>
+      <li><strong>Backups:</strong> server data is encrypted and backed up daily to the operator’s iCloud Drive (Apple); backups older than 7 days are deleted. Deleted encrypted pieces stay in iCloud for up to 30 more days, so deleted content can remain in backups for up to 37 days.</li>
+      <li><strong>Service providers:</strong> Cloudflare (relaying connections between the app and the server, and TLS) and Apple (Sign in with Apple, push notifications, backup storage). We don’t share or sell your data to anyone else, and don’t use it for advertising or analytics.</li>
+      <li><strong>Deletion:</strong> deleting your account in the app deletes your group server account and what you posted first. Reports about you, or made by you, stay for up to 90 days with the details that identify you removed. Copies other members scrapped stay in their journals.</li>
+      <li><strong>Requests:</strong> to see, correct or delete your group data, do it in the app or email the address above.</li>
     </ul>
   </section>
 

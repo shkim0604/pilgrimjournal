@@ -179,8 +179,8 @@ private struct GroupSignUpForm: View {
 
             Section {
                 Toggle("이용 안내와 개인정보 처리 방침에 동의해요", isOn: $acceptsTerms)
-                // The support page until the group terms (`docs/group-terms.md`) are published there.
-                Link("이용 안내 보기", destination: SupportLinks.supportPage)
+                // The privacy policy is on the support page, which the terms page links to.
+                Link("이용 안내 보기", destination: SupportLinks.groupTerms)
             } footer: {
                 // What the server keeps, as `docs/privacy.md` "그룹 서버" lists it.
                 Text(

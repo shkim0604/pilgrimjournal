@@ -67,18 +67,22 @@
         (`app-site-association.cdn-apple.com`)에 같은 AASA가 캐시됨, 봇처럼 보이는 UA(`python-requests`,
         빈 UA)도 200, `/internal/admin/v1/status`는 콘솔의 404. `--path-as-is`로 보낸
         `/api/../internal/admin/v1/status`(`/i/..`, `/.well-known/..`도)는 터널을 지나 그룹 서버에 닿지만
-        라우트가 맞지 않아 JSON 404다(맞았다면 `AdminGuardMiddleware`가 `Cf-Ray`로 403). **남은 것:** Cloudflare 대시보드에서
-        봇·WAF 규칙이 `/api`·`/.well-known`에 챌린지를 걸지 않는지 눈으로 확인.
+        라우트가 맞지 않아 JSON 404다(맞았다면 `AdminGuardMiddleware`가 `Cf-Ray`로 403). 2026-11-19 다시: `curl`,
+        `python-requests`, 임의 봇 UA, iPhone Safari UA 모두 `/api/health`·AASA·`/i/<코드>` 200, Apple CDN AASA 200.
+        **남은 것:** Cloudflare 대시보드에서 봇·WAF 규칙이 `/api`·`/.well-known`에 챌린지를 걸지 않는지 눈으로
+        확인(지금 응답으로는 막는 규칙이 없다).
       - Apple: Sign in with Apple 키·APNs 키는 `.env.prod`에 있고 Debug App ID도 그룹에 묶였다.
         **남은 것:** 두 App ID에 Push Notifications·Associated Domains가 켜져 있는지 Developer 사이트에서
         확인. In-App Purchase 키, App Store Server Notifications V2 URL, 구독 상품은 구독을 켤 때(보류).
       - 콘솔 `ADMIN_API_TOKEN` 연결과 CI `server` job(Linux, Postgres)은 끝났다.
-      - 문서 밖: App Store 개인정보 라벨, 지원 사이트의 개인정보 처리방침(`site/index.html`이 아직
-        "Pilgrim에는 자체 서버가 없어"라고 한다), `/i/:code`와 앱 업데이트 안내(`GroupsAppStoreLink`)의
-        App Store 링크. iOS가 판매 중이라 App Store ID는 이미 있다.
-      - **그룹 이용 안내 페이지를 올리고 앱에 연결:** `docs/group-terms.md` 초안의 `<…>` 자리를 채워
-        지원 사이트에 올리고, 가입 화면의 "이용 안내 보기"(`GroupOnboardingSheet`, 지금은
-        `SupportLinks.supportPage`)를 그 주소로 바꾼다.
+      - 처리방침·이용 안내·링크(2026-11-19): `site/index.html`에 그룹 서버 처리방침(`#ko-privacy`,
+        `#en-privacy`), `site/group-terms.html`(한·영, 운영자 Seonghoon Kim, 문의 메일·지원 페이지), 가입 화면
+        "이용 안내 보기"는 `SupportLinks.groupTerms`. `/i/:code`와 업데이트 안내(`GroupsAppStoreLink`)의 App Store
+        링크는 `id6799469852`. 라벨 값은 `docs/app-store-privacy-label.md`. **남은 것:**
+        - `site/` 두 파일을 공개 저장소 `shkim0604/pilgrim-support`에 올리고 두 주소가 열리는지 확인(주인).
+        - 서버 재배포(`make -C server deploy`) 뒤 `/i/<코드>`의 App Store 링크 확인.
+        - 시행일은 그룹을 켜는 업데이트 때 `site/group-terms.html`과 `docs/group-terms.md`에 적는다.
+        - 라벨은 그룹을 켜는 빌드를 심사에 낼 때 App Store Connect에 넣는다.
       - 출시 순서: 서버·CI와 `aps-environment`·`applinks` entitlement는 이미 main에 있다. 앱은 Release
         `GroupsFeature.isEnabled = false` 그대로 두고, 세션 H가 끝난 뒤 켜는 PR → 편집기 입력 게이트 →
         TestFlight 순서로 낸다.
