@@ -64,6 +64,8 @@ final class GroupPushLocalizationTests: XCTestCase {
                 PushPayload.group(
                     .voteDecided(newAdminName: "준호"), groupID: groupID, groupName: "수요 기도모임"),
                 PushPayload.group(.deletionScheduled, groupID: groupID, groupName: "수요 기도모임"),
+                PushPayload.prayerAnswered(
+                    groupID: groupID, postID: UUID(), groupName: "수요 기도모임", authorName: "민지"),
             ]
         var covered = Set<String>()
         for payload in payloads {

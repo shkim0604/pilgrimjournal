@@ -133,12 +133,14 @@ public enum ScrapComposer {
         ].joined(separator: "\n")
     }
 
-    /// "- <내용> (<누구>/<주제>)", either part of the bracket optional.
+    /// "- <내용> (<누구>/<주제>) (응답됨)", the bracket's parts and the answered mark optional.
     private static func prayerLine(_ line: ScrapPost.PrayerLine, labels: ScrapLabels) -> String? {
         guard let text = clean(line.text) else { return nil }
         let topic = clean(line.topic).flatMap { labels.topicName($0) }
         let about = [clean(line.section), topic].compactMap { $0 }
-        return about.isEmpty ? "- \(text)" : "- \(text) (\(about.joined(separator: "/")))"
+        var result = about.isEmpty ? "- \(text)" : "- \(text) (\(about.joined(separator: "/")))"
+        if line.isAnswered { result += " \(labels.answered)" }
+        return result
     }
 
     /// "> <작성자> · <월 일>: <내용>", continuing a multi-line comment on more `>` lines.

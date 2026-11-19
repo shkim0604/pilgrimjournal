@@ -260,6 +260,24 @@ final class ScrapComposerTests: XCTestCase {
                 " · Book report · "))
     }
 
+    func testAnsweredLinesCarryTheMarkInThePostsLanguage() {
+        var korean = prayerPost()
+        korean.items[0].isAnswered = true
+        let koreanBody = ScrapComposer.compose(post: korean, comments: []).draft.body
+        XCTAssertTrue(
+            koreanBody.contains(
+                """
+                - 어머니 검사 결과가 좋게 나오도록 기도해 주세요 (엄마/건강) (응답됨)
+                - 이번 주 면접을 차분히 볼 수 있도록 기도해 주세요
+                """), koreanBody)
+
+        var english = englishPost()
+        english.items[1].isAnswered = true
+        let englishBody = ScrapComposer.compose(post: english, comments: []).draft.body
+        XCTAssertTrue(englishBody.contains("- Calm for my interview this week (Answered)"))
+        XCTAssertFalse(englishBody.contains("(Mom/health) (Answered)"))
+    }
+
     func testOneGroupsKoreanAndEnglishPostsShareTheNotebook() {
         let korean = ScrapComposer.compose(post: prayerPost(), comments: [])
         let english = ScrapComposer.compose(post: englishPost(), comments: [])
@@ -280,6 +298,8 @@ final class ScrapComposerTests: XCTestCase {
         XCTAssertEqual(ScrapLabels.english.testimonyTitle("Minji"), "Minji's testimony")
         XCTAssertEqual(ScrapLabels.english.comments, "Comments")
         XCTAssertEqual(ScrapLabels.english.sticker, "(sticker)")
+        XCTAssertEqual(ScrapLabels.english.answered, "(Answered)")
+        XCTAssertEqual(ScrapLabels.korean.answered, "(응답됨)")
         XCTAssertEqual(ScrapLabels.english.topicName("finances"), "finances")
         XCTAssertNil(ScrapLabels.english.topicName("unknown-topic"))
         XCTAssertEqual(ScrapLabels.korean.topicName("finances"), "재정")

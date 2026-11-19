@@ -14,11 +14,17 @@ public struct PrayerItem: Equatable, Hashable, Sendable, Codable {
     /// The heading the item sits under, like a prayer note's section (감사, 가족, a name),
     /// ≤ 30 characters. Consecutive items with the same section are shown together.
     public var section: String?
+    /// When the post's author marked this item answered (`PUT /posts/:id/items/:index/answer`).
+    /// Responses only: the server ignores it in `CreatePostRequest`.
+    public var answeredAt: Date?
 
-    public init(text: String, topic: String? = nil, section: String? = nil) {
+    public init(
+        text: String, topic: String? = nil, section: String? = nil, answeredAt: Date? = nil
+    ) {
         self.text = text
         self.topic = topic
         self.section = section
+        self.answeredAt = answeredAt
     }
 }
 
@@ -128,6 +134,11 @@ public struct PostResponse: Equatable, Sendable, Codable, Identifiable {
         self.isUnread = isUnread
     }
 }
+
+// `PUT /posts/:id/items/:index/answer` marks a prayer item answered and `DELETE` on the same path
+// undoes it; both take no body and answer `PostResponse`. Author only (403 `FORBIDDEN`), prayer
+// posts only and `index` in `0..<items.count` (422 `VALIDATION_FAILED`). The first mark keeps the
+// post at least `PostExpiryPolicy.answeredKeepDays` more days; undoing never shortens it.
 
 /// `POST /posts/:id/extend` (book reports only) → `PostResponse`. Idempotent per `clientId`.
 public struct ExtendPostRequest: Equatable, Sendable, Codable {

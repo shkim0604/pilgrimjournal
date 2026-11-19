@@ -101,6 +101,47 @@ final class GroupsContentDetailTests: XCTestCase {
         XCTAssertEqual(report.post?.extensionCount, 1)
     }
 
+    func testTheAuthorTogglesPrayerItemsAnsweredAndTheFeedFollows() async throws {
+        let fixture = try await GroupsContentFixture()
+        let feed = fixture.feed(fixture.wednesday)
+        let mine = try await fixture.api.createPost(
+            groupID: fixture.wednesday.id,
+            CreatePostRequest(
+                clientId: UUID(), kind: .prayer,
+                items: [PrayerItem(text: "면접"), PrayerItem(text: "건강")], visibleDays: 3,
+                timeZone: GroupsContentFixture.seoul.identifier))
+        await feed.refresh()
+        let model = await detail(fixture, mine)
+        XCTAssertTrue(model.canMarkAnswered)
+
+        await model.toggleAnswered(index: 1)
+        XCTAssertNil(model.notice)
+        XCTAssertNil(model.post?.items?[0].answeredAt)
+        XCTAssertEqual(model.post?.items?[1].answeredAt, fixture.clock.now)
+        XCTAssertEqual(model.post?.expiresAt, fixture.clock.now + 7 * 86_400)
+        let inFeed = try XCTUnwrap(feed.posts.first { $0.id == mine.id })
+        XCTAssertEqual(inFeed.items?[1].answeredAt, fixture.clock.now)
+
+        await model.toggleAnswered(index: 1)
+        XCTAssertNil(model.post?.items?[1].answeredAt)
+        XCTAssertEqual(model.post?.expiresAt, fixture.clock.now + 7 * 86_400, "never shortened")
+
+        // Someone else's prayer request: no toggle, and the server refuses it too.
+        let all = try await fixture.posts(in: fixture.wednesday)
+        let others = try XCTUnwrap(all.first { $0.kind == .prayer && !$0.isMine })
+        let other = await detail(fixture, others)
+        XCTAssertFalse(other.canMarkAnswered)
+        await other.toggleAnswered(index: 0)
+        XCTAssertNil(other.post?.items?[0].answeredAt)
+        do {
+            _ = try await fixture.api.setPrayerItemAnswered(
+                postID: others.id, index: 0, answered: true)
+            XCTFail("someone else's item was marked")
+        } catch {
+            XCTAssertEqual((error as? GroupAPIError)?.code, .forbidden)
+        }
+    }
+
     func testCommentsWithTextStickerAndDelete() async throws {
         let fixture = try await GroupsContentFixture()
         let testimony = try await fixture.post(.testimony, in: fixture.wednesday)

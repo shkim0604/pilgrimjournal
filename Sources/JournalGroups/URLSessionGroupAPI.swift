@@ -377,6 +377,16 @@ public final class URLSessionGroupAPI: GroupAPI {
             .json(.post, ["posts", id.pilgrimString, "extend"], request), as: PostResponse.self)
     }
 
+    public func setPrayerItemAnswered(postID: UUID, index: Int, answered: Bool) async throws
+        -> PostResponse
+    {
+        try await send(
+            GroupEndpoint(
+                answered ? .put : .delete,
+                ["posts", postID.pilgrimString, "items", String(index), "answer"]),
+            as: PostResponse.self)
+    }
+
     public func comments(postID: UUID, cursor: String?, limit: Int?) async throws
         -> Page<CommentResponse>
     {

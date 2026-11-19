@@ -74,7 +74,7 @@ enum Fixture {
         id: id(50), groupId: id(10), kind: .prayer, author: user, isMine: true, title: nil,
         body: "함께 기도해 주세요",
         items: [
-            PrayerItem(text: "어머니 검사 결과", topic: "health", section: "엄마"),
+            PrayerItem(text: "어머니 검사 결과", topic: "health", section: "엄마", answeredAt: date),
             PrayerItem(text: "면접"),
         ],
         book: nil, deadline: LocalDate("2026-11-20"), visibleDays: nil, timeZone: "Asia/Seoul",
@@ -84,7 +84,8 @@ enum Fixture {
         {"author":\(userJSON),"body":"함께 기도해 주세요","commentCount":2,\
         "createdAt":"\(dateString)","deadline":"2026-11-20","expiresAt":"\(laterDateString)",\
         "extensionCount":0,"groupId":"\(idString(10))","id":"\(idString(50))","isMine":true,\
-        "isUnread":false,"items":[{"text":"어머니 검사 결과","topic":"health","section":"엄마"},\
+        "isUnread":false,"items":[{"answeredAt":"\(dateString)","text":"어머니 검사 결과",\
+        "topic":"health","section":"엄마"},\
         {"text":"면접"}],"kind":"prayer","language":"ko","media":[\(mediaJSON)],\
         "reactions":\(reactionsJSON),"timeZone":"Asia/Seoul"}
         """

@@ -32,6 +32,41 @@ public enum PushOutbox {
             on: db, recipients: recipients, payload: payload, collapseID: nil, now: now)
     }
 
+    /// How long one post's "prayer answered" push keeps further marks on it quiet.
+    public static let prayerAnsweredQuietPeriod: TimeInterval = 10 * 60
+
+    /// Queues the "prayer answered" push for the same people as a new post, unless this post
+    /// already queued one in the last `prayerAnsweredQuietPeriod`. Like the new-post push it
+    /// carries only the group and author names. Call while holding the post's row lock, so
+    /// two marks at once queue one push. Returns the number of rows queued.
+    @discardableResult
+    public static func enqueuePrayerAnswered(on db: any Database, post: Post, now: Date = Date())
+        async throws -> Int
+    {
+        let postID = try post.requireID()
+        let recent = try await sqlDatabase(db).raw(
+            """
+            SELECT 1 FROM push_outbox
+            WHERE kind = \(bind: PushKind.prayerAnswered.rawValue)
+              AND lower(payload->'pilgrim'->>'postId') = \(bind: postID.pilgrimString)
+              AND created_at > \(bind: now - prayerAnsweredQuietPeriod)
+            LIMIT 1
+            """
+        ).first()
+        guard recent == nil else { return 0 }
+        let groupID = post.$group.id
+        let authorID = post.$author.id
+        guard let group = try await Group.find(groupID, on: db) else { return 0 }
+        guard let author = try await User.find(authorID, on: db) else { return 0 }
+        let payload = PushPayload.prayerAnswered(
+            groupID: groupID, postID: postID, groupName: group.name,
+            authorName: author.displayName ?? "")
+        let recipients = try await newPostRecipients(
+            groupID: groupID, authorID: authorID, on: db)
+        return try await enqueue(
+            on: db, recipients: recipients, payload: payload, collapseID: nil, now: now)
+    }
+
     /// Who receives the new-post push (see `enqueue(on:post:)`).
     public static func newPostRecipients(groupID: UUID, authorID: UUID, on db: any Database)
         async throws -> [UUID]

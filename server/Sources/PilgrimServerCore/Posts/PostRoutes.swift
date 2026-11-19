@@ -4,7 +4,8 @@ import PilgrimAPI
 import SQLKit
 import Vapor
 
-/// The feed, creating, reading, deleting and extending posts (design.md "글·댓글·반응", 4절).
+/// The feed, creating, reading, deleting and extending posts, and marking prayer items answered
+/// (design.md "글·댓글·반응", 4절).
 enum PostRoutes {
     static func register(_ routes: any RoutesBuilder) {
         routes.get("groups", ":id", "posts", use: feed)
@@ -12,6 +13,8 @@ enum PostRoutes {
         routes.get("posts", ":id", use: detail)
         routes.delete("posts", ":id", use: delete)
         routes.post("posts", ":id", "extend", use: extend)
+        routes.put("posts", ":id", "items", ":index", "answer", use: markAnswered)
+        routes.delete("posts", ":id", "items", ":index", "answer", use: unmarkAnswered)
     }
 
     /// `GET /groups/:id/posts?cursor&limit` → `Page<PostResponse>`, newest first.
@@ -174,6 +177,86 @@ enum PostRoutes {
         else { throw APIError.notFound() }
         return try .pilgrimJSON(
             try await response(for: current, viewer: viewer, req), status: outcome.status)
+    }
+
+    /// `PUT /posts/:id/items/:index/answer` → `PostResponse`. The author marks one prayer item
+    /// answered; repeating it changes nothing. The first mark keeps the post at least 7 more days
+    /// (`PostExpiryPolicy.answered`) and tells the group (at most one push per post per
+    /// 10 minutes).
+    @Sendable static func markAnswered(_ req: Request) async throws -> Response {
+        try await setAnswered(req, answered: true)
+    }
+
+    /// `DELETE /posts/:id/items/:index/answer` → `PostResponse`. Undoes the mark; the expiry
+    /// stays where it is.
+    @Sendable static func unmarkAnswered(_ req: Request) async throws -> Response {
+        try await setAnswered(req, answered: false)
+    }
+
+    private static func setAnswered(_ req: Request, answered: Bool) async throws -> Response {
+        let viewer = try req.userID
+        let post = try await ContentAccess.visiblePost(req)
+        let postID = try post.requireID()
+        guard post.$author.id == viewer else {
+            throw APIError.forbidden("only the author can mark a prayer item answered")
+        }
+        guard post.kind == .prayer, let items = post.prayerItems else {
+            throw APIError.validationFailed(field: "kind", "only prayer posts have items")
+        }
+        guard let index = req.parameters.get("index", as: Int.self), items.indices.contains(index)
+        else {
+            throw APIError.validationFailed(field: "index", "no prayer item at this index")
+        }
+        let policy = PostExpiryPolicy(dayLength: req.pilgrimConfig.dayLength)
+        try await req.db.transaction { db in
+            let group = try await GroupAccess.group(post.$group.id, on: db)
+            try GroupAccess.requireWritable(group)
+            let sql = try ContentAccess.sql(db)
+            let now = Date()
+            guard answered else {
+                try await sql.raw(
+                    """
+                    DELETE FROM prayer_item_answers
+                    WHERE post_id = \(bind: postID) AND item_index = \(bind: index)
+                    """
+                ).run()
+                return
+            }
+            let inserted = try await sql.raw(
+                """
+                INSERT INTO prayer_item_answers (post_id, item_index, answered_at)
+                VALUES (\(bind: postID), \(bind: index), \(bind: now))
+                ON CONFLICT DO NOTHING
+                RETURNING post_id
+                """
+            ).first()
+            guard inserted != nil else { return }
+            // Lock the row like `extend`: concurrent marks of one post wait here, so the second
+            // sees the first one's push and stays quiet.
+            guard
+                let row = try await sql.raw(
+                    """
+                    SELECT expires_at FROM posts
+                    WHERE id = \(bind: postID) AND expires_at > \(bind: now)
+                    FOR UPDATE
+                    """
+                ).first()
+            else { throw APIError.notFound() }
+            let previous = try row.decode(column: "expires_at", as: Date.self)
+            let kept = policy.answered(previous, now: now)
+            if kept > previous {
+                try await sql.raw(
+                    "UPDATE posts SET expires_at = \(bind: kept) WHERE id = \(bind: postID)"
+                ).run()
+            }
+            try await PushOutbox.enqueuePrayerAnswered(on: db, post: post, now: now)
+        }
+        // Read the post again: the expiry may have changed.
+        guard
+            let current = try await ContentVisibility.visiblePost(
+                postID, viewer: viewer, on: req.db)
+        else { throw APIError.notFound() }
+        return try .pilgrimJSON(try await response(for: current, viewer: viewer, req))
     }
 
     /// One post as `viewer` sees it, with the unread flag of their membership.

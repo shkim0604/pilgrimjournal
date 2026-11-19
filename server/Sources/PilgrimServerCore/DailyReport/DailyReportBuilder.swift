@@ -17,6 +17,8 @@ import SQLKit
 ///   (`count` = extensions)
 /// - `expiringSoon`: posts disappearing within one day (`TIME_SCALE_DAY_SECONDS`) of `now`
 ///   (`count` 1)
+/// - `answeredPosts`: others' prayer posts with items marked answered in the window
+///   (`count` = items)
 ///
 /// Groups with nothing to report are left out; `totalCount` is the number of entries across all
 /// sections (`DailyReportGroup.itemCount`), so 0 means there is nothing to send.
@@ -30,7 +32,8 @@ public struct DailyReportBuilder: Sendable {
     }
 
     enum Section: CaseIterable {
-        case newPosts, commentsOnMyPosts, reactionsOnMyPosts, extendedPosts, expiringSoon
+        case newPosts, commentsOnMyPosts, reactionsOnMyPosts, extendedPosts, expiringSoon,
+            answeredPosts
     }
 
     struct Line {
@@ -83,6 +86,7 @@ public struct DailyReportBuilder: Sendable {
             case .reactionsOnMyPosts: group.reactionsOnMyPosts.append(post)
             case .extendedPosts: group.extendedPosts.append(post)
             case .expiringSoon: group.expiringSoon.append(post)
+            case .answeredPosts: group.answeredPosts = (group.answeredPosts ?? []) + [post]
             }
             byGroup[line.groupID] = group
         }
@@ -203,6 +207,15 @@ public struct DailyReportBuilder: Sendable {
                 SELECT \(columns), 1 AS item_count \(scope)
                 WHERE \(visible) AND p.expires_at <= \(bind: horizon)
                 ORDER BY p.expires_at, p.id
+                """
+        case .answeredPosts:
+            return """
+                SELECT \(columns), COUNT(a.item_index)::int AS item_count \(scope)
+                JOIN prayer_item_answers AS a ON a.post_id = p.id
+                WHERE \(visible) AND p.author_id <> \(bind: viewer)
+                  AND a.answered_at >= \(bind: start) AND a.answered_at < \(bind: end)
+                GROUP BY p.id
+                ORDER BY p.created_at, p.id
                 """
         }
     }

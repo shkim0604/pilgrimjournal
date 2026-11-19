@@ -179,6 +179,7 @@ server/
 | 기도제목, 데드라인 없음 | `createdAt + visibleDays일`, `visibleDays ∈ {3, 7, 14, 30}`, 기본 7 |
 | 독후감 | `createdAt + 7일`. 토론 연장마다 현재 `expiresAt + 7일` (누구나, 횟수·쿨다운 없음) |
 | 간증 | `createdAt + 7일` |
+| 기도제목 항목을 응답됨으로 표시 | `max(expiresAt, 표시한 시각 + 7일)` (`answered(_:now:)`). 처음 표시할 때만, 취소해도 줄지 않는다 |
 
 - 데드라인은 올린 사람 시간대(`timeZone`, IANA 이름) 기준 오늘 이상, 오늘 + 365일 이하. 데드라인과
   `visibleDays`를 함께 보내면 422 `VALIDATION_FAILED`(`field: "visibleDays"`). 데드라인은 기도제목만 받는다.
@@ -194,6 +195,7 @@ server/
       public func expiresAt(kind: PostKind, createdAt: Date, deadline: LocalDate?,
                             visibleDays: Int?, timeZone: TimeZone) throws -> Date   // PostExpiryError
       public func extended(_ expiresAt: Date) -> Date                                // + 7 × dayLength
+      public func answered(_ expiresAt: Date, now: Date) -> Date        // max(expiresAt, now + 7 × dayLength)
       public func validateDeadline(_ d: LocalDate, now: Date, timeZone: TimeZone) throws
       public static let allowedVisibleDays: [Int] = [3, 7, 14, 30]
       public static let defaultVisibleDays = 7
@@ -343,6 +345,11 @@ server/
   | `voteRunoff` | `GROUP_PUSH_TITLE` / `ADMIN_VOTE_RUNOFF` | [그룹 이름] / [] |
   | `voteDecided` | `GROUP_PUSH_TITLE` / `ADMIN_VOTE_DECIDED` | [그룹 이름] / [새 관리자 이름] |
   | `groupDeletionScheduled` | `GROUP_PUSH_TITLE` / `GROUP_DELETION_SCHEDULED` | [그룹 이름] / [] |
+  | `prayerAnswered` | `GROUP_PUSH_TITLE` / `GROUP_PRAYER_ANSWERED` | [그룹 이름] / [작성자 이름] |
+
+  `prayerAnswered`는 작성자가 기도제목 항목을 처음 응답됨으로 표시할 때 새 글과 같은 사람들에게 간다(새 글 알림
+  설정·차단·사람 숨김을 따른다). 같은 글로 이 알림을 10분 안에 이미 넣었으면(`push_outbox`의
+  `payload->'pilgrim'->>'postId'`) 다시 넣지 않는다. 글 행을 잠근 채 확인하므로 동시에 표시해도 한 번이다.
 
   페이로드:
   ```json
@@ -371,6 +378,8 @@ server/
   - `reactionsOnMyPosts`: 내 글에 남이 단 반응(글별 개수)
   - `extendedPosts`: 범위 안에 토론이 연장된 글 중 내가 쓰거나 댓글 단 글
   - `expiringSoon`: 지금부터 24시간 안에 사라지는 글 중 내가 숨기지 않은 글
+  - `answeredPosts`: 범위 안에 항목이 응답됨으로 표시된 남의 기도제목(글별 항목 수). 이 필드가 없던 서버의
+    응답도 읽히도록 선택 필드다.
 - 합계(`totalCount`)가 0이면 보내지 않는다(`daily_report_log.status = 'skipped'`).
 - `daily_report_log UNIQUE(user_id, report_date)`로 하루 한 번만 보낸다. 시각을 바꾸면 그날 아직 안 보냈을 때만
   새 시각에 보낸다. `users.daily_report_enabled = false`면 보내지 않는다.
@@ -596,7 +605,8 @@ struct DailyReportResponse { date: LocalDate; windowStart: Date; windowEnd: Date
                              groups: [DailyReportGroup] }
 struct DailyReportGroup { groupId: UUID; groupName: String; newPosts: [DailyReportPost]
                           commentsOnMyPosts: [DailyReportPost]; reactionsOnMyPosts: [DailyReportPost]
-                          extendedPosts: [DailyReportPost]; expiringSoon: [DailyReportPost] }
+                          extendedPosts: [DailyReportPost]; expiringSoon: [DailyReportPost]
+                          answeredPosts: [DailyReportPost]? }
 struct DailyReportPost { postId: UUID; kind: PostKind; title: String; author: UserSummary
                          count: Int; expiresAt: Date }   // title: 제목 → 책 제목 → 첫 항목 40자
 ```
@@ -675,6 +685,8 @@ struct InvitePreviewResponse { code: String; groupId: UUID; groupName: String; m
 | `GET /posts/:id` | 멤버 | → `PostResponse` |
 | `DELETE /posts/:id` | 작성자, 관리자 | → 204 |
 | `POST /posts/:id/extend` | 멤버, 독후감만 | `ExtendPostRequest { clientId }` → `PostResponse` |
+| `PUT /posts/:id/items/:index/answer` | 작성자, 기도제목만 | → `PostResponse`. 이미 표시됐으면 그대로. 처음 표시하면 기한 연장(4절)과 `prayerAnswered` 알림 |
+| `DELETE /posts/:id/items/:index/answer` | 작성자, 기도제목만 | → `PostResponse`. 기한은 그대로 |
 | `GET /posts/:id/comments?cursor&limit` | 멤버 | → `Page<CommentResponse>` (오래된 것 먼저) |
 | `POST /posts/:id/comments` | 멤버 | `CreateCommentRequest { clientId, body, mediaIds: [UUID], stickerId: UUID? }` → 201 `CommentResponse` |
 | `DELETE /comments/:id` | 작성자, 관리자 | → 204 |
@@ -689,6 +701,11 @@ struct CreatePostRequest { clientId: UUID; kind: PostKind; title: String?; body:
                            timeZone: String; language: String?       // "ko" | "en"
                            mediaIds: [UUID] }        // 0~4, purpose=post
   // body: 독후감·간증 필수(1~2,000자), 기도제목은 선택(≤ 2,000자)
+struct PrayerItem { text: String; topic: String?; section: String?
+                    answeredAt: Date? }   // 응답 전용, 요청에 보내도 서버가 버린다
+  // 응답됨 표시: index는 items 배열 위치(글은 고치지 않으므로 그대로다). 작성자가 아니면 403 FORBIDDEN,
+  // 기도제목이 아니거나 index가 0..<items.count 밖이면 422 VALIDATION_FAILED, 안 보이거나 지난 글은 404,
+  // 삭제 예정 그룹이면 409 GROUP_PENDING_DELETION
 struct PostResponse { id: UUID; groupId: UUID; kind: PostKind; author: UserSummary; isMine: Bool
                       title: String?; body: String?; items: [PrayerItem]?; book: BookInfo?
                       deadline: LocalDate?; visibleDays: Int?; timeZone: String; language: String?
@@ -910,6 +927,10 @@ INDEX(`author_id`).
 `previous_expires_at`, `new_expires_at` timestamptz NOT NULL, `created_at`. UNIQUE(`user_id`, `client_id`),
 INDEX(`post_id`).
 
+**prayer_item_answers** (0007): `post_id` uuid NOT NULL FK posts CASCADE, `item_index` smallint NOT NULL
+CHECK(0~9, `posts.items` 위치), `answered_at` timestamptz NOT NULL. PRIMARY KEY(`post_id`, `item_index`),
+INDEX(`answered_at`). 취소하면 행을 지운다.
+
 **stickers**: `id`, `group_id` FK groups CASCADE, `created_by_id` uuid NOT NULL FK users CASCADE, `media_id` uuid
 NOT NULL UNIQUE FK media ON DELETE CASCADE, `name` text NULL, `client_id` uuid NOT NULL, `created_at`.
 UNIQUE(`created_by_id`, `client_id`), INDEX(`group_id`).
@@ -1024,6 +1045,7 @@ NULL, `last_error_at` NULL.
 | 신고 메모 | ≤ 500자 |
 | 데드라인 | 오늘 ~ 오늘 + 365일 |
 | `visibleDays` | 3, 7, 14, 30 |
+| 응답됨 표시 | 처음 표시하면 그때부터 ≥ 7일 남김, `prayerAnswered` 알림은 글당 10분에 한 번 |
 
 글자 수는 Swift `String.count`(grapheme) 기준이다. rate limit(사용자별, 환경 변수로 조정): 글 30/시간, 댓글
 120/시간, 업로드 60/시간, 반응 300/시간, 신고 20/일, 초대 만들기 30/일, 그 밖 요청 600/10분. 인증 전

@@ -4,8 +4,8 @@ import JournalGroups
 import PilgrimAPI
 
 /// One post with its comments, reactions and the group's stickers, plus every action the
-/// detail column offers: react, comment, extend a book report's discussion, take down, hide,
-/// block and report.
+/// detail column offers: react, comment, extend a book report's discussion, mark one's own prayer
+/// items answered, take down, hide, block and report.
 ///
 /// Comments are only shown here; they are never pushed (the Daily Report gathers them).
 @MainActor
@@ -188,6 +188,29 @@ final class GroupPostDetailModel: ObservableObject {
         } catch {
             handle(error)
             return false
+        }
+    }
+
+    // MARK: Answered prayer items
+
+    /// Only the author marks their prayer items answered.
+    var canMarkAnswered: Bool { post.map { $0.isMine && $0.kind == .prayer } ?? false }
+
+    /// Marks the item at `index` answered, or undoes it when it already is. The server keeps the
+    /// post at least 7 more days after a mark.
+    func toggleAnswered(index: Int) async {
+        guard canMarkAnswered, let items = post?.items, items.indices.contains(index) else {
+            return
+        }
+        let item = items[index]
+        isWorking = true
+        defer { isWorking = false }
+        do {
+            post = try await api.setPrayerItemAnswered(
+                postID: postID, index: index, answered: item.answeredAt == nil)
+            publishUpdate()
+        } catch {
+            handle(error)
         }
     }
 

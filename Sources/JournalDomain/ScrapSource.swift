@@ -15,11 +15,16 @@ public struct ScrapPost: Equatable, Sendable {
         /// Who it is for.
         /// The group item's section (a prayer note's heading, or a name).
         public var section: String?
+        /// The author had marked it answered when it was scrapped (`ScrapLabels.answered`).
+        public var isAnswered: Bool
 
-        public init(text: String, topic: String? = nil, section: String? = nil) {
+        public init(
+            text: String, topic: String? = nil, section: String? = nil, isAnswered: Bool = false
+        ) {
             self.text = text
             self.topic = topic
             self.section = section
+            self.isAnswered = isAnswered
         }
     }
 
@@ -171,6 +176,8 @@ public struct ScrapLabels: Sendable {
     public var comments: String
     /// "(스티커)", a sticker comment.
     public var sticker: String
+    /// "(응답됨)", after a prayer line the author had marked answered.
+    public var answered: String
     /// A prayer topic's name from its raw value; nil leaves the topic out.
     public var topicName: @Sendable (String) -> String?
 
@@ -186,6 +193,7 @@ public struct ScrapLabels: Sendable {
         testimonyTitle: @escaping @Sendable (String) -> String,
         comments: String,
         sticker: String,
+        answered: String,
         topicName: @escaping @Sendable (String) -> String?
     ) {
         self.locale = locale
@@ -199,6 +207,7 @@ public struct ScrapLabels: Sendable {
         self.testimonyTitle = testimonyTitle
         self.comments = comments
         self.sticker = sticker
+        self.answered = answered
         self.topicName = topicName
     }
 
@@ -245,6 +254,7 @@ public struct ScrapLabels: Sendable {
         testimonyTitle: { "\($0)의 간증" },
         comments: "댓글",
         sticker: "(스티커)",
+        answered: "(응답됨)",
         topicName: { ScrapLabels.koreanTopicNames[$0] })
 
     public static let english = ScrapLabels(
@@ -259,6 +269,7 @@ public struct ScrapLabels: Sendable {
         testimonyTitle: { "\($0)'s testimony" },
         comments: "Comments",
         sticker: "(sticker)",
+        answered: "(Answered)",
         topicName: { ScrapLabels.englishTopicNames[$0] })
 }
 

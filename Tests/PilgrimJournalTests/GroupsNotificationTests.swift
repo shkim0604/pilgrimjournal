@@ -478,10 +478,14 @@ final class DailyReportPresentationTests: XCTestCase {
             groupId: UUID(), groupName: "수요 기도모임",
             newPosts: [post("새 기도제목")],
             reactionsOnMyPosts: [post("내 간증", kind: .testimony, count: 4)],
-            expiringSoon: [post("곧 사라짐")])
+            expiringSoon: [post("곧 사라짐")], answeredPosts: [post("면접", count: 2)])
         XCTAssertEqual(
             DailyReportPresentation.sections(for: group).map(\.kind),
-            [.newPosts, .reactionsOnMyPosts, .expiringSoon])
+            [.newPosts, .answeredPosts, .reactionsOnMyPosts, .expiringSoon])
+        XCTAssertEqual(
+            DailyReportPresentation.detail(
+                for: post("면접", count: 2), in: .answeredPosts, now: Date()),
+            "민지 · 응답 2개")
         XCTAssertEqual(
             DailyReportPresentation.sections(
                 for: DailyReportGroup(groupId: UUID(), groupName: "빈 그룹")), [])

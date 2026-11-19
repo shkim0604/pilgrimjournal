@@ -152,7 +152,7 @@ APNs topic, StoreKit 검증 모두).
 | --- | --- |
 | 계정 | `users`(Apple `sub`, 표시 이름, 프로필 사진, 시간대, Daily Report 시각, 정지), `apple_tokens`(암호화), `apple_token_revocations`(계정 삭제 뒤 폐기 재시도), `refresh_tokens`, `devices`, `subscriptions`, `appstore_notifications`(웹훅 중복 거르기) |
 | 그룹 | `groups`(상태: 정상·투표 중·삭제 예정, `delete_at`, 관리자는 nullable), `memberships`(읽음 시각, 그룹별 알림), `group_bans`(강퇴), `invites`(코드, 최대 인원, 사용 수, 만료, 취소), `admin_votes`(라운드, 후보, 마감), `ballots` |
-| 콘텐츠 | `posts`(종류, 제목, 본문, 기도 항목 jsonb, 책 정보, 데드라인, 시간대, `expires_at`), `post_extensions`, `comments`, `reactions`(이모지 또는 스티커), `stickers`, `media`(사진 메타데이터와 파일 경로), `media_file_deletions`(행이 지워질 때 트리거가 파일 삭제를 예약) |
+| 콘텐츠 | `posts`(종류, 제목, 본문, 기도 항목 jsonb, 책 정보, 데드라인, 시간대, `expires_at`), `post_extensions`, `prayer_item_answers`(작성자가 응답됨으로 표시한 기도 항목과 시각), `comments`, `reactions`(이모지 또는 스티커), `stickers`, `media`(사진 메타데이터와 파일 경로), `media_file_deletions`(행이 지워질 때 트리거가 파일 삭제를 예약) |
 | 안전 | `hides`(글·사람), `blocks`, `reports`(신고 시점 스냅샷, 90일), `moderation_log` |
 | 작업 | `push_outbox`, `daily_report_log`, `worker_heartbeat` |
 

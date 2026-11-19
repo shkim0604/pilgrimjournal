@@ -274,6 +274,18 @@ final class URLSessionGroupAPIRequestTests: XCTestCase {
                 { _ = try await api.extendPost(id: id, ExtendPostRequest(clientId: other)) }
             ),
             (
+                "PUT", "/posts/\(i)/items/2/answer",
+                {
+                    _ = try await api.setPrayerItemAnswered(postID: id, index: 2, answered: true)
+                }
+            ),
+            (
+                "DELETE", "/posts/\(i)/items/2/answer",
+                {
+                    _ = try await api.setPrayerItemAnswered(postID: id, index: 2, answered: false)
+                }
+            ),
+            (
                 "GET", "/posts/\(i)/comments",
                 { _ = try await api.comments(postID: id, cursor: nil, limit: nil) }
             ),

@@ -4,6 +4,24 @@
     "" : {
       "shouldTranslate" : false
     },
+    "GROUP_PRAYER_ANSWERED" : {
+      "comment" : "Push body: the author marked one of their prayer requests answered; %@ is the author's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ marked a prayer answered"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@님의 기도제목에 응답이 있어요"
+          }
+        }
+      }
+    },
     "‘%@’ 태그를 모든 기록에서 제거할까요?" : {
       "localizations" : {
         "en" : {
@@ -3462,6 +3480,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A per-device passcode and Face ID or Touch ID hide the app’s screens and its preview in the app switcher. They don’t encrypt the database or CloudKit records end to end with a separate password."
+          }
+        }
+      }
+    },
+    "기도 중" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Praying"
           }
         }
       }
@@ -8044,6 +8072,26 @@
         }
       }
     },
+    "응답 %lld/%lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Answered %1$lld/%2$lld"
+          }
+        }
+      }
+    },
+    "응답 %lld개" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld answered"
+          }
+        }
+      }
+    },
     "응답 결과" : {
       "localizations" : {
         "en" : {
@@ -8070,6 +8118,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Answer memo: %@"
+          }
+        }
+      }
+    },
+    "응답된 기도제목" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Answered prayers"
+          }
+        }
+      }
+    },
+    "응답됨" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Answered"
           }
         }
       }

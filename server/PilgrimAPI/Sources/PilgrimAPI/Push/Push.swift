@@ -14,11 +14,12 @@ public enum PushLocKey {
     public static let adminVoteRunoff = "ADMIN_VOTE_RUNOFF"
     public static let adminVoteDecided = "ADMIN_VOTE_DECIDED"
     public static let groupDeletionScheduled = "GROUP_DELETION_SCHEDULED"
+    public static let prayerAnswered = "GROUP_PRAYER_ANSWERED"
 
     public static let all: [String] = [
         groupPushTitle, newPostPrayer, newPostBookReport, newPostTestimony, dailyReportTitle,
         dailyReportBody, adminVoteStarted, adminVoteRunoff, adminVoteDecided,
-        groupDeletionScheduled,
+        groupDeletionScheduled, prayerAnswered,
     ]
 
     public static func newPost(_ kind: PostKind) -> String {
@@ -33,6 +34,8 @@ public enum PushLocKey {
 /// `pilgrim.kind`: what a notification is about and which screen tapping it opens.
 public enum PushKind: String, Sendable, Codable, CaseIterable {
     case newPost, dailyReport, voteStarted, voteRunoff, voteDecided, groupDeletionScheduled
+    /// The author marked one of their prayer items answered; opens the post.
+    case prayerAnswered
 }
 
 /// The APNs payload the worker sends. Lock screens never carry post content: only the group name
@@ -114,6 +117,19 @@ public struct PushPayload: Equatable, Sendable, Codable {
                     locKey: PushLocKey.newPost(kind), locArgs: [authorName]),
                 threadId: threadID(groupID: groupID)),
             pilgrim: Info(kind: .newPost, groupId: groupID, postId: postID))
+    }
+
+    /// A prayer item was marked answered: like a new post, only the group and author names.
+    public static func prayerAnswered(
+        groupID: UUID, postID: UUID, groupName: String, authorName: String
+    ) -> PushPayload {
+        PushPayload(
+            aps: APS(
+                alert: Alert(
+                    titleLocKey: PushLocKey.groupPushTitle, titleLocArgs: [groupName],
+                    locKey: PushLocKey.prayerAnswered, locArgs: [authorName]),
+                threadId: threadID(groupID: groupID)),
+            pilgrim: Info(kind: .prayerAnswered, groupId: groupID, postId: postID))
     }
 
     public static func dailyReport(itemCount: Int) -> PushPayload {

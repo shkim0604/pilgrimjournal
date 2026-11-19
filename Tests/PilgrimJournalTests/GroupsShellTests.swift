@@ -504,6 +504,11 @@ final class GroupsNotificationRoutingTests: XCTestCase {
         XCTAssertEqual(
             GroupNotificationRoute(userInfo: try userInfo(payload)),
             .post(groupID: groupID, postID: postID))
+        let answered = PushPayload.prayerAnswered(
+            groupID: groupID, postID: postID, groupName: "수요 기도모임", authorName: "민지")
+        XCTAssertEqual(
+            GroupNotificationRoute(userInfo: try userInfo(answered)),
+            .post(groupID: groupID, postID: postID))
     }
 
     func testGroupEventsAndDailyReport() throws {
