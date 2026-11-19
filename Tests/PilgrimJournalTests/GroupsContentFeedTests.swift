@@ -235,6 +235,23 @@ final class GroupsContentFeedTests: XCTestCase {
         XCTAssertFalse(feed.posts.contains { $0.id == other.id }, "another group's post")
     }
 
+    func testStalePollKeepsAJustCreatedPost() async throws {
+        let fixture = try await GroupsContentFixture()
+        let feed = fixture.feed(fixture.wednesday)
+        await feed.refresh()
+        // A page the server built before the post existed (a poll already in flight).
+        var created = try XCTUnwrap(feed.posts.first)
+        created.id = UUID()
+        fixture.events.send(.postCreated(created))
+
+        await feed.refresh()
+        XCTAssertEqual(feed.posts.first?.id, created.id, "kept above the stale first page")
+
+        fixture.events.send(.postRemoved(postID: created.id))
+        await feed.refresh()
+        XCTAssertFalse(feed.posts.contains { $0.id == created.id })
+    }
+
     func testStartMarksTheGroupSeen() async throws {
         let fixture = try await GroupsContentFixture()
         let groupsBefore = try await fixture.api.groups()

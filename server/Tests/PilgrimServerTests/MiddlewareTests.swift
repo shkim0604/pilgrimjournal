@@ -41,6 +41,13 @@ final class MiddlewareTests: ServerTestCase {
         }
     }
 
+    func testResponsesCarryServerTiming() async throws {
+        try await app.test(.GET, "api/v1/test/open") { res async throws in
+            let value = try XCTUnwrap(res.headers.first(name: "Server-Timing"))
+            XCTAssertTrue(value.hasPrefix("app;dur="), value)
+        }
+    }
+
     func testMalformedAndOldClientsAre426() async throws {
         for value in ["garbage", "ios/1.2.9 (30) com.dhouse.PilgrimJournal"] {
             try await app.test(.GET, "api/v1/test/open", headers: client(value)) {

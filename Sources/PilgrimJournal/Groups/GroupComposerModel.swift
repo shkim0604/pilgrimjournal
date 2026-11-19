@@ -73,7 +73,9 @@ struct GroupPhotoUploader: Sendable {
     func upload(_ photo: GroupComposerPhoto, purpose: MediaPurpose, groupID: UUID)
         async throws -> MediaRef
     {
+        let start = GroupTiming.now
         let jpeg = try await prepare(photo.data, purpose)
+        GroupTiming.log("compress \(photo.data.count)B → \(jpeg.count)B", since: start)
         guard let size = GroupImageMetrics.pixelSize(of: jpeg) else {
             throw GroupAPIError.server(.mediaInvalid)
         }
@@ -442,19 +444,27 @@ final class GroupComposerModel: ObservableObject {
         isSubmitting = true
         errorMessage = nil
         defer { isSubmitting = false }
+        let start = GroupTiming.now
+        defer { GroupTiming.log("submit photos=\(photos.count)", since: start) }
         do {
-            var mediaIDs: [UUID] = []
-            for photo in photos {
-                if let mediaID = photo.mediaID {
-                    mediaIDs.append(mediaID)
-                    continue
+            // All at once: each upload is a 1–2 s round trip through the tunnel, and four in
+            // parallel take about half as long as four in a row (measured 2026-11-19).
+            let uploader = uploader
+            try await withThrowingTaskGroup(of: (UUID, UUID).self) { group in
+                for photo in photos where photo.mediaID == nil {
+                    group.addTask {
+                        let media = try await uploader.upload(
+                            photo, purpose: .post, groupID: groupID)
+                        return (photo.id, media.id)
+                    }
                 }
-                let media = try await uploader.upload(photo, purpose: .post, groupID: groupID)
-                if let index = photos.firstIndex(where: { $0.id == photo.id }) {
-                    photos[index].mediaID = media.id
+                for try await (photoID, mediaID) in group {
+                    if let index = photos.firstIndex(where: { $0.id == photoID }) {
+                        photos[index].mediaID = mediaID
+                    }
                 }
-                mediaIDs.append(media.id)
             }
+            let mediaIDs = photos.compactMap(\.mediaID)
             let post = try await api.createPost(groupID: groupID, request(mediaIDs: mediaIDs))
             postedPost = post
             events?.send(.postCreated(post))

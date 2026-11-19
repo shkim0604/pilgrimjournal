@@ -112,6 +112,8 @@ final class GroupContentEvents {
     }
 
     private var observers: [WeakObserver] = []
+    /// The post this device created last, so the detail column it opens draws at once.
+    private(set) var lastCreated: PostResponse?
 
     func add(_ observer: any GroupContentObserver) {
         observers.removeAll { $0.value == nil || $0.value === observer }
@@ -119,6 +121,7 @@ final class GroupContentEvents {
     }
 
     func send(_ event: GroupContentEvent) {
+        if case .postCreated(let post) = event { lastCreated = post }
         observers.removeAll { $0.value == nil }
         for observer in observers {
             observer.value?.apply(event)
@@ -161,6 +164,9 @@ final class GroupFeedModel: ObservableObject, GroupContentObserver {
     private var isRefreshing = false
     /// Older pages were loaded with `loadMore()`; a refresh keeps them below the first page.
     private var hasPagedBeyondFirst = false
+    /// Posts this device just created that no fetched page has shown yet: a poll that left
+    /// before the post existed must not drop them.
+    private var unconfirmedCreatedIDs: Set<UUID> = []
 
     init(
         api: any GroupAPI,
@@ -278,29 +284,34 @@ final class GroupFeedModel: ObservableObject, GroupContentObserver {
                 loadedPosts[index] = post
             } else {
                 loadedPosts.insert(post, at: 0)
+                unconfirmedCreatedIDs.insert(post.id)
             }
         case .postUpdated(let post):
             guard let index = loadedPosts.firstIndex(where: { $0.id == post.id }) else { return }
             loadedPosts[index] = post
         case .postRemoved(let postID):
             loadedPosts.removeAll { $0.id == postID }
+            unconfirmedCreatedIDs.remove(postID)
         case .authorHidden(let userID):
             loadedPosts.removeAll { $0.author.id == userID }
         }
     }
 
     private func merge(firstPage page: Page<PostResponse>) {
+        let firstPageIDs = Set(page.items.map(\.id))
+        unconfirmedCreatedIDs.subtract(firstPageIDs)
+        let unconfirmed = loadedPosts.filter { unconfirmedCreatedIDs.contains($0.id) }
         guard hasPagedBeyondFirst, let oldest = page.items.last else {
-            loadedPosts = page.items
+            loadedPosts = unconfirmed + page.items
             nextCursor = page.nextCursor
             hasPagedBeyondFirst = false
             return
         }
-        let firstPageIDs = Set(page.items.map(\.id))
         let older = loadedPosts.filter { post in
-            !firstPageIDs.contains(post.id) && Self.isOlder(post, than: oldest)
+            !firstPageIDs.contains(post.id) && !unconfirmedCreatedIDs.contains(post.id)
+                && Self.isOlder(post, than: oldest)
         }
-        loadedPosts = page.items + older
+        loadedPosts = unconfirmed + page.items + older
     }
 
     /// The server's feed order: `createdAt` descending, then the ID.
