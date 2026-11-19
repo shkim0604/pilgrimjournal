@@ -46,7 +46,6 @@ struct GroupsSidebarSection: View {
             }
         }
         .task { await groups.start() }
-        .groupsSheets(groups, preferredCompactColumn: $preferredCompactColumn)
     }
 
     @ViewBuilder
@@ -138,14 +137,22 @@ struct GroupsSidebarSection: View {
 }
 
 extension View {
-    /// Hosts every group sheet (`GroupsController.presentedSheet`). Applied by the sidebar
-    /// section; Phase 2 can move it to the window root so the feed's buttons can open them
-    /// while the sidebar is off screen on iPhone.
+    /// Hosts every group sheet (`GroupsController.presentedSheet`) at the window root
+    /// (`ContentView`), so the sheets open while the sidebar is off screen on iPhone. It must not
+    /// sit on the sidebar's 그룹 `Section`: a `List` hands a section's modifiers to its rows, and
+    /// when signing up or creating a group replaces those rows, the new row presents the same
+    /// sheet again from scratch instead of letting it close. Inert while groups are off.
+    @ViewBuilder
     func groupsSheets(
-        _ groups: GroupsController, preferredCompactColumn: Binding<NavigationSplitViewColumn>
+        _ groups: GroupsController?, preferredCompactColumn: Binding<NavigationSplitViewColumn>
     ) -> some View {
-        modifier(
-            GroupsSheetsModifier(groups: groups, preferredCompactColumn: preferredCompactColumn))
+        if let groups {
+            modifier(
+                GroupsSheetsModifier(groups: groups, preferredCompactColumn: preferredCompactColumn)
+            )
+        } else {
+            self
+        }
     }
 }
 
