@@ -212,7 +212,7 @@ Phase 2에서만 고친다. Phase 1 작업끼리는 맡는 파일이 겹치지 �
 
 - [x] 2.9.1 놀담 방식 `make dev/prod/deploy`, `pilgrim-prod` compose, `127.0.0.1:3100`, 사진 볼륨
 - [x] 2.9.2 공유 Docker 네트워크 `pilgrim-edge`(api·admin)
-- [x] 2.9.3 restic → R2(DB 덤프 + 사진) launchd, 7일 보관, 복원 스크립트
+- [x] 2.9.3 restic → iCloud Drive(2026-11-18, 처음엔 R2)(DB 덤프 + 사진) launchd, 7일 보관, 복원 스크립트
 - [x] 2.9.4 `aps-environment`, `applinks:pilgrim.delight-house.org`(두 앱 ID), 백그라운드 모드 필요 여부 확인 —
       `remote-notification`은 CloudKit 때문에 이미 있고 그룹 푸시는 alert 전용(`content-available` 없음)이라 그대로 둠.
       macOS도 같은 entitlements 파일: 서명한 macOS 빌드에서 푸시 키 확인 필요(Phase 2)
@@ -249,5 +249,5 @@ Phase 2에서만 고친다. Phase 1 작업끼리는 맡는 파일이 겹치지 �
       앱은 iOS 시뮬레이터에서 가입·그룹 만들기·글·기한 만료·스크랩을 확인했고, 그룹 시트가 성공 뒤 닫히지 않던
       문제를 고쳤다(시트를 창 최상단으로). 남은 것: `xcrun simctl push`, 실제 APNs·Apple 로그인·StoreKit은 실기기에서
 - [x] 3.4 맥미니 배포(2026-11-16~18), 터널 ingress(콘솔 규칙보다 앞), APNs·Sign in with Apple 키. 남은 것: 실기기
-      체크리스트(`docs/device-verification.md`), Cloudflare 봇 규칙 예외 확인, restic 백업(R2)
+      체크리스트(`docs/device-verification.md`), Cloudflare 봇 규칙 예외 확인. restic 백업은 iCloud Drive로 설치·확인(2026-11-18)
 - [x] 3.5 main에 조각내어 합치기: 서버·CI(#43), 앱(#42, Release에서 플래그 끔). entitlement 포함(1.2.0 출시 뒤)

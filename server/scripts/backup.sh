@@ -1,5 +1,5 @@
 #!/bin/bash
-# Daily backup of the pilgrim-prod stack: pg_dump + the photo volume → restic → Cloudflare R2,
+# Daily backup of the pilgrim-prod stack: pg_dump + the photo volume → restic → iCloud Drive (or R2),
 # then retention (7 days) and prune. Runs on the Mac mini, by hand (`make backup`) or daily at
 # 04:00 from launchd (`make backup-schedule`). docs/group-server.md "백업 사본 위치".
 #
@@ -8,7 +8,7 @@
 #   scripts/backup.sh --list    list snapshots
 #
 # Environment: BACKUP_DIR (local dumps and staging, default ~/backups/pilgrim), BACKUP_ENV_FILE
-# (restic/R2 settings, default ~/.config/pilgrim-backup/env), KEEP_LOCAL (local dumps, default 7).
+# (restic settings, default ~/.config/pilgrim-backup/env), KEEP_LOCAL (local dumps, default 7).
 # restic encrypts before upload; the repository password must also be kept outside the Mac mini.
 set -euo pipefail
 
@@ -116,7 +116,7 @@ log "uploading to $RESTIC_REPOSITORY"
 cd "$BACKUP_DIR/staging"
 restic backup --host "$BACKUP_HOST_TAG" --tag "$TAG" pilgrim.dump media
 
-# 4. Retention: nothing older than 7 days stays in R2 (privacy policy: "최대 7일").
+# 4. Retention: nothing older than 7 days stays in the repository (privacy policy: "최대 7일").
 log "applying retention ($RETENTION)"
 restic forget --host "$BACKUP_HOST_TAG" --tag "$TAG" --keep-within "$RETENTION" --prune
 

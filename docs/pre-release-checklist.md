@@ -56,10 +56,12 @@
         [에디터 입력 릴리스 게이트](known-issues.md#에디터-입력-릴리스-게이트)를 이 빌드로 돈다.
 
 - [ ] **비공개 그룹 — 운영·출시 준비** (2026-11-15, 브랜치 `feat/groups`). 절차는
-      `docs/development.md` "그룹 서버". **아래는 모두 하지 않았다.**
-      - 맥미니: 공유 네트워크 `pilgrim-edge`, `server/.env.prod` 비밀 값, `make -C server deploy`,
-        R2 버킷·전용 토큰, `brew install restic`, 백업 설정과 `make backup-init`·
-        `make backup-schedule`, 개발 Mac으로 `make restore ARGS='--into dev'` 복원 연습.
+      `docs/development.md` "그룹 서버".
+      - 맥미니(2026-11-16~18 끝남): 공유 네트워크 `pilgrim-edge`, `server/.env.prod` 비밀 값,
+        `make -C server deploy`. 백업은 restic → iCloud Drive로 설치하고 launchd 실행과 맥미니에서의
+        읽어 내기(`restic check --read-data`, `pg_restore --list`)까지 확인했다(2026-11-18). restic
+        비밀번호(`~/.config/pilgrim-backup/restic-password`)를 운영자 암호 관리자에 옮기는 것과 개발
+        Mac으로 `make restore ARGS='--into dev'` 복원 연습은 아직.
       - 터널: `^/(api/|i/|\.well-known/)` → 3100 규칙을 콘솔 규칙 **위에**, Cloudflare 봇 규칙에서
         `/api`·`/.well-known` 예외, 인터넷에서 `/internal/admin/v1`이 서버에 닿지 않는지.
       - Apple: 두 App ID에 Push Notifications·Associated Domains, Sign in with Apple 키·APNs 키·

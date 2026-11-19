@@ -59,7 +59,7 @@ iPhone/Mac 앱 ──HTTPS──▶ Cloudflare ──Tunnel──▶ 맥미니
                                                  │    └─ admin    (127.0.0.1:8420)
                                                  │         └─▶ http://pilgrim-api:3100/internal/admin/v1
                                                  │             (공유 Docker 네트워크 pilgrim-edge, 터널 밖)
-                                                 └─ 사진 볼륨 / 백업(launchd, restic → R2)
+                                                 └─ 사진 볼륨 / 백업(launchd, restic → iCloud Drive)
 API ──▶ Apple: Sign in with Apple(JWKS·code 교환·토큰 폐기), App Store Server API,
            App Store Server Notifications V2(웹훅 수신), APNs
 ```
@@ -252,7 +252,7 @@ Cloudflare Access는 쓰지 않는다 — 콘솔이 이미 같은 호스트에�
 - **감시**: `/api/health`(DB 연결과 worker heartbeat 포함)를 외부에서 확인(Cloudflare 상태 알림이나
   healthchecks.io 같은 서비스).
 - **백업**: 매일 `pg_dump` + 사진 볼륨. 보관은 7일. 맥미니 한 대에만 있으면 디스크
-  고장 때 다 잃으므로 암호화해서 Cloudflare R2에 한 벌 더 둔다(아래 "백업 사본 위치").
+  고장 때 다 잃으므로 암호화해서 운영자 iCloud Drive에 한 벌 더 둔다(아래 "백업 사본 위치").
   글이 기한 후 지워져도 백업에는 최대 보관 기간만큼 남는다는 점을 개인정보
   처리방침에 적는다.
 - **보안**: Postgres는 외부에 열지 않는다. API는 `127.0.0.1`과 공유 Docker 네트워크에만 연다. Cloudflare에서
@@ -299,7 +299,7 @@ Cloudflare Access는 쓰지 않는다 — 콘솔이 이미 같은 호스트에�
 | 4 | 사진 저장소 | 맥미니 디스크(Docker 볼륨) (2026-11-03) |
 | 5 | 주소 구조 | `pilgrim.delight-house.org`를 콘솔과 함께 쓰고 **경로로 나눈다**: `^/(api/\|i/\|\.well-known/)` → 그룹 서버 3100, 나머지 → 콘솔 8420 (2026-11-14, 처음 안 "호스트 전체를 Pilgrim 서버로"를 바꿈) |
 | 6 | 암호화 | 전송 TLS + 맥미니 디스크 암호화(FileVault). 종단간 암호화는 하지 않는다 (2026-11-03) |
-| 7 | 백업 사본 | 지금은 Cloudflare R2(무료 한도 안), 나중에 AWS S3 서울 리전으로 옮긴다. 아래 "백업 사본 위치" (2026-11-03) |
+| 7 | 백업 사본 | 운영자 iCloud Drive(restic 암호화). 처음 정한 Cloudflare R2를 2026-11-18에 바꿈. 아래 "백업 사본 위치" (2026-11-03, 2026-11-18) |
 | 8 | 테스트 서버 | 개발 맥 로컬 Docker만 (2026-11-03) |
 | 9 | 서버 코드 위치 | 이 저장소의 `server/` (Vapor 앱과 `server/PilgrimAPI` 공유 패키지) (2026-11-03) |
 | 10 | 예약 작업 | 별도 worker 컨테이너(같은 이미지, 다른 실행 명령)에서 **단순 polling 루프**. `vapor/queues`·Redis 없음 (2026-11-14) |
@@ -314,7 +314,18 @@ Cloudflare Access는 쓰지 않는다 — 콘솔이 이미 같은 호스트에�
 DB 덤프와 사진 백업을 맥미니 밖에 한 벌 더 둔다. 어디에 두든 **올리기 전에 암호화**하고,
 복호화 키는 맥미니 밖(운영자의 암호 관리자)에도 보관한다. 보관은 최근 7일치.
 
-**결정 (2026-11-03): 지금은 Cloudflare R2, 나중에 AWS S3 서울 리전으로 옮긴다.**
+**결정 (2026-11-18): 운영자 iCloud Drive.** 맥미니에서 restic으로 암호화한 저장소를 iCloud Drive의
+`Pilgrim Server Backup` 폴더(개인 파일과 분리)에 두면 macOS가 올린다. 새 계정·토큰이 필요 없다.
+받아들인 대가:
+
+- 지운 백업 조각이 iCloud "최근 삭제된 항목"에 30일 더 남는다 → 처리방침은 "암호화된 백업 최대 37일".
+- 업로드가 실제로 끝났는지 스크립트가 확인하지 못한다. 동기화가 멈춰도 조용하다.
+- launchd 작업이 iCloud Drive를 열려면 `/bin/bash`와 restic에 전체 디스크 접근 권한이 필요하다
+  (`docs/development.md` "백업과 복원"). restic을 올리면 권한을 다시 준다.
+- 맥이 아닌 서버로 옮기면 못 쓴다. 그때나 위 대가가 문제가 되면 아래 R2/S3로 바꾼다(`RESTIC_REPOSITORY`만
+  바꾸면 된다).
+
+이전 결정 (2026-11-03): 지금은 Cloudflare R2, 나중에 AWS S3 서울 리전으로 옮긴다. 그때의 내용:
 
 - 도구는 `restic`(암호화·중복 제거·보관 정리·복원)으로, 저장소 주소만 바꿔 끼울 수
   있게 한다. R2에는 이 버킷에만 쓸 수 있는 토큰을 따로 만든다. Cloudflare 계정에는
@@ -347,7 +358,7 @@ DB 덤프와 사진 백업을 맥미니 밖에 한 벌 더 둔다. 어디에 두
 - AWS S3(서울)는 업체 분산·국내 보관·Object Lock이 장점이고 월 몇백 원과 설정 부담이
   든다. 그래서 무료인 R2로 시작하고 필요해지면 S3로 옮긴다.
 - 한 달에 한 번 개발 맥에서 최신 사본을 로컬 Docker에 복원해 본다.
-- 개인정보 처리방침에 "서버 백업은 암호화되어 Cloudflare R2에 최대 7일 보관된다"를 적는다.
+- 개인정보 처리방침에 백업 보관 업체와 기간을 적는다(지금은 iCloud, 암호화, 최대 37일).
 
 ## 작업 순서
 

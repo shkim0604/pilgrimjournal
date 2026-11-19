@@ -318,7 +318,7 @@ APNs topic은 기기의 번들 ID(두 ID 모두)여야 하고(MUST), 무효 토�
   파일이 지워진다
 
 ### Requirement: 서버 백업과 보관
-시스템은 매일 Postgres 덤프와 사진 볼륨을 암호화해 맥미니 밖(Cloudflare R2)에 최근 7일치 보관해야 한다(MUST). 기한이
+시스템은 매일 Postgres 덤프와 사진 볼륨을 암호화해 맥미니 밖(운영자 iCloud Drive)에 최근 7일치 보관해야 한다(MUST). 기한이
 지나 지운 글도 백업에는 최대 보관 기간만큼 남는다는 것을 개인정보 처리방침에 적어야 한다(MUST). 비밀 값(Apple 키,
 APNs 키, JWT 비밀, DB 비밀번호, 관리자 토큰)을 저장소에 넣어서는 안 된다(MUST NOT).
 

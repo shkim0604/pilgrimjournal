@@ -21,7 +21,7 @@ LOCAL_HEALTH_URL  ?= http://127.0.0.1:3100/api/health
 REMOTE_PATH = /opt/homebrew/bin:/usr/local/bin:/Applications/Docker.app/Contents/Resources/bin:/usr/bin:/bin:/usr/sbin:/sbin
 APP_VERSION ?= $(shell git describe --always --dirty --exclude '*' 2>/dev/null || echo unknown)
 
-# Backups (prod host): restic → Cloudflare R2. Settings and secrets live outside the repo in
+# Backups (prod host): restic → iCloud Drive (or R2). Settings and secrets live outside the repo in
 # BACKUP_ENV_FILE (template: scripts/backup.env.example).
 BACKUP_DIR      ?= $(HOME)/backups/pilgrim
 BACKUP_ENV_FILE ?= $(HOME)/.config/pilgrim-backup/env
@@ -102,11 +102,11 @@ deploy:
 
 # ---- backups (Mac mini) ---------------------------------------------------------------------
 
-# One backup now: pg_dump + photo volume → restic (R2), then 7-day retention.
+# One backup now: pg_dump + photo volume → restic, then 7-day retention.
 backup:
 	BACKUP_DIR='$(BACKUP_DIR)' BACKUP_ENV_FILE='$(BACKUP_ENV_FILE)' ./scripts/backup.sh
 
-# Creates the restic repository in the R2 bucket once (no-op when it exists).
+# Creates the restic repository once (no-op when it exists).
 backup-init:
 	BACKUP_ENV_FILE='$(BACKUP_ENV_FILE)' ./scripts/backup.sh --init
 
