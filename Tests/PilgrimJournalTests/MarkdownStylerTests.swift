@@ -1,5 +1,6 @@
 #if canImport(XCTest)
 import Foundation
+import JournalDomain
 @testable import PilgrimJournal
 import XCTest
 import SwiftUI
@@ -50,6 +51,36 @@ extension MarkdownSupportTests {
         )
         XCTAssertEqual(MarkdownEscaping.markerRanges(in: markdown).count, 3)
         XCTAssertEqual(markdown, #"문장입니다\. 다음은 \*별표\*입니다."#)
+    }
+
+    func testScrapSourceLineIsHiddenButKeptInTheText() {
+        let marker = ScrapMarker.line(groupID: UUID(), postID: UUID())
+        let markdown = "> 스크랩 · 수요 기도모임\n> \(marker)\n\n- 어머니 건강"
+        let source = markdown as NSString
+        let storage = NSTextStorage(string: markdown)
+
+        LiveMarkdownStyler.apply(to: storage)
+
+        XCTAssertEqual(storage.string, markdown)
+        let hidden = source.range(of: "> \(marker)\n")
+        for location in [
+            hidden.location, source.range(of: "post=").location, NSMaxRange(hidden) - 1,
+        ] {
+            XCTAssertEqual(
+                storage.attribute(.foregroundColor, at: location, effectiveRange: nil)
+                    as? PlatformColor, .clear)
+            XCTAssertEqual(
+                (storage.attribute(.paragraphStyle, at: location, effectiveRange: nil)
+                    as? NSParagraphStyle)?.maximumLineHeight, 0.1)
+        }
+        XCTAssertNotEqual(
+            storage.attribute(
+                .foregroundColor, at: source.range(of: "스크랩").location, effectiveRange: nil)
+                as? PlatformColor, .clear)
+        XCTAssertNotEqual(
+            storage.attribute(
+                .foregroundColor, at: source.range(of: "어머니").location, effectiveRange: nil)
+                as? PlatformColor, .clear)
     }
 
     #if os(macOS)

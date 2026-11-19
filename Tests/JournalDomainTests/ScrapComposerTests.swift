@@ -302,6 +302,31 @@ final class ScrapComposerTests: XCTestCase {
         XCTAssertTrue(ScrapMarker.postIDs(in: "pilgrim-scrap: group=x post=not-a-uuid").isEmpty)
     }
 
+    func testRemovingMarkerLinesKeepsTheRestOfTheHeader() {
+        let body = ScrapComposer.compose(post: prayerPost(), comments: []).draft.body
+        let shown = ScrapMarker.removingMarkerLines(from: body)
+        XCTAssertFalse(shown.contains("pilgrim-scrap"))
+        XCTAssertFalse(shown.contains(postID.uuidString.lowercased()))
+        XCTAssertEqual(
+            shown,
+            body.replacingOccurrences(
+                of: "\n> \(ScrapMarker.line(groupID: groupID, postID: postID))", with: ""))
+        XCTAssertTrue(ScrapMarker.contains(postID: postID, in: body), "stored body keeps it")
+        XCTAssertEqual(
+            ScrapMarker.removingMarkerLines(
+                from: ScrapMarker.line(groupID: groupID, postID: postID)), "")
+    }
+
+    func testRemovingMarkerLinesLeavesOtherTextAlone() {
+        for text in [
+            "pilgrim-scrap: group=x post=y",
+            "see pilgrim-scrap: group=\(groupID.uuidString.lowercased()) post=\(postID.uuidString.lowercased())",
+            "no marker here\n\nsecond paragraph",
+        ] {
+            XCTAssertEqual(ScrapMarker.removingMarkerLines(from: text), text)
+        }
+    }
+
     func testDeterministic() {
         let first = ScrapComposer.compose(
             post: prayerPost(photos: [photo1]), comments: [], makeAttachmentID: sequentialIDs())

@@ -44,6 +44,22 @@ final class DesignSystemTests: XCTestCase {
         )
     }
 
+    func testEntrySummaryLeavesOutTheScrapSourceLine() {
+        let postID = UUID()
+        let markdown = """
+            > 스크랩 · 수요 기도모임
+            > 민지 · 기도제목 · 2026년 11월 14일에 올림
+            > \(ScrapMarker.line(groupID: UUID(), postID: postID))
+
+            - 어머니 건강
+            """
+
+        let summary = EntryListSummaryFormatter.summary(from: markdown)
+
+        XCTAssertEqual(summary, "스크랩 · 수요 기도모임 민지 · 기도제목 · 2026년 11월 14일에 올림 어머니 건강")
+        XCTAssertFalse(summary.contains(postID.uuidString.lowercased()))
+    }
+
     func testEditorSaveStateProvidesStableAccessibleLabels() {
         XCTAssertEqual(EditorSaveState.saved.label, "저장됨")
         XCTAssertEqual(EditorSaveState.saving.label, "저장 중")

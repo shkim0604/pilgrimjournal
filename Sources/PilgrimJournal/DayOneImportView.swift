@@ -130,7 +130,9 @@ struct DayOneImportView: View {
                 if !model.notebooks.isEmpty {
                     Menu("기존 노트북") {
                         ForEach(model.notebooks, id: \.self) { notebook in
-                            Button(notebook) { importNotebookName = notebook }
+                            Button(NotebookDisplayName.displayName(notebook)) {
+                                importNotebookName = notebook
+                            }
                         }
                     }
                 }

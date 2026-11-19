@@ -3974,12 +3974,12 @@
         }
       }
     },
-    "기록의 공유 메뉴에서 그 기록을 바로 올릴 수도 있어요." : {
+    "기록의 공유 메뉴에서도 올릴 수 있어요" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "You can also post an entry straight from its Share menu."
+            "value" : "Or post from an entry's Share menu"
           }
         }
       }

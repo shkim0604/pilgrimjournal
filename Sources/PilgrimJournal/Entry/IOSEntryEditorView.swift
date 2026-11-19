@@ -294,7 +294,9 @@ struct EntryEditorView: View {
 
                 if let notebookName = draft.notebookName {
                     MetadataChip {
-                        Label(notebookName, systemImage: "book.closed")
+                        Label(
+                            NotebookDisplayName.displayName(notebookName),
+                            systemImage: "book.closed")
                     }
                 }
 
@@ -347,7 +349,7 @@ struct EntryEditorView: View {
                     Picker("노트북", selection: notebookBinding) {
                         Text("노트북 없음").tag(nil as String?)
                         ForEach(model.notebooks, id: \.self) { notebook in
-                            Text(notebook).tag(notebook as String?)
+                            Text(NotebookDisplayName.displayName(notebook)).tag(notebook as String?)
                         }
                     }
                 }

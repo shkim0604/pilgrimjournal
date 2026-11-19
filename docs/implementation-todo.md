@@ -17,10 +17,14 @@
   - **남은 검증:** 로컬 시나리오(3.3)·맥미니 배포(3.4)·main 합치기(3.5)는 끝났다(아래 완료). 남은 것은
     `xcrun simctl push`, 실기기 세션 H(실제 Apple 로그인·APNs·StoreKit·Universal Link).
     운영 준비 항목은 `docs/pre-release-checklist.md` "비공개 그룹 — 운영·출시 준비".
-  - **로컬 시나리오에서 본 화면 다듬을 점(2026-11-18):** 스크랩 본문과 목록 미리보기에 출처 줄
-    `pilgrim-scrap: group=… post=…`가 UUID째 보인다. 영어 화면에서 스크랩 노트북 이름이 "스크랩 · …"로
-    나온다(이름을 한국어로 저장하기 때문 — 표시할 때만 바꿀지). 글쓰기 메뉴의 "기록에서 올리기" 설명이 잘리고,
-    그룹 피드 위쪽에 그룹 이름이 없다.
+  - **로컬 시나리오에서 본 화면 다듬을 점(2026-11-18):** 넷 다 브랜치 `fix/groups-scrap-polish`(2026-11-19)에서
+    고쳤고 iPhone Air 시뮬레이터에서 한국어·영어로 확인했다(병합 전). 출처 줄은 저장된 본문에 그대로 두고
+    목록·읽기·편집기에서만 숨긴다(`ScrapMarker.removingMarkerLines`, 편집기는 속성만; 재스크랩 안내 그대로).
+    스크랩 노트북은 첫 낱말만 앱 언어로 보인다(`NotebookDisplayName`, 영어 "Scraps · <그룹>"). 새 글 메뉴의
+    "기록에서 나누기"는 제목·부제 한 줄로 줄였다(큰 글자에서도 잘림 없음). 그룹 피드 제목이 없던 것은 필터 바
+    배경 색이 안전 영역까지 칠해져 큰 제목을 덮은 탓이라 `ignoresSafeAreaEdges: []`로 고쳤고, 같은 모양이던
+    기도노트의 노트·기도중·응답 선택 막대도 같이 고쳤다. 노트북 이름 바꾸기(`feat/prayer-topics`)와 만나면
+    입력칸은 표시 이름으로 열고 그대로 두면 한국어 저장 이름을 지켜야 한다.
   - **시뮬레이터에서 직접 실행:** `CODE_SIGNING_ALLOWED=NO` 빌드는 CloudKit 권한이 없어 시작하자마자 끝난다.
     `CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM=`(로컬 서명)으로 빌드하면 권한이
     실행 파일에 들어가 돈다. 환경 변수는 `SIMCTL_CHILD_PILGRIM_GROUP_SERVER_URL=… xcrun simctl launch`로 준다.

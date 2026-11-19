@@ -34,7 +34,7 @@ struct ContentView: View {
 
     private var listTitle: String {
         model.selectedSharedSpaceTitle
-            ?? model.selectedNotebookName
+            ?? model.selectedNotebookName.map(NotebookDisplayName.displayName)
             ?? model.selectedKind.map { model.kindDefinition(for: $0).displayName }
             ?? String(localized: "전체 기록")
     }
@@ -456,7 +456,9 @@ struct ContentView: View {
         .labelsHidden()
         .padding(.horizontal)
         .padding(.vertical, 8)
-        .background(JournalTheme.canvas)
+        // Only behind the picker, as in the group feed's filter bar: filling the safe area too
+        // covers the navigation bar's large title.
+        .background(JournalTheme.canvas, ignoresSafeAreaEdges: [])
     }
 
     private var prayerScopeSelection: Binding<PrayerScope> {
