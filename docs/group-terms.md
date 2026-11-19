@@ -1,14 +1,13 @@
-# Pilgrim 그룹 이용 안내 (초안)
+# Pilgrim 그룹 이용 안내
 
-> **운영자용 초안이다.** 지원 사이트(`https://shkim0604.github.io/pilgrim-support/`)에
-> 올리기 전에 `<…>` 자리를 채우고 다듬는다. 근거는
+> **원문이다.** 공개본은 `site/group-terms.html`(한국어·영어)이고 지원 사이트
+> (`https://shkim0604.github.io/pilgrim-support/group-terms.html`)에 올린다. 앱의 "이용 안내 보기"
+> (`GroupOnboardingSheet`)는 `SupportLinks.groupTerms`로 그 주소를 연다. 근거는
 > `openspec/changes/add-private-groups/design.md`와 `docs/privacy.md` "그룹 서버"다. 두
-> 문서의 규칙이 바뀌면 이 문서도 같이 고친다. 올린 뒤 앱의 "이용 안내 보기"
-> (`GroupOnboardingSheet`, 지금은 `SupportLinks.supportPage`)를 이 페이지로 바꾼다
-> (`docs/pre-release-checklist.md` "비공개 그룹 — 운영·출시 준비").
+> 문서의 규칙이 바뀌면 이 문서와 공개본을 같이 고친다. 시행일은 그룹을 켜는 업데이트 때 둘 다에 적는다.
 
-시행일: `<YYYY년 M월 D일>`  
-운영자: `<운영자 이름>` · 문의: `<연락처 또는 지원 페이지>`
+시행일: `<그룹을 켜는 업데이트 날짜>`  
+운영자: Seonghoon Kim · 문의: d.house0827@gmail.com, 지원 페이지
 
 ---
 
@@ -26,6 +25,7 @@ Pilgrim 그룹은 초대받은 사람끼리 기도제목, 독후감, 간증을 �
 
 ## 2. 시작하기
 
+- 그룹은 만 14세 이상만 쓸 수 있습니다.
 - "그룹 시작하기"에서 기록장에 로그인한 Apple 계정으로 한 번 더 인증합니다. 다른 Apple
   계정으로는 시작할 수 없습니다. 이름이나 이메일은 Apple에서 받지 않습니다.
 - 그룹에서 보일 이름(1~30자)을 정하고, 원하면 프로필 사진을 올립니다.
@@ -142,4 +142,4 @@ Pilgrim 그룹은 초대받은 사람끼리 기도제목, 독후감, 간증을 �
 - 그룹 서버는 한 사람이 운영하는 서비스라 점검이나 장애로 잠시 쓸 수 없을 때가 있습니다. 그래도
   기록장은 그대로 쓸 수 있습니다.
 - 이 안내를 바꾸면 시행 전에 앱과 이 페이지에서 알립니다.
-- 궁금한 점은 `<연락처 또는 지원 페이지>`로 문의해 주세요.
+- 궁금한 점은 d.house0827@gmail.com 또는 지원 페이지로 문의해 주세요.

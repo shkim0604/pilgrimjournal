@@ -11,8 +11,7 @@
   현지화(3.1)는 같은 날 `groups/p2-l10n`에서 끝났다(아래 완료). 남은 것:
   - **화면 빈틈:** 투표 중·삭제 예정 배너(`GroupStatusBanner`)를 피드 맨 위에(지금은 그룹 설정에만).
     프로필 사진은 아직 앱 쪽 `GroupProfilePhotoPreparer`로 줄인다(글·댓글·스티커는
-    `ImageCompressor`, 같은 기준) — 하나로 합칠지. 업데이트 안내의 App Store 링크
-    (`GroupsAppStoreLink`)는 App Store ID가 정해질 때까지 검색 URL이다.
+    `ImageCompressor`, 같은 기준) — 하나로 합칠지.
   - **구매 테스트:** 앱이 호스트하는 테스트 타깃(`xctest`에는 StoreKit이 거래를 주지 않는다).
   - **남은 검증:** 로컬 시나리오(3.3)·맥미니 배포(3.4)·main 합치기(3.5)는 끝났다(아래 완료). 남은 것은
     `xcrun simctl push`, 실기기 세션 H(실제 Apple 로그인·APNs·StoreKit·Universal Link).
