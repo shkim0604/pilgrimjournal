@@ -81,10 +81,27 @@ function adminApi(env: Env): Config['adminApi'] {
 
 /** Reads the console configuration from environment variables; relative paths resolve against `baseDir`. */
 export function loadConfig(env: Env, baseDir: string): Config {
-  const origin = nonEmpty(env, 'ADMIN_ORIGIN');
-  if (!origin) {
+  const originText = nonEmpty(env, 'ADMIN_ORIGIN');
+  if (!originText) {
     throw new ConfigError('ADMIN_ORIGIN is required (e.g. https://pilgrim.delight-house.org)');
   }
+  // Compared against the browser's Origin header, so keep only URL.origin (lower-case host, no default port).
+  let originUrl: URL | null = null;
+  try {
+    originUrl = new URL(originText);
+  } catch {}
+  if (
+    !originUrl ||
+    (originUrl.protocol !== 'http:' && originUrl.protocol !== 'https:') ||
+    originUrl.pathname !== '/' ||
+    originUrl.search ||
+    originUrl.hash ||
+    originUrl.username ||
+    originUrl.password
+  ) {
+    throw new ConfigError(`ADMIN_ORIGIN must be a bare origin such as https://pilgrim.delight-house.org, got "${originText}"`);
+  }
+  const origin = originUrl.origin;
 
   const portText = nonEmpty(env, 'PORT') ?? '8420';
   const port = Number(portText);
@@ -98,7 +115,7 @@ export function loadConfig(env: Env, baseDir: string): Config {
   return {
     port,
     dbPath: path(env, 'ADMIN_DB_PATH', 'data/admin.sqlite', baseDir),
-    origin: origin.replace(/\/+$/, ''),
+    origin,
     cookieSecure: nonEmpty(env, 'ADMIN_COOKIE_SECURE') !== 'false',
     trustProxy: nonEmpty(env, 'TRUST_PROXY') === 'true',
     repoRoot: path(env, 'ADMIN_REPO_ROOT', '../..', baseDir),

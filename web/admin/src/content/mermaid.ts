@@ -50,9 +50,9 @@ export function targetGraph(arch: ArchitectureSnapshot, includeTests: boolean): 
   for (const target of targets) {
     const id = mermaidId(target.name);
     const label = `"${mermaidId(target.name)}"`;
-    if (target.kind === 'library') lines.push(`  ${id}[${label}]`);
-    else if (target.kind === 'executable') lines.push(`  ${id}([${label}])`);
-    else lines.push(`  ${id}{{${label}}}`);
+    if (target.kind === 'executable') lines.push(`  ${id}([${label}])`);
+    else if (target.kind === 'test') lines.push(`  ${id}{{${label}}}`);
+    else lines.push(`  ${id}[${label}]`);
   }
   for (const target of targets) {
     for (const dependency of target.dependencies) {

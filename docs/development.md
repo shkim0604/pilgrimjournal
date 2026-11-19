@@ -337,7 +337,8 @@ npm test && npm run typecheck
      `nohup`으로 띄워 재시작이 끝까지 실행되게 한다.
    - 대시보드에서 관리하는 터널이면 Zero Trust › Networks › Tunnels에서 public hostname
      `pilgrim.delight-house.org` → `http://localhost:8420`을 추가한다.
-   - compose에 포함된 cloudflared를 쓰려면 새 터널의 토큰을 `.env`의 `TUNNEL_TOKEN`에 넣고
+   - compose에 포함된 cloudflared를 쓰려면 새 터널의 토큰을 `web/admin/.env.tunnel`에 `TUNNEL_TOKEN=...`으로 넣고(admin 컨테이너가 읽는
+     `.env`와 분리해 콘솔에 토큰이 들어가지 않게 한다)
      `--profile tunnel`로 올린 뒤 public hostname 서비스를 `http://admin:8420`으로 둔다.
    그 뒤 `https://pilgrim.delight-house.org/admin`에서 바꾼 비밀번호로 로그인된다.
 6. 업데이트: 스냅샷(`./scripts/admin-snapshot.sh`)은 개발 Mac에서 만들어 `main`에 커밋해 둔다.

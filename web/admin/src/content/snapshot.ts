@@ -24,7 +24,8 @@ export type SchemaSnapshot = { schemaVersion: string; stores: SchemaStore[] };
 
 export type ArchitectureTarget = {
   name: string;
-  kind: 'library' | 'executable' | 'test';
+  /** library | executable | test, or any other SwiftPM target type (macro, plugin, binary, …) as-is. */
+  kind: string;
   dependencies: string[];
   linkedFrameworks: string[];
 };
@@ -78,7 +79,7 @@ function isTarget(v: unknown): v is ArchitectureTarget {
   return (
     isObject(v) &&
     isString(v.name) &&
-    (v.kind === 'library' || v.kind === 'executable' || v.kind === 'test') &&
+    isString(v.kind) &&
     isArrayOf(v.dependencies, isString) &&
     isArrayOf(v.linkedFrameworks, isString)
   );

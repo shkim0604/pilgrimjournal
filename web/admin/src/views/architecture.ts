@@ -5,7 +5,7 @@ import type { ArchitectureSnapshot, ArchitectureTarget, Loaded } from '../conten
 import { diagram, snapshotMissing } from './common.ts';
 import { layout, type Html } from './layout.ts';
 
-const KIND_LABELS: Record<ArchitectureTarget['kind'], string> = {
+const KIND_LABELS: Record<string, string> = {
   library: '라이브러리',
   executable: '실행 파일',
   test: '테스트',
@@ -14,7 +14,7 @@ const KIND_LABELS: Record<ArchitectureTarget['kind'], string> = {
 function moduleCard(target: ArchitectureTarget): Html {
   const info = MODULES[target.name];
   return html`<section class="card">
-    <h2>${target.name} <span class="tag">${KIND_LABELS[target.kind]}</span></h2>
+    <h2>${target.name} <span class="tag">${KIND_LABELS[target.kind] ?? target.kind}</span></h2>
     ${info ? html`<p>${info.role}</p>` : html`<p class="muted">설명 없음 — <code>src/content/modules.ts</code>에 추가하세요.</p>`}
     ${info && info.keyTypes.length > 0
       ? html`<p class="muted">핵심: ${info.keyTypes.map((type, i) => html`${i > 0 ? ', ' : ''}<code>${type}</code>`)}</p>`

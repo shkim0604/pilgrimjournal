@@ -65,6 +65,15 @@ export const requirePasswordChanged: MiddlewareHandler<AppEnv> = async (c, next)
   await next();
 };
 
+/** The submitted form, or null when the body cannot be parsed (the caller answers 400, not 500). */
+export async function readForm(c: Context): Promise<Record<string, unknown> | null> {
+  try {
+    return await c.req.parseBody();
+  } catch {
+    return null;
+  }
+}
+
 /** The caller's IP: Cloudflare's header only when the proxy is trusted, else the socket address. */
 export function clientIp(c: Context, trustProxy: boolean): string {
   if (trustProxy) {

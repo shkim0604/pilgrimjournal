@@ -10,6 +10,7 @@ import {
   SESSION_COOKIE,
   clientIp,
   originCheck,
+  readForm,
   requireSession,
   securityHeaders,
   type AppEnv,
@@ -40,6 +41,7 @@ const MIN_PASSWORD_LENGTH = 12;
 const LOGIN_FAILED = '아이디 또는 비밀번호가 올바르지 않습니다.';
 const LOCKED = '로그인 시도가 너무 많습니다. 잠시 후 다시 시도하세요.';
 const TOO_LONG = '입력이 너무 깁니다.';
+const BAD_FORM = '요청을 읽지 못했습니다. 다시 시도하세요.';
 const MAX_USERNAME_LENGTH = 64;
 const MAX_PASSWORD_LENGTH = 1024;
 const MAX_BODY_BYTES = 16 * 1024;
@@ -118,7 +120,8 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
   app.get('/admin/login', (c) => c.html(loginPage()));
 
   app.post('/admin/login', async (c) => {
-    const body = await c.req.parseBody();
+    const body = await readForm(c);
+    if (!body) return c.html(loginPage({ error: BAD_FORM }), 400);
     const username = field(body, 'username').trim();
     const password = field(body, 'password');
     // No real account has names or passwords this long; refuse before anything is stored or echoed.
@@ -164,10 +167,12 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
     const admin = findAdminById(db, session.adminId);
     if (!admin) return c.redirect('/admin/login', 302);
 
-    const body = await c.req.parseBody();
-    const current = field(body, 'current');
-    const next = field(body, 'next');
-    const confirm = field(body, 'confirm');
+    const body = await readForm(c);
+    if (!body) return c.html(changePasswordPage({ forced, error: BAD_FORM }), 400);
+    // Rules compare NFC forms: macOS may send Hangul decomposed, which would count each jamo.
+    const current = field(body, 'current').normalize('NFC');
+    const next = field(body, 'next').normalize('NFC');
+    const confirm = field(body, 'confirm').normalize('NFC');
 
     if (!(await verifyPassword(current, admin.passwordHash))) {
       return c.html(changePasswordPage({ forced, error: '현재 비밀번호가 올바르지 않습니다.' }), 400);

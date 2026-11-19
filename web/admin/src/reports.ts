@@ -1,5 +1,5 @@
 import type { Context, Hono, MiddlewareHandler } from 'hono';
-import type { AppEnv } from './auth/middleware.ts';
+import { readForm, type AppEnv } from './auth/middleware.ts';
 import { AdminApiError, createAdminApi, type AdminApi } from './moderation/adminApi.ts';
 import {
   DELETABLE_TARGETS,
@@ -133,7 +133,8 @@ export function registerReportPages(app: Hono<AppEnv>, deps: AppDeps, guard: Gua
       if (!api) return c.html(reportsDisabledPage(), 503);
       const reportId = uuid(c.req.param('id'));
       if (!reportId) return c.notFound();
-      const body = await c.req.parseBody();
+      const body = await readForm(c);
+      if (!body) return c.text('Bad Request', 400);
       let notice: NoticeKey;
       try {
         notice = await run({ c, api, reportId, body });
