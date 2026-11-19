@@ -82,7 +82,12 @@
         - `site/` 두 파일을 공개 저장소 `shkim0604/pilgrim-support`에 올리고 두 주소가 열리는지 확인(주인).
         - 서버 재배포(`make -C server deploy`) 뒤 `/i/<코드>`의 App Store 링크 확인.
         - 시행일은 그룹을 켜는 업데이트 때 `site/group-terms.html`과 `docs/group-terms.md`에 적는다.
-        - 라벨은 그룹을 켜는 빌드를 심사에 낼 때 App Store Connect에 넣는다.
+        - 라벨은 그룹을 켜는 빌드를 심사에 내는 날 App Store Connect에 게시하고, 연령 등급 질문지(사용자 콘텐츠,
+          사용자끼리 소통)도 그날 다시 답한다(주인).
+        - 처리방침은 서버를 미국(운영자 집)으로, 국외 이전(운영자·Cloudflare·Apple)으로 적었다. 서버를 AWS 등으로
+          옮기면 이전받는 곳·국가와 `docs/privacy.md`를 고친다. 그룹 이용은 만 14세 이상.
+        - 미정(주인, 2026-11-19 "지금은 안 넣음"): 기도제목이 종교(신념)를 드러내는 민감정보로 별도 동의가 필요한지
+          법률 확인. 필요하면 가입 화면에 동의 토글을 따로 둔다.
       - 출시 순서: 서버·CI와 `aps-environment`·`applinks` entitlement는 이미 main에 있다. 앱은 Release
         `GroupsFeature.isEnabled = false` 그대로 두고, 세션 H가 끝난 뒤 켜는 PR → 편집기 입력 게이트 →
         TestFlight 순서로 낸다.

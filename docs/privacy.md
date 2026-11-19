@@ -67,7 +67,8 @@
 `openspec/changes/add-private-groups/design.md`("Postgres 스키마", "worker")다. 서버 코드는
 `server/`에 있다.
 
-- **위치:** 운영자 집의 맥미니 한 대(Docker, Postgres 17, 사진은 Docker 볼륨). 디스크는
+- **위치:** 미국에 있는 운영자 집의 맥미니 한 대(Docker, Postgres 17, 사진은 Docker 볼륨). 한국 사용자에게는
+  국외 이전이므로 처리방침(`site/index.html`)에 이전받는 곳·국가·항목·목적·기간을 적는다. AWS 등으로 옮기면 함께 고친다. 디스크는
   FileVault로 암호화한다. 종단 간 암호화는 하지 않는다 — 운영자는 서버에 있는 내용을 볼 수
   있다(전송 TLS + 디스크 암호화, `docs/group-server.md` 결정 6).
 - **그룹 로그인:** 기록장 로그인과 따로, "그룹 시작하기"에서 nonce를 붙인 Apple 인증을 새로
