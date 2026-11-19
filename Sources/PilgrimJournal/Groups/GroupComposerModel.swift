@@ -2,6 +2,7 @@ import Combine
 import CoreGraphics
 import Foundation
 import ImageIO
+import JournalDomain
 import JournalGroups
 import PilgrimAPI
 import SwiftUI
@@ -124,15 +125,25 @@ struct GroupPostDraft: Equatable, Sendable {
     }
 }
 
+/// The prayer-note topic an imported line came from. Stays on the device: only the line's
+/// text and section are posted.
+struct GroupPrayerTopicSource: Equatable, Hashable, Sendable {
+    var entryID: UUID
+    var topicID: UUID
+}
+
 /// One editable prayer line.
 struct GroupComposerItem: Identifiable, Equatable {
     var id = UUID()
     var text: String
     var topic: String?
+    /// Set for a line imported from a prayer note.
+    var source: GroupPrayerTopicSource?
 
-    init(text: String = "", topic: String? = nil) {
+    init(text: String = "", topic: String? = nil, source: GroupPrayerTopicSource? = nil) {
         self.text = text
         self.topic = topic
+        self.source = source
     }
 }
 
@@ -231,6 +242,8 @@ final class GroupComposerModel: ObservableObject {
 
     /// Groups that accept new posts.
     let groups: [GroupSummary]
+    /// The journal's prayer notes, for "기도노트에서 가져오기"; nil where no journal is at hand.
+    let prayerNotes: GroupPrayerNoteSource?
     let timeZone: TimeZone
     private let api: any GroupAPI
     private let uploader: GroupPhotoUploader
@@ -253,11 +266,13 @@ final class GroupComposerModel: ObservableObject {
         timeZone: TimeZone = .current,
         language: String = GroupComposerModel.defaultLanguage,
         policy: PostExpiryPolicy = PostExpiryPolicy(),
-        events: GroupContentEvents? = .shared
+        events: GroupContentEvents? = .shared,
+        prayerNotes: GroupPrayerNoteSource? = nil
     ) {
         self.api = api
         self.uploader = GroupPhotoUploader(api: api, prepare: prepareImage)
         self.groups = groups.filter { $0.status != .pendingDeletion }
+        self.prayerNotes = prayerNotes
         self.now = now
         self.timeZone = timeZone
         self.language = language
@@ -326,6 +341,43 @@ final class GroupComposerModel: ObservableObject {
         if sections.isEmpty { sections = [GroupComposerSection()] }
     }
 
+    /// Adds the picked topics of `note` as lines under their sections (a topic without one goes
+    /// above the first heading), in the note's order, in place of the empty placeholder lines.
+    /// Lines past the limit of ten are dropped with a notice; a topic already imported is
+    /// skipped.
+    func importTopics(_ picked: Set<UUID>, from note: GroupPrayerNote) {
+        let imported = Set(items.compactMap { $0.source?.topicID })
+        for index in sections.indices {
+            sections[index].items.removeAll { $0.source == nil && $0.text.isBlank }
+        }
+        sections.removeAll { $0.items.isEmpty }
+        var droppedAny = false
+        for section in note.sections {
+            let name = section.name ?? ""
+            for topic in section.topics
+            where picked.contains(topic.id) && !imported.contains(topic.id) {
+                guard items.count < Self.maxItems else {
+                    droppedAny = true
+                    continue
+                }
+                let line = GroupComposerItem(
+                    text: topic.text,
+                    source: GroupPrayerTopicSource(entryID: note.id, topicID: topic.id))
+                if let index = sections.firstIndex(where: {
+                    $0.name.trimmingCharacters(in: .whitespacesAndNewlines) == name
+                }) {
+                    sections[index].items.append(line)
+                } else if name.isEmpty {
+                    sections.insert(GroupComposerSection(name: "", items: [line]), at: 0)
+                } else {
+                    sections.append(GroupComposerSection(name: name, items: [line]))
+                }
+            }
+        }
+        if sections.isEmpty { sections = [GroupComposerSection()] }
+        if droppedAny { notice = GroupComposerIssue.tooManyItems.message }
+    }
+
     /// Adds picked photos up to the limit of four; the rest are dropped with a notice.
     func addPhotos(_ data: [Data]) {
         let room = Self.maxPhotos - photos.count
@@ -364,13 +416,27 @@ final class GroupComposerModel: ObservableObject {
         return visibleDays
     }
 
-    var filledItems: [PrayerItem] {
-        sections.flatMap { section -> [PrayerItem] in
+    var filledItems: [PrayerItem] { filledLines.map(\.item) }
+
+    /// The imported lines among `filledItems`, by index there (which is the posted item index).
+    var filledSources: [Int: GroupPrayerTopicSource] {
+        var sources: [Int: GroupPrayerTopicSource] = [:]
+        for (index, line) in filledLines.enumerated() {
+            if let source = line.source { sources[index] = source }
+        }
+        return sources
+    }
+
+    private var filledLines: [(item: PrayerItem, source: GroupPrayerTopicSource?)] {
+        sections.flatMap { section -> [(item: PrayerItem, source: GroupPrayerTopicSource?)] in
             let name = section.name.trimmingCharacters(in: .whitespacesAndNewlines)
-            return section.items.compactMap { item -> PrayerItem? in
+            return section.items.compactMap { item in
                 let text = item.text.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !text.isEmpty else { return nil }
-                return PrayerItem(text: text, topic: item.topic, section: name.nilIfEmpty)
+                return (
+                    PrayerItem(text: text, topic: item.topic, section: name.nilIfEmpty),
+                    item.source
+                )
             }
         }
     }
@@ -511,8 +577,10 @@ final class GroupComposerModel: ObservableObject {
                 }
             }
             let mediaIDs = photos.compactMap(\.mediaID)
+            let sources = kind == .prayer ? filledSources : [:]
             let post = try await api.createPost(groupID: groupID, request(mediaIDs: mediaIDs))
             postedPost = post
+            if !sources.isEmpty { prayerNotes?.didPost(post, sources) }
             events?.send(.postCreated(post))
             return post
         } catch {
@@ -555,4 +623,5 @@ enum GroupPostQuote {
 
 extension String {
     fileprivate var nilIfEmpty: String? { isEmpty ? nil : self }
+    fileprivate var isBlank: Bool { trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 }

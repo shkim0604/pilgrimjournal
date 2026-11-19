@@ -152,7 +152,13 @@ final class AppModel: ObservableObject {
     #endif
     /// The private groups, set while `GroupsFeature` is on. Groups live on the group server,
     /// so unlike `familySharing` this does not depend on the iCloud scope.
-    var groups: GroupsController?
+    var groups: GroupsController? {
+        didSet { connectGroupPrayerLinks() }
+    }
+    /// Which posted group prayer lines came from which prayer-note topics.
+    var groupPrayerLinks: GroupPrayerLinkStore
+    /// The latest answered-mark push to the group server; each one waits for the one before.
+    var groupPrayerSyncTask: Task<Void, Never>?
     /// The group whose feed replaces the entry list. Exclusive with a kind, notebook, shared
     /// notebook or settings selection (see `selectGroup(_:)`).
     @Published var selectedGroupID: UUID?
@@ -199,9 +205,12 @@ final class AppModel: ObservableObject {
 
     static let notebookDefaultsKey = "journal-notebooks"
     static let deletedNotebookDefaultsKey = "journal-deleted-notebooks"
-    /// The notebook keys mirrored to the iCloud key-value store, which
-    /// account deletion clears.
-    static let cloudKeyValueKeys = [notebookDefaultsKey, deletedNotebookDefaultsKey]
+    /// Every key the journal writes to the iCloud key-value store, which account deletion
+    /// clears.
+    static let cloudKeyValueKeys = [
+        notebookDefaultsKey, deletedNotebookDefaultsKey, KindCatalogStore.key,
+        PrayerTemplateStore.key, GroupPrayerLinkStore.key,
+    ]
 
     init(
         repository: any JournalRepository,
@@ -229,6 +238,8 @@ final class AppModel: ObservableObject {
             cloudStore: notebookCloudStore
         )
         prayerTemplates = prayerTemplateStore.catalog.activeTemplates
+        groupPrayerLinks = GroupPrayerLinkStore(
+            defaults: notebookDefaults, cloudStore: notebookCloudStore)
         searchCoordinator = SearchIndexCoordinator(index: searchIndex)
         notebookCloudStore?.synchronize()
         let initialDeletedNotebookNames = Self.mergedNotebookNames(

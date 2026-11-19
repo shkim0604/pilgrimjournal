@@ -176,7 +176,9 @@ struct InlineEntryEditorView: View {
         .sheet(item: $prayerRequestShareEntry) { entry in
             PrayerRequestShareSheet(entry: entry, groups: model.groups)
         }
-        .groupPostComposer($groupPostRequest, groups: model.groups)
+        .groupPostComposer(
+            $groupPostRequest, groups: model.groups, prayerNotes: model.groupPrayerNoteSource
+        )
         .confirmationDialog(
             "기록 유형을 바꾸면 일부 상세 정보가 제거됩니다.",
             isPresented: $isConfirmingTypeChange,

@@ -1958,6 +1958,16 @@
         }
       }
     },
+    "가져올 기도노트가 없어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No prayer notes to import"
+          }
+        }
+      }
+    },
     "간증" : {
       "localizations" : {
         "en" : {
@@ -2334,6 +2344,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Choose"
+          }
+        }
+      }
+    },
+    "고른 기도제목의 내용과 섹션 이름만 올라가요. 메모와 노트 본문은 올라가지 않아요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only the picked prayer topics and their section names are posted. Memos and the note itself stay on this device."
           }
         }
       }
@@ -3524,12 +3544,32 @@
         }
       }
     },
+    "기도노트에 기도제목을 적으면 여기서 골라 올릴 수 있어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Write prayer topics in a prayer note to pick them here."
+          }
+        }
+      }
+    },
     "기도노트에는 기도제목을 섹션별 체크리스트로 적고, 응답된 제목을 체크하세요. 기도노트 목록의 ‘기도중’과 ‘응답’에서 모든 노트의 기도제목을 모아 볼 수 있습니다. 성경공부에는 구절, 독서노트에는 책과 저자, 일기에는 기분을 남기고, 간단한 내용은 메모로 기록하세요." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Prayer Notes hold a checklist of prayer topics grouped into sections; check off a topic once it is answered. Praying and Answered in the prayer notes list gather topics from every note. Bible Study keeps a passage, Reading Notes a book and author, and Diary your mood. Use Memo for quick notes."
+          }
+        }
+      }
+    },
+    "기도노트에서 가져오기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import from Prayer Notes"
           }
         }
       }
@@ -3676,6 +3716,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Praying"
+          }
+        }
+      }
+    },
+    "기도중 %lld · 응답 %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Praying %1$lld · Answered %2$lld"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "기도중 %1$lld · 응답 %2$lld"
           }
         }
       }

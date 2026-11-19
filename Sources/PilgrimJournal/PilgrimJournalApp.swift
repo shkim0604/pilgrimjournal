@@ -195,9 +195,7 @@ struct PilgrimJournalApp: App {
             sessionService: sessionService,
             appLockStore: appLockStore,
             standardDefaultsKeys: ["has-completed-onboarding"],
-            cloudKeyValueKeys: AppModel.cloudKeyValueKeys + [
-                KindCatalogStore.key, PrayerTemplateStore.key,
-            ],
+            cloudKeyValueKeys: AppModel.cloudKeyValueKeys,
             temporaryItems: [
                 FileManager.default.temporaryDirectory.appending(
                     path: "AttachmentPreview",

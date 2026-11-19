@@ -73,7 +73,8 @@ struct EntryDetailView: View {
         .sheet(isPresented: $isPresentingPrayerRequestShare) {
             PrayerRequestShareSheet(entry: entry, groups: model.groups)
         }
-        .groupPostComposer($groupPostRequest, groups: model.groups)
+        .groupPostComposer(
+            $groupPostRequest, groups: model.groups, prayerNotes: model.groupPrayerNoteSource)
     }
 
     private var kindBadge: some View {

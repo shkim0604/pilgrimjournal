@@ -34,6 +34,11 @@ final class GroupsController: ObservableObject {
     let api: any GroupAPI
     /// Called with each tapped group notification once this controller is attached.
     var onOpenRoute: ((GroupNotificationRoute) -> Void)?
+    /// The journal's side of answered marks on prayer lines imported from a prayer note, set by
+    /// `AppModel.groups`: each first page a feed refreshed (to catch up the marks), and each
+    /// mark the author changed in the post detail (to mark the linked topic too).
+    var onFeedRefreshed: (([PostResponse]) -> Void)?
+    var onPrayerItemAnswered: ((PostResponse, Int) -> Void)?
     /// Asks for the subscription screen; `GroupSubscriptionController.attach(to:)` sets it.
     /// Until then the screen opens directly.
     var onSubscriptionRequired: (() -> Void)?

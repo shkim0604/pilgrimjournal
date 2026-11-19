@@ -76,7 +76,8 @@ private struct GroupPostDetailContent: View {
         _model = StateObject(
             wrappedValue: GroupPostDetailModel(
                 api: groups.api, postID: postID, groupID: groupID, isAdmin: isAdmin,
-                prepareImage: GroupImagePreparation.current))
+                prepareImage: GroupImagePreparation.current,
+                onAnsweredChange: groups.onPrayerItemAnswered))
     }
 
     var body: some View {

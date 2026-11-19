@@ -24,7 +24,9 @@ struct GroupFeedView: View {
         self.groups = groups
         self.groupID = groupID
         _preferredCompactColumn = preferredCompactColumn
-        _feed = StateObject(wrappedValue: GroupFeedModel(api: groups.api, groupID: groupID))
+        _feed = StateObject(
+            wrappedValue: GroupFeedModel(
+                api: groups.api, groupID: groupID, onRefreshed: groups.onFeedRefreshed))
     }
 
     var body: some View {
@@ -48,6 +50,7 @@ struct GroupFeedView: View {
         .sheet(item: $composer) { request in
             GroupPostComposerSheet.compose(
                 GroupPostDraft(kind: request.kind), groups: groups, groupID: groupID,
+                prayerNotes: model.groupPrayerNoteSource,
                 onPosted: { post in model.selectGroupPost(post.id) })
         }
         .navigationSplitViewColumnWidth(

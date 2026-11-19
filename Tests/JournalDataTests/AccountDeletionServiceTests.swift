@@ -92,7 +92,8 @@ final class AccountDeletionServiceTests: XCTestCase {
             Set(fixture.preferences.removedSuites),
             [localScope.userDefaultsSuiteName, fixture.scope.userDefaultsSuiteName]
         )
-        XCTAssertEqual(fixture.preferences.removedCloudKeys, ["journal-notebooks"])
+        XCTAssertEqual(
+            fixture.preferences.removedCloudKeys, ["journal-notebooks", GroupPrayerLinkStore.key])
         XCTAssertEqual(fixture.preferences.removedStandardKeys, ["has-completed-onboarding"])
     }
 
@@ -383,7 +384,7 @@ final class AccountDeletionServiceTests: XCTestCase {
             appLockStore: fixture.appLockStore,
             preferences: fixture.preferences,
             standardDefaultsKeys: ["has-completed-onboarding"],
-            cloudKeyValueKeys: ["journal-notebooks"],
+            cloudKeyValueKeys: ["journal-notebooks", GroupPrayerLinkStore.key],
             temporaryItems: temporaryItems
         )
     }
