@@ -160,6 +160,16 @@
     플랫폼에서 다르다(iOS는 실패를 돌려주고 macOS는 무시) — 합치려면 먼저 정책을 정한다.
   - `AppModel.autosaveOnEditorExit`는 앱 코드에서 부르는 곳이 없고 테스트만 쓴다.
 
+- **접근성 점검** (2026-11-18, 출시 확인 리스트 "세션 E 나머지"에서 옮김) — 2026-08-12부터 세 번
+  출시하는 동안 미뤘고 출시 게이트가 아니다. 실기기 VoiceOver로 sidebar → timeline → editor →
+  설정 순서 훑기(E-1), Mac 키보드만으로 조작·작은 창, iPhone Reduce Motion·landscape, 긴 한영 혼합
+  본문(E-2), Mac Light·Dark × 넓은 창·작은 창·집중 모드 기준선 스크린샷(E-4). 절차는
+  `docs/device-verification.md` 세션 E.
+
+- **첨부 다운로드 타임아웃 조정** (2026-11-18, 출시 확인 리스트 "본문 이미지 붙여넣기"에서 옮김) —
+  `AttachmentEditorSection.swift`의 `timeout`은 잠정 25초다. 실제 CloudKit 가져오기 지연을 보고
+  값을 정한다(`docs/device-verification.md` C-5 4단계).
+
 ## 완료
 
 - **비공개 그룹 — 현지화** (2026-11-16, 브랜치 `groups/p2-l10n`, openspec tasks 3.1) — 그룹 화면 전체
