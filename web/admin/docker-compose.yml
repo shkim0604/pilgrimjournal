@@ -1,7 +1,7 @@
 # Admin console for pilgrim.delight-house.org/admin.
 #   cp web/admin/.env.example web/admin/.env   # then edit
 #   docker compose -f web/admin/docker-compose.yml up -d --build
-# With the bundled Cloudflare Tunnel (TUNNEL_TOKEN in .env):
+# With the bundled Cloudflare Tunnel (TUNNEL_TOKEN=... in web/admin/.env.tunnel):
 #   docker compose -f web/admin/docker-compose.yml --profile tunnel up -d --build
 #
 # The console joins the shared network pilgrim-edge, where the group server's api answers as
@@ -19,6 +19,8 @@ services:
       context: ../..
       dockerfile: web/admin/Dockerfile
     env_file: .env
+    # tini as PID 1 forwards SIGTERM, so docker stop/redeploys don't wait 10 s for a SIGKILL.
+    init: true
     # Only reachable from this machine; the public route is the Cloudflare Tunnel.
     ports:
       - "127.0.0.1:8420:8420"
@@ -30,11 +32,13 @@ services:
     restart: unless-stopped
 
   cloudflared:
-    image: cloudflare/cloudflared:latest
+    image: cloudflare/cloudflared:2026.10.7
     profiles: [tunnel]
     command: tunnel --no-autoupdate run
-    environment:
-      - TUNNEL_TOKEN=${TUNNEL_TOKEN:-}
+    # TUNNEL_TOKEN lives in its own file so the admin container (env_file: .env) never sees it.
+    env_file:
+      - path: .env.tunnel
+        required: false
     # In the Zero Trust dashboard, point the public hostname at http://admin:8420, and put the
     # group server rule (path ^/(api/|i/|\.well-known/) → http://pilgrim-api:3100) above it.
     depends_on:

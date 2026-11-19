@@ -21,6 +21,8 @@ trap 'rm -rf "$snapshot_tmp"' EXIT
 for file in schema.json architecture.json; do
   if ! cmp -s "web/admin/snapshot/$file" "$snapshot_tmp/$file"; then
     echo "관리 콘솔 스냅샷이 오래됐습니다(web/admin/snapshot/$file). scripts/admin-snapshot.sh를 실행하고 커밋하세요." >&2
+    echo "모델·Package.swift를 바꾸지 않았는데 schema.json만 다르면 Xcode 버전 차이로 타입 표기가 바뀐 것일 수 있습니다. CI와 같은 Xcode(.github/workflows/check.yml의 DEVELOPER_DIR)로 다시 만드세요." >&2
+    diff -u "web/admin/snapshot/$file" "$snapshot_tmp/$file" | head -20 >&2 || true
     exit 1
   fi
 done
