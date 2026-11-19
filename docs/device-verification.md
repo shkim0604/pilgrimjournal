@@ -31,7 +31,7 @@
 | B | 인증과 계정 격리, 계정 삭제(B-3) | 14.8, 12.2 | 1~2시간 |
 | C | 데이터 E2E | 8.8, 11.10, 12.4 | 2~3시간 |
 | D | 성능 | 2.5, 10.8, 6.4 | 1~2시간 |
-| E | 접근성과 시각 | 12.3, 6.2, 1.1, 2.4, 6.3 | 2~3시간 |
+| E | 접근성과 시각 (출시 게이트 아님, E-3 아이콘만 아이콘을 바꿀 때) | 12.3, 6.2, 1.1, 2.4, 6.3 | 2~3시간 |
 | F | TestFlight 설치·업데이트 | 12.8, 6.6 | 1시간 |
 | G | 기도제목 나누기 (모델·번역·공유 시트) | — | 1시간 |
 | H | 비공개 그룹 (그룹 서버·푸시·초대·스크랩·계정 삭제·구독) | openspec `add-private-groups` 3.4 | 반나절 |
@@ -331,6 +331,9 @@ canonical 타입(기록·첨부)에 대해 처음으로 실제 CKRecord 삭제�
 
 ### D-1. 대량 배치 — tasks 2.5, 10.8
 
+> 보류(2026-11-18, 아래 "보류"). 출시 게이트가 아니다. 실제 Day One export 수천 건을
+> 기기에 가져와 쓰면서 느림이 없었다. 수치가 필요해지면 그때 아래를 잰다.
+
 수천 건 합성 기록을 넣고 측정한다. 자동화 테스트에
 `testFiveThousandEntryRebuildAndKoreanSearchPerformance`가 있지만 이건 Mac의
 in-memory 기준이고, 실기기 CloudKit queue와 iPhone 응답성은 별개다.
@@ -380,6 +383,9 @@ Instruments로 확인한다.
 ---
 
 ## 세션 E — 접근성과 시각
+
+> E-1·E-2·E-4는 출시 게이트가 아니다(2026-11-18). 할 일은 `docs/implementation-todo.md`
+> "접근성 점검". E-3(아이콘)은 아이콘을 바꾼 빌드에서만 돈다.
 
 시뮬레이터로 Dynamic Type·Increase Contrast·Light/Dark는 이미 매트릭스로
 찍었다(`docs/visual-regression/ios/home-*.png`). 여기서는 시뮬레이터가 못 하는
@@ -665,5 +671,7 @@ macOS는 `PilgrimJournal-macOS.entitlements`(`com.apple.developer.aps-environmen
   - 만료 뒤 B가 모든 그룹에서 빠지고 B의 글·댓글이 지워진다. 다른 사람이 스크랩한 B의 글은 남는다
   - 다른 Apple ID 사용자의 거래를 보내면 거부된다(`SUBSCRIPTION_OWNED_BY_OTHER_USER`)
 
+- **D-1 대량 배치** (2026-11-18) — 실데이터 수천 건으로 체감 문제가 없어 계측을 미룬다.
+  절차는 위 D-1.
 - **task 8.9** — 태그·첨부가 포함된 추가 익명 실제 샘플이 확보되면 adapter
   compatibility regression을 보강한다. 샘플이 없으면 진행할 수 없다.
