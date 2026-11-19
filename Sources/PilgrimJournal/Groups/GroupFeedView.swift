@@ -145,7 +145,9 @@ struct GroupFeedView: View {
             .padding(.horizontal, JournalTheme.Spacing.regular)
             .padding(.vertical, JournalTheme.Spacing.small)
         }
-        .background(JournalTheme.canvas)
+        // Only behind the chips: by default a colour fills the safe area too and covers the
+        // navigation bar's large title.
+        .background(JournalTheme.canvas, ignoresSafeAreaEdges: [])
     }
 
     private func filterChip(_ kind: PostKind?, title: String) -> some View {
@@ -154,15 +156,23 @@ struct GroupFeedView: View {
         return Button {
             feed.kindFilter = kind
         } label: {
-            Text(title)
-                .font(.callout.weight(isSelected ? .semibold : .regular))
-                .foregroundStyle(isSelected ? tint : JournalTheme.ink)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(
-                    isSelected ? tint.opacity(0.14) : JournalTheme.surfaceMuted, in: Capsule())
+            // Kinds show their icon only; 전체 has none and stays text.
+            Group {
+                if let kind {
+                    Label(title, systemImage: kind.groupSymbol).labelStyle(.iconOnly)
+                } else {
+                    Text(title)
+                }
+            }
+            .font(.callout.weight(isSelected ? .semibold : .regular))
+            .foregroundStyle(isSelected ? tint : JournalTheme.ink)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(
+                isSelected ? tint.opacity(0.14) : JournalTheme.surfaceMuted, in: Capsule())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(title)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
@@ -175,8 +185,15 @@ struct GroupFeedView: View {
                     Label(kind.groupLabel, systemImage: kind.groupSymbol)
                 }
             }
-            Section("기록에서 나누기") {
-                Text("기록의 공유 메뉴에서 그 기록을 바로 올릴 수도 있어요.")
+            Section {
+                // A hint, not an action. A title and subtitle fit a menu row; one long Text
+                // was cut off.
+                Button {
+                } label: {
+                    Text("기록에서 나누기")
+                    Text("기록의 공유 메뉴에서도 올릴 수 있어요")
+                }
+                .disabled(true)
             }
         } label: {
             Label("새 글", systemImage: "square.and.pencil")

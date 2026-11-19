@@ -54,7 +54,7 @@ struct JournalSidebar: View {
             ) {
                 ForEach(model.notebooks, id: \.self) { notebook in
                     JournalSidebarItem(
-                        title: notebook,
+                        title: NotebookDisplayName.displayName(notebook),
                         systemImage: "book.closed",
                         accent: JournalTheme.brandPrimary,
                         isSelected: model.selectedNotebookName == notebook

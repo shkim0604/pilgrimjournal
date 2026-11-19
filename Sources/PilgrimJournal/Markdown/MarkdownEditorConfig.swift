@@ -1,4 +1,5 @@
 import Foundation
+import JournalDomain
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -63,6 +64,7 @@ enum MarkdownPatterns {
         literal: #"(?m)^([ \t]*)([-*]) (\[([ xX])\]) (.*)$"#)
     static let quote = NSRegularExpression(literal: #"(?m)^(>) (.*)$"#)
     static let horizontalRule = NSRegularExpression(literal: #"(?m)^(---|\*\*\*|___)$"#)
+    static let scrapMarker = NSRegularExpression(literal: ScrapMarker.linePattern)
     static let codeFence = NSRegularExpression(literal: #"(?s)(```[^\n]*\n?)(.*?)(\n?```)"#)
     static let listLine = NSRegularExpression(
         literal: #"^([ \t]*)(?:(\*|-)|(\d+)\.)(?: (\[[ xX]\]))? (.*)$"#)
@@ -95,6 +97,7 @@ enum MarkdownPatterns {
             checklistItem,
             quote,
             horizontalRule,
+            scrapMarker,
             codeFence,
             listLine,
             escapedPunctuation,

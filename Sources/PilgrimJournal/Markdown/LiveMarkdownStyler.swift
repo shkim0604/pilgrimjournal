@@ -282,6 +282,16 @@ enum LiveMarkdownStyler {
                     .paragraphStyle: quoteParagraphStyle(),
                 ], range: match.range)
         }
+        applyRegex(MarkdownPatterns.scrapMarker, to: storage) { match in
+            // A scrap's source line stays in the saved text (it finds the post's earlier
+            // scraps) but means nothing to a reader: hidden, and its line folded flat.
+            storage.addAttributes(
+                [
+                    .font: hiddenMarkerFont,
+                    .foregroundColor: PlatformColor.clear,
+                    .paragraphStyle: hiddenLineParagraphStyle,
+                ], range: (storage.string as NSString).lineRange(for: match.range))
+        }
         applyRegex(MarkdownPatterns.horizontalRule, to: storage) { match in
             storage.addAttributes(
                 [
@@ -678,6 +688,13 @@ enum LiveMarkdownStyler {
         block.setWidth(4, type: .absoluteValueType, for: .margin)
         style.textBlocks = [block]
         #endif
+        return style
+    }
+
+    private static var hiddenLineParagraphStyle: NSParagraphStyle {
+        let style = NSMutableParagraphStyle()
+        style.minimumLineHeight = 0.1
+        style.maximumLineHeight = 0.1
         return style
     }
 

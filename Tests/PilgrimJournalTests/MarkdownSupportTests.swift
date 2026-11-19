@@ -21,7 +21,7 @@ final class MarkdownSupportTests: XCTestCase {
     }
 
     func testEveryEditorPatternCompiles() {
-        XCTAssertEqual(MarkdownPatterns.all.count, 23)
+        XCTAssertEqual(MarkdownPatterns.all.count, 24)
         XCTAssertEqual(EntrySummaryPatterns.replacements.count, 14)
     }
 

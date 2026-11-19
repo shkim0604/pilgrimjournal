@@ -53,12 +53,14 @@ extension PostResponse {
     }
 }
 
-/// The kind as a small tinted capsule.
+/// The kind as a small tinted capsule, icon only; VoiceOver still reads the kind's name.
 struct GroupKindBadge: View {
     let kind: PostKind
 
     var body: some View {
         Label(kind.groupLabel, systemImage: kind.groupSymbol)
+            .labelStyle(.iconOnly)
+            .accessibilityLabel(kind.groupLabel)
             .font(.caption.weight(.semibold))
             .foregroundStyle(kind.groupColor)
             .padding(.horizontal, 8)

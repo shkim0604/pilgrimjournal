@@ -33,7 +33,7 @@ struct EntryDetailView: View {
                     }
                 }
                 if let notebook = entry.notebookName {
-                    Label(notebook, systemImage: "book.closed")
+                    Label(NotebookDisplayName.displayName(notebook), systemImage: "book.closed")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
@@ -46,7 +46,7 @@ struct EntryDetailView: View {
                 Text(entry.occurredAt.formatted(date: .long, time: .shortened))
                     .foregroundStyle(JournalTheme.inkSecondary)
                 typeDetails
-                MarkdownPreviewView(markdown: entry.body)
+                MarkdownPreviewView(markdown: ScrapMarker.removingMarkerLines(from: entry.body))
                 AttachmentEditorSection(
                     entryID: entry.id,
                     ensureEntryID: { entry.id },

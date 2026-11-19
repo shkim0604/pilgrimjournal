@@ -27,6 +27,18 @@ extension BuiltInKind {
     }
 }
 
+/// Notebook names are stored as typed and shown as stored, except the scrap notebooks the app
+/// itself names in Korean ("스크랩 · <그룹 이름>", `ScrapComposer.notebookName`): their first
+/// word is shown in the app's language. Selection, tags and filters keep the stored name.
+enum NotebookDisplayName {
+    static func displayName(_ stored: String) -> String {
+        let prefix = ScrapComposer.notebookPrefix
+        if stored == prefix { return BuiltInKind.scrap.localizedDefaultName }
+        guard stored.hasPrefix(prefix + " · ") else { return stored }
+        return BuiltInKind.scrap.localizedDefaultName + stored.dropFirst(prefix.count)
+    }
+}
+
 extension KindDefinition {
     /// The name to show. A built-in kind the user never renamed keeps its
     /// Korean default in the catalog (reordering or recolouring stores it

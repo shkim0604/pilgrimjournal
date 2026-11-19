@@ -43,6 +43,20 @@ final class KindDisplayNameTests: XCTestCase {
         XCTAssertEqual(memo.displayName, KindCatalog.scrapAlternateName)
     }
 
+    func testScrapNotebookShowsItsFirstWordInTheAppLanguage() {
+        let scrap = BuiltInKind.scrap.localizedDefaultName
+        XCTAssertEqual(NotebookDisplayName.displayName("스크랩"), scrap)
+        XCTAssertEqual(
+            NotebookDisplayName.displayName(ScrapComposer.notebookName(groupName: "수요 기도모임")),
+            "\(scrap) · 수요 기도모임")
+        XCTAssertEqual(
+            NotebookDisplayName.displayName("스크랩 · Wednesday prayer"),
+            "\(scrap) · Wednesday prayer")
+        for own in ["스크랩북", "스크랩·붙임", "내 스크랩 · 모음", "QT"] {
+            XCTAssertEqual(NotebookDisplayName.displayName(own), own)
+        }
+    }
+
     func testCustomKindAlwaysShowsItsOwnName() {
         var definition = KindCatalog.unknownDefinition(for: .custom())
         definition.name = "QT"

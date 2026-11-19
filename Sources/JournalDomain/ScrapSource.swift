@@ -317,4 +317,19 @@ public enum ScrapMarker {
     public static func contains(postID: UUID, in body: String) -> Bool {
         postIDs(in: body).contains(postID)
     }
+
+    /// A marker line exactly as `line(groupID:postID:)` writes it, alone on its line and
+    /// maybe quoted. The app hides only these lines, never other text that mentions the prefix.
+    public static let linePattern =
+        #"(?m)^(?:>[ \t]?)?pilgrim-scrap: group=[0-9a-f-]{36} post=[0-9a-f-]{36}[ \t]*$"#
+
+    private static let lineRegex = try! NSRegularExpression(pattern: linePattern)
+
+    /// `body` without its marker lines, for showing a scrap. The stored body keeps them.
+    public static func removingMarkerLines(from body: String) -> String {
+        guard body.contains(prefix) else { return body }
+        return body.components(separatedBy: "\n").filter { line in
+            lineRegex.firstMatch(in: line, range: NSRange(line.startIndex..., in: line)) == nil
+        }.joined(separator: "\n")
+    }
 }

@@ -345,7 +345,7 @@ enum EntryListSummaryFormatter {
 
     static func summary(from markdown: String) -> String {
         let lines =
-            markdown
+            ScrapMarker.removingMarkerLines(from: markdown)
             .split(separator: "\n", omittingEmptySubsequences: false)
             .map(String.init)
             .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }

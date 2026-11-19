@@ -64,7 +64,7 @@ struct EntryRow: View {
                     if let notebook = entry.notebookName {
                         Text("•")
                             .accessibilityHidden(true)
-                        Label(notebook, systemImage: "book.closed")
+                        Label(NotebookDisplayName.displayName(notebook), systemImage: "book.closed")
                     }
                 }
                 .font(.caption)
