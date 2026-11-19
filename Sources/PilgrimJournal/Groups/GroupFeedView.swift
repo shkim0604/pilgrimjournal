@@ -156,15 +156,23 @@ struct GroupFeedView: View {
         return Button {
             feed.kindFilter = kind
         } label: {
-            Text(title)
-                .font(.callout.weight(isSelected ? .semibold : .regular))
-                .foregroundStyle(isSelected ? tint : JournalTheme.ink)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(
-                    isSelected ? tint.opacity(0.14) : JournalTheme.surfaceMuted, in: Capsule())
+            // Kinds show their icon only; 전체 has none and stays text.
+            Group {
+                if let kind {
+                    Label(title, systemImage: kind.groupSymbol).labelStyle(.iconOnly)
+                } else {
+                    Text(title)
+                }
+            }
+            .font(.callout.weight(isSelected ? .semibold : .regular))
+            .foregroundStyle(isSelected ? tint : JournalTheme.ink)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(
+                isSelected ? tint.opacity(0.14) : JournalTheme.surfaceMuted, in: Capsule())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(title)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
