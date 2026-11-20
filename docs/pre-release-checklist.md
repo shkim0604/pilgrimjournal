@@ -59,9 +59,16 @@
       `docs/development.md` "그룹 서버".
       - 맥미니(2026-11-16~18 끝남): 공유 네트워크 `pilgrim-edge`, `server/.env.prod` 비밀 값,
         `make -C server deploy`. 백업은 restic → iCloud Drive로 설치하고 launchd 실행과 맥미니에서의
-        읽어 내기(`restic check --read-data`, `pg_restore --list`)까지 확인했다(2026-11-18). restic
-        비밀번호(`~/.config/pilgrim-backup/restic-password`)를 운영자 암호 관리자에 옮기는 것과 개발
-        Mac으로 `make restore ARGS='--into dev'` 복원 연습은 아직.
+        읽어 내기(`restic check --read-data`, `pg_restore --list`)까지 확인했다(2026-11-18).
+        restic 비밀번호와 `.env.prod` 전체는 운영자 암호 관리자에 있다(2026-11-19).
+        개발 Mac 복원 연습(2026-11-20) 통과:
+        - 암호 관리자의 비밀번호로 MacBook의 iCloud Drive에서 같은 저장소를 열었다.
+        - `restic check --read-data` 오류 없음.
+        - `make restore ARGS='--into dev --yes'`로 최신 스냅샷(11-19 04:00)을 로컬 스택에 넣었다. worker는 멈춘
+          채 두었다.
+        - 행 수가 운영과 같다. 다만 아직 가입자가 없어 모든 테이블이 0행이므로 데이터 내용까지는 검증되지 않았다.
+        - 세션 H 뒤에 데이터가 생기면 한 번 더 한다.
+        - 개발 Mac에 둔 비밀번호 파일은 연습 뒤 지웠다. 다음 연습 때 암호 관리자에서 다시 넣는다.
       - 터널: `^/(api/|i/|\.well-known/)` → 3100 규칙은 들어가 있다. 인터넷에서 확인(2026-11-18):
         `/api/health` 200, AASA 200 JSON(리디렉트 없음, 두 App ID), Apple CDN
         (`app-site-association.cdn-apple.com`)에 같은 AASA가 캐시됨, 봇처럼 보이는 UA(`python-requests`,
