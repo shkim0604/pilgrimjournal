@@ -31,6 +31,19 @@ final class GroupsContentDetailTests: XCTestCase {
         XCTAssertEqual(missing.state, .gone)
     }
 
+    func testJustCreatedPostDrawsBeforeLoading() async throws {
+        let fixture = try await GroupsContentFixture()
+        let prayer = try await fixture.post(.prayer, in: fixture.wednesday)
+        fixture.events.send(.postCreated(prayer))
+        let model = GroupPostDetailModel(
+            api: fixture.api, postID: prayer.id, groupID: prayer.groupId, isAdmin: false,
+            events: fixture.events)
+        XCTAssertEqual(model.state, .loaded, "no spinner for the post just written")
+        XCTAssertEqual(model.post?.id, prayer.id)
+        await model.load()
+        XCTAssertEqual(model.comments.map(\.body), ["함께 기도할게요 🙏"])
+    }
+
     func testReactionToggle() async throws {
         let fixture = try await GroupsContentFixture()
         let prayer = try await fixture.post(.prayer, in: fixture.wednesday)

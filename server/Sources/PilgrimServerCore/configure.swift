@@ -27,6 +27,8 @@ public func configure(_ app: Application, config: AppConfig) async throws {
 
     // Replace Vapor's default error middleware with the PilgrimAPI error envelope.
     app.middleware = Middlewares()
+    // Outermost, so error envelopes are timed too.
+    app.middleware.use(ServerTimingMiddleware())
     app.middleware.use(RouteLoggingMiddleware(logLevel: .debug))
     app.middleware.use(APIErrorMiddleware(exposesInternalMessages: !config.isProduction))
 

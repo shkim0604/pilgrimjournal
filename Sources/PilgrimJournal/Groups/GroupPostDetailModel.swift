@@ -64,17 +64,26 @@ final class GroupPostDetailModel: ObservableObject {
         self.uploader = GroupPhotoUploader(api: api, prepare: prepareImage)
         self.policy = policy
         self.events = events
+        if let created = events?.lastCreated, created.id == postID { post = created }
+        if post != nil { state = .loaded }
     }
 
     // MARK: Loading
 
     func load() async {
         if post == nil { state = .loading }
+        let start = GroupTiming.now
+        defer { GroupTiming.log("detail load", since: start) }
+        // The three requests are independent: one round trip through the tunnel, not three.
+        async let comments: Void = reloadComments()
+        async let stickers = try? api.stickers(groupID: groupID)
         do {
             let post = try await api.post(id: postID)
             self.post = post
             state = .loaded
+            GroupTiming.log("detail first screen", since: start)
         } catch {
+            _ = await (comments, stickers)
             if GroupContentError.isCancellation(error) { return }
             if GroupContentError.isGone(error) {
                 markGone()
@@ -85,10 +94,8 @@ final class GroupPostDetailModel: ObservableObject {
             }
             return
         }
-        await reloadComments()
-        if let stickers = try? await api.stickers(groupID: groupID) {
-            self.stickers = stickers
-        }
+        await comments
+        if let stickers = await stickers { self.stickers = stickers }
     }
 
     func reloadComments() async {

@@ -116,7 +116,10 @@ private struct GroupPostComposerPresenter: ViewModifier {
         guard let groups, !isPreparing, composing == nil, onboarding == nil else { return }
         isPreparing = true
         defer { isPreparing = false }
-        switch await groups.prepareForPosting() {
+        let start = GroupTiming.now
+        let readiness = await groups.prepareForPosting()
+        GroupTiming.log("prepareForPosting", since: start)
+        switch readiness {
         case .ready:
             composing = pending
         case .needsOnboarding:

@@ -100,11 +100,17 @@ struct GroupHTTPClient: Sendable {
         let request = makeRequest(endpoint, accessToken: accessToken)
         let data: Data
         let response: HTTPURLResponse
+        let start = GroupTiming.now
         do {
             (data, response) = try await transport.send(request)
         } catch {
             throw Self.mapTransportError(error)
         }
+        GroupTiming.log(
+            "http \(endpoint.method.rawValue) \(GroupTiming.route(endpoint.path)) "
+                + "\(response.statusCode) up=\(request.httpBody?.count ?? 0)B down=\(data.count)B",
+            since: start,
+            server: GroupTiming.serverDuration(response.value(forHTTPHeaderField: "Server-Timing")))
         if (200..<300).contains(response.statusCode) { return data }
         throw Self.mapErrorResponse(status: response.statusCode, data: data, response: response)
     }
