@@ -175,6 +175,8 @@
 
 ## 완료
 
+- **비공개 그룹 — 피드·댓글 무한 스크롤** (2026-11-20, 브랜치 `feat/groups-feed-infinite-scroll`) — 피드는 끝에서 5번째 글이 보이면 다음 페이지를 미리 부른다(`GroupFeedModel.prefetchDistance`). 목록 끝의 로딩 줄은 cursor가 바뀔 때마다 다시 불러서, 필터에 걸리거나 만료된 글만 든 페이지에서도 멈추지 않는다. 실패하면 그 자리에 "다시 시도"를 보이고 자동으로 되풀이하지 않는다. 상세의 댓글은 `LazyVStack`으로 그리고, "댓글 더 보기"가 화면에 들어오면 다음 페이지를 부른다.
+
 - **비공개 그룹 — 기도노트에서 가져오기·응답 양방향 동기화** (2026-11-19, 브랜치 `feat/groups-prayer-import`) — 기도제목 작성 화면에서 내 기도노트를 골라 기도제목을 섹션째 가져오고, 가져온 줄의 응답 표시가 기도노트와 맞춰진다.
   - 가져오기: `GroupPrayerNoteImportSheet`(노트 최신순 → 섹션 순서대로 기도제목, 기도중은 미리 체크). `GroupComposerModel.importTopics`가 빈 자리 줄을 대신하고 10줄에서 멈춘다(넘치면 기존 안내). 서버로는 고른 기도제목의 내용과 섹션 이름만 간다.
   - 연결: `GroupPrayerLinkStore`(`journal-group-prayer-links`, iCloud 키-값 저장소/로컬 전용은 UserDefaults)가 `{postID, groupID, itemIndex, entryID, topicID, expiresAt}`를 기기 쪽에만 둔다. 사라진 글의 연결은 읽을 때 지우고, 계정 삭제가 키를 지운다.

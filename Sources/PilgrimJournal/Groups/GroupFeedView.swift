@@ -93,17 +93,39 @@ struct GroupFeedView: View {
                     )
                     .task { await feed.loadMoreIfNeeded(after: post) }
             }
-            if feed.isLoadingMore {
-                HStack {
-                    Spacer()
-                    ProgressView()
-                    Spacer()
-                }
-                .listRowBackground(Color.clear)
+            if feed.hasMore {
+                loadMoreRow
             }
         }
         .listStyle(.plain)
         .overlay { emptyState }
+    }
+
+    /// The end of the list while older posts remain. Its task runs again whenever the cursor
+    /// changes, so a page whose posts are all filtered out or expired loads the next one
+    /// instead of stopping; after a failure it waits for "다시 시도".
+    private var loadMoreRow: some View {
+        HStack {
+            Spacer()
+            if let message = feed.loadMoreError {
+                VStack(spacing: 6) {
+                    Text(message)
+                        .font(.footnote)
+                        .foregroundStyle(JournalTheme.inkSecondary)
+                    Button("다시 시도") { Task { await feed.loadMore() } }
+                        .font(.footnote)
+                }
+            } else {
+                ProgressView()
+            }
+            Spacer()
+        }
+        .padding(.vertical, JournalTheme.Spacing.small)
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
+        .task(id: feed.nextCursor) {
+            if feed.loadMoreError == nil { await feed.loadMore() }
+        }
     }
 
     @ViewBuilder
