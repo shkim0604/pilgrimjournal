@@ -9,6 +9,8 @@ import Foundation
 /// | book report | `createdAt + 7 days`; each extension adds 7 days to the current value |
 /// | testimony | `createdAt + 7 days` |
 ///
+/// Marking a prayer item answered keeps the post at least 7 more days (`answered(_:now:)`).
+///
 /// `dayLength` is `TIME_SCALE_DAY_SECONDS`. At the real 86 400 seconds a deadline ends at local
 /// midnight (DST-correct). In scaled mode (anything else) a deadline post lasts
 /// `(calendar days from today to D + 4) × dayLength` from `createdAt`.
@@ -66,6 +68,15 @@ public struct PostExpiryPolicy: Sendable {
     /// A book report's expiry after one more discussion extension.
     public func extended(_ expiresAt: Date) -> Date {
         expiresAt + Double(Self.extensionDays) * dayLength
+    }
+
+    /// Days a prayer post stays at least after one of its items is marked answered.
+    public static let answeredKeepDays = 7
+
+    /// A prayer post's expiry once an item is marked answered at `now`: at least
+    /// `answeredKeepDays` from then, never earlier than it already was.
+    public func answered(_ expiresAt: Date, now: Date) -> Date {
+        max(expiresAt, now + Double(Self.answeredKeepDays) * dayLength)
     }
 
     /// A deadline must be today … today + 365 days in the poster's time zone.

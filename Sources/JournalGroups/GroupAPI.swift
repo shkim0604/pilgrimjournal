@@ -93,6 +93,9 @@ public protocol GroupAPI: Sendable {
     func deletePost(id: UUID) async throws
     /// Book reports only: +7 days on the current expiry.
     func extendPost(id: UUID, _ request: ExtendPostRequest) async throws -> PostResponse
+    /// The author marks (`PUT`) or unmarks (`DELETE`) the prayer item at `index` answered.
+    func setPrayerItemAnswered(postID: UUID, index: Int, answered: Bool) async throws
+        -> PostResponse
     /// Oldest first.
     func comments(postID: UUID, cursor: String?, limit: Int?) async throws
         -> Page<CommentResponse>

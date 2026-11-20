@@ -245,6 +245,26 @@ final class AccountDTOTests: XCTestCase {
                 """)
     }
 
+    func testDailyReportAnsweredPosts() {
+        let post = DailyReportPost(
+            postId: F.id(50), kind: .prayer, title: "면접", author: F.otherUser, count: 2,
+            expiresAt: F.laterDate)
+        let group = DailyReportGroup(
+            groupId: F.id(10), groupName: "수요 기도모임", answeredPosts: [post])
+        XCTAssertEqual(group.itemCount, 1)
+        assertRoundTrip(
+            group,
+            json: """
+                {"answeredPosts":[{"author":\(F.otherUserJSON),"count":2,\
+                "expiresAt":"\(F.laterDateString)","kind":"prayer","postId":"\(F.idString(50))",\
+                "title":"면접"}],"commentsOnMyPosts":[],"expiringSoon":[],"extendedPosts":[],\
+                "groupId":"\(F.idString(10))","groupName":"수요 기도모임","newPosts":[],\
+                "reactionsOnMyPosts":[]}
+                """)
+        // A report from a server before `answeredPosts` still decodes.
+        XCTAssertEqual(DailyReportGroup(groupId: F.id(10), groupName: "g").itemCount, 0)
+    }
+
     func testDailyReportTitleFallsBackAndTruncates() {
         XCTAssertEqual(
             DailyReportPost.title(title: " 제목 ", book: nil, items: nil, body: nil), "제목")
@@ -470,7 +490,21 @@ final class PushAndAdminDTOTests: XCTestCase {
         XCTAssertEqual(deletion.aps.alert.locKey, "GROUP_DELETION_SCHEDULED")
         XCTAssertEqual(deletion.aps.alert.locArgs, [])
         XCTAssertEqual(PushLocKey.newPost(.testimony), "GROUP_NEW_POST_TESTIMONY")
-        XCTAssertEqual(Set(PushLocKey.all).count, 10)
+        XCTAssertEqual(Set(PushLocKey.all).count, 11)
+    }
+
+    func testPrayerAnsweredPushCarriesOnlyNames() {
+        assertRoundTrip(
+            PushPayload.prayerAnswered(
+                groupID: F.id(10), postID: F.id(50), groupName: "수요 기도모임", authorName: "민지"),
+            json: """
+                { "aps": { "alert": { "title-loc-key": "GROUP_PUSH_TITLE",
+                                      "title-loc-args": ["수요 기도모임"],
+                                      "loc-key": "GROUP_PRAYER_ANSWERED", "loc-args": ["민지"] },
+                           "sound": "default", "thread-id": "group-\(F.idString(10))" },
+                  "pilgrim": { "v": 1, "kind": "prayerAnswered", "groupId": "\(F.idString(10))",
+                               "postId": "\(F.idString(50))" } }
+                """)
     }
 
     func testAdminReports() {

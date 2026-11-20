@@ -136,6 +136,41 @@ final class DailyReportBuilderTests: DailyReportDatabaseTestCase {
         XCTAssertEqual(report.totalCount, 5)
     }
 
+    func testAnsweredPrayerItemsOfOthersInTheWindow() async throws {
+        let me = try await fixtures.user("나")
+        let friend = try await fixtures.user("민지")
+        let group = try await fixtures.group(admin: me, members: [friend])
+        let items = [PrayerItem(text: "면접"), PrayerItem(text: "건강"), PrayerItem(text: "평안")]
+        func prayer(by author: User) async throws -> Post {
+            let post = try await fixtures.post(
+                by: author, in: group, kind: .prayer, expiresAt: drNow + 7 * 86_400,
+                items: items)
+            try await drBackdate(Post.schema, try post.requireID(), to: drNow - 72 * 3_600)
+            return post
+        }
+        func answer(_ post: Post, _ index: Int, hoursAgo: Double) async throws {
+            try await sql.raw(
+                """
+                INSERT INTO prayer_item_answers (post_id, item_index, answered_at)
+                VALUES (\(bind: try post.requireID()), \(bind: index), \(bind: drNow - hoursAgo * 3_600))
+                """
+            ).run()
+        }
+        let theirs = try await prayer(by: friend)
+        try await answer(theirs, 0, hoursAgo: 1)
+        try await answer(theirs, 2, hoursAgo: 3)
+        try await answer(theirs, 1, hoursAgo: 30) // before the window
+        let mine = try await prayer(by: me)
+        try await answer(mine, 0, hoursAgo: 1) // my own answers are not news to me
+
+        let report = try await drReport(for: me)
+        let section = try XCTUnwrap(report.groups.first)
+        XCTAssertEqual(section.answeredPosts?.map(\.postId), [try theirs.requireID()])
+        XCTAssertEqual(section.answeredPosts?.first?.count, 2)
+        XCTAssertEqual(section.answeredPosts?.first?.title, "면접")
+        XCTAssertEqual(report.totalCount, 1)
+    }
+
     func testOutsideTheWindowIsLeftOut() async throws {
         let me = try await fixtures.user("나")
         let friend = try await fixtures.user("민지")

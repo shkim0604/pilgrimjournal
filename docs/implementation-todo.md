@@ -175,6 +175,12 @@
 
 ## 완료
 
+- **비공개 그룹 — 기도제목 항목 "응답됨"** (2026-11-19, 브랜치 `feat/groups-prayer-answered`) — 글쓴이가 기도 항목마다 응답됨을 표시하고 되돌린다.
+  - 계약: `PUT`/`DELETE /posts/:id/items/:index/answer` → `PostResponse`(작성자만 403 `FORBIDDEN`, 기도제목·범위 밖 422, 삭제 예정 그룹 409). `PrayerItem.answeredAt`(응답 전용), `PostExpiryPolicy.answered`(처음 표시 때 최소 7일, 되돌려도 줄지 않음), `PushKind.prayerAnswered`/`GROUP_PRAYER_ANSWERED`, `DailyReportGroup.answeredPosts`(선택 필드).
+  - 서버: migration `0007_CreatePrayerItemAnswers`(`prayer_item_answers`, 글 삭제 때 CASCADE). 알림은 새 글과 같은 받는 사람, 글당 10분에 한 번(글 행 잠금 뒤 `push_outbox` 확인). Daily Report에 남의 글의 응답 항목 수.
+  - 화면: 카드 항목이 빈 원/채운 체크로 보이고, 상세에서 글쓴이가 줄을 눌러 바꾼다. 피드 카드는 "응답 n/m". Daily Report "응답된 기도제목" 섹션. 알림을 누르면 그 글이 열린다.
+  - 스크랩 줄: 스크랩할 때 응답된 항목 끝에 "(응답됨)"/"(Answered)".
+  - Postgres 테스트(`PrayerItemAnswerTests`, Daily Report)는 로컬 Docker가 멈춰 돌리지 못했다. CI `server` job이 돌린다.
 - **비공개 그룹 — 올리기 속도** (2026-11-19, 브랜치 `feat/groups-post-speed`) — 이 Mac에서 터널까지 잰 값:
   - 빈 요청은 연결을 재사용하면 0.45 s, 새 연결이면 1.3 s.
   - 460KB 업로드는 재사용 1.4–2.1 s, 새 연결 2.9–6.5 s.

@@ -39,6 +39,12 @@ final class PostRulesTests: XCTestCase {
         XCTAssertEqual(valid.expiresAt, now + 7 * 86_400)
     }
 
+    func testClientSentAnsweredAtIsDropped() throws {
+        let valid = try validate(
+            PostRequests.prayer(items: [PrayerItem(text: "건강", answeredAt: now)]))
+        XCTAssertEqual(valid.items, [PrayerItem(text: "건강")])
+    }
+
     func testPrayerWithDeadlineHasNoVisibleDays() throws {
         let deadline = LocalDate(now, in: seoul).adding(days: 2)
         let valid = try validate(PostRequests.prayer(deadline: deadline))

@@ -33,6 +33,7 @@ struct ContentResponses {
         let media = try await postMedia(postIDs)
         let commentCounts = try await commentCounts(postIDs)
         let reactions = try await reactionSummaries(postIDs)
+        let answers = try await prayerItemAnswers(postIDs)
         return try posts.map { post in
             let id = try post.requireID()
             let authorID = post.$author.id
@@ -41,10 +42,17 @@ struct ContentResponses {
             let isUnread =
                 !isMine
                 && unreadAfter[post.$group.id].map { createdAt > $0 } ?? false
+            var items = post.prayerItems
+            if let answered = answers[id], var marked = items {
+                for (index, answeredAt) in answered where marked.indices.contains(index) {
+                    marked[index].answeredAt = answeredAt
+                }
+                items = marked
+            }
             return PostResponse(
                 id: id, groupId: post.$group.id, kind: post.kind,
                 author: users[authorID] ?? Self.unknownUser(authorID), isMine: isMine,
-                title: post.title, body: post.body, items: post.prayerItems, book: post.book,
+                title: post.title, body: post.body, items: items, book: post.book,
                 deadline: post.deadlineDate, visibleDays: post.visibleDays,
                 timeZone: post.timeZone, language: post.language, createdAt: createdAt,
                 expiresAt: post.expiresAt, extensionCount: post.extensionCount,
@@ -203,6 +211,25 @@ struct ContentResponses {
         for row in rows {
             result[try row.decode(column: "post_id", as: UUID.self)] = try row.decode(
                 column: "n", as: Int.self)
+        }
+        return result
+    }
+
+    /// Per post: item index → when it was marked answered.
+    private func prayerItemAnswers(_ postIDs: [UUID]) async throws -> [UUID: [Int: Date]] {
+        let rows = try await ContentAccess.sql(db).raw(
+            """
+            SELECT a.post_id, a.item_index::int AS item_index, a.answered_at
+            FROM prayer_item_answers AS a
+            WHERE a.post_id = ANY(\(bind: postIDs))
+            """
+        ).all()
+        var result: [UUID: [Int: Date]] = [:]
+        for row in rows {
+            let postID = try row.decode(column: "post_id", as: UUID.self)
+            let index = try row.decode(column: "item_index", as: Int.self)
+            result[postID, default: [:]][index] = try row.decode(
+                column: "answered_at", as: Date.self)
         }
         return result
     }

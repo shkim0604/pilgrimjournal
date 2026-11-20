@@ -56,17 +56,25 @@ extension PostResponse {
 /// Prayer lines grouped the way a prayer note shows them: consecutive lines with the same
 /// section under one heading; lines without a section have no heading.
 struct PrayerItemSection {
+    /// An item with its index in the post's `items` (how the server names it).
+    struct Line: Identifiable {
+        var index: Int
+        var item: PrayerItem
+        var id: Int { index }
+    }
+
     var name: String?
-    var items: [PrayerItem]
+    var items: [Line]
 
     static func group(_ items: [PrayerItem]) -> [PrayerItemSection] {
         var sections: [PrayerItemSection] = []
-        for item in items {
+        for (index, item) in items.enumerated() {
             let name = item.section.flatMap { $0.isEmpty ? nil : $0 }
+            let line = Line(index: index, item: item)
             if let last = sections.last, last.name == name {
-                sections[sections.count - 1].items.append(item)
+                sections[sections.count - 1].items.append(line)
             } else {
-                sections.append(PrayerItemSection(name: name, items: [item]))
+                sections.append(PrayerItemSection(name: name, items: [line]))
             }
         }
         return sections
@@ -96,6 +104,8 @@ struct GroupPostCard: View {
     let now: Date
     var isCompact = true
     var onOpenPhoto: ((Int) -> Void)?
+    /// Toggles the item at an index answered; used only in the detail column on one's own post.
+    var onToggleAnswer: ((Int) -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: JournalTheme.Spacing.medium) {
@@ -168,8 +178,8 @@ struct GroupPostCard: View {
         .accessibilityElement(children: .combine)
     }
 
-    /// Like a prayer note: each section's name, then its lines. Every line shows, in the feed
-    /// too (at most ten).
+    /// Like a prayer note: each section's name, then its lines, each with an open circle or, once
+    /// answered, a filled checkmark. Every line shows, in the feed too (at most ten).
     private func prayerItems(_ items: [PrayerItem]) -> some View {
         VStack(alignment: .leading, spacing: JournalTheme.Spacing.small) {
             ForEach(Array(PrayerItemSection.group(items).enumerated()), id: \.offset) {
@@ -180,20 +190,46 @@ struct GroupPostCard: View {
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(JournalTheme.inkSecondary)
                     }
-                    ForEach(Array(section.items.enumerated()), id: \.offset) { _, item in
-                        HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            Circle()
-                                .fill(PostKind.prayer.groupColor)
-                                .frame(width: 5, height: 5)
-                                .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 1 }
-                                .accessibilityHidden(true)
-                            Text(item.text)
-                                .foregroundStyle(JournalTheme.ink)
-                                .lineLimit(isCompact ? 2 : nil)
-                        }
+                    ForEach(section.items) { line in
+                        prayerLine(line)
                     }
                 }
             }
+            let answered = items.filter { $0.answeredAt != nil }.count
+            if isCompact, answered > 0 {
+                Label("응답 \(answered)/\(items.count)", systemImage: "checkmark.circle.fill")
+                    .font(.caption)
+                    .foregroundStyle(JournalTheme.inkSecondary)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func prayerLine(_ line: PrayerItemSection.Line) -> some View {
+        let isAnswered = line.item.answeredAt != nil
+        let row = HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Image(systemName: isAnswered ? "checkmark.circle.fill" : "circle")
+                .font(.footnote)
+                .foregroundStyle(PostKind.prayer.groupColor)
+                .accessibilityHidden(true)
+            Text(line.item.text)
+                .foregroundStyle(isAnswered ? JournalTheme.inkSecondary : JournalTheme.ink)
+                .lineLimit(isCompact ? 2 : nil)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        let value = isAnswered ? String(localized: "응답됨") : String(localized: "기도 중")
+        if !isCompact, post.isMine, let onToggleAnswer {
+            Button {
+                onToggleAnswer(line.index)
+            } label: {
+                row.contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityValue(value)
+        } else {
+            row
+                .accessibilityElement(children: .combine)
+                .accessibilityValue(value)
         }
     }
 

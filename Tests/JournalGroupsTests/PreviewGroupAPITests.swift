@@ -107,6 +107,45 @@ final class PreviewGroupAPITests: XCTestCase {
         await assertCode(.notFound) { _ = try await api.group(id: UUID()) }
     }
 
+    func testPrayerItemsAreMarkedAnsweredByTheirAuthorOnly() async throws {
+        let api = makeAPI(seeded: false)
+        let group = try await api.createGroup(CreateGroupRequest(clientId: UUID(), name: "모임"))
+        let post = try await api.createPost(
+            groupID: group.id,
+            CreatePostRequest(
+                clientId: UUID(), kind: .prayer,
+                items: [PrayerItem(text: "면접"), PrayerItem(text: "건강")], visibleDays: 3,
+                timeZone: "Asia/Seoul"))
+
+        let marked = try await api.setPrayerItemAnswered(postID: post.id, index: 0, answered: true)
+        XCTAssertEqual(marked.items?.map(\.answeredAt), [start, nil])
+        XCTAssertEqual(marked.expiresAt, start + 7 * 86_400)
+        let again = try await api.setPrayerItemAnswered(postID: post.id, index: 0, answered: true)
+        XCTAssertEqual(again, marked)
+        let undone = try await api.setPrayerItemAnswered(postID: post.id, index: 0, answered: false)
+        XCTAssertNil(undone.items?[0].answeredAt)
+        XCTAssertEqual(undone.expiresAt, marked.expiresAt)
+
+        await assertCode(.validationFailed) {
+            _ = try await api.setPrayerItemAnswered(postID: post.id, index: 2, answered: true)
+        }
+        await assertCode(.validationFailed) {
+            let testimony = try await api.createPost(
+                groupID: group.id,
+                CreatePostRequest(
+                    clientId: UUID(), kind: .testimony, body: "간증", timeZone: "Asia/Seoul"))
+            _ = try await api.setPrayerItemAnswered(postID: testimony.id, index: 0, answered: true)
+        }
+
+        let seeded = makeAPI()
+        let wednesday = try await seeded.groups().first { $0.name == "수요 기도모임" }!
+        let feed = try await seeded.posts(groupID: wednesday.id, cursor: nil, limit: nil)
+        let others = try XCTUnwrap(feed.items.first { $0.kind == .prayer && !$0.isMine })
+        await assertCode(.forbidden) {
+            _ = try await seeded.setPrayerItemAnswered(postID: others.id, index: 0, answered: true)
+        }
+    }
+
     private func bookClub(_ api: PreviewGroupAPI) async throws -> (
         GroupDetail, admin: UUID, other: UUID
     ) {

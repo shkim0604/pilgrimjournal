@@ -10,9 +10,10 @@ import SwiftUI
 
 // MARK: - Presentation
 
-/// The five parts of a group's report, in the order the screen shows them.
+/// The parts of a group's report, in the order the screen shows them.
 enum DailyReportSectionKind: String, CaseIterable, Sendable {
     case newPosts
+    case answeredPosts
     case commentsOnMyPosts
     case reactionsOnMyPosts
     case extendedPosts
@@ -25,6 +26,7 @@ enum DailyReportSectionKind: String, CaseIterable, Sendable {
             String(
                 localized: "dailyReport.newPosts", defaultValue: "새 글",
                 comment: "Daily Report section listing a group's new posts")
+        case .answeredPosts: String(localized: "응답된 기도제목")
         case .commentsOnMyPosts: String(localized: "내 글에 달린 댓글")
         case .reactionsOnMyPosts: String(localized: "내 글에 남긴 반응")
         case .extendedPosts: String(localized: "토론이 연장된 글")
@@ -35,6 +37,7 @@ enum DailyReportSectionKind: String, CaseIterable, Sendable {
     var systemImage: String {
         switch self {
         case .newPosts: "square.and.pencil"
+        case .answeredPosts: "checkmark.circle"
         case .commentsOnMyPosts: "bubble.left"
         case .reactionsOnMyPosts: "heart"
         case .extendedPosts: "clock.arrow.circlepath"
@@ -45,6 +48,7 @@ enum DailyReportSectionKind: String, CaseIterable, Sendable {
     func posts(in group: DailyReportGroup) -> [DailyReportPost] {
         switch self {
         case .newPosts: group.newPosts
+        case .answeredPosts: group.answeredPosts ?? []
         case .commentsOnMyPosts: group.commentsOnMyPosts
         case .reactionsOnMyPosts: group.reactionsOnMyPosts
         case .extendedPosts: group.extendedPosts
@@ -89,6 +93,8 @@ enum DailyReportPresentation {
         switch kind {
         case .newPosts:
             return "\(post.author.displayName) · \(post.kind.groupLabel)"
+        case .answeredPosts:
+            return "\(post.author.displayName) · \(String(localized: "응답 \(post.count)개"))"
         case .commentsOnMyPosts:
             return String(localized: "댓글 \(post.count)개")
         case .reactionsOnMyPosts:

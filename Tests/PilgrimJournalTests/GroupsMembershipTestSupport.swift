@@ -216,6 +216,13 @@ actor ScriptedGroupAPI: GroupAPI {
         try check()
         return try await base.extendPost(id: id, request)
     }
+    func setPrayerItemAnswered(postID: UUID, index: Int, answered: Bool) async throws
+        -> PostResponse
+    {
+        try check()
+        return try await base.setPrayerItemAnswered(
+            postID: postID, index: index, answered: answered)
+    }
     func comments(postID: UUID, cursor: String?, limit: Int?) async throws
         -> Page<CommentResponse>
     {

@@ -160,6 +160,7 @@ enum PilgrimMigrations {
             CreateSafetyTables(),
             CreateJobTables(),
             RenamePrayerItemWho(),
+            CreatePrayerItemAnswers(),
         ]
     }
 
@@ -168,7 +169,7 @@ enum PilgrimMigrations {
         "worker_heartbeat", "daily_report_log", "push_outbox",
         "moderation_log", "reports", "blocks", "hides",
         "media_file_deletions", "reactions", "comments", "stickers", "media", "post_extensions",
-        "posts",
+        "prayer_item_answers", "posts",
         "ballots", "admin_votes", "group_bans", "memberships", "invites", "groups",
         "appstore_notifications", "subscriptions", "devices", "refresh_tokens",
         "apple_token_revocations", "apple_tokens", "users",

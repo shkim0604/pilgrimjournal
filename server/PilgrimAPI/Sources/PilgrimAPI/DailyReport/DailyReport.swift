@@ -34,11 +34,15 @@ public struct DailyReportGroup: Equatable, Sendable, Codable {
     public var extendedPosts: [DailyReportPost]
     /// Posts disappearing within 24 hours from now that I have not hidden.
     public var expiringSoon: [DailyReportPost]
+    /// Others' prayer posts with items marked answered in the window (`count` = items). Optional
+    /// so reports from servers before this field still decode.
+    public var answeredPosts: [DailyReportPost]?
 
     public init(
         groupId: UUID, groupName: String, newPosts: [DailyReportPost] = [],
         commentsOnMyPosts: [DailyReportPost] = [], reactionsOnMyPosts: [DailyReportPost] = [],
-        extendedPosts: [DailyReportPost] = [], expiringSoon: [DailyReportPost] = []
+        extendedPosts: [DailyReportPost] = [], expiringSoon: [DailyReportPost] = [],
+        answeredPosts: [DailyReportPost]? = nil
     ) {
         self.groupId = groupId
         self.groupName = groupName
@@ -47,12 +51,13 @@ public struct DailyReportGroup: Equatable, Sendable, Codable {
         self.reactionsOnMyPosts = reactionsOnMyPosts
         self.extendedPosts = extendedPosts
         self.expiringSoon = expiringSoon
+        self.answeredPosts = answeredPosts
     }
 
     /// Entries across every section.
     public var itemCount: Int {
         newPosts.count + commentsOnMyPosts.count + reactionsOnMyPosts.count + extendedPosts.count
-            + expiringSoon.count
+            + expiringSoon.count + (answeredPosts?.count ?? 0)
     }
 }
 

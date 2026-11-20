@@ -7,9 +7,9 @@ import UserNotifications
 
 /// The screen a tapped group notification opens (design.md 10절: `pilgrim.kind` decides).
 enum GroupNotificationRoute: Equatable, Sendable {
-    /// A new post: its detail inside its group.
+    /// A new post or an answered prayer item: the post's detail inside its group.
     case post(groupID: UUID, postID: UUID)
-    /// Admin-vote and deletion notices, or a new-post notice without a post ID.
+    /// Admin-vote and deletion notices, or a post notice without a post ID.
     case group(UUID)
     case dailyReport
 }
@@ -17,7 +17,7 @@ enum GroupNotificationRoute: Equatable, Sendable {
 extension GroupNotificationRoute {
     init?(info: PushPayload.Info) {
         switch info.kind {
-        case .newPost:
+        case .newPost, .prayerAnswered:
             guard let groupID = info.groupId else { return nil }
             if let postID = info.postId {
                 self = .post(groupID: groupID, postID: postID)

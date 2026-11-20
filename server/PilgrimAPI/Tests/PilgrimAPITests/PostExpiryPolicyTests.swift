@@ -156,6 +156,13 @@ final class PostExpiryPolicyTests: XCTestCase {
         XCTAssertEqual(policy.extended(policy.extended(expires)), expires + 14 * day)
     }
 
+    func testAnsweredKeepsAtLeastSevenDaysAndNeverShortens() {
+        let now = utc("2026-11-14T13:05:00Z")
+        XCTAssertEqual(policy.answered(now + day, now: now), now + 7 * day)
+        XCTAssertEqual(policy.answered(now + 20 * day, now: now), now + 20 * day)
+        XCTAssertEqual(PostExpiryPolicy(dayLength: 10).answered(now + 5, now: now), now + 70)
+    }
+
     // MARK: Scaled mode (TIME_SCALE_DAY_SECONDS)
 
     func testScaledModeUsesDayLengthForEveryRule() throws {

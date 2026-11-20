@@ -73,6 +73,8 @@ public actor PreviewGroupAPI: GroupAPI {
         var expiresAt: Date
         var extensions: [Date] = []
         var mediaIDs: [UUID]
+        /// Prayer item index → when the author marked it answered.
+        var answers: [Int: Date] = [:]
     }
 
     private struct Comment {
@@ -848,6 +850,28 @@ public actor PreviewGroupAPI: GroupAPI {
         return postResponse(post)
     }
 
+    public func setPrayerItemAnswered(postID: UUID, index: Int, answered: Bool) async throws
+        -> PostResponse
+    {
+        var post = try visiblePost(postID)
+        guard post.authorID == me else { throw GroupAPIError.server(.forbidden) }
+        guard post.request.kind == .prayer, let items = post.request.items else {
+            throw GroupAPIError.server(.validationFailed, field: "kind")
+        }
+        guard items.indices.contains(index) else {
+            throw GroupAPIError.server(.validationFailed, field: "index")
+        }
+        try requireWritable(groupsByID[post.groupID]!)
+        if !answered {
+            post.answers[index] = nil
+        } else if post.answers[index] == nil {
+            post.answers[index] = now
+            post.expiresAt = policy.answered(post.expiresAt, now: now)
+        }
+        postsByID[postID] = post
+        return postResponse(post)
+    }
+
     // MARK: Comments
 
     public func comments(postID: UUID, cursor: String?, limit: Int?) async throws
@@ -1358,7 +1382,14 @@ public actor PreviewGroupAPI: GroupAPI {
             id: post.id, groupId: post.groupID, kind: request.kind,
             author: userSummary(post.authorID) ?? UserSummary(id: post.authorID, displayName: ""),
             isMine: post.authorID == me, title: request.title, body: request.body,
-            items: request.items, book: request.book, deadline: request.deadline,
+            items: request.items.map { items in
+                items.enumerated().map { index, item in
+                    var item = item
+                    item.answeredAt = post.answers[index]
+                    return item
+                }
+            },
+            book: request.book, deadline: request.deadline,
             visibleDays: request.kind == .prayer && request.deadline == nil
                 ? (request.visibleDays ?? PostExpiryPolicy.defaultVisibleDays) : nil,
             timeZone: request.timeZone, language: request.language, createdAt: post.createdAt,
@@ -1478,6 +1509,11 @@ public actor PreviewGroupAPI: GroupAPI {
                 }
                 if post.expiresAt > current, post.expiresAt <= current + 24 * 3_600 {
                     section.expiringSoon.append(line(post, count: 1))
+                }
+                let answers = post.answers.values.filter(window.contains)
+                if post.authorID != me, !answers.isEmpty {
+                    section.answeredPosts =
+                        (section.answeredPosts ?? []) + [line(post, count: answers.count)]
                 }
             }
             if section.itemCount > 0 { groups.append(section) }

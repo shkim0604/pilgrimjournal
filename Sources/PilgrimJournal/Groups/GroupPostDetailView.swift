@@ -224,9 +224,14 @@ private struct GroupPostDetailContent: View {
         ScrollView {
             VStack(alignment: .leading, spacing: JournalTheme.Spacing.large) {
                 TimelineView(.periodic(from: .now, by: 60)) { context in
-                    GroupPostCard(post: post, now: context.date, isCompact: false) { index in
-                        photoViewer = PhotoViewerRequest(media: post.media, index: index)
-                    }
+                    GroupPostCard(
+                        post: post, now: context.date, isCompact: false,
+                        onOpenPhoto: { index in
+                            photoViewer = PhotoViewerRequest(media: post.media, index: index)
+                        },
+                        onToggleAnswer: model.canMarkAnswered
+                            ? { index in Task { await model.toggleAnswered(index: index) } } : nil
+                    )
                 }
                 if model.canExtend {
                     extendRow(post)
