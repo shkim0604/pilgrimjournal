@@ -159,6 +159,7 @@ enum PilgrimMigrations {
             CreateContentTables(),
             CreateSafetyTables(),
             CreateJobTables(),
+            RenamePrayerItemWho(),
         ]
     }
 

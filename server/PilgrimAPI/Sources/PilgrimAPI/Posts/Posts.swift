@@ -11,13 +11,14 @@ public struct PrayerItem: Equatable, Hashable, Sendable, Codable {
     public var text: String
     /// A `PrayerRequestTopic` raw value (`health`, `family`, …).
     public var topic: String?
-    /// Who it is for, ≤ 30 characters.
-    public var who: String?
+    /// The heading the item sits under, like a prayer note's section (감사, 가족, a name),
+    /// ≤ 30 characters. Consecutive items with the same section are shown together.
+    public var section: String?
 
-    public init(text: String, topic: String? = nil, who: String? = nil) {
+    public init(text: String, topic: String? = nil, section: String? = nil) {
         self.text = text
         self.topic = topic
-        self.who = who
+        self.section = section
     }
 }
 

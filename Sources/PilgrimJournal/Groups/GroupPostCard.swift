@@ -53,6 +53,26 @@ extension PostResponse {
     }
 }
 
+/// Prayer lines grouped the way a prayer note shows them: consecutive lines with the same
+/// section under one heading; lines without a section have no heading.
+struct PrayerItemSection {
+    var name: String?
+    var items: [PrayerItem]
+
+    static func group(_ items: [PrayerItem]) -> [PrayerItemSection] {
+        var sections: [PrayerItemSection] = []
+        for item in items {
+            let name = item.section.flatMap { $0.isEmpty ? nil : $0 }
+            if let last = sections.last, last.name == name {
+                sections[sections.count - 1].items.append(item)
+            } else {
+                sections.append(PrayerItemSection(name: name, items: [item]))
+            }
+        }
+        return sections
+    }
+}
+
 /// The kind as a small tinted capsule, icon only; VoiceOver still reads the kind's name.
 struct GroupKindBadge: View {
     let kind: PostKind
@@ -148,32 +168,31 @@ struct GroupPostCard: View {
         .accessibilityElement(children: .combine)
     }
 
+    /// Like a prayer note: each section's name, then its lines. Every line shows, in the feed
+    /// too (at most ten).
     private func prayerItems(_ items: [PrayerItem]) -> some View {
-        let shown = isCompact ? Array(items.prefix(4)) : items
-        return VStack(alignment: .leading, spacing: 6) {
-            ForEach(Array(shown.enumerated()), id: \.offset) { _, item in
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Circle()
-                        .fill(PostKind.prayer.groupColor)
-                        .frame(width: 5, height: 5)
-                        .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 1 }
-                        .accessibilityHidden(true)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(item.text)
-                            .foregroundStyle(JournalTheme.ink)
-                            .lineLimit(isCompact ? 2 : nil)
-                        if let who = item.who, !who.isEmpty {
-                            Text("\(who) 위해")
-                                .font(.caption)
-                                .foregroundStyle(JournalTheme.inkSecondary)
+        VStack(alignment: .leading, spacing: JournalTheme.Spacing.small) {
+            ForEach(Array(PrayerItemSection.group(items).enumerated()), id: \.offset) {
+                _, section in
+                VStack(alignment: .leading, spacing: 4) {
+                    if let name = section.name {
+                        Text(name)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(JournalTheme.inkSecondary)
+                    }
+                    ForEach(Array(section.items.enumerated()), id: \.offset) { _, item in
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Circle()
+                                .fill(PostKind.prayer.groupColor)
+                                .frame(width: 5, height: 5)
+                                .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 1 }
+                                .accessibilityHidden(true)
+                            Text(item.text)
+                                .foregroundStyle(JournalTheme.ink)
+                                .lineLimit(isCompact ? 2 : nil)
                         }
                     }
                 }
-            }
-            if items.count > shown.count {
-                Text("외 \(items.count - shown.count)개")
-                    .font(.caption)
-                    .foregroundStyle(JournalTheme.inkSecondary)
             }
         }
     }
@@ -195,12 +214,18 @@ struct GroupPostCard: View {
                 .fixedSize(horizontal: false, vertical: true)
             }
             if !parts.body.isEmpty {
-                Text(parts.body)
-                    .foregroundStyle(JournalTheme.ink)
-                    .lineLimit(isCompact ? 6 : nil)
+                // A prayer post's note shows only its first line in the feed.
+                let firstLineOnly = isCompact && post.kind == .prayer
+                Text(firstLineOnly ? Self.firstLine(of: parts.body) : parts.body)
+                    .foregroundStyle(firstLineOnly ? JournalTheme.inkSecondary : JournalTheme.ink)
+                    .lineLimit(firstLineOnly ? 1 : (isCompact ? 6 : nil))
                     .textSelection(.enabled)
             }
         }
+    }
+
+    static func firstLine(of text: String) -> String {
+        String(text.split(separator: "\n", maxSplits: 1).first ?? "")
     }
 
     private var footer: some View {

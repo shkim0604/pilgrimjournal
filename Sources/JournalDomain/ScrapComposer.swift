@@ -137,7 +137,7 @@ public enum ScrapComposer {
     private static func prayerLine(_ line: ScrapPost.PrayerLine, labels: ScrapLabels) -> String? {
         guard let text = clean(line.text) else { return nil }
         let topic = clean(line.topic).flatMap { labels.topicName($0) }
-        let about = [clean(line.who), topic].compactMap { $0 }
+        let about = [clean(line.section), topic].compactMap { $0 }
         return about.isEmpty ? "- \(text)" : "- \(text) (\(about.joined(separator: "/")))"
     }
 

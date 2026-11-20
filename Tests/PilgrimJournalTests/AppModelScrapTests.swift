@@ -72,7 +72,7 @@ final class AppModelScrapTests: XCTestCase {
             groupID: fixture.wednesday.id,
             CreatePostRequest(
                 clientId: UUID(), kind: .prayer,
-                items: [PrayerItem(text: "어머니 검사 결과가 좋게 나오도록", topic: "health", who: "엄마")],
+                items: [PrayerItem(text: "어머니 검사 결과가 좋게 나오도록", topic: "health", section: "엄마")],
                 deadline: LocalDate(year: 2025, month: 11, day: 20),
                 timeZone: GroupsContentFixture.seoul.identifier, mediaIds: mediaIDs))
         _ = try await fixture.api.createComment(

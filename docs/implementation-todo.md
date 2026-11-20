@@ -200,6 +200,12 @@
   Info.plist 문구가 필요 없고, QR은 시스템 카메라로 읽는다). 쓰지 않게 된 stale 키 8개를 지웠다.
   스크랩 본문 문구("Scraps", "Posted on …")는 계속 JournalDomain의 고정 문자열이다.
 
+- **비공개 그룹 — 기도제목 카드를 기도노트 형식으로** (2026-11-19, 브랜치 `feat/groups-prayer-sections`) — 기도 항목의 `who`(누구를 위해)를 `section`(기도노트의 섹션 머리)으로 바꿨다.
+  - 계약: `PrayerItem.section`, `APILimits.prayerItemSectionMax`.
+  - 서버: migration `0006_RenamePrayerItemWho`가 저장된 `items`의 키를 순서대로 옮긴다.
+  - 화면: 카드는 제목 → 섹션별 항목 → 덧붙이는 말 순서다. 피드에서도 항목을 모두 보이고, 덧붙이는 말은 첫 줄만 보인다.
+  - 작성 화면: 섹션 이름과 그 아래 줄들을 쓰고, "섹션 추가"가 있다. 다른 사람 확인은 섹션이 있을 때 뜬다.
+  - 스크랩 줄: `- text (섹션/주제)`.
 - **비공개 그룹 — Phase 2 서버 정리** (2026-11-16, 브랜치 `groups/p2-server`) — 계정 상태 검사는
   `AccountStateMiddleware` 하나(그룹 라우트는 `PilgrimRoutes.groupMember`), 권한은
   `SubscriptionEntitlement` 하나(`/me`의 null 정렬 버그도 고침), 그룹 조회·권한은 `GroupAccess`, 안 읽은 수는

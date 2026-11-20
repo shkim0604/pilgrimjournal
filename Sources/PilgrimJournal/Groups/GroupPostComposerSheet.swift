@@ -142,28 +142,38 @@ struct GroupPostComposerSheet: View {
         Section {
             TextField("제목 (선택)", text: $model.title)
         }
-        Section {
-            ForEach($model.items) { $item in
-                VStack(alignment: .leading, spacing: 4) {
+        ForEach($model.sections) { $section in
+            Section {
+                TextField("섹션 이름 (선택, 예: 가족·감사)", text: $section.name)
+                    .font(.subheadline.weight(.semibold))
+                ForEach($section.items) { $item in
                     TextField(PostKind.prayer.groupLabel, text: $item.text, axis: .vertical)
                         .lineLimit(1...4)
-                    TextField("누구를 위해 (선택)", text: $item.who)
-                        .font(.caption)
-                        .foregroundStyle(JournalTheme.inkSecondary)
+                }
+                .onDelete { offsets in
+                    for id in offsets.map({ section.items[$0].id }) { model.removeItem(id) }
+                }
+                if model.items.count < GroupComposerModel.maxItems {
+                    Button {
+                        model.addItem(to: section.id)
+                    } label: {
+                        Label("기도제목 줄 추가", systemImage: "plus")
+                    }
+                }
+            } header: {
+                if section.id == model.sections.first?.id {
+                    Text("기도제목 \(model.filledItems.count)/\(GroupComposerModel.maxItems)")
                 }
             }
-            .onDelete { offsets in
-                for id in offsets.map({ model.items[$0].id }) { model.removeItem(id) }
-            }
-            if model.items.count < GroupComposerModel.maxItems {
+        }
+        if model.items.count < GroupComposerModel.maxItems {
+            Section {
                 Button {
-                    model.addItem()
+                    model.addSection()
                 } label: {
-                    Label("기도제목 줄 추가", systemImage: "plus")
+                    Label("섹션 추가", systemImage: "text.badge.plus")
                 }
             }
-        } header: {
-            Text("기도제목 \(model.filledItems.count)/\(GroupComposerModel.maxItems)")
         }
         Section {
             TextField("덧붙이는 말 (선택)", text: $model.body, axis: .vertical)

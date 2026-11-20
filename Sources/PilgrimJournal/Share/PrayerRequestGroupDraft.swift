@@ -3,7 +3,7 @@ import JournalShareDrafts
 import PilgrimAPI
 
 /// Turns the lines picked in the "기도제목 나누기" sheet into a prayer post for the group
-/// composer: one item per selected line, the model's who/topic labels kept, and a deadline
+/// composer: one item per selected line, the model's topic kept and its who label as the section, and a deadline
 /// suggested from the date phrases in the lines (or, failing that, in the entry).
 ///
 /// A suggested deadline only pre-fills the composer's "데드라인 정하기"; with none, the post
@@ -16,11 +16,12 @@ enum PrayerRequestGroupDraft {
         rows.filter(\.isSelected).compactMap { row in
             let text = row.text.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !text.isEmpty else { return nil }
-            return PrayerItem(text: text, topic: row.topic?.rawValue, who: who(row.who))
+            return PrayerItem(text: text, topic: row.topic?.rawValue, section: section(row.who))
         }
     }
 
-    static func who(_ label: String?) -> String? {
+    /// The model's who label as the item's section; none for the writer themself.
+    static func section(_ label: String?) -> String? {
         guard let label = label?.trimmingCharacters(in: .whitespacesAndNewlines),
             !label.isEmpty, !selfLabels.contains(label.lowercased())
         else { return nil }

@@ -295,7 +295,7 @@ public actor PreviewGroupAPI: GroupAPI {
                 CreatePostRequest(
                     clientId: UUID(), kind: .prayer,
                     items: [
-                        PrayerItem(text: "어머니 검사 결과가 좋게 나오도록", topic: "health", who: "엄마"),
+                        PrayerItem(text: "어머니 검사 결과가 좋게 나오도록", topic: "health", section: "엄마"),
                         PrayerItem(text: "이번 주 면접을 차분히 볼 수 있도록", topic: "work"),
                     ],
                     deadline: deadline, timeZone: timeZone, language: "ko"),
@@ -1087,8 +1087,9 @@ public actor PreviewGroupAPI: GroupAPI {
                 if item.text.count > APILimits.prayerItemTextMax {
                     throw GroupAPIError.limit(field: "items", limit: APILimits.prayerItemTextMax)
                 }
-                if let who = item.who, who.count > APILimits.prayerItemWhoMax {
-                    throw GroupAPIError.limit(field: "items", limit: APILimits.prayerItemWhoMax)
+                if let section = item.section, section.count > APILimits.prayerItemSectionMax {
+                    throw GroupAPIError.limit(
+                        field: "items", limit: APILimits.prayerItemSectionMax)
                 }
             }
         case .bookReport, .testimony:

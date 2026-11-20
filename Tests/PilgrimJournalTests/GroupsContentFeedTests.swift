@@ -252,6 +252,17 @@ final class GroupsContentFeedTests: XCTestCase {
         XCTAssertFalse(feed.posts.contains { $0.id == created.id })
     }
 
+    func testCardGroupsPrayerLinesBySectionAndShowsTheNotesFirstLine() {
+        let sections = PrayerItemSection.group([
+            PrayerItem(text: "면접"), PrayerItem(text: "회복", section: "가족"),
+            PrayerItem(text: "평안", section: "가족"), PrayerItem(text: "새 직장", section: ""),
+        ])
+        XCTAssertEqual(sections.map(\.name), [nil, "가족", nil])
+        XCTAssertEqual(sections.map(\.items.count), [1, 2, 1])
+        XCTAssertEqual(GroupPostCard.firstLine(of: "첫 줄\n둘째 줄\n셋째"), "첫 줄")
+        XCTAssertEqual(GroupPostCard.firstLine(of: "한 줄"), "한 줄")
+    }
+
     func testStartMarksTheGroupSeen() async throws {
         let fixture = try await GroupsContentFixture()
         let groupsBefore = try await fixture.api.groups()

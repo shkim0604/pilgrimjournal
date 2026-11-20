@@ -25,22 +25,61 @@ final class GroupsContentComposerTests: XCTestCase {
         XCTAssertTrue(model.issues.contains(.itemsRequired))
         XCTAssertFalse(model.canSubmit)
 
-        model.items[0].text = "가족의 건강"
+        model.sections[0].items[0].text = "가족의 건강"
         XCTAssertEqual(model.issues, [])
         XCTAssertTrue(model.canSubmit)
 
-        model.items = (0..<11).map { GroupComposerItem(text: "기도 \($0)") }
+        model.sections = [
+            GroupComposerSection(items: (0..<11).map { GroupComposerItem(text: "기도 \($0)") })
+        ]
         XCTAssertTrue(model.issues.contains(.tooManyItems))
-        model.items = [GroupComposerItem(text: String(repeating: "가", count: 201))]
+        model.sections = [
+            GroupComposerSection(items: [
+                GroupComposerItem(text: String(repeating: "가", count: 201))
+            ])
+        ]
         XCTAssertTrue(model.issues.contains(.itemTooLong))
-        model.items = [GroupComposerItem(text: "기도", who: String(repeating: "나", count: 31))]
-        XCTAssertTrue(model.issues.contains(.whoTooLong))
-        model.items = [GroupComposerItem(text: "기도")]
+        model.sections = [
+            GroupComposerSection(
+                name: String(repeating: "나", count: 31), items: [GroupComposerItem(text: "기도")])
+        ]
+        XCTAssertTrue(model.issues.contains(.sectionTooLong))
+        model.sections = [GroupComposerSection(items: [GroupComposerItem(text: "기도")])]
         model.title = String(repeating: "제", count: 81)
         XCTAssertTrue(model.issues.contains(.titleTooLong))
         model.title = ""
         model.body = String(repeating: "본", count: 2_001)
         XCTAssertTrue(model.issues.contains(.bodyTooLong))
+    }
+
+    func testSectionsRoundTripLikeAPrayerNote() async throws {
+        let fixture = try await GroupsContentFixture()
+        let model = composer(
+            fixture,
+            draft: GroupPostDraft(
+                items: [
+                    PrayerItem(text: "면접"),
+                    PrayerItem(text: "수술 회복", section: "가족"),
+                    PrayerItem(text: "평안", section: "가족"),
+                ]))
+        XCTAssertEqual(model.sections.map(\.name), ["", "가족"])
+        XCTAssertEqual(model.sections.map(\.items.count), [1, 2])
+
+        model.addSection()
+        model.sections[2].name = " 감사 "
+        model.sections[2].items[0].text = "새 직장"
+        XCTAssertEqual(
+            model.filledItems,
+            [
+                PrayerItem(text: "면접"), PrayerItem(text: "수술 회복", section: "가족"),
+                PrayerItem(text: "평안", section: "가족"), PrayerItem(text: "새 직장", section: "감사"),
+            ])
+        XCTAssertTrue(model.needsOthersConfirmation)
+
+        model.removeItem(model.sections[2].items[0].id)
+        XCTAssertEqual(model.sections.map(\.name), ["", "가족"], "an emptied named section goes")
+        model.removeItem(model.sections[0].items[0].id)
+        XCTAssertEqual(model.sections.map(\.name), ["", "가족"], "the unnamed one stays")
     }
 
     func testAddItemStopsAtTen() async throws {
@@ -73,7 +112,7 @@ final class GroupsContentComposerTests: XCTestCase {
     func testDeadlineAndVisibleDaysAreMutuallyExclusive() async throws {
         let fixture = try await GroupsContentFixture()
         let model = composer(fixture)
-        model.items[0].text = "기도"
+        model.sections[0].items[0].text = "기도"
 
         var request = model.request(mediaIDs: [])
         XCTAssertNil(request.deadline)
@@ -99,7 +138,7 @@ final class GroupsContentComposerTests: XCTestCase {
     func testExpiryPreviewFollowsThePolicy() async throws {
         let fixture = try await GroupsContentFixture()
         let model = composer(fixture)
-        model.items[0].text = "기도"
+        model.sections[0].items[0].text = "기도"
         model.visibleDays = 14
         XCTAssertEqual(model.expiryPreview, GroupsContentFixture.start + 14 * 86_400)
 
@@ -148,7 +187,7 @@ final class GroupsContentComposerTests: XCTestCase {
                 kind: .prayer, title: "이번 주",
                 items: [
                     PrayerItem(text: "면접", topic: "work"),
-                    PrayerItem(text: "수술 회복", topic: "health", who: "어머니"),
+                    PrayerItem(text: "수술 회복", topic: "health", section: "어머니"),
                 ],
                 deadline: deadline),
             groupID: .some(nil))

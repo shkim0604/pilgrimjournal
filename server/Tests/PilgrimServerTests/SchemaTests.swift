@@ -27,7 +27,9 @@ final class SchemaTests: DatabaseTestCase {
         let admin = try await fixtures.user("관리자")
         let member = try await fixtures.user("멤버")
         let group = try await fixtures.group(admin: admin, members: [member])
-        let items = [PrayerItem(text: "기도", topic: "health", who: "엄마"), PrayerItem(text: "둘째")]
+        let items = [
+            PrayerItem(text: "기도", topic: "health", section: "엄마"), PrayerItem(text: "둘째"),
+        ]
         let post = try await fixtures.post(by: admin, in: group, kind: .prayer, items: items)
         post.deadlineDate = LocalDate("2026-11-20")
         post.visibleDays = nil
@@ -51,6 +53,18 @@ final class SchemaTests: DatabaseTestCase {
         ).first(decoding: TypeRow.self)
         XCTAssertEqual(typeRow?.type, "array")
         XCTAssertEqual(typeRow?.length, 2)
+
+        // 0006 moves an old item's `who` to `section`, in order.
+        try await sql.raw(
+            """
+            UPDATE posts SET items = '[{"text":"기도","who":"엄마"},{"text":"둘째"}]'::jsonb
+            WHERE id = \(bind: post.id!)
+            """
+        ).run()
+        try await SchemaSQL.run([RenamePrayerItemWho.rename(from: "who", to: "section")], on: db)
+        let renamed = try await unwrapAsync(try await Post.find(post.id, on: db))
+        XCTAssertEqual(
+            renamed.prayerItems, [PrayerItem(text: "기도", section: "엄마"), PrayerItem(text: "둘째")])
 
         // uuid[] columns.
         let vote = AdminVote(
