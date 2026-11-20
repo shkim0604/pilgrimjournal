@@ -336,12 +336,17 @@ private struct GroupPostDetailContent: View {
                     .font(.callout)
                     .foregroundStyle(JournalTheme.inkSecondary)
             }
-            ForEach(model.comments) { comment in
-                commentRow(comment)
-            }
-            if model.commentsCursor != nil {
-                Button("댓글 더 보기") { Task { await model.loadMoreComments() } }
-                    .font(.callout)
+            LazyVStack(alignment: .leading, spacing: JournalTheme.Spacing.medium) {
+                ForEach(model.comments) { comment in
+                    commentRow(comment)
+                }
+                if model.commentsCursor != nil {
+                    // Loads the next page when it scrolls into view; stays as a retry button
+                    // if that fails (the cursor is unchanged, so the task does not run again).
+                    Button("댓글 더 보기") { Task { await model.loadMoreComments() } }
+                        .font(.callout)
+                        .task(id: model.commentsCursor) { await model.loadMoreComments() }
+                }
             }
         }
     }

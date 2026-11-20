@@ -151,6 +151,8 @@ final class GroupFeedModel: ObservableObject, GroupContentObserver {
     @Published private(set) var nextCursor: String?
     @Published private(set) var loadState: LoadState = .idle
     @Published private(set) var isLoadingMore = false
+    /// The last `loadMore()` failed; the end of the list offers "다시 시도" instead of loading.
+    @Published private(set) var loadMoreError: String?
     /// A failed refresh while posts are already on screen; the posts stay.
     @Published private(set) var refreshError: String?
     @Published private(set) var isPolling = false
@@ -222,6 +224,7 @@ final class GroupFeedModel: ObservableObject, GroupContentObserver {
             merge(firstPage: page)
             loadState = .loaded
             refreshError = nil
+            loadMoreError = nil
             onRefreshed?(page.items)
         } catch {
             if GroupContentError.isCancellation(error) {
@@ -253,15 +256,23 @@ final class GroupFeedModel: ObservableObject, GroupContentObserver {
             }
             nextCursor = page.nextCursor
             hasPagedBeyondFirst = true
+            loadMoreError = nil
         } catch {
             if GroupContentError.isCancellation(error) { return }
-            refreshError = GroupContentError.message(for: error)
+            loadMoreError = GroupContentError.message(for: error)
         }
     }
 
-    /// Loads the next page when the last shown post appears.
+    /// How many posts before the end the next page starts loading, so scrolling rarely waits.
+    static let prefetchDistance = 5
+
+    /// Loads the next page when one of the last `prefetchDistance` shown posts appears.
     func loadMoreIfNeeded(after post: PostResponse) async {
-        guard post.id == posts.last?.id else { return }
+        let shown = posts
+        guard loadMoreError == nil,
+            let index = shown.lastIndex(where: { $0.id == post.id }),
+            index >= shown.count - Self.prefetchDistance
+        else { return }
         await loadMore()
     }
 

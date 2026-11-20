@@ -115,6 +115,50 @@ final class GroupsContentFeedTests: XCTestCase {
         XCTAssertEqual(feed.posts.count, 3, "no cursor, no request")
     }
 
+    func testNextPageLoadsBeforeTheLastPostAppears() async throws {
+        let fixture = try await GroupsContentFixture()
+        let author = try await fixture.post(.prayer, in: fixture.wednesday).author
+        for index in 0..<10 {
+            fixture.clock.advance(by: 60)
+            _ = try await fixture.api.simulatePost(
+                groupID: fixture.wednesday.id, authorID: author.id,
+                GroupsContentFixture.testimony("간증 \(index)"))
+        }
+        let feed = fixture.feed(fixture.wednesday, pageSize: 8)
+        await feed.refresh()
+        XCTAssertEqual(feed.posts.count, 8)
+
+        await feed.loadMoreIfNeeded(after: feed.posts[1])
+        XCTAssertEqual(feed.posts.count, 8, "far from the end: nothing loads")
+        await feed.loadMoreIfNeeded(after: feed.posts[8 - GroupFeedModel.prefetchDistance])
+        XCTAssertEqual(feed.posts.count, 13, "within the last five: the next page loads")
+        XCTAssertFalse(feed.hasMore)
+    }
+
+    func testFailedNextPageWaitsForRetry() async throws {
+        let fixture = try await GroupsContentFixture()
+        let api = ScriptedGroupAPI(base: fixture.api)
+        let feed = GroupFeedModel(
+            api: api, groupID: fixture.wednesday.id,
+            now: { [clock = fixture.clock] in clock.now }, pageSize: 2, events: nil)
+        await feed.refresh()
+        XCTAssertTrue(feed.hasMore)
+
+        await api.setFailure(.offline)
+        await feed.loadMore()
+        XCTAssertNotNil(feed.loadMoreError)
+        XCTAssertNil(feed.refreshError, "the top banner is for refreshes")
+        let last = try XCTUnwrap(feed.posts.last)
+        await feed.loadMoreIfNeeded(after: last)
+        let callsAfterFailure = await api.calls.count
+        XCTAssertEqual(callsAfterFailure, 2, "no automatic retry loop after a failure")
+
+        await api.setFailure(nil)
+        await feed.loadMore()
+        XCTAssertNil(feed.loadMoreError)
+        XCTAssertEqual(feed.posts.count, 3)
+    }
+
     func testRefreshMergesNewPostsAboveLoadedPages() async throws {
         let fixture = try await GroupsContentFixture()
         let feed = fixture.feed(fixture.wednesday, pageSize: 2)
