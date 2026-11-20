@@ -13,6 +13,7 @@ struct GroupPostComposerSheet: View {
     @State private var pickerSelection: [PhotosPickerItem] = []
     @State private var isConfirmingOthers = false
     @State private var isConfirmingDiscard = false
+    @State private var isImportingPrayerNote = false
     private let onPosted: (PostResponse) -> Void
 
     init(
@@ -25,13 +26,15 @@ struct GroupPostComposerSheet: View {
 
     /// The entry point for every caller (the feed's "새 글", A4's entry and prayer-request
     /// sheets): opens the composer filled from `draft` for `groupID`, or with a group picker
-    /// when `groupID` is nil and the user is in several groups.
+    /// when `groupID` is nil and the user is in several groups. `prayerNotes` (only where the
+    /// journal is at hand) offers "기도노트에서 가져오기".
     @MainActor
     static func compose(
         _ draft: GroupPostDraft,
         groups: GroupsController,
         groupID: UUID?,
         prepareImage: GroupImagePreparer? = nil,
+        prayerNotes: GroupPrayerNoteSource? = nil,
         onPosted: @escaping (PostResponse) -> Void = { _ in }
     ) -> GroupPostComposerSheet {
         let api = groups.api
@@ -40,7 +43,7 @@ struct GroupPostComposerSheet: View {
         return GroupPostComposerSheet(
             makeModel: GroupComposerModel(
                 api: api, groups: summaries, groupID: groupID, draft: draft,
-                prepareImage: preparer),
+                prepareImage: preparer, prayerNotes: prayerNotes),
             onPosted: onPosted)
     }
 
@@ -105,6 +108,13 @@ struct GroupPostComposerSheet: View {
                 guard !items.isEmpty else { return }
                 Task { await importPhotos(items) }
             }
+            .sheet(isPresented: $isImportingPrayerNote) {
+                if let prayerNotes = model.prayerNotes {
+                    GroupPrayerNoteImportSheet(load: prayerNotes.notes) { note, picked in
+                        model.importTopics(picked, from: note)
+                    }
+                }
+            }
         }
         #if os(macOS)
         .frame(minWidth: 480, minHeight: 600)
@@ -141,6 +151,15 @@ struct GroupPostComposerSheet: View {
     private var prayerSections: some View {
         Section {
             TextField("제목 (선택)", text: $model.title)
+        }
+        if model.prayerNotes != nil {
+            Section {
+                Button {
+                    isImportingPrayerNote = true
+                } label: {
+                    Label("기도노트에서 가져오기", systemImage: "square.and.arrow.down")
+                }
+            }
         }
         ForEach($model.sections) { $section in
             Section {

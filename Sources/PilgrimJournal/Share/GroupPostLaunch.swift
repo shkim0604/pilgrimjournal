@@ -63,15 +63,19 @@ extension View {
     /// started it can close itself without racing the composer's own dismissal.
     func groupPostComposer(
         _ request: Binding<GroupPostRequest?>, groups: GroupsController?,
+        prayerNotes: GroupPrayerNoteSource? = nil,
         onPosted: @escaping (PostResponse) -> Void = { _ in }
     ) -> some View {
-        modifier(GroupPostComposerPresenter(request: request, groups: groups, onPosted: onPosted))
+        modifier(
+            GroupPostComposerPresenter(
+                request: request, groups: groups, prayerNotes: prayerNotes, onPosted: onPosted))
     }
 }
 
 private struct GroupPostComposerPresenter: ViewModifier {
     @Binding var request: GroupPostRequest?
     let groups: GroupsController?
+    let prayerNotes: GroupPrayerNoteSource?
     let onPosted: (PostResponse) -> Void
     @State private var composing: GroupPostRequest?
     /// The request waiting on "그룹 시작하기".
@@ -98,7 +102,7 @@ private struct GroupPostComposerPresenter: ViewModifier {
                 if let groups {
                     GroupPostComposerSheet.compose(
                         request.draft, groups: groups, groupID: nil,
-                        onPosted: { posted = $0 })
+                        prayerNotes: prayerNotes, onPosted: { posted = $0 })
                 }
             }
             .alert(

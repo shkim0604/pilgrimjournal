@@ -121,7 +121,8 @@ struct EntryRowWithActions: View {
             .sheet(item: $prayerRequestShareEntry) { entry in
                 PrayerRequestShareSheet(entry: entry, groups: model.groups)
             }
-            .groupPostComposer($groupPostRequest, groups: model.groups)
+            .groupPostComposer(
+                $groupPostRequest, groups: model.groups, prayerNotes: model.groupPrayerNoteSource)
     }
 
     /// Opens the group composer filled from this entry (book report or testimony).

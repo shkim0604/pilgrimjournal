@@ -97,8 +97,11 @@ extension AppModel {
 
     /// Toggles one prayer topic between 기도중 and 응답, saving behind any open
     /// editor the same way kind moves do: flush first, then ask the editor to
-    /// reload so it cannot write the stale topic list back.
-    func setPrayerTopicStatus(entryID: UUID, topicID: UUID, status: PrayerStatus) {
+    /// reload so it cannot write the stale topic list back. Group prayer lines imported from
+    /// this topic follow, unless `syncsGroups` is false (the change came from a group).
+    func setPrayerTopicStatus(
+        entryID: UUID, topicID: UUID, status: PrayerStatus, syncsGroups: Bool = true
+    ) {
         flushOpenEditor()
         do {
             guard var draft = try repository.entry(id: entryID)?.draft,
@@ -120,6 +123,9 @@ extension AppModel {
             editorReloadRequest = EditorReloadRequest(entryIDs: [record.id])
             markLocalMutation()
             refresh()
+            if syncsGroups {
+                pushPrayerTopicStatus(entryID: entryID, topicID: topicID, status: status)
+            }
         } catch {
             errorMessage = error.localizedDescription
         }

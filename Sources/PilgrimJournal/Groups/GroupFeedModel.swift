@@ -161,6 +161,8 @@ final class GroupFeedModel: ObservableObject, GroupContentObserver {
     private let pageSize: Int
     private let pollInterval: Duration
     private let sleep: @Sendable (Duration) async throws -> Void
+    /// Gets each refreshed first page (`GroupsController.onFeedRefreshed`).
+    private let onRefreshed: (([PostResponse]) -> Void)?
     private var isRefreshing = false
     /// Older pages were loaded with `loadMore()`; a refresh keeps them below the first page.
     private var hasPagedBeyondFirst = false
@@ -177,7 +179,8 @@ final class GroupFeedModel: ObservableObject, GroupContentObserver {
         sleep: @escaping @Sendable (Duration) async throws -> Void = {
             try await Task.sleep(for: $0)
         },
-        events: GroupContentEvents? = .shared
+        events: GroupContentEvents? = .shared,
+        onRefreshed: (([PostResponse]) -> Void)? = nil
     ) {
         self.api = api
         self.groupID = groupID
@@ -185,6 +188,7 @@ final class GroupFeedModel: ObservableObject, GroupContentObserver {
         self.pageSize = pageSize
         self.pollInterval = pollInterval
         self.sleep = sleep
+        self.onRefreshed = onRefreshed
         events?.add(self)
     }
 
@@ -218,6 +222,7 @@ final class GroupFeedModel: ObservableObject, GroupContentObserver {
             merge(firstPage: page)
             loadState = .loaded
             refreshError = nil
+            onRefreshed?(page.items)
         } catch {
             if GroupContentError.isCancellation(error) {
                 if loadState == .loading { loadState = .idle }

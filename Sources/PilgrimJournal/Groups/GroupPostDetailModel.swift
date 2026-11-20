@@ -44,6 +44,9 @@ final class GroupPostDetailModel: ObservableObject {
     private let uploader: GroupPhotoUploader
     private let policy: PostExpiryPolicy
     private let events: GroupContentEvents?
+    /// Told about each answered mark the author changed here
+    /// (`GroupsController.onPrayerItemAnswered`).
+    private let onAnsweredChange: ((PostResponse, Int) -> Void)?
     private var commentClientID = UUID()
     private var extendClientID: UUID?
     private var stickerClientID = UUID()
@@ -55,7 +58,8 @@ final class GroupPostDetailModel: ObservableObject {
         isAdmin: Bool,
         prepareImage: @escaping GroupImagePreparer = GroupImagePreparation.identity,
         policy: PostExpiryPolicy = PostExpiryPolicy(),
-        events: GroupContentEvents? = .shared
+        events: GroupContentEvents? = .shared,
+        onAnsweredChange: ((PostResponse, Int) -> Void)? = nil
     ) {
         self.api = api
         self.postID = postID
@@ -64,6 +68,7 @@ final class GroupPostDetailModel: ObservableObject {
         self.uploader = GroupPhotoUploader(api: api, prepare: prepareImage)
         self.policy = policy
         self.events = events
+        self.onAnsweredChange = onAnsweredChange
         if let created = events?.lastCreated, created.id == postID { post = created }
         if post != nil { state = .loaded }
     }
@@ -206,9 +211,11 @@ final class GroupPostDetailModel: ObservableObject {
         isWorking = true
         defer { isWorking = false }
         do {
-            post = try await api.setPrayerItemAnswered(
+            let updated = try await api.setPrayerItemAnswered(
                 postID: postID, index: index, answered: item.answeredAt == nil)
+            post = updated
             publishUpdate()
+            onAnsweredChange?(updated, index)
         } catch {
             handle(error)
         }

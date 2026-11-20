@@ -175,6 +175,12 @@
 
 ## 완료
 
+- **비공개 그룹 — 기도노트에서 가져오기·응답 양방향 동기화** (2026-11-19, 브랜치 `feat/groups-prayer-import`) — 기도제목 작성 화면에서 내 기도노트를 골라 기도제목을 섹션째 가져오고, 가져온 줄의 응답 표시가 기도노트와 맞춰진다.
+  - 가져오기: `GroupPrayerNoteImportSheet`(노트 최신순 → 섹션 순서대로 기도제목, 기도중은 미리 체크). `GroupComposerModel.importTopics`가 빈 자리 줄을 대신하고 10줄에서 멈춘다(넘치면 기존 안내). 서버로는 고른 기도제목의 내용과 섹션 이름만 간다.
+  - 연결: `GroupPrayerLinkStore`(`journal-group-prayer-links`, iCloud 키-값 저장소/로컬 전용은 UserDefaults)가 `{postID, groupID, itemIndex, entryID, topicID, expiresAt}`를 기기 쪽에만 둔다. 사라진 글의 연결은 읽을 때 지우고, 계정 삭제가 키를 지운다.
+  - 동기화(`AppModel+GroupPrayerLinks`): 기도노트 토글 → 연결된 줄에 `setPrayerItemAnswered`(실패는 무시). 상세에서 글쓴이 토글 → 연결된 기도제목만 바꾸고 그 줄은 다시 부르지 않는다. 피드 새로고침 → 내 글 중 기도노트에서는 응답됐는데 그룹에서는 아닌 줄만 표시한다(반대 방향은 하지 않는다: 다른 기기의 그룹 표시가 CloudKit보다 먼저 와도 되돌리지 않게). `GroupsController.onFeedRefreshed`/`onPrayerItemAnswered`로 잇는다.
+  - 기록 상세·Mac 편집기·목록 행의 "그룹에 올리기"와 피드 "새 글"에서 쓸 수 있다. 기도제목 나누기 시트(`PrayerRequestShareSheet`)에서 연 작성 화면은 `AppModel`이 없어 가져오기 버튼이 없다.
+
 - **비공개 그룹 — 기도제목 항목 "응답됨"** (2026-11-19, 브랜치 `feat/groups-prayer-answered`) — 글쓴이가 기도 항목마다 응답됨을 표시하고 되돌린다.
   - 계약: `PUT`/`DELETE /posts/:id/items/:index/answer` → `PostResponse`(작성자만 403 `FORBIDDEN`, 기도제목·범위 밖 422, 삭제 예정 그룹 409). `PrayerItem.answeredAt`(응답 전용), `PostExpiryPolicy.answered`(처음 표시 때 최소 7일, 되돌려도 줄지 않음), `PushKind.prayerAnswered`/`GROUP_PRAYER_ANSWERED`, `DailyReportGroup.answeredPosts`(선택 필드).
   - 서버: migration `0007_CreatePrayerItemAnswers`(`prayer_item_answers`, 글 삭제 때 CASCADE). 알림은 새 글과 같은 받는 사람, 글당 10분에 한 번(글 행 잠금 뒤 `push_outbox` 확인). Daily Report에 남의 글의 응답 항목 수.
